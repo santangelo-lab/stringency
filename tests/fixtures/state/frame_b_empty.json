@@ -1,0 +1,42 @@
+{
+  "counts_per_group": {
+    "group": {
+      "A": {
+        "row": 17,
+        "unit": 3
+      },
+      "B": {
+        "row": 0,
+        "unit": 0
+      },
+      "C": {
+        "row": 7,
+        "unit": 3
+      }
+    }
+  },
+  "domain": {},
+  "extractor": "toy.frame@1",
+  "fields": {
+    "columns": {
+      "group": {
+        "dtype": "string",
+        "n_unique": 2
+      },
+      "row_id": {
+        "dtype": "string",
+        "n_unique": 24
+      },
+      "unit": {
+        "dtype": "string",
+        "n_unique": 6
+      },
+      "value": {
+        "dtype": "number",
+        "n_unique": 23
+      }
+    }
+  },
+  "n_obs": 24,
+  "type": "frame"
+}
