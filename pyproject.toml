@@ -1,0 +1,79 @@
+[project]
+name = "stringency"
+version = "0.1.0.dev0"
+description = "Admissibility gates, provenance trace, and review for agent-assisted analysis pipelines"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Santangelo Lab, Emory BME" }]
+dependencies = [
+    "pydantic>=2.7",
+    "typer>=0.12",
+    "pyyaml>=6.0",
+    "jsonschema>=4.21",
+    "jinja2>=3.1",
+    "blake3>=0.4",
+    "python-ulid>=2.2",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+api = ["anthropic>=0.40"]
+
+[project.scripts]
+stringency = "stringency.cli.app:main"
+
+[project.entry-points."stringency.plugins"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "types-PyYAML",
+    "types-jsonschema",
+    "stringency-toy",
+]
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+stringency-toy = { workspace = true }
+
+[tool.uv.workspace]
+members = ["plugins/stringency-toy"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stringency"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "plugins/stringency-toy/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "W"]
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src/stringency"]
+mypy_path = "src:plugins/stringency-toy/src"
+plugins = ["pydantic.mypy"]
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["blake3", "blake3.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["apptainer: needs apptainer on PATH"]

@@ -1,0 +1,16 @@
+[project]
+name = "stringency-toy"
+version = "0.1.0"
+description = "Toy domain plugin for stringency: tabular rows with groups. No biology."
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.7"]
+
+[project.entry-points."stringency.plugins"]
+toy = "stringency_toy:PLUGIN"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stringency_toy"]
