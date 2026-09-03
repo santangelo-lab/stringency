@@ -246,7 +246,7 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
             return Next("completed", None, {"until": until}, 0, f"stopped after {until}")
         st = StepStatus(rc.step_status()[sid])
         if st == StepStatus.PENDING:
-            proposal = propose(rc, sid)
+            proposal = propose(rc, sid, rc.delta_for(sid) or None)
         elif st == StepStatus.ADMISSIBLE:
             proposal = resume_after_hold(rc, sid)
         else:

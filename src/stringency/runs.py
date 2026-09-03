@@ -74,10 +74,7 @@ class RunContext:
         return self.project.initial_state(self.run_id, self.input_objects())
 
     def input_objects(self) -> dict[str, ObjectState]:
-        import json
-
-        cached = self.project.scratch / "init-extract.json"
-        summaries = json.loads(cached.read_text()) if cached.exists() else {}
+        summaries = self.project.input_summaries()
         out: dict[str, ObjectState] = {}
         for item in self.project.inputs.items:
             if item.type in self.project.plugin.object_types:
@@ -87,6 +84,17 @@ class RunContext:
                     summary=summaries.get(item.name, {}),
                 )
         return out
+
+    def delta_for(self, step_id: str) -> dict[str, Any]:
+        """Parameter changes a fork declared for `step_id` (design 2.6), or {}."""
+        import json
+
+        raw = self.run["delta_json"]
+        if not raw:
+            return {}
+        delta = json.loads(raw)
+        params = delta.get("params", {}) if isinstance(delta, dict) else {}
+        return dict(params.get(step_id, {}))
 
     def project_config(self) -> Any:
         return self.project.project_config(
@@ -122,7 +130,10 @@ def operator_env() -> dict[str, str | None]:
 
 
 def latest_run(store: Store) -> Any:
-    return store.one("SELECT * FROM runs ORDER BY started DESC, rowid DESC LIMIT 1")
+    """The latest analysis run (control runs are excluded)."""
+    return store.one(
+        "SELECT * FROM runs WHERE kind = 'run' ORDER BY started DESC, rowid DESC LIMIT 1"
+    )
 
 
 def require_confirmed(project: Project) -> None:
@@ -178,6 +189,7 @@ def open_run(
     parent_run_id: str | None = None,
     fork_at: str | None = None,
     delta: dict[str, Any] | None = None,
+    kind: str = "run",
 ) -> RunContext:
     """Open a new run with every capture in design 9.1."""
     require_confirmed(project)
@@ -250,6 +262,7 @@ def open_run(
                 "policy_version": project.policy.version,
                 "policy_digest": policy_digest,
                 "stringency_version": __version__,
+                "kind": kind,
             }
         )
         store.run_event(

@@ -52,7 +52,8 @@ CREATE TABLE IF NOT EXISTS runs (
     policy_version          TEXT NOT NULL,
     policy_digest           TEXT NOT NULL,
     stringency_version      TEXT NOT NULL,
-    budgets_json            TEXT                        -- reserved for open mode (design 17)
+    budgets_json            TEXT,                       -- reserved for open mode (design 17)
+    kind                    TEXT NOT NULL DEFAULT 'run'  -- run | control
 );
 
 CREATE TABLE IF NOT EXISTS run_events (                 -- append-only

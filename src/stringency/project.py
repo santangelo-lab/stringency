@@ -199,6 +199,12 @@ class Project:
             profile=self.config.profile,
         )
 
+    def input_summaries(self) -> dict[str, Any]:
+        """Extractor output per object input, from the init pass."""
+        cached = self.scratch / "init-extract.json"
+        data = json.loads(cached.read_text()) if cached.exists() else {}
+        return dict(data) if isinstance(data, dict) else {}
+
     def extract_inputs(self, executor: Executor, workdir: Path) -> dict[str, ObjectState]:
         """One extractor pass per object input (design 2.7). Returns states by input name."""
         objects: dict[str, ObjectState] = {}
