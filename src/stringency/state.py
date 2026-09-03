@@ -171,9 +171,22 @@ def store_snapshot(
     return sid
 
 
-def latest_state(store: Store, run_id: str, step_id: str | None = None) -> State | None:
-    """Reads: state_snapshots. The newest post-phase snapshot for the run (or the step)."""
-    if step_id is None:
+def latest_state(
+    store: Store, run_id: str, step_id: str | None = None, *, completed_only: bool = False
+) -> State | None:
+    """Reads: state_snapshots (and steps when `completed_only`). The newest post-phase
+    snapshot for the run (or the step); with `completed_only`, only snapshots of steps that
+    are `completed` count, plus the run's initial snapshot."""
+    if step_id is None and completed_only:
+        row = store.one(
+            "SELECT s.summary_json FROM state_snapshots s "
+            "LEFT JOIN steps st ON st.run_id = s.run_id AND st.step_id = s.step_id "
+            "WHERE s.run_id = ? AND s.phase = 'post' "
+            "AND (s.step_id = 'run' OR st.status = 'completed') "
+            "ORDER BY s.ts DESC, s.rowid DESC LIMIT 1",
+            (run_id,),
+        )
+    elif step_id is None:
         row = store.one(
             "SELECT summary_json FROM state_snapshots WHERE run_id = ? AND phase = 'post' "
             "ORDER BY ts DESC, rowid DESC LIMIT 1",

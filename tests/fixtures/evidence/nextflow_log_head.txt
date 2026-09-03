@@ -1,0 +1,40 @@
+Dec-10 11:04:11.840 [main] DEBUG nextflow.cli.Launcher - $> nextflow run ./main.nf --input samplesheet.csv --runRanger false --runBaysor false --runSegger false --runProseg true --preset_splits false 
+Dec-10 11:04:12.061 [main] DEBUG nextflow.cli.CmdRun - N E X T F L O W  ~  version 24.10.0
+Dec-10 11:04:12.082 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; embedded=false; plugins-dir=/home/user/.nextflow/plugins; core-plugins: nf-amazon@2.9.0,nf-az
+Dec-10 11:04:12.111 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+Dec-10 11:04:12.112 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+Dec-10 11:04:12.115 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.12.0 in 'deployment' mode
+Dec-10 11:04:12.128 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+Dec-10 11:04:12.149 [main] DEBUG nextflow.config.ConfigBuilder - Found config local: /data-raid/Projects/MTA_pipeline_segmentation/smalltest_current/nextflow.config
+Dec-10 11:04:12.151 [main] DEBUG nextflow.config.ConfigBuilder - Parsing config file: /data-raid/Projects/MTA_pipeline_segmentation/smalltest_current/nextflow.config
+Dec-10 11:04:12.180 [main] DEBUG n.secret.LocalSecretsProvider - Secrets store: /home/user/.nextflow/secrets/store.json
+Dec-10 11:04:12.184 [main] DEBUG nextflow.secret.SecretsLoader - Discovered secrets providers: [nextflow.secret.LocalSecretsProvider@54dcbb9f] - activable => nextflow.secret.LocalSecretsProvider@54dcb
+Dec-10 11:04:12.200 [main] DEBUG nextflow.config.ConfigBuilder - Applying config profile: `standard`
+Dec-10 11:04:12.902 [main] DEBUG nextflow.cli.CmdRun - Applied DSL=2 by global default
+Dec-10 11:04:12.919 [main] DEBUG nextflow.cli.CmdRun - Launching `./main.nf` [confident_laplace] DSL2 - revision: 268e33004f
+Dec-10 11:04:12.921 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins declared=[nf-schema@2.4.1]
+Dec-10 11:04:12.922 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins default=[]
+Dec-10 11:04:12.922 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins resolved requirement=[nf-schema@2.4.1]
+Dec-10 11:04:12.922 [main] DEBUG nextflow.plugin.PluginUpdater - Installing plugin nf-schema version: 2.4.1
+Dec-10 11:04:12.937 [main] INFO  org.pf4j.AbstractPluginManager - Plugin 'nf-schema@2.4.1' resolved
+Dec-10 11:04:12.937 [main] INFO  org.pf4j.AbstractPluginManager - Start plugin 'nf-schema@2.4.1'
+Dec-10 11:04:12.947 [main] DEBUG nextflow.plugin.BasePlugin - Plugin started nf-schema@2.4.1
+Dec-10 11:04:13.001 [main] DEBUG nextflow.Session - Session UUID: 00cf1503-c011-4dbe-b2c6-0f485eb796ba
+Dec-10 11:04:13.001 [main] DEBUG nextflow.Session - Run name: confident_laplace
+Dec-10 11:04:13.002 [main] DEBUG nextflow.Session - Executor pool size: 48
+Dec-10 11:04:13.010 [main] DEBUG nextflow.file.FilePorter - File porter settings maxRetries=3; maxTransfers=50; pollTimeout=null
+Dec-10 11:04:13.019 [main] DEBUG nextflow.util.ThreadPoolBuilder - Creating thread pool 'FileTransfer' minSize=10; maxSize=144; workQueue=LinkedBlockingQueue[10000]; allowCoreThreadTimeout=false
+Dec-10 11:04:13.044 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 24.10.0 build 5928
+  Created: 27-10-2024 18:36 UTC (14:36 EDT)
+  System: Linux 6.14.0-36-generic
+  Runtime: Groovy 4.0.23 on OpenJDK 64-Bit Server VM 21.0.9+10-Ubuntu-124.04
+  Encoding: UTF-8 (UTF-8)
+  Process: 2059448@BMESANT-SEQ [127.0.1.1]
+  CPUs: 48 - Mem: 1006.5 GB (598.7 GB) - Swap: 8 GB (8 GB)
+Dec-10 11:04:13.072 [main] DEBUG nextflow.Session - Work-dir: /data-raid/Projects/MTA_pipeline_segmentation/smalltest_current/work [ext2/ext3]
+Dec-10 11:04:13.111 [main] DEBUG nextflow.executor.ExecutorFactory - Extension executors providers=[]
+Dec-10 11:04:13.121 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+Dec-10 11:04:13.128 [main] DEBUG nextflow.Session - Observer factory: ValidationObserverFactory
+Dec-10 11:04:13.155 [main] DEBUG nextflow.cache.CacheFactory - Using Nextflow cache factory: nextflow.cache.DefaultCacheFactory
+Dec-10 11:04:13.164 [main] DEBUG nextflow.util.CustomThreadPool - Creating default thread pool > poolSize: 49; maxThreads: 1000

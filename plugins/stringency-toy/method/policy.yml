@@ -26,6 +26,9 @@ profiles:
 overrides:
   toy.filter_after_summary:
     exploratory: {disposition: log, reason: "exploration is where filters get chosen"}
+  repro.env_unverified:
+    standard: {disposition: log, reason: "toy scripts run outside containers; the trace still records as_reported"}
+    exploratory: {disposition: log, reason: "same as standard"}
 ranges:
   toy.min_value: {strict: [10, 20], standard: [0, 40], wide: [0, 100]}
 confidence_criteria:

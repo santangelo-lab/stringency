@@ -1,0 +1,4 @@
+task_id	hash	native_id	process	tag	name	status	exit	module	container	cpus	time	disk	memory	attempt	submit	start	complete	duration	realtime
+1	a1/0f3c2e	41001	QC	sample1	QC (sample1)	COMPLETED	0	-	docker://ghcr.io/lab/sc-qc@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa	2	1h	-	8 GB	1	2026-09-10 14:02:11.000	2026-09-10 14:02:12.000	2026-09-10 14:05:40.000	3m 29s	3m 28s
+2	b2/77d1aa	41002	NORMALIZE	sample1	NORMALIZE (sample1)	COMPLETED	0	-	/data/lab/env/sc-r-4.4.sif	2	1h	-	8 GB	1	2026-09-10 14:05:41.000	2026-09-10 14:05:42.000	2026-09-10 14:07:00.000	1m 19s	1m 18s
+3	c3/9e4b10	41003	CLUSTER	sample1	CLUSTER (sample1)	FAILED	1	-	/data/lab/env/sc-r-4.4.sif	4	2h	-	16 GB	1	2026-09-10 14:07:01.000	2026-09-10 14:07:02.000	2026-09-10 14:09:30.000	2m 29s	2m 28s
