@@ -1,0 +1,9 @@
+control: 1
+name: positive-known-labels
+kind: positive
+fixture:
+  input: {type: frame, blake3: "0ec1e2d905fe497a60fb307d378b3e12bfdc4994b6be234b82874aa3b46b3fd1", path: controls/fixtures/groups.csv}
+  truth: {path: controls/fixtures/group_truth.tsv, key: group, column: label}
+expect:
+  agreement_min: 1.0
+  abstain_max: 0.0

@@ -1,0 +1,20 @@
+contract: 1
+name: filter-rows
+version: 0.1.0
+kind: deterministic
+operation: filter_rows
+domain: stringency-toy
+modes: [pipeline]
+env: toy-py
+inputs:
+  object: {type: frame, format: csv, hash: true}
+outputs:
+  object: {type: frame, format: csv}
+decision_points: [min_value]
+stochastic: false
+evidence:
+  - {kind: job_log, path: run.log}
+gates:
+  - toy.filter_after_summary@1
+  - obj.feasibility@1
+resources: {cpus: 1, memory: 1GB, timeout: 5min}

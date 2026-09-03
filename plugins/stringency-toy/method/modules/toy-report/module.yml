@@ -1,0 +1,18 @@
+contract: 1
+name: toy-report
+version: 0.1.0
+kind: report
+operation: report
+domain: stringency-toy
+modes: [pipeline]
+env: toy-py
+inputs:
+  comparison: {type: table, format: tsv, hash: true}
+  labels: {type: consensus, format: json, hash: true}
+outputs:
+  report: {type: prose, format: md}
+  group_labels: {type: json, format: json}
+decision_points: []
+stochastic: false
+gates:
+  - judg.numeric_claims_match@1

@@ -1,0 +1,37 @@
+policy: 1
+version: 0.1.0
+invariant: [repro.*, topo.*]
+profiles:
+  strict:
+    remap: {flag: block}
+    params: locked
+    replicates_min: 3
+    agreement: standard
+    qc_ranges: strict
+    relayed_review: false
+  standard:
+    remap: {}
+    params: ranged
+    replicates_min: 3
+    agreement: standard
+    qc_ranges: standard
+    relayed_review: true
+  exploratory:
+    remap: {block: flag}
+    params: free
+    replicates_min: 3
+    agreement: relaxed
+    qc_ranges: wide
+    relayed_review: true
+overrides:
+  toy.filter_after_summary:
+    exploratory: {disposition: log, reason: "exploration is where filters get chosen"}
+ranges:
+  toy.min_value: {strict: [10, 20], standard: [0, 40], wide: [0, 100]}
+confidence_criteria:
+  high:   {min_supporting: 3, max_contradicting: 0}
+  medium: {min_supporting: 2, max_contradicting: 1}
+  low:    {min_supporting: 1}
+agreement:
+  standard: {hold_on: [label_disagreement, any_abstain, any_low, any_invalid]}
+  relaxed:  {hold_on: [label_disagreement, all_abstain, any_invalid]}

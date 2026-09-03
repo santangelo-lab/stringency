@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS state_snapshots (            -- append-only
 CREATE INDEX IF NOT EXISTS snapshots_run_step ON state_snapshots(run_id, step_id);
 
 CREATE TABLE IF NOT EXISTS predicate_results (          -- append-only
-    run_id                 TEXT NOT NULL REFERENCES runs(run_id),
+    run_id                 TEXT NOT NULL,                  -- 'init' for init-time verdicts (action_id = project_id)
     action_id              TEXT NOT NULL,
     phase                  TEXT NOT NULL,
     predicate_id           TEXT NOT NULL,

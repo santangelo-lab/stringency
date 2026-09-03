@@ -59,7 +59,7 @@ src = ["src", "tests", "plugins/stringency-toy/src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "W"]
-ignore = ["B008"]
+ignore = ["B008", "E501"]
 
 [tool.mypy]
 python_version = "3.12"

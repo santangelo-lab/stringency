@@ -1,0 +1,6 @@
+# toy environment lock. The local executor hashes this file as the environment digest.
+version = 1
+requires-python = ">=3.12"
+[[package]]
+name = "python-stdlib-only"
+version = "3.12"

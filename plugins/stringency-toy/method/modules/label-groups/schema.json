@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["item_id", "label", "confidence", "abstain", "supporting_evidence", "contradicting_evidence", "rationale"],
+  "properties": {
+    "item_id": {"type": "string"},
+    "label": {"type": ["string", "null"]},
+    "ontology_id": {"type": ["string", "null"]},
+    "confidence": {"enum": ["high", "medium", "low", "abstain"]},
+    "abstain": {"type": "boolean"},
+    "supporting_evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence_ref"}},
+    "contradicting_evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence_ref"}},
+    "rationale": {"type": "string", "maxLength": 1200}
+  },
+  "if": {"properties": {"abstain": {"const": true}}},
+  "then": {"properties": {"label": {"type": "null"}, "confidence": {"const": "abstain"}}},
+  "$defs": {
+    "evidence_ref": {
+      "type": "object",
+      "required": ["table", "row", "column", "value"],
+      "properties": {
+        "table": {"type": "string"}, "row": {"type": "string"},
+        "column": {"type": "string"}, "value": {"type": ["string", "number"]}
+      }
+    }
+  }
+}

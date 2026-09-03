@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {"min_value": {"type": "number", "default": 10}},
+  "required": ["min_value"],
+  "additionalProperties": false
+}

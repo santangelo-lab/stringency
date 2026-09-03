@@ -1,0 +1,19 @@
+contract: 1
+name: compare-groups
+version: 0.1.0
+kind: deterministic
+operation: compare_groups
+domain: stringency-toy
+modes: [pipeline]
+env: toy-py
+runner: engine
+inputs:
+  object: {type: frame, format: csv, hash: true}
+outputs:
+  comparison_table: {type: table, format: tsv}
+decision_points: [replicate_unit, correction]
+stochastic: false
+gates:
+  - toy.replication_unit@1
+  - toy.no_correction@1
+  - obj.feasibility@1

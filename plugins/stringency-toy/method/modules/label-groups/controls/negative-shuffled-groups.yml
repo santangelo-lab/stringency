@@ -1,0 +1,10 @@
+control: 1
+name: negative-shuffled-groups
+kind: negative
+fixture:
+  input: {type: frame, blake3: "0ec1e2d905fe497a60fb307d378b3e12bfdc4994b6be234b82874aa3b46b3fd1", path: controls/fixtures/groups.csv}
+generator:
+  tool: shuffle_groups
+  params: {seed: 1}
+expect:
+  null_output: true

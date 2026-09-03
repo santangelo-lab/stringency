@@ -1,0 +1,6 @@
+# Environment manifest (design 10.3). Names map to lockfiles (local executor) or SIF digests (apptainer).
+environments:
+  toy-py:
+    lock: envs/toy-py/uv.lock
+    image: null
+    sha256: null

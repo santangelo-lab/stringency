@@ -1,0 +1,7 @@
+run.db
+run.db-*
+*.h5ad
+*.bam
+*.fastq
+*.fastq.gz
+.stringency/

@@ -1,0 +1,17 @@
+contract: 1
+name: summarize-groups
+version: 0.1.0
+kind: deterministic
+operation: summarize_groups
+domain: stringency-toy
+modes: [pipeline]
+env: toy-py
+inputs:
+  object: {type: frame, format: csv, hash: true}
+outputs:
+  table: {type: table, format: tsv}
+decision_points: []
+stochastic: false
+evidence:
+  - {kind: job_log, path: run.log}
+gates: []

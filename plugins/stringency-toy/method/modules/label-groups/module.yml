@@ -1,0 +1,37 @@
+contract: 1
+name: label-groups
+version: 0.1.0
+kind: judgment
+operation: label_groups
+domain: stringency-toy
+modes: [pipeline]
+env: toy-py
+inputs:
+  summary: {type: table, format: tsv, hash: true}
+outputs:
+  judgments: {type: judgments, format: jsonl, schema: schema.json, item_key: group}
+  consensus: {type: consensus, format: json}
+decision_points: []
+stochastic: false
+judgment:
+  items_from: summary
+  item_key: group
+  evidence: [summary]
+  batching: all_items
+  replicates: 3
+  abstain: required
+  confidence: ordinal
+  considered_set: false
+prompt:
+  template: prompt.md
+  vars: [evidence_table, vocabulary, items]
+vocabulary: group_labels@1
+gates:
+  - out.schema_conformance@1
+  - judg.evidence_exists@1
+  - judg.vocabulary_resolves@1
+  - judg.confidence_consistent@1
+  - judg.numeric_claims_match@1
+controls:
+  required: [negative, positive]
+resources: {cpus: 1, memory: 1GB, timeout: 10min}

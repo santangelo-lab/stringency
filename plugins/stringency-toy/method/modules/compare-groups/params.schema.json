@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "replicate_unit": {"enum": ["unit", "row"], "default": "unit"},
+    "correction": {"enum": ["bh", "bonferroni", "none"], "default": "bh"}
+  },
+  "required": ["replicate_unit", "correction"],
+  "additionalProperties": false
+}
