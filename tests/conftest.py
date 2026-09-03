@@ -35,6 +35,12 @@ class MethodRepo:
         return git.commit_all(self.path, message)
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--update-golden", action="store_true", default=False, help="rewrite golden files"
+    )
+
+
 @pytest.fixture(autouse=True)
 def _plugins() -> None:
     load_plugins(refresh=True)
