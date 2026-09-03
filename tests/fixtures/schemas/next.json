@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema", "kind", "step_id", "exit_code", "message", "run_id"],
+  "properties": {
+    "schema": {"const": "stringency.next/1"},
+    "kind": {"enum": ["runnable", "held", "blocked", "rejected", "failed", "awaiting_execution", "dispatching", "completed"]},
+    "step_id": {"type": ["string", "null"]},
+    "exit_code": {"type": "integer"},
+    "message": {"type": "string"},
+    "run_id": {"type": "string"},
+    "plan": {
+      "type": "object",
+      "required": ["step_id", "module", "kind", "operation", "runner", "inputs", "parameters", "vocabulary", "outputs", "evidence", "decision_points", "gates", "profile", "params_policy"],
+      "properties": {
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["schema", "default", "range", "options", "fixed", "decision_point"],
+            "properties": {
+              "range": {"type": ["array", "null"], "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+              "options": {"type": ["array", "null"]},
+              "fixed": {"type": "boolean"},
+              "decision_point": {"type": "boolean"}
+            }
+          }
+        },
+        "vocabulary": {"type": ["array", "null"], "items": {"type": "string"}},
+        "outputs": {"type": "object"},
+        "evidence": {"type": "array", "items": {"type": "object", "required": ["kind", "path"]}}
+      }
+    },
+    "holds": {"type": "array"},
+    "predicates": {"type": "array"},
+    "job_spec": {"type": "object"}
+  }
+}

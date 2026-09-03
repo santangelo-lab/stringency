@@ -1,10 +1,46 @@
-"""`stringency submit` (design 14.1)."""
+"""`stringency submit <ticket> --outputs name=path... [--evidence path]...` (design 3.4, 14.1)."""
 
 from __future__ import annotations
 
-from stringency.cli.common import handle_errors, not_implemented
+from pathlib import Path
+
+import typer
+
+from stringency.cli.common import emit, handle_errors
+from stringency.exit_codes import ConfigError
+from stringency.operator_exec.submit import submit as do_submit
+from stringency.project import Project
+from stringency.runloop import next_step
+from stringency.runs import open_or_resume
 
 
 @handle_errors
-def submit() -> None:
-    not_implemented("submit")
+def submit(
+    ticket: str = typer.Argument(...),
+    outputs: list[str] = typer.Option([], "--outputs", help="name=path; repeatable"),
+    evidence: list[Path] = typer.Option([], "--evidence", help="evidence file; repeatable"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    project = Project.find()
+    rc = open_or_resume(project)
+    outs: dict[str, Path] = {}
+    for o in outputs:
+        if "=" not in o:
+            raise ConfigError(f"--outputs expects name=path, got {o!r}")
+        k, _, v = o.partition("=")
+        outs[k] = Path(v)
+    out = do_submit(rc, ticket, outs, list(evidence))
+    nx = next_step(rc)
+    emit(
+        {
+            "schema": "stringency.submit/1",
+            "run_id": rc.run_id,
+            "step_id": out.step_id,
+            "status": str(out.status),
+            "next": nx.to_json(),
+        },
+        as_json,
+        f"run {rc.run_id}\n{out.message}\n{nx.message}",
+    )
+    if nx.exit_code:
+        raise typer.Exit(code=nx.exit_code)

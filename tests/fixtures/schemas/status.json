@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema", "project_id", "profile", "confirm", "run", "steps", "holds"],
+  "properties": {
+    "schema": {"const": "stringency.status/1"},
+    "project_id": {"type": "string"},
+    "profile": {"enum": ["strict", "standard", "exploratory"]},
+    "confirm": {"enum": ["accepted", "pending", "rejected"]},
+    "run": {
+      "type": ["object", "null"],
+      "required": ["run_id", "status", "started", "ended", "git_sha", "policy_digest", "parent_run_id"],
+      "properties": {"status": {"enum": ["running", "held", "blocked", "failed", "completed", "abandoned"]}}
+    },
+    "steps": {"type": "array", "items": {"type": "object", "required": ["step_id", "module", "module_version", "status", "attempt"]}},
+    "holds": {"type": "array", "items": {"type": "object", "required": ["hold_id", "step_id", "item_id", "kind", "reason", "waits_on", "who"]}}
+  }
+}

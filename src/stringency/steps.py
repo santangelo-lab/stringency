@@ -95,6 +95,10 @@ class StepOutcome:
 
 
 def runner_for(rc: RunContext, step: StepDecl, module: Module) -> str:
+    """Judgment modules are always engine-run (design 3.5): the evidence the judge sees and the
+    harness calls are made by the engine, never by the party being gated."""
+    if module.manifest.kind == "judgment":
+        return "engine"
     return step.runner or module.manifest.runner or rc.project.config.execution
 
 
