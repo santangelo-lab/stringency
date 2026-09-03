@@ -1,5 +1,8 @@
 # stringency: ground rules for Claude Code
 
+Start every session by reading `notes/INDEX.md` and the most recent note it lists; end every
+session by writing a note there (convention in `notes/README.md`) and updating the index.
+
 Read `spec/stringency-design.md` first; it is the spec. Then `spec/stringency-build-plan.md`, which
 says what to build in what order. `spec/commandments.md` is the source of the constraints.
 

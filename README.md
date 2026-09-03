@@ -50,5 +50,6 @@ src/stringency/         the engine (no biology imports; CI checks)
 plugins/stringency-toy/ reference plugin, its method repo, fixtures
 templates/method-repo/  what a new method repository starts from
 spec/                   design, build plan, contracts, decisions
+notes/                  session notes; read INDEX.md first
 tests/                  one file per milestone area; mock harness and local executor only
 ```
