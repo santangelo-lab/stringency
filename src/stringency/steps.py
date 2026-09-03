@@ -444,6 +444,7 @@ def finish(
     info: ExecInfo,
     *,
     bundle_extra: dict[str, Any] | None = None,
+    extra_holds: list[HoldOutcome] | None = None,
 ) -> StepOutcome:
     """Design 3.4 steps 3 through 6 for either runner.
 
@@ -542,7 +543,7 @@ def finish(
         module=m,
         runner=info.runner,
     )
-    return settle_post(rc, action, plan, gate, artifact_ids, extra_holds=[])
+    return settle_post(rc, action, plan, gate, artifact_ids, extra_holds=list(extra_holds or []))
 
 
 def settle_post(

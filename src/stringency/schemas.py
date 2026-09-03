@@ -20,7 +20,10 @@ def validate(instance: Any, schema: dict[str, Any]) -> list[str]:
         validator = Draft202012Validator(schema)
     except SchemaError as e:
         return [f"invalid schema: {e.message}"]
-    errors = sorted(validator.iter_errors(instance), key=lambda e: list(e.absolute_path))
+    try:
+        errors = sorted(validator.iter_errors(instance), key=lambda e: list(e.absolute_path))
+    except Exception as e:  # noqa: BLE001  (unresolvable $ref and similar)
+        return [f"schema could not be applied: {e}"]
     out: list[str] = []
     for err in errors:
         path = "/".join(str(p) for p in err.absolute_path) or "<root>"

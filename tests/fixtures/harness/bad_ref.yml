@@ -1,0 +1,8 @@
+mock: 1
+rules:
+  - item: A
+    judgment: {label: abundant, confidence: high, supporting: [{table: summary, row: Q, column: mean_value, value: 1}, n_units, sd_value], rationale: "row Q"}
+  - item: B
+    judgment: {label: sparse, confidence: high, rationale: "mean {mean_value}"}
+  - item: C
+    judgment: {label: variable, confidence: high, rationale: "sd {sd_value}"}

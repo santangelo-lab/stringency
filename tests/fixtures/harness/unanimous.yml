@@ -1,0 +1,14 @@
+mock: 1
+model: mock-model-1
+rules:
+  - item: A
+    when: {table: summary, column: mean_value, min: 60}
+    judgment: {label: abundant, confidence: high, supporting: [mean_value, n_units, sd_value], rationale: "mean {mean_value} over {n_units} units"}
+  - item: B
+    when: {table: summary, column: mean_value, max: 25}
+    judgment: {label: sparse, confidence: high, supporting: [mean_value, n_units, sd_value], rationale: "mean {mean_value} is low"}
+  - item: C
+    when: [{table: summary, column: sd_value, min: 15}, {table: summary, column: mean_value, min: 60}]
+    judgment: {label: variable, confidence: high, supporting: [mean_value, n_units, sd_value], rationale: "sd {sd_value} is high"}
+  - item: "*"
+    judgment: {abstain: true, rationale: "the statistics do not support a label"}

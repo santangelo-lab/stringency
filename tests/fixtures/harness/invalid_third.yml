@@ -1,0 +1,11 @@
+mock: 1
+rules:
+  - item: "*"
+    replicate: 3
+    raw: "I cannot produce JSON right now."
+  - item: A
+    judgment: {label: abundant, confidence: high, rationale: "mean {mean_value}"}
+  - item: B
+    judgment: {label: sparse, confidence: high, rationale: "mean {mean_value}"}
+  - item: C
+    judgment: {label: variable, confidence: high, rationale: "sd {sd_value}"}

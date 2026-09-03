@@ -1,0 +1,11 @@
+mock: 1
+rules:
+  - item: A
+    replicate: 2
+    judgment: {abstain: true, rationale: "not sure"}
+  - item: A
+    judgment: {label: abundant, confidence: high, rationale: "mean {mean_value}"}
+  - item: B
+    judgment: {label: sparse, confidence: high, rationale: "mean {mean_value}"}
+  - item: C
+    judgment: {label: variable, confidence: high, rationale: "sd {sd_value}"}
