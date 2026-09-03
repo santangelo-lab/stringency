@@ -60,6 +60,8 @@ class RunContext:
         s = self.status()
         if self.run["status"] != s:
             self.store.set_run_status(self.run_id, s, ended=s == "completed")
+            if s == "completed":
+                write_summary(self)
         return s
 
     def current_state(self) -> State:

@@ -215,9 +215,15 @@ def outcome_to_next(rc: RunContext, out: StepOutcome) -> Next:
 def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
     """Loop on `next` until it returns something other than a runnable step (design 7.1)."""
     collected: set[str] = set()
+    dispatched_now: set[str] = set()
     while True:
         nx = next_step(rc)
-        if nx.kind == "dispatching" and nx.step_id not in collected:
+        if (
+            nx.kind == "dispatching"
+            and nx.step_id not in collected
+            and nx.step_id not in dispatched_now
+        ):
+            # a step dispatched by an earlier `run`: collect if the responses are there
             collected.add(nx.step_id or "")
             ddir = rc.project.step_dir(rc.run_id, nx.step_id or "") / "dispatch"
             if any(ddir.glob("resp_*.json")) or _mock_dispatch(rc):
@@ -251,6 +257,7 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
             continue  # next_step reports it
         out = execute_engine(rc, proposal)
         if out.status == StepStatus.DISPATCHING:
+            dispatched_now.add(sid)  # this `run` stops here with exit 20; the next one collects
             continue
         if until is not None and sid == until:
             rc.refresh_status()

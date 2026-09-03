@@ -107,10 +107,14 @@ def test_operator_pipeline_with_dispatch_mock(make_project: InitFn) -> None:
     assert nx["step_id"] == "05_report"
     assert p.store.scalar("SELECT COUNT(*) FROM invocations") == 3
     assert p.store.scalar("SELECT status FROM steps WHERE step_id='04_compare'") == "completed"
-    submit_json(nx["job_spec"], ["report", "group_labels"])
-
-    nx = run_json(0)
-    assert nx["run_status"] == "completed"
+    sj = submit_json(nx["job_spec"], ["report", "group_labels"])
+    assert sj["status"] == "completed" and sj["next"]["kind"] == "completed"
+    run_id = sj["run_id"]
+    assert p.store.scalar("SELECT status FROM runs WHERE run_id=?", (run_id,)) == "completed"
+    assert (p.root / "runs" / run_id / "summary.md").exists()
+    # the run is closed, so the next `run` opens a fresh one and stops at the first ticket
+    nx = run_json(21)
+    assert nx["run_id"] != run_id
     ex = {
         r["step_id"]: r["runner"]
         for r in p.store.all(
