@@ -1,0 +1,18 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=10240]
+  - repo: local
+    hooks:
+      - id: stringency-lint
+        name: stringency lint
+        entry: stringency lint .
+        language: system
+        pass_filenames: false
+      - id: no-data-files
+        name: refuse data files and run.db
+        entry: bash -c 'if git diff --cached --name-only | grep -E "(\.h5ad|\.bam|\.fastq(\.gz)?|\.fq\.gz|(^|/)run\.db)$"; then echo "data files and run.db do not belong in the method repo" >&2; exit 1; fi'
+        language: system
+        pass_filenames: false

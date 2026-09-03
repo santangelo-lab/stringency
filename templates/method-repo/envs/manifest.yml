@@ -1,0 +1,4 @@
+# Environment manifest (design 10.3). One entry per env name used by module.yml files.
+# local executor: `lock` is hashed as the environment digest.
+# apptainer executor: `image` (path to a .sif, relative to the repo root or absolute) and its sha256.
+environments: {}

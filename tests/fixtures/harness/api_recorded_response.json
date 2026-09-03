@@ -1,0 +1,7 @@
+{
+  "note": "recorded shape of a Messages API response with output_config.format json_schema; text is the structured JSON",
+  "model": "claude-opus-5",
+  "stop_reason": "end_turn",
+  "text": "{\"items\": [{\"item_id\": \"A\", \"label\": \"abundant\", \"ontology_id\": null, \"confidence\": \"high\", \"abstain\": false, \"supporting_evidence\": [{\"table\": \"summary\", \"row\": \"A\", \"column\": \"mean_value\", \"value\": 74.82}], \"contradicting_evidence\": [], \"rationale\": \"mean 74.82 is high\"}]}",
+  "usage": {"input_tokens": 412, "output_tokens": 233}
+}

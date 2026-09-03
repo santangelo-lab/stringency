@@ -1,0 +1,71 @@
+# Module contract v1
+
+Standalone statement of design 3.2 (the manifest) and 13 (what lint enforces). Frozen at Phase A exit.
+
+## Directory
+
+```
+<name>/
+  module.yml            the manifest below
+  prompt.md             judgment and report modules: jinja2 template over `prompt.vars` only
+  pre.*                 any language; produces evidence (judgment) or performs the operation
+  post.*                optional restructuring of replicate outputs
+  schema.json           judgment modules: output schema, JSON Schema 2020-12, includes the base (8.1)
+  params.schema.json    parameter schema, every kind; `properties.<name>.default` is the module default
+  controls/*.yml        design 11; judgment modules need a negative and a positive
+  tests/                optional
+```
+
+One directory per module name in a method repo (`modules/<name>/`); the manifest `version` must
+equal the version every pipeline step asks for (`name@version`).
+
+## module.yml
+
+| field | meaning |
+|---|---|
+| `contract: 1` | required |
+| `name`, `version` | `name@version` is the module reference |
+| `kind` | `deterministic`, `judgment`, `report` |
+| `operation` | an id in the plugin's operation vocabulary; predicates scope over it |
+| `domain` | the plugin name; must equal the pipeline's `domain` |
+| `modes` | subset of the plugin's modes; a project whose mode is excluded fails init |
+| `env` | environment name resolved through `envs/manifest.yml` |
+| `runner` | `operator` or `engine`; default from the project; judgment modules are always engine-run |
+| `entry`, `post` | script names when they are not `pre.*` and `post.*` |
+| `inputs` | `{name: {type, format, hash, schema}}`; every input must be wired by the pipeline |
+| `outputs` | `{name: {type, format, schema, item_key}}`; judgment modules declare `judgments` and `consensus` |
+| `decision_points` | parameters that are analysis choices; coverage is computed over them |
+| `stochastic`, `seed_param` | `stochastic: true` needs `seed_param`, present in the params schema |
+| `judgment` | `items_from`, `item_key`, `evidence`, `batching`, `replicates`, `abstain`, `confidence`, `considered_set` |
+| `prompt` | `template`, `vars`; the template may use exactly these variables |
+| `vocabulary` | `name@version` provided by the plugin |
+| `gates` | predicates the author expects; lint checks each resolves; the engine evaluates every in-scope predicate regardless |
+| `controls.required` | control kinds that must exist |
+| `evidence` | operator runner: `[{kind, path}]`, kinds `nextflow_trace`, `nextflow_log`, `apptainer_inspect`, `job_log` |
+| `resources` | `cpus`, `memory`, `timeout` |
+| `confirm` | a step-level confirm hold before the step runs |
+| `model` | judgment modules: model alias override for direct harnesses |
+
+## Script contract
+
+Scripts receive one JSON job on stdin:
+
+```json
+{"inputs": {"<name>": "<path>"}, "params": {...}, "outputs": {"<name>": "<path>"}, "output_dir": "<dir>", "seed": null}
+```
+
+They write each declared output at the given path and exit 0. Stdout is captured (operator runner:
+the agent's log is the evidence). A judgment `pre.*` receives `evidence_dir` and writes
+`<evidence_dir>/<name>.tsv` for evidence not already an input. `post.*` receives
+`{"replicates": [{replicate, valid, structured}]}` and prints the same shape.
+
+## Prompt variables
+
+Available: `evidence_table` (TSV of `items_from`), `evidence_tables` (name to TSV), `vocabulary`
+(list), `items` (list), `context` (JSON inputs by name), `objective`, `design`. A module declares
+the subset it uses in `prompt.vars`; rendering uses strict undefined checking.
+
+## Lint
+
+Errors and warnings are enumerated in design section 13 and implemented in `src/stringency/lint.py`;
+`tests/test_lint.py` has one broken repo per error class.
