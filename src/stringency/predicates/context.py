@@ -45,6 +45,8 @@ class ProjectConfig:
     env_digests: Mapping[str, str | None] = field(default_factory=dict)  # env name -> digest
     step_status: Mapping[str, str] = field(default_factory=dict)  # step id -> status
     plugin_modes: tuple[str, ...] = ("pipeline",)
+    vocabularies: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    object_types: tuple[str, ...] = ()  # types that have a state extractor
 
     @property
     def mode(self) -> str:

@@ -1,10 +1,26 @@
-"""`stringency lint` (design 14.1)."""
+"""`stringency lint <module-dir | method-repo>` (design 13, 14.1)."""
 
 from __future__ import annotations
 
-from stringency.cli.common import handle_errors, not_implemented
+from pathlib import Path
+
+import typer
+
+from stringency.cli.common import emit, handle_errors
+from stringency.exit_codes import Exit
+from stringency.lint import lint_path
 
 
 @handle_errors
-def lint() -> None:
-    not_implemented("lint")
+def lint(
+    path: Path = typer.Argument(..., help="a module directory or a method repository"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    report = lint_path(path)
+    emit(
+        {"schema": "stringency.lint/1", "errors": report.errors, "warnings": report.warnings},
+        as_json,
+        report.render(),
+    )
+    if not report.ok:
+        raise typer.Exit(code=int(Exit.CONFIG))

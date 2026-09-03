@@ -1,0 +1,278 @@
+"""Table-driven lint tests: one broken method repo per error class in design 13."""
+
+from __future__ import annotations
+
+import json
+import shutil
+from collections.abc import Callable
+from pathlib import Path
+
+import pytest
+import yaml
+
+from stringency.lint import lint_path
+from stringency_toy import METHOD_TEMPLATE
+
+Breaker = Callable[[Path], None]
+
+
+def _edit_yaml(path: Path, fn: Callable[[dict], None]) -> None:
+    data = yaml.safe_load(path.read_text())
+    fn(data)
+    path.write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+def _edit_json(path: Path, fn: Callable[[dict], None]) -> None:
+    data = json.loads(path.read_text())
+    fn(data)
+    path.write_text(json.dumps(data))
+
+
+def contract_not_1(m: Path) -> None:
+    _edit_yaml(m / "modules/filter-rows/module.yml", lambda d: d.update(contract=2))
+
+
+def manifest_bad_field(m: Path) -> None:
+    _edit_yaml(m / "modules/filter-rows/module.yml", lambda d: d.update(colour="blue"))
+
+
+def op_not_in_vocab(m: Path) -> None:
+    _edit_yaml(m / "modules/filter-rows/module.yml", lambda d: d.update(operation="explode_rows"))
+
+
+def gate_unresolved(m: Path) -> None:
+    _edit_yaml(m / "modules/filter-rows/module.yml", lambda d: d.update(gates=["qc.nonexistent@1"]))
+
+
+def gate_wrong_version(m: Path) -> None:
+    _edit_yaml(
+        m / "modules/filter-rows/module.yml", lambda d: d.update(gates=["obj.feasibility@9"])
+    )
+
+
+def judgment_no_prompt(m: Path) -> None:
+    (m / "modules/label-groups/prompt.md").unlink()
+
+
+def judgment_no_schema(m: Path) -> None:
+    (m / "modules/label-groups/schema.json").unlink()
+
+
+def judgment_no_block(m: Path) -> None:
+    _edit_yaml(m / "modules/label-groups/module.yml", lambda d: d.pop("judgment"))
+
+
+def schema_weakened(m: Path) -> None:
+    def fn(d: dict) -> None:
+        d["required"].remove("abstain")
+        d["properties"]["confidence"] = {"enum": ["high", "medium", "low", "abstain", "certain"]}
+
+    _edit_json(m / "modules/label-groups/schema.json", fn)
+
+
+def schema_no_implication(m: Path) -> None:
+    _edit_json(m / "modules/label-groups/schema.json", lambda d: d.pop("if"))
+
+
+def replicates_low(m: Path) -> None:
+    _edit_yaml(m / "modules/label-groups/module.yml", lambda d: d["judgment"].update(replicates=2))
+
+
+def no_negative_control(m: Path) -> None:
+    (m / "modules/label-groups/controls/negative-shuffled-groups.yml").unlink()
+
+
+def no_positive_control(m: Path) -> None:
+    (m / "modules/label-groups/controls/positive-known-labels.yml").unlink()
+
+
+def stochastic_no_seed(m: Path) -> None:
+    _edit_yaml(m / "modules/filter-rows/module.yml", lambda d: d.update(stochastic=True))
+
+
+def seed_not_in_schema(m: Path) -> None:
+    _edit_yaml(
+        m / "modules/filter-rows/module.yml", lambda d: d.update(stochastic=True, seed_param="seed")
+    )
+
+
+def prompt_undeclared_var(m: Path) -> None:
+    p = m / "modules/label-groups/prompt.md"
+    p.write_text(p.read_text() + "\nMatrix: {{ matrix }}\n")
+
+
+def prompt_unused_var(m: Path) -> None:
+    _edit_yaml(
+        m / "modules/label-groups/module.yml", lambda d: d["prompt"]["vars"].append("context")
+    )
+
+
+def script_missing(m: Path) -> None:
+    (m / "modules/filter-rows/pre.py").unlink()
+
+
+def pipeline_bad_module_version(m: Path) -> None:
+    _edit_yaml(m / "pipelines/toy.yml", lambda d: d["steps"][0].update(module="filter-rows@9.9.9"))
+
+
+def pipeline_missing_module(m: Path) -> None:
+    _edit_yaml(m / "pipelines/toy.yml", lambda d: d["steps"][0].update(module="nope@1.0.0"))
+
+
+def pipeline_dangling_output(m: Path) -> None:
+    _edit_yaml(
+        m / "pipelines/toy.yml",
+        lambda d: d["steps"][1]["inputs"].update(object="$steps.01_filter.matrix"),
+    )
+
+
+def pipeline_params_fail_schema(m: Path) -> None:
+    _edit_yaml(
+        m / "pipelines/toy.yml",
+        lambda d: d["steps"][0]["params"].update(min_value={"default": "ten"}),
+    )
+
+
+def pipeline_unknown_param(m: Path) -> None:
+    _edit_yaml(
+        m / "pipelines/toy.yml", lambda d: d["steps"][0]["params"].update(max_value={"default": 5})
+    )
+
+
+def module_mode_unsupported(m: Path) -> None:
+    _edit_yaml(m / "modules/filter-rows/module.yml", lambda d: d.update(modes=["pipeline", "open"]))
+
+
+def vocabulary_unknown(m: Path) -> None:
+    _edit_yaml(m / "modules/label-groups/module.yml", lambda d: d.update(vocabulary="cell_types@1"))
+
+
+def report_consumed(m: Path) -> None:
+    def fn(d: dict) -> None:
+        d["steps"].append(
+            {
+                "id": "06_after",
+                "module": "summarize-groups@0.1.0",
+                "inputs": {"object": "$steps.05_report.report"},
+            }
+        )
+
+    _edit_yaml(m / "pipelines/toy.yml", fn)
+
+
+ERROR_CASES: list[tuple[str, Breaker, str]] = [
+    ("contract_not_1", contract_not_1, "contract must be 1"),
+    ("manifest_bad_field", manifest_bad_field, "colour"),
+    ("op_not_in_vocab", op_not_in_vocab, "operation explode_rows is not in"),
+    ("gate_unresolved", gate_unresolved, "qc.nonexistent@1 does not resolve"),
+    ("gate_wrong_version", gate_wrong_version, "obj.feasibility@9 does not resolve"),
+    ("judgment_no_prompt", judgment_no_prompt, "requires prompt.md"),
+    ("judgment_no_schema", judgment_no_schema, "requires schema.json"),
+    ("judgment_no_block", judgment_no_block, "requires the judgment block"),
+    ("schema_weakened", schema_weakened, "does not include the base judgment schema"),
+    ("schema_no_implication", schema_no_implication, "abstain implication"),
+    ("replicates_low", replicates_low, "below the policy minimum"),
+    ("no_negative_control", no_negative_control, "lacks a negative control"),
+    ("no_positive_control", no_positive_control, "lacks a positive control"),
+    ("stochastic_no_seed", stochastic_no_seed, "requires seed_param"),
+    (
+        "seed_not_in_schema",
+        seed_not_in_schema,
+        "seed_param seed is missing from params.schema.json",
+    ),
+    ("prompt_undeclared_var", prompt_undeclared_var, "undeclared variable matrix"),
+    (
+        "prompt_unused_var",
+        prompt_unused_var,
+        "declares variable context that the template never uses",
+    ),
+    ("script_missing", script_missing, "no pre.* script"),
+    ("pipeline_bad_module_version", pipeline_bad_module_version, "the repo has filter-rows@0.1.0"),
+    ("pipeline_missing_module", pipeline_missing_module, "not in the repo"),
+    ("pipeline_dangling_output", pipeline_dangling_output, "which does not exist"),
+    ("pipeline_params_fail_schema", pipeline_params_fail_schema, "params fail"),
+    ("pipeline_unknown_param", pipeline_unknown_param, "declares parameter max_value, unknown"),
+    ("module_mode_unsupported", module_mode_unsupported, "mode open is not supported"),
+    ("vocabulary_unknown", vocabulary_unknown, "vocabulary cell_types@1 is not provided"),
+    ("report_consumed", report_consumed, "report outputs cannot be inputs"),
+]
+
+
+@pytest.fixture
+def method_copy(tmp_path: Path) -> Path:
+    dest = tmp_path / "method"
+    shutil.copytree(METHOD_TEMPLATE, dest)
+    return dest
+
+
+def test_toy_method_passes_lint(method_copy: Path) -> None:
+    report = lint_path(method_copy)
+    assert report.ok, report.render()
+    assert any("no planted control" in w for w in report.warnings)
+
+
+@pytest.mark.parametrize("name,breaker,expected", ERROR_CASES, ids=[c[0] for c in ERROR_CASES])
+def test_lint_error_classes(method_copy: Path, name: str, breaker: Breaker, expected: str) -> None:
+    breaker(method_copy)
+    report = lint_path(method_copy)
+    assert not report.ok, f"{name}: expected an error"
+    assert any(expected in e for e in report.errors), f"{name}: {report.errors}"
+
+
+def test_lint_single_module_dir(method_copy: Path) -> None:
+    report = lint_path(method_copy / "modules" / "label-groups")
+    assert report.ok, report.render()
+
+
+def test_warning_decision_points_empty(method_copy: Path) -> None:
+    _edit_yaml(
+        method_copy / "modules/compare-groups/module.yml", lambda d: d.update(decision_points=[])
+    )
+    report = lint_path(method_copy)
+    assert report.ok
+    assert any("decision_points is empty" in w for w in report.warnings)
+
+
+def test_warning_in_scope_predicate_unlisted(method_copy: Path) -> None:
+    _edit_yaml(
+        method_copy / "modules/compare-groups/module.yml",
+        lambda d: d.update(gates=["obj.feasibility@1"]),
+    )
+    report = lint_path(method_copy)
+    assert report.ok
+    assert any("toy.replication_unit@1 is not listed" in w for w in report.warnings)
+
+
+def test_warning_holdout_fixture(method_copy: Path) -> None:
+    from stringency.config import Design
+
+    h = yaml.safe_load(
+        (method_copy / "modules/label-groups/controls/positive-known-labels.yml").read_text()
+    )
+    design = Design.model_validate(
+        {
+            "design": 1,
+            "units": {"observation": "row", "sample": "unit"},
+            "factors": {},
+            "replication_unit": "unit",
+            "holdout": [{"type": "frame", "blake3": h["fixture"]["input"]["blake3"]}],
+        }
+    )
+    report = lint_path(method_copy, design=design)
+    assert any("design.holdout" in w for w in report.warnings)
+
+
+def test_cli_lint_and_plugins_list(method_copy: Path) -> None:
+    from typer.testing import CliRunner
+
+    from stringency.cli.app import app
+
+    r = CliRunner().invoke(app, ["lint", str(method_copy)])
+    assert r.exit_code == 0, r.output
+    (method_copy / "modules/label-groups/controls/negative-shuffled-groups.yml").unlink()
+    r = CliRunner().invoke(app, ["lint", str(method_copy)])
+    assert r.exit_code == 15
+    assert "lacks a negative control" in r.output
+    r = CliRunner().invoke(app, ["plugins", "list"])
+    assert r.exit_code == 0
+    assert "stringency-toy" in r.output and "toy.replication_unit" in r.output

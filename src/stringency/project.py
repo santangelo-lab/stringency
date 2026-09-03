@@ -161,6 +161,8 @@ class Project:
             modules=self.manifests(),
             inputs=self.inputs,
             plugin_modes=tuple(self.plugin.modes),
+            vocabularies=self.plugin.vocabularies,
+            object_types=tuple(self.plugin.object_types),
             **runtime,
         )
 

@@ -86,10 +86,16 @@ class ModuleManifest(Frozen):
     evidence: list[EvidenceSpec] = Field(default_factory=list)
     confirm: bool = False
     model: str | None = None
+    params_schema: dict[str, Any] = Field(default_factory=dict)  # loaded from params.schema.json
 
     @property
     def ref(self) -> str:
         return f"{self.name}@{self.version}"
+
+    @property
+    def declared_params(self) -> dict[str, Any]:
+        props = self.params_schema.get("properties", {})
+        return dict(props) if isinstance(props, dict) else {}
 
     @model_validator(mode="after")
     def _shape(self) -> ModuleManifest:
@@ -116,7 +122,6 @@ class Module:
     def __init__(self, path: Path, manifest: ModuleManifest) -> None:
         self.path = path
         self.manifest = manifest
-        self._params_schema: dict[str, Any] | None = None
         self._output_schema: dict[str, Any] | None = None
 
     @property
@@ -125,22 +130,11 @@ class Module:
 
     @property
     def params_schema(self) -> dict[str, Any]:
-        if self._params_schema is None:
-            p = self.path / "params.schema.json"
-            if p.exists():
-                self._params_schema = _load_json(p)
-            else:
-                self._params_schema = {
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": False,
-                }
-        return self._params_schema
+        return self.manifest.params_schema
 
     @property
     def declared_params(self) -> dict[str, Any]:
-        props = self.params_schema.get("properties", {})
-        return dict(props) if isinstance(props, dict) else {}
+        return self.manifest.declared_params
 
     @property
     def output_schema(self) -> dict[str, Any] | None:
@@ -204,6 +198,13 @@ def load_module(path: Path) -> Module:
         manifest = ModuleManifest.model_validate(data)
     except ValueError as e:
         raise ConfigError(f"{path / 'module.yml'}: {e}") from None
+    schema_path = path / "params.schema.json"
+    params_schema = (
+        _load_json(schema_path)
+        if schema_path.exists()
+        else {"type": "object", "properties": {}, "additionalProperties": False}
+    )
+    manifest = manifest.model_copy(update={"params_schema": params_schema})
     return Module(path, manifest)
 
 
