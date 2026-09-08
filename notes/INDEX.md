@@ -3,17 +3,24 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-08)
+## Current state (2026-09-08, evening)
 
-- Phase A M0 through M11 green on `main`; this session's executor fixes, installer, and
-  Claude Science integration are in the working tree, not yet committed.
-- Phase A exit run completed on BMESEQ (`toy-cs`, run `01M2172HKP6E3RNQNEPP6DSFCE`) from a
-  Claude Science session on the MacBook with BMESEQ as an SSH compute host. PROTSEQ half not done.
-- Not done: PROTSEQ run, `v0.1.0` tag, public repo, singlecell push, review display (7.3).
-- Next session should start with: `notes/2026-09-08-1542-phase-a-exit-bmeseq.md`, section **Open**, then `spec/improvements.md`.
+- Phase A M0 through M11 green on `main`. The improvements backlog (`spec/improvements.md`)
+  is worked through on the toy except A5 (on its trigger) and the E2 in-session version route:
+  review display and packets, hold ids in messages, `review --hold`, `init` exit 10, `job.json`
+  and exact exec/submit lines at ticket time, `submit --command`, `expected_env_digest`,
+  `status` lists holds, `run --new`, evidence-slot definition on every prompt, inspect evidence
+  with checksum on toy operator modules. Toy method 0.1.1 (tagged locally in
+  `~/github/stringency-toy-method`, mirror on `/data-raid` not updated).
+- Phase A exit run done on BMESEQ (`toy-cs`, run `01M2172HKP6E3RNQNEPP6DSFCE`) on the
+  pre-backlog engine. PROTSEQ half not done; BMESEQ machine install is stale.
+- Not done: PROTSEQ run, `v0.1.0` tag, public repo, singlecell push, review page (A5).
+- Next session should start with: `notes/2026-09-08-1655-improvements-backlog.md`, section **Open**.
 
 ## Notes
 
+- `2026-09-08-1655-improvements-backlog.md` — the improvements backlog worked through on the toy:
+  review display and packets, operator ergonomics, trace semantics, toy method 0.1.1, design text.
 - `2026-09-08-1542-phase-a-exit-bmeseq.md` — Phase A exit on BMESEQ from Claude Science: sandbox limits, remote-host
   mode, machine install, review-surface findings.
 - `2026-09-03-1605-phase-a-m0-m11.md` — first build session: repository created, M0 through M11
