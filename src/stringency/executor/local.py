@@ -2,6 +2,10 @@
 
 `env_digest` is the blake3 of `uv.lock` or `renv.lock` under `<method>/envs/<env_name>/`;
 with neither present no digest is reported and `repro.env_unpinned` fires.
+
+`interpreter_for` names interpreters portably (`python3`, `Rscript`, `bash`) so the same Job
+runs inside a container; this executor resolves `python3` to the engine's own interpreter so
+development runs see the engine venv.
 """
 
 from __future__ import annotations
@@ -21,7 +25,7 @@ LOCKFILES = ("uv.lock", "renv.lock")
 def interpreter_for(script: Path) -> list[str]:
     suffix = script.suffix.lower()
     if suffix == ".py":
-        return [sys.executable, str(script)]
+        return ["python3", str(script)]
     if suffix in {".r", ".R"}:
         return ["Rscript", str(script)]
     if suffix == ".sh":
@@ -50,12 +54,15 @@ class LocalExecutor:
         stdin = (
             json.dumps(dict(job.stdin_json), sort_keys=True) if job.stdin_json is not None else None
         )
+        command = [str(c) for c in job.command]
+        if command and command[0] == "python3":
+            command[0] = sys.executable
         t0 = time.monotonic()
         timed_out = False
         with open(out, "w") as fo, open(err, "w") as fe:
             try:
                 proc = subprocess.run(
-                    list(job.command),
+                    command,
                     cwd=job.cwd,
                     input=stdin,
                     stdout=fo,
@@ -75,6 +82,6 @@ class LocalExecutor:
             stderr_path=err,
             duration_ms=int((time.monotonic() - t0) * 1000),
             env_digest=self.env_digest(job.env_name),
-            command=" ".join(str(c) for c in job.command),
+            command=" ".join(command),
             timed_out=timed_out,
         )

@@ -119,6 +119,60 @@ def test_apptainer_runs_minimal_sif(tmp_path: Path) -> None:  # pragma: no cover
     assert res.exit_code == 0 and "hello" in res.stdout() and res.env_digest is not None
 
 
+def test_interpreter_is_portable_and_local_resolves_python(tmp_path: Path) -> None:
+    import sys
+
+    from stringency.executor.local import LocalExecutor, interpreter_for
+
+    script = tmp_path / "s.py"
+    script.write_text("import sys; print(sys.executable)\n")
+    assert interpreter_for(script)[0] == "python3"
+    res = LocalExecutor(tmp_path / "envs").run(
+        Job(command=interpreter_for(script), env_name="e1", cwd=tmp_path / "w")
+    )
+    assert res.exit_code == 0 and res.stdout().strip() == sys.executable
+
+
+def test_apptainer_binds_script_inputs_and_cwd(tmp_path: Path) -> None:
+    from stringency.executor.apptainer import bind_set
+
+    script = tmp_path / "tools" / "extract.py"
+    script.parent.mkdir()
+    script.write_text("")
+    data = tmp_path / "array" / "proj" / "data" / "groups.csv"
+    data.parent.mkdir(parents=True)
+    data.write_text("")
+    work = tmp_path / "work" / "step"
+    work.mkdir(parents=True)
+    job = Job(
+        command=["python3", str(script), str(data)],
+        env_name="e1",
+        cwd=work,
+        bind_paths=[work / "extract-object"],  # nested under cwd: dropped
+        stdin_json={"inputs": {"object": str(data)}, "outputs": {"o": str(work / "o.csv")}},
+    )
+    binds = bind_set(job)
+    assert binds == sorted(str(p.resolve()) for p in (script.parent, data.parent, work))
+    res = ApptainerExecutor(tmp_path / "envs", binary="definitely-not-apptainer").run(job)
+    for b in binds:
+        assert f"--bind {b}" in res.command
+
+
+def test_apptainer_binary_discovery(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from stringency.executor.apptainer import find_binary
+
+    monkeypatch.delenv("STRINGENCY_APPTAINER_BIN", raising=False)
+    monkeypatch.setattr(
+        shutil, "which", lambda name: "/x/singularity" if name == "singularity" else None
+    )
+    assert find_binary() == "singularity"
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    assert find_binary() == "apptainer"
+    monkeypatch.setenv("STRINGENCY_APPTAINER_BIN", "/opt/bin/apptainer")
+    assert find_binary() == "/opt/bin/apptainer"
+    assert ApptainerExecutor(tmp_path / "envs").binary == "/opt/bin/apptainer"
+
+
 def test_apptainer_without_image_fails_cleanly(tmp_path: Path) -> None:
     envs = tmp_path / "envs"
     envs.mkdir()

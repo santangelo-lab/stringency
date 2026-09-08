@@ -15,8 +15,9 @@ motivation is `spec/commandments.md`. Choices made where the design is silent ar
 ## Status
 
 Phase A milestones M0 through M11 are implemented with their acceptance tests. The Phase A exit
-(the toy pipeline driven from a Claude Science session on BMESEQ and PROTSEQ, then tag `v0.1.0`)
-is still to be done.
+run has been completed on BMESEQ from a Claude Science session (2026-09-08); the PROTSEQ run and
+the `v0.1.0` tag remain. `spec/improvements.md` lists what that run showed should change before
+Phase B, and `integrations/claude-science/` holds the operator skill and install notes.
 
 ## Quickstart
 

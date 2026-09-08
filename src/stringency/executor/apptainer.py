@@ -4,12 +4,22 @@
 the SIF's sha256 recorded in `envs/manifest.yml` (`environments.<env>.image`, `.sha256`),
 verified against the file at run open: a missing image, a missing digest, or a digest that
 disagrees with the file yields no digest and `repro.env_unpinned` fires.
+
+The binary is `apptainer` when present, otherwise `singularity` (same command line); the
+environment variable `STRINGENCY_APPTAINER_BIN` overrides both. The command recorded in
+`executions.command` names whichever was used.
+
+`--containall` hides the host filesystem, so the executor binds everything the job refers to:
+the declared `bind_paths`, the working directory, the directory of every existing absolute
+path in the command (the script), and the directory of every existing absolute path among the
+strings in `stdin_json` (inputs and outputs). Binds nested under another bind are dropped.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -17,6 +27,39 @@ from pathlib import Path
 
 from stringency.executor.base import ExecResult, Job
 from stringency.operator_exec.envcheck import load_env_manifest
+
+
+def _paths_in(value: object) -> list[Path]:
+    """Existing absolute paths among the strings of a JSON-like value."""
+    found: list[Path] = []
+    if isinstance(value, str):
+        if value.startswith("/") and Path(value).exists():
+            found.append(Path(value))
+    elif isinstance(value, dict):
+        for v in value.values():
+            found.extend(_paths_in(v))
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            found.extend(_paths_in(v))
+    return found
+
+
+def bind_set(job: Job) -> list[str]:
+    """The host directories a job needs visible inside the container, deduplicated and with
+    any directory nested under another dropped."""
+    dirs: set[Path] = {Path(p).resolve() for p in job.bind_paths} | {job.cwd.resolve()}
+    for arg in job.command:
+        for p in _paths_in(str(arg)):
+            dirs.add((p if p.is_dir() else p.parent).resolve())
+    if job.stdin_json is not None:
+        for p in _paths_in(dict(job.stdin_json)):
+            dirs.add((p if p.is_dir() else p.parent).resolve())
+    ordered = sorted(dirs, key=lambda d: (len(d.parts), str(d)))
+    kept: list[Path] = []
+    for d in ordered:
+        if not any(d == k or k in d.parents for k in kept):
+            kept.append(d)
+    return sorted(str(d) for d in kept)
 
 
 def sha256_file(path: Path) -> str:
@@ -27,12 +70,27 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+CANDIDATE_BINARIES = ("apptainer", "singularity")
+
+
+def find_binary() -> str:
+    """`STRINGENCY_APPTAINER_BIN` if set, else the first of apptainer, singularity on PATH,
+    else `apptainer` so the failure names the expected tool."""
+    override = os.environ.get("STRINGENCY_APPTAINER_BIN")
+    if override:
+        return override
+    for name in CANDIDATE_BINARIES:
+        if shutil.which(name):
+            return name
+    return CANDIDATE_BINARIES[0]
+
+
 class ApptainerExecutor:
     kind = "apptainer"
 
-    def __init__(self, envs_root: Path, binary: str = "apptainer") -> None:
+    def __init__(self, envs_root: Path, binary: str | None = None) -> None:
         self.envs_root = envs_root
-        self.binary = binary
+        self.binary = binary or find_binary()
         self._verified: dict[str, str | None] = {}
 
     def available(self) -> bool:
@@ -66,7 +124,7 @@ class ApptainerExecutor:
         out = job.stdout_path or job.cwd / "stdout.txt"
         err = job.stderr_path or job.cwd / "stderr.txt"
         image = self.image_for(job.env_name)
-        binds = sorted({str(Path(p).resolve()) for p in [*job.bind_paths, job.cwd]})
+        binds = bind_set(job)
         cmd: list[str] = [self.binary, "exec", "--containall", "--pwd", str(job.cwd)]
         for b in binds:
             cmd += ["--bind", b]

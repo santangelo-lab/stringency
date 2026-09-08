@@ -5,6 +5,8 @@ session by writing a note there (convention in `notes/README.md`) and updating t
 
 Read `spec/stringency-design.md` first; it is the spec. Then `spec/stringency-build-plan.md`, which
 says what to build in what order. `spec/commandments.md` is the source of the constraints.
+`spec/improvements.md` is the backlog of changes the exit runs showed are needed before Phase B;
+`spec/review-ux.md` and `integrations/claude-science/README.md` are working notes, not the spec.
 
 ## Rules
 

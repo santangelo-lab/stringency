@@ -1144,6 +1144,7 @@ Everything in the eval column is either a control, a rate computed from the trac
 | `reason_code` enum | `reason_code NULL` column | roughly fifty reviews |
 | inspector agent | trace completeness | Phase F |
 | `confirm` hold kind | kind enum | application 2's samplesheet echo-back |
+| review page: `review --serve`, a localhost form for verdicts, run by the reviewer, recorded as a third `via` value that profiles treat like `tty` | `via` column, review rows | a reviewer who does not use a terminal (7.5); the relayed path stays the only non-terminal route until then |
 
 ## 18. Deltas from the implementation plan
 
