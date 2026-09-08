@@ -30,6 +30,16 @@ add a version; `current` moves. Add `--plugin <path-or-url>` for further plugins
 Container images referenced by method manifests should live at a path that is the same on every
 machine that will run the method, for example `/usr/local/lib/stringency/envs/<name>.sif`.
 
+The machine-wide location matters only when the engine runs inside the sandbox (mode A). A
+compute host reached over SSH (mode B) runs the engine as your own user, so a per-user install
+needs no sudo:
+
+    scripts/install.sh --prefix ~/.local/lib/stringency
+
+and the brief's `PRE` line then puts `~/.local/lib/stringency/current/bin` on the PATH
+(`render_brief.py --engine-bin`, or edit the line). Images can live under
+`~/.local/lib/stringency/envs/` as long as the method manifest names that path on every host.
+
 ## Where the session runs
 
 Tested on BMESEQ, 2026-09-08: a Claude Science sandbox on the workstation can run the CLI but

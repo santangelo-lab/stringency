@@ -15,6 +15,7 @@ from stringency.gate import GateResult
 from stringency.holds import open_holds
 from stringency.machine import StepStatus
 from stringency.operator_exec.tickets import job_spec, render_job_spec
+from stringency.review_render import packet_paths
 from stringency.runs import RunContext, close_run, write_summary
 from stringency.steps import (
     Proposal,
@@ -53,10 +54,12 @@ def hold_message(rc: RunContext, holds: list[Any]) -> str:
     more = f" (+{len(holds) - 1} more)" if len(holds) > 1 else ""
     roles = rc.project.config.roles
     who = roles.owner if h["waits_on_role"] == "owner" else roles.reviewer
+    paths = packet_paths(rc.project, h)
+    packet = f"; packet {paths[0]}" if paths and paths[0].exists() else ""
     return (
         f"held: hold {h['hold_id']} ({h['kind']} on {what}){more}; "
         f"waits on {h['waits_on_role']} {who}; "
-        f"run `stringency review --hold {h['hold_id']}` in {rc.project.root}"
+        f"run `stringency review --hold {h['hold_id']}` in {rc.project.root}{packet}"
     )
 
 

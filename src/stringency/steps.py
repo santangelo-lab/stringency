@@ -250,6 +250,7 @@ def propose(
                 payload={"holds": [h.hold_id for h in holds if not h.rebound]},
             )
             rc.refresh_status()
+            _write_packets(rc, step_id)
             return Proposal(action, plan, gate, StepStatus.HELD, holds)
     transition(store, rc.run_id, step_id, StepStatus.ADMISSIBLE)
     status = StepStatus.ADMISSIBLE
@@ -597,6 +598,14 @@ def finish(
     return settle_post(rc, action, plan, gate, artifact_ids, extra_holds=list(extra_holds or []))
 
 
+def _write_packets(rc: RunContext, step_id: str) -> None:
+    """Review packets for the step's open holds (review-ux layer 2). Writes files under
+    `runs/<run>/<step>/review/`; the trace is untouched."""
+    from stringency.review_render import write_step_packets
+
+    write_step_packets(rc.project, rc.run_id, step_id)
+
+
 def settle_post(
     rc: RunContext,
     action: Action,
@@ -659,6 +668,7 @@ def settle_post(
             payload={"holds": [h.hold_id for h in pending]},
         )
         rc.refresh_status()
+        _write_packets(rc, step_id)
         return StepOutcome(
             step_id,
             StepStatus.HELD,

@@ -13,8 +13,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
+from jinja2 import Environment, StrictUndefined
+
+from stringency.holds import open_holds
 from stringency.predicates.context import EvidenceTable
 from stringency.predicates.engine.judg import values_equal
 from stringency.project import Project
@@ -86,6 +90,7 @@ class HoldView:
     evidence_rows: dict[str, dict[str, dict[str, Any]]] = field(default_factory=dict)
     flagged: list[dict[str, Any]] = field(default_factory=list)
     verdicts: list[dict[str, str]] = field(default_factory=list)
+    packet: Path | None = None  # the Markdown packet on disk, when one was written
 
     def to_json(self) -> dict[str, Any]:
         h = self.hold
@@ -106,6 +111,7 @@ class HoldView:
             "replicates": [r.to_json() for r in self.replicates],
             "flagged": self.flagged,
             "verdicts": self.verdicts,
+            "packet": str(self.packet) if self.packet else None,
             "text": self.text,
         }
 
@@ -532,6 +538,92 @@ def render(project: Project, h: Any) -> HoldView:
     rc = load_run(project, h["run_id"])
     action = _latest_action(rc, h["step_id"])
     plan = plan_step(rc, h["step_id"], action.attempt) if action else None
-    if h["item_id"] is not None:
-        return render_item(project, rc, h, action, plan)
-    return render_flag(project, rc, h, action, plan)
+    view = (
+        render_item(project, rc, h, action, plan)
+        if h["item_id"] is not None
+        else render_flag(project, rc, h, action, plan)
+    )
+    paths = packet_paths(project, h)
+    if paths is not None and paths[0].exists():
+        view.packet = paths[0]
+    return view
+
+
+# -- the review packet on disk (review-ux layer 2) ---------------------------------------------
+
+PACKET_HTML = Environment(undefined=StrictUndefined, autoescape=True).from_string(
+    """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>stringency hold {{ hold_id }}</title>
+<style>
+body { font-family: system-ui, sans-serif; max-width: 60em; margin: 2em auto; padding: 0 1em; color: #222; }
+h1 { font-size: 1.2em; font-weight: 600; }
+pre { white-space: pre-wrap; word-break: break-word; background: #f6f6f6; padding: 1em; border: 1px solid #ddd; }
+p.note { color: #555; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<h1>Hold {{ hold_id }} ({{ kind }}){% if step_id %} on step {{ step_id }}{% endif %}{% if item_id %}, item {{ item_id }}{% endif %}</h1>
+<p class="note">Written by stringency when the hold opened. The verdict is given at a terminal with the command shown at the end; this page records nothing.</p>
+<pre>{{ text }}</pre>
+</body>
+</html>
+"""
+)
+
+
+def packet_dir(project: Project, h: Any) -> Path | None:
+    """`runs/<run>/<step>/review/` for a step hold; the project confirm hold has no packet
+    (its echo-back is the packet)."""
+    if h["run_id"] is None or h["step_id"] is None:
+        return None
+    return project.step_dir(h["run_id"], h["step_id"]) / "review"
+
+
+def packet_paths(project: Project, h: Any) -> tuple[Path, Path] | None:
+    d = packet_dir(project, h)
+    if d is None:
+        return None
+    return d / f"{h['hold_id']}.md", d / f"{h['hold_id']}.html"
+
+
+def write_packet(project: Project, h: Any) -> tuple[Path, Path] | None:
+    """Write the hold's review packet, Markdown and HTML with the same content as `review`
+    prints (review-ux layer 2). Writes: `runs/<run>/<step>/review/<hold_id>.{md,html}`; no
+    sidecar (a derived view, not an output). Reads: what `render` reads."""
+    paths = packet_paths(project, h)
+    if paths is None:
+        return None
+    view = render(project, h)
+    md, page = paths
+    md.parent.mkdir(parents=True, exist_ok=True)
+    where = f" on step {h['step_id']}" + (f", item {h['item_id']}" if h["item_id"] else "")
+    md.write_text(
+        f"# Hold {h['hold_id']} ({h['kind']}){where}\n\n"
+        "Written by stringency when the hold opened. The verdict is given at a terminal with the "
+        "command shown at the end; this file records nothing.\n\n"
+        "```\n" + view.text + "\n```\n"
+    )
+    page.write_text(
+        PACKET_HTML.render(
+            hold_id=h["hold_id"],
+            kind=h["kind"],
+            step_id=h["step_id"],
+            item_id=h["item_id"],
+            text=view.text,
+        )
+    )
+    return md, page
+
+
+def write_step_packets(project: Project, run_id: str, step_id: str) -> list[Path]:
+    """Packets for every open hold of a step, written when the step is held. Returns the
+    Markdown paths."""
+    out: list[Path] = []
+    for h in open_holds(project.store, run_id, step_id):
+        paths = write_packet(project, h)
+        if paths is not None:
+            out.append(paths[0])
+    return out

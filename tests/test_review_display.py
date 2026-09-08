@@ -232,3 +232,39 @@ def test_init_exits_10_with_open_confirm_hold(
     # the run that follows the accepted echo-back is not held by init's hold
     r = cli(p, "status")
     assert r.exit_code == 0 and "confirm accepted" in r.output
+
+
+# -- A4: the review packet on disk ------------------------------------------------------------
+
+
+def test_packet_written_when_hold_opens(make_project: InitFn) -> None:
+    p, env = held_project(make_project, "split.yml")
+    h = queue(p)[0]
+    view = show(p, h)
+    md = p.step_dir(h["run_id"], "03_label") / "review" / f"{h['hold_id']}.md"
+    page = md.with_suffix(".html")
+    assert md.exists() and page.exists()
+    assert view.packet == md
+    text = md.read_text()
+    assert text.startswith(f"# Hold {h['hold_id']} (run_disagreement) on step 03_label, item A\n")
+    assert "```\n" + view.text + "\n```\n" in text  # the packet is the review render verbatim
+    html = page.read_text()
+    assert "<script" not in html and "<style>" in html
+    assert f"<title>stringency hold {h['hold_id']}</title>" in html
+    assert "summary[A].mean_value = 74.82" in html and "&#39;" in html  # escaped, not raw
+    assert not (md.parent / f"{h['hold_id']}.md.stringency.json").exists()  # no sidecar
+    r = cli(p, "run", env=env)
+    assert r.exit_code == 10 and f"; packet {md}" in (r.output + str(r.stderr))
+    out = json.loads(cli(p, "review", "--hold", h["hold_id"], "--json").output)
+    assert out["holds"][0]["packet"] == str(md)
+
+
+def test_packet_for_post_flag_and_none_for_confirm(make_project: InitFn) -> None:
+    p, _ = held_project(make_project, "context_contradicting.yml")
+    h = queue(p)[0]
+    md = p.step_dir(h["run_id"], "03_label") / "review" / f"{h['hold_id']}.md"
+    assert md.exists() and "criterion for medium" in md.read_text()
+    p2 = make_project()
+    c = p2.confirm_hold()
+    assert show(p2, c).packet is None
+    assert not list(p2.root.rglob("review/*.md"))  # the echo-back is the confirm hold's packet

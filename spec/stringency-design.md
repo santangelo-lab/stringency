@@ -868,6 +868,8 @@ Invocation:
 
 `mock`: canned responses keyed by (template hash, item ID, replicate) from a YAML fixture; deterministic; used by every test. It implements both families so the dispatch path is testable without an operator: in dispatch mode it writes the response files itself when `collect` is called.
 
+`subagent` isolation, as observed on 2026-09-08: a Claude Science delegate starts with a fresh context and can be given only the request file path, but cannot be tool-restricted to that one file. Isolation is therefore instructional, and the engine records it as `as_reported`; the `reported` block (model, harness, tools, `saw_conversation`) is the delegate's own account. `enforced` is reserved for a harness that can prove the restriction.
+
 `api`: the Anthropic Messages API with `schema.json` enforced as structured output. Claude Code should read the current SDK documentation for the structured-output mechanism at build time rather than rely on memory. The model alias is set per project (and may be overridden per module); the resolved model string from the response is what gets recorded. Installed as the `stringency[api]` extra.
 
 `openai-compatible`: Phase D.
@@ -928,7 +930,7 @@ The run's `env_digest` is the hash of the sorted set of environment digests used
 
 ### 10.4 Claude Science specifics
 
-The engine assumes the following about Claude Science, all taken from implementation plan section 8 and all worth confirming by inspection before Phase B ends: the session runs on the workstation with a sandbox that can execute the CLI; artifacts carry per-version provenance tabs; a reviewer agent does advisory checks; `~/.claude-science` holds session state; files not saved as artifacts are cleared some hours after a session ends.
+The engine assumes the following about Claude Science, taken from implementation plan section 8 and checked by inspection on 2026-09-08 (Phase A exit, BMESEQ): the session's sandbox can execute the CLI but cannot start a container (the user lookup for an Active Directory uid fails inside it and home directories are not mounted), so a project whose executor is `apptainer` is driven through a registered SSH compute host, from the workstation or a laptop; that remote mode is the default for apptainer projects and the integration skill's mode B. Artifacts carry per-version provenance tabs; a reviewer agent does advisory checks; `~/.claude-science` holds session state; files not saved as artifacts are cleared some hours after a session ends.
 
 Skill wrappers set the `STRINGENCY_OPERATOR*` variables so the trace can cross-link. `deliver`'s write-back and the skill's artifact-save step are what keep a durable copy on the array. Nothing else in the engine depends on Claude Science.
 
@@ -1171,4 +1173,4 @@ Everything in the eval column is either a control, a rate computed from the trac
 
 ## 19. Questions the app-1 sessions must answer
 
-Listed in `app1-spatial-tma-plan.md`. The ones that shape the engine rather than the plugin: whether `all_items` batching needs an item cap for large cluster counts (session 7); whether the confidence criteria should count distinct evidence columns or distinct rows (session 6); whether the niche vocabulary can be closed or needs a `proposed_label` escape hatch that always holds (session 6); whether Claude Science subagents can be tool-restricted to a single file, and whether they report their model identity (session 13); and whether Claude Science exposes a session reference and a readable artifact store on disk (sessions 13 and 14).
+Listed in `app1-spatial-tma-plan.md`. The ones that shape the engine rather than the plugin: whether `all_items` batching needs an item cap for large cluster counts (session 7); whether the confidence criteria should count distinct evidence columns or distinct rows (session 6); whether the niche vocabulary can be closed or needs a `proposed_label` escape hatch that always holds (session 6); whether Claude Science subagents can be tool-restricted to a single file, and whether they report their model identity (session 13; answered on the toy 2026-09-08: no, isolation is instructional and recorded `as_reported`; yes, they report model, harness, and tools); and whether Claude Science exposes a session reference and a readable artifact store on disk (sessions 13 and 14; on the toy: a frame id serves as the session reference, artifacts live in the app's own store, and the deliver directory on the workstation is the durable copy).

@@ -61,10 +61,13 @@ image the project's method manifest names is readable, for example
 In every command that calls stringency (in mode B, prefixed inside the command string), export:
 
     export STRINGENCY_OPERATOR=claude-science
-    export STRINGENCY_OPERATOR_VERSION=<the app version if you know it, else unknown>
+    export STRINGENCY_OPERATOR_VERSION=<app version>
     export STRINGENCY_SESSION_REF=<your frame id>
 
-The engine records these when it opens a run. Never guess a value; write `unknown`.
+The app version comes from the session brief, whose `PRE` line carries it (the person renders
+the brief with `--app-version`, read from the app's own version display). If the brief carries
+none and nothing in your context states the version, write `unknown`. Never guess a value.
+The engine records these when it opens a run.
 
 ## 3. Rules
 

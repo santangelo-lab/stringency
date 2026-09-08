@@ -2,8 +2,8 @@
 
 Working notes for the review surface, written during the Phase A exit run on 2026-09-08. Not
 part of the design; a proposal for the change to design 7.3 and 7.5 and for the build order.
-Layer 1 was built on 2026-09-08 (`src/stringency/review_render.py`, goldens under
-`tests/golden/review_*.txt`); layers 2 and 3 are not.
+Layers 1 and 2 were built on 2026-09-08 (`src/stringency/review_render.py`, goldens under
+`tests/golden/review_*.txt`; packets under `runs/<run>/<step>/review/`); layer 3 is not.
 
 ## What the exit run showed
 
@@ -97,6 +97,7 @@ lab.
    judges are replayed through the mock (`context_contradicting.yml`) so the test runs anywhere.
 2. Hold id in the `run` message; `init` exits 10 on an open hold (both done 2026-09-08); the
    engine creates the step directory when it issues a ticket (B1). Each a DECISIONS line.
-3. Layer 2.
+3. Layer 2. Done 2026-09-08; the packet lives in `runs/` with the step (the open question below
+   is settled that way: `runs/` holds the sidecar convention, `prov/` is append-only).
 4. Design amendment for `via: web`, then layer 3, when a non-terminal reviewer exists or when
    the lab decides to onboard one.
