@@ -1,6 +1,18 @@
 # Claude Science integration
 
-Two pieces make a new Claude Science project able to use stringency without custom setup.
+What a Claude Science session needs to drive a stringency project, and how to set one up.
+`new-project.md` is the step-by-step checklist; `render_brief.py` produces the two texts a
+project needs; `examples/toy-cs/` shows a completed run.
+
+## Files
+
+| path | what |
+|---|---|
+| `new-project.md` | checklist: workstation once, app instance once, per project |
+| `render_brief.py`, `templates/` | render the session brief and the agent context from a project's `stringency.yml` |
+| `stringency-operator/SKILL.md` | the skill: find the engine, the rules, the run loop, in two modes |
+| `agent-context.md` | generic agent context; prefer the rendered one |
+| `examples/toy-cs/` | the 2026-09-08 exit run: brief, context, agent reports, deliverables |
 
 ## Machine install
 
@@ -39,6 +51,14 @@ repository (or copy the file into a granted directory), then in a `repl` cell:
 
 Every unrestricted agent profile then sees it through skill discovery, and a session that
 mentions stringency loads it. Re-publish with `overwrite=True` after changing the file.
+
+## Rendering the brief and context
+
+    /usr/local/lib/stringency/current/bin/python integrations/claude-science/render_brief.py <project> --provider <alias> [--context]
+
+Bound project: reads `stringency.yml` and the method manifest. Unbound: add `--method <url>@<tag>
+--pipeline <name>`, and the brief includes the init phase. `--app-version` fills the operator
+version the trace records; without it the agent records `unknown`.
 
 ## Project agent context
 

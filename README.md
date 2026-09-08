@@ -44,12 +44,34 @@ stringency deliver      # on a completed run: finals, coverage.md, methods.md, i
 
 Exit codes are in design 14.2. Every verb takes `--json`.
 
+## Claude Science setup
+
+A Claude Science session drives a project as its operator: it calls the CLI, runs the steps the
+engine hands it, and answers judgment dispatches with fresh delegates. The session's sandbox
+cannot start containers, so the engine runs on the workstation that holds the data and the
+container runtime, and the session reaches it as an SSH compute provider. The full checklist is
+`integrations/claude-science/new-project.md`; in outline:
+
+1. On the workstation, once: `scripts/install.sh` puts the engine at
+   `/usr/local/lib/stringency/current/bin`. Container images live where the method manifest says.
+2. In Claude Science, once per instance: add the workstation as an SSH compute provider, set the
+   project area as a data root, publish the `stringency-operator` skill
+   (`integrations/claude-science/stringency-operator/SKILL.md`).
+3. Per project: render the agent context and the session brief from the project with
+   `integrations/claude-science/render_brief.py`, paste the context into the project's Agent
+   Context, paste the brief as the first message, and accept the confirm hold at your terminal
+   when the agent reports it. Every later hold comes back to you the same way.
+
+`integrations/claude-science/examples/toy-cs/` holds a completed run: the texts as used, the
+agent's reports for each phase, and the delivered coverage report and methods paragraph.
+
 ## Layout
 
 ```
 src/stringency/         the engine (no biology imports; CI checks)
 plugins/stringency-toy/ reference plugin, its method repo, fixtures
 templates/method-repo/  what a new method repository starts from
+integrations/           Claude Science: skill, brief renderer, setup checklist, example run
 spec/                   design, build plan, contracts, decisions
 notes/                  session notes; read INDEX.md first
 tests/                  one file per milestone area; mock harness and local executor only

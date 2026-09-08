@@ -22,6 +22,9 @@ design 10.4 assumptions and the section 19 questions that concern the engine.
   `/usr/local/lib/stringency/{versions/<v>,current,envs}` on the system python; installed on
   BMESEQ. `integrations/claude-science/` holds a generic operator skill (two modes: engine in the
   sandbox, engine on a registered compute host), a project agent-context text, and a README.
+  Later in the session: `render_brief.py` with templates (session brief and agent context
+  rendered from a project's `stringency.yml`), `new-project.md` checklist, `examples/toy-cs/`
+  (texts as used, agent reports, deliverables), and a Claude Science setup section in the README.
 - Hand rehearsal of the full toy pipeline through the CLI in a scratch project (all five steps,
   hand-written dispatch responses, deliver), then the real exit run in
   `/data-raid/Projects/Jim/stringency-exit/toy-cs`, project `01M216V6NKHXFHVTY88FSBP4S4`, run
