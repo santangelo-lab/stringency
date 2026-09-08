@@ -40,7 +40,7 @@ def propose(
     rc = open_or_resume(project)
     prop = do_propose(rc, step, parse_sets(sets), rationale=reason)
     if prop.status == StepStatus.AWAITING_EXECUTION:
-        spec = job_spec(prop, rc.env_digests.get(prop.plan.module.manifest.env))
+        spec = job_spec(prop, rc.env_digests.get(prop.plan.module.manifest.env), rc.executor)
         emit(
             {
                 "schema": "stringency.propose/1",

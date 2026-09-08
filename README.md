@@ -36,7 +36,7 @@ stringency init <dir> --method <git-url>@<tag> --pipeline <name> \
     [--profile standard] [--judgment-harness subagent] [--executor apptainer]
 cd <dir>
 stringency review --verdict accept --hold <id> --reason "..."   # the owner accepts the echo-back
-stringency run          # exit 21: a ticket; run the step, then `stringency submit <ticket> ...`
+stringency run          # exit 21: a ticket; run its `exec` line, then its `submit` line
 stringency run          # exit 20: judgment requests written; subagents answer, then run again
 stringency run          # exit 10: a hold; `stringency review` shows it
 stringency deliver      # on a completed run: finals, coverage.md, methods.md, index.json

@@ -293,3 +293,98 @@ def test_job_log_and_apptainer_inspect(tmp_path: Path) -> None:
     )
     obs = parse_evidence("apptainer_inspect", insp)
     assert obs.container_digest == "c" * 64
+
+
+# -- improvements B1, C1, C2 (2026-09-08) -----------------------------------------------------
+
+
+def test_ticket_writes_job_json_and_prints_exec_and_submit(rc: RunContext) -> None:
+    """B1: at ticket time the step directory exists, job.json is there, and the spec carries
+    the exact exec line and the submit line (with --command) for `next --json` and `propose`."""
+    from stringency.steps import job_for
+
+    prop = propose(rc, "01_filter", {"min_value": 30})
+    assert prop.status == StepStatus.AWAITING_EXECUTION
+    step_dir = prop.plan.step_dir
+    job_json = step_dir / "job.json"
+    assert job_json.exists()
+    assert prop.plan.module.entry_script is not None
+    expected = dict(job_for(prop.action, prop.plan, prop.plan.module.entry_script).stdin_json or {})
+    assert json.loads(job_json.read_text()) == expected
+    assert expected["params"] == {"min_value": 30} and expected["output_dir"] == str(step_dir)
+    spec = job_spec(prop, None, rc.executor)
+    assert spec["job_json"] == str(job_json) and spec["log"] == str(step_dir / "run.log")
+    assert spec["exec"] is not None
+    assert spec["exec"].startswith("python3 ") and spec["exec"].endswith(
+        f" < {job_json} > {step_dir / 'run.log'} 2>&1"
+    )
+    assert f"--outputs object={step_dir / 'object.csv'}" in spec["submit"]
+    assert f"--evidence {step_dir / 'run.log'}" in spec["submit"]
+    assert "--command '" in spec["submit"] and spec["exec"] in spec["submit"].replace(
+        "'\"'\"'", "'"
+    )
+    text = render_job_spec(spec)
+    assert f"job.json written: {job_json}" in text and f"run: {spec['exec']}" in text
+    # a spec without an executor carries no exec line and a submit without --command
+    plain = job_spec(prop, None)
+    assert plain["exec"] is None and "--command" not in plain["submit"]
+    # job.json carries no sidecar: it is a ticket artifact, not an output
+    assert not (step_dir / "job.json.stringency.json").exists()
+
+
+def test_operator_can_run_the_printed_lines(rc: RunContext) -> None:
+    """The exec line from the ticket, run as printed, produces outputs `submit` accepts."""
+    import subprocess
+
+    prop = propose(rc, "01_filter", {"min_value": 12})
+    spec = job_spec(prop, None, rc.executor)
+    assert spec["exec"] is not None
+    subprocess.run(spec["exec"], shell=True, check=True, executable="/bin/bash")
+    assert Path(spec["log"]).exists()
+    outputs = {k: Path(v["suggested_path"]) for k, v in spec["outputs"].items()}
+    assert all(p.exists() for p in outputs.values())
+    out = submit(rc, prop.ticket or "", outputs, [Path(spec["log"])], command=spec["exec"])
+    assert out.status == StepStatus.COMPLETED, out.message
+    ex = rc.store.one("SELECT * FROM executions WHERE action_id=?", (prop.action.action_id,))
+    assert ex["command"] == spec["exec"]  # C2: the operator's account, recorded as reported
+    assert ex["runner"] == "operator"
+
+
+def test_apptainer_ticket_exec_line(tmp_path: Path) -> None:
+    from stringency.executor.apptainer import ApptainerExecutor
+    from stringency.executor.base import Job
+
+    envs = tmp_path / "envs"
+    envs.mkdir()
+    sif = tmp_path / "toy.sif"
+    sif.write_bytes(b"not really a sif")
+    (envs / "manifest.yml").write_text(
+        f"environments:\n  toy-py:\n    image: {sif}\n    sha256: {'0' * 64}\n"
+    )
+    step = tmp_path / "runs" / "R" / "01"
+    step.mkdir(parents=True)
+    script = tmp_path / "tools" / "filter.py"
+    script.parent.mkdir()
+    script.write_text("")
+    job = Job(command=["python3", str(script)], env_name="toy-py", cwd=step, bind_paths=[step])
+    argv = ApptainerExecutor(envs, binary="apptainer").command_line(job)
+    assert argv[:5] == ["apptainer", "exec", "--containall", "--pwd", str(step)]
+    assert "--bind" in argv and str(sif) in argv and argv[-2:] == ["python3", str(script)]
+
+
+def test_execution_digest_columns(rc: RunContext, erc: RunContext) -> None:
+    """C1: operator rows keep the expected digest apart and leave env_digest null; engine rows
+    that verified the environment carry both."""
+    prop = propose(rc, "01_filter", {"min_value": 12})
+    outputs, log = play_agent(job_spec(prop, None))
+    submit(rc, prop.ticket or "", outputs, [log])
+    ex = rc.store.one("SELECT * FROM executions WHERE action_id=?", (prop.action.action_id,))
+    assert ex["env_status"] == "as_reported" and ex["env_digest"] is None
+    assert ex["expected_env_digest"] == rc.env_digests["toy-py"]
+    assert ex["command"] is None  # nothing reported
+    eprop = propose(erc, "01_filter")
+    execute_engine(erc, eprop)
+    eex = erc.store.one("SELECT * FROM executions WHERE action_id=?", (eprop.action.action_id,))
+    assert eex["env_status"] == "verified"
+    assert eex["env_digest"] == eex["expected_env_digest"] == erc.env_digests["toy-py"]
+    assert eex["command"]  # the engine's own command line

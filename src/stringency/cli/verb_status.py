@@ -58,6 +58,9 @@ def status_payload(project: Project, run_id: str | None) -> dict[str, Any]:
         "steps": [],
         "holds": [],
     }
+    ch = project.confirm_hold()
+    if ch is not None and ch["resolved_by_review"] is None:
+        payload["holds"].append(_hold_entry(project, ch))
     if row is None:
         return payload
     rc = load_run(project, row["run_id"])
@@ -77,22 +80,23 @@ def status_payload(project: Project, run_id: str | None) -> dict[str, Any]:
             (rc.run_id,),
         )
     ]
-    holds = open_holds(project.store, rc.run_id)
-    payload["holds"] = [
-        {
-            "hold_id": h["hold_id"],
-            "step_id": h["step_id"],
-            "item_id": h["item_id"],
-            "kind": h["kind"],
-            "reason": h["reason"],
-            "waits_on": h["waits_on_role"],
-            "who": project.config.roles.reviewer
-            if h["waits_on_role"] == "reviewer"
-            else project.config.roles.owner,
-        }
-        for h in holds
-    ]
+    payload["holds"] += [_hold_entry(project, h) for h in open_holds(project.store, rc.run_id)]
     return payload
+
+
+def _hold_entry(project: Project, h: Any) -> dict[str, Any]:
+    """One open hold as `status --json` lists it (improvement B2): id, kind, step, item, who."""
+    return {
+        "hold_id": h["hold_id"],
+        "step_id": h["step_id"],
+        "item_id": h["item_id"],
+        "kind": h["kind"],
+        "reason": h["reason"],
+        "waits_on": h["waits_on_role"],
+        "who": project.config.roles.reviewer
+        if h["waits_on_role"] == "reviewer"
+        else project.config.roles.owner,
+    }
 
 
 @handle_errors
@@ -122,18 +126,13 @@ def status(
             lines.append(
                 f"  {s['step_id']:<16} {s['status']:<20} {s['module']}@{s['module_version']} attempt {s['attempt']}"
             )
-        for h in payload["holds"]:
-            item = f" item {h['item_id']}" if h["item_id"] else ""
-            lines.append(
-                f"  hold {h['hold_id']} {h['kind']} on {h['step_id']}{item}: waits on {h['waits_on']} {h['who']}"
-            )
-    elif payload["confirm"] != "accepted":
-        h = project.confirm_hold()
-        hid = h["hold_id"] if h else "?"
-        lines.append(
-            f"hold {hid} (confirm) waits on owner {project.config.roles.owner}; "
-            f"run `stringency review --hold {hid}`"
-        )
     else:
         lines.append("no runs yet")
+    for h in payload["holds"]:
+        item = f" item {h['item_id']}" if h["item_id"] else ""
+        where = f" on {h['step_id']}{item}" if h["step_id"] else ""
+        lines.append(
+            f"  hold {h['hold_id']} ({h['kind']}{where}) waits on {h['waits_on']} {h['who']}; "
+            f"run `stringency review --hold {h['hold_id']}`"
+        )
     emit(payload, as_json, "\n".join(lines))

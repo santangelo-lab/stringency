@@ -2,15 +2,30 @@
 
 from __future__ import annotations
 
+import shlex
 from typing import Any
 
-from stringency.steps import Proposal
+from stringency.executor.base import Executor
+from stringency.steps import JOB_FILE, Proposal, exec_line, job_log_path
 
 
-def job_spec(proposal: Proposal, env_digest: str | None) -> dict[str, Any]:
+def job_spec(
+    proposal: Proposal, env_digest: str | None, executor: Executor | None = None
+) -> dict[str, Any]:
+    """The ticket as the operator sees it. With an executor, `exec` is the exact line to run
+    and `submit` the exact line to call afterwards, `--command` carrying `exec` verbatim."""
     plan, action = proposal.plan, proposal.action
     m = plan.module.manifest
     seed = action.parameters.get(m.seed_param) if m.stochastic and m.seed_param else None
+    run_line = exec_line(executor, action, plan) if executor is not None else None
+    log = job_log_path(plan)
+    submit = (
+        f"stringency submit {action.ticket} "
+        + " ".join(f"--outputs {k}={shlex.quote(str(plan.output_paths[k]))}" for k in m.outputs)
+        + "".join(f" --evidence {shlex.quote(str(plan.step_dir / e.path))}" for e in m.evidence)
+    )
+    if run_line is not None:
+        submit += f" --command {shlex.quote(run_line)}"
     return {
         "schema": "stringency.job_spec/1",
         "ticket": action.ticket,
@@ -35,11 +50,10 @@ def job_spec(proposal: Proposal, env_digest: str | None) -> dict[str, Any]:
         },
         "evidence": [{"kind": e.kind, "path": e.path} for e in m.evidence],
         "step_dir": str(plan.step_dir),
-        "submit": "stringency submit "
-        + str(action.ticket)
-        + " "
-        + " ".join(f"--outputs {k}=<path>" for k in m.outputs)
-        + "".join(f" --evidence <{e.path}>" for e in m.evidence),
+        "job_json": str(plan.step_dir / JOB_FILE),
+        "log": str(log),
+        "exec": run_line,
+        "submit": submit,
     }
 
 
@@ -68,5 +82,8 @@ def render_job_spec(spec: dict[str, Any]) -> str:
             "evidence expected: "
             + ", ".join(f"{e['kind']} ({e['path']})" for e in spec["evidence"])
         )
+    lines.append(f"job.json written: {spec['job_json']}")
+    if spec.get("exec"):
+        lines.append(f"run: {spec['exec']}")
     lines.append(f"then: {spec['submit']}")
     return "\n".join(lines)

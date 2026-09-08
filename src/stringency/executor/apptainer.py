@@ -119,16 +119,22 @@ class ApptainerExecutor:
         self._verified[env_name] = digest
         return digest
 
+    def command_line(self, job: Job) -> list[str]:
+        """`<binary> exec --containall --pwd <cwd> --bind ... <image> <command>`: the argv
+        `run` executes, and the line an operator ticket prints."""
+        image = self.image_for(job.env_name)
+        cmd: list[str] = [self.binary, "exec", "--containall", "--pwd", str(job.cwd)]
+        for b in bind_set(job):
+            cmd += ["--bind", b]
+        cmd += [str(image) if image else "<no image>", *[str(c) for c in job.command]]
+        return cmd
+
     def run(self, job: Job) -> ExecResult:
         job.cwd.mkdir(parents=True, exist_ok=True)
         out = job.stdout_path or job.cwd / "stdout.txt"
         err = job.stderr_path or job.cwd / "stderr.txt"
         image = self.image_for(job.env_name)
-        binds = bind_set(job)
-        cmd: list[str] = [self.binary, "exec", "--containall", "--pwd", str(job.cwd)]
-        for b in binds:
-            cmd += ["--bind", b]
-        cmd += [str(image) if image else "<no image>", *[str(c) for c in job.command]]
+        cmd = self.command_line(job)
         stdin = (
             json.dumps(dict(job.stdin_json), sort_keys=True) if job.stdin_json is not None else None
         )

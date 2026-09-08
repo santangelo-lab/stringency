@@ -9,6 +9,7 @@ state, snapshot, write the execution row, run the post-gate, and settle the step
 from __future__ import annotations
 
 import json
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,7 @@ from stringency import hashing
 from stringency.actions import Action, build_action, write_action
 from stringency.artifacts import record_output, step_outputs
 from stringency.clock import now_iso
-from stringency.executor.base import Job
+from stringency.executor.base import Executor, Job
 from stringency.executor.local import interpreter_for
 from stringency.exit_codes import ConfigError, RefusedError
 from stringency.extract import extract_object
@@ -260,6 +261,7 @@ def propose(
             StepStatus.AWAITING_EXECUTION,
             payload={"ticket": action.ticket},
         )
+        write_job_file(action, plan)
         status = StepStatus.AWAITING_EXECUTION
     rc.refresh_status()
     return Proposal(action, plan, gate, status, holds)
@@ -287,6 +289,7 @@ def resume_after_hold(rc: RunContext, step_id: str) -> Proposal:
             StepStatus.AWAITING_EXECUTION,
             payload={"ticket": action.ticket},
         )
+        write_job_file(action, plan)
     return Proposal(action, plan, GateResult("pre", ()), step_status(store, rc.run_id, step_id))
 
 
@@ -313,7 +316,7 @@ def action_from_row(row: Any) -> Action:
 # -- engine runner -------------------------------------------------------------------------
 
 
-def job_for(rc: RunContext, action: Action, plan: StepPlan, script: Path) -> Job:
+def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
     m = plan.module.manifest
     seed = action.parameters.get(m.seed_param) if m.stochastic and m.seed_param else None
     return Job(
@@ -334,6 +337,46 @@ def job_for(rc: RunContext, action: Action, plan: StepPlan, script: Path) -> Job
     )
 
 
+JOB_FILE = "job.json"
+
+
+def job_log_path(plan: StepPlan) -> Path:
+    """Where the ticket tells the operator to send the script's output: the declared
+    `job_log` evidence path under the step directory, else `run.log` there."""
+    for e in plan.module.manifest.evidence:
+        if e.kind == "job_log":
+            return plan.step_dir / e.path
+    return plan.step_dir / "run.log"
+
+
+def write_job_file(action: Action, plan: StepPlan) -> Path | None:
+    """Create the step directory and write `job.json`, the stdin the engine itself would feed
+    the module script (design 3.4 step 1). Writes: `runs/<run>/<step>/job.json` only; the
+    file is a ticket artifact like a dispatch request and carries no sidecar."""
+    script = plan.module.entry_script
+    if script is None:
+        return None
+    job = job_for(action, plan, script)
+    plan.step_dir.mkdir(parents=True, exist_ok=True)
+    path = plan.step_dir / JOB_FILE
+    path.write_text(json.dumps(dict(job.stdin_json or {}), indent=2, sort_keys=True) + "\n")
+    return path
+
+
+def exec_line(executor: Executor, action: Action, plan: StepPlan) -> str | None:
+    """The exact shell line an operator runs for the ticket: the executor's argv for the job,
+    stdin from `job.json`, both streams to the job log."""
+    script = plan.module.entry_script
+    if script is None:
+        return None
+    argv = executor.command_line(job_for(action, plan, script))
+    return (
+        shlex.join(argv)
+        + f" < {shlex.quote(str(plan.step_dir / JOB_FILE))}"
+        + f" > {shlex.quote(str(job_log_path(plan)))} 2>&1"
+    )
+
+
 def execute_engine(rc: RunContext, proposal: Proposal) -> StepOutcome:
     """Run an admissible deterministic or report step through the executor (design 3.4)."""
     plan, action = proposal.plan, proposal.action
@@ -350,7 +393,7 @@ def execute_engine(rc: RunContext, proposal: Proposal) -> StepOutcome:
         raise ConfigError(f"module {plan.module.ref} has no entry script")
     transition(store, rc.run_id, action.step_id, StepStatus.RUNNING)
     plan.step_dir.mkdir(parents=True, exist_ok=True)
-    res = rc.executor.run(job_for(rc, action, plan, script))
+    res = rc.executor.run(job_for(action, plan, script))
     info = ExecInfo(
         runner="engine",
         env_status="verified" if res.env_digest else "as_reported",
@@ -385,7 +428,10 @@ def execute_engine(rc: RunContext, proposal: Proposal) -> StepOutcome:
 
 
 def write_execution(rc: RunContext, action: Action, plan: StepPlan, info: ExecInfo) -> None:
-    """Writes: executions."""
+    """Writes: executions. `env_digest` is set only when the environment was verified
+    (`env_status = verified`); the digest the manifest expected always goes in
+    `expected_env_digest`, so an as-reported execution never reads as verified."""
+    expected = rc.env_digests.get(plan.module.manifest.env)
     rc.store.insert(
         "executions",
         {
@@ -393,7 +439,8 @@ def write_execution(rc: RunContext, action: Action, plan: StepPlan, info: ExecIn
             "runner": info.runner,
             "ticket": action.ticket,
             "env_name": plan.module.manifest.env,
-            "env_digest": rc.env_digests.get(plan.module.manifest.env),
+            "env_digest": expected if info.env_status == "verified" else None,
+            "expected_env_digest": expected,
             "env_status": info.env_status,
             "command": info.command,
             "exit_code": info.exit_code,

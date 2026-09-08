@@ -23,10 +23,17 @@ from stringency.steps import (
 
 
 def submit(
-    rc: RunContext, ticket: str, outputs: dict[str, Path], evidence: list[Path]
+    rc: RunContext,
+    ticket: str,
+    outputs: dict[str, Path],
+    evidence: list[Path],
+    *,
+    command: str | None = None,
 ) -> StepOutcome:
     """Reads: actions (by ticket), steps. Writes: everything `finish` writes, plus the
-    evidence copies under the step directory."""
+    evidence copies under the step directory. `command` is the operator's own account of what
+    it ran; it lands in `executions.command` and, like everything else on an operator row, is
+    as reported."""
     store = rc.store
     row = store.one("SELECT * FROM actions WHERE ticket = ? AND run_id = ?", (ticket, rc.run_id))
     if row is None:
@@ -70,7 +77,7 @@ def submit(
     info = ExecInfo(
         runner="operator",
         env_status=env_status(observed, m.env, rc.project.method_root / "envs"),
-        command=None,
+        command=command,
         exit_code=max(observed.exit_codes) if observed.exit_codes else None,
         evidence_paths=evidence_paths,
         observed=observed.to_json(),

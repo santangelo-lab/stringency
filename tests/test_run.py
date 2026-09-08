@@ -60,9 +60,18 @@ def test_all_engine_pipeline_completes_through_direct_mock(make_project: InitFn)
     assert (p.root / "runs" / out["run_id"] / "summary.md").exists()
     steps = p.store.all("SELECT status FROM steps WHERE run_id=?", (out["run_id"],))
     assert all(s["status"] == "completed" for s in steps) and len(steps) == 5
-    # a second run opens a new run since the last is closed
+    # the run is closed: `run` refuses and names --new; `run --new` opens a fresh run (B3)
     r2 = cli(p, "run", "--json", env=MOCK)
-    assert r2.exit_code == 0 and json.loads(r2.output)["run_id"] != out["run_id"]
+    assert r2.exit_code == 16, r2.output
+    assert "stringency run --new" in str(r2.stderr) and out["run_id"] in str(r2.stderr)
+    assert p.store.scalar("SELECT COUNT(*) FROM runs") == 1
+    r3 = cli(p, "run", "--new", "--json", env=MOCK)
+    assert r3.exit_code == 0 and json.loads(r3.output)["run_id"] != out["run_id"]
+    # --new on an open run is refused too
+    p2 = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    cli(p2, "run", env={**MOCK, "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml")})
+    r4 = cli(p2, "run", "--new", env=MOCK)
+    assert r4.exit_code == 16 and "is held" in str(r4.stderr)
 
 
 def test_operator_pipeline_with_dispatch_mock(make_project: InitFn) -> None:
@@ -112,9 +121,13 @@ def test_operator_pipeline_with_dispatch_mock(make_project: InitFn) -> None:
     run_id = sj["run_id"]
     assert p.store.scalar("SELECT status FROM runs WHERE run_id=?", (run_id,)) == "completed"
     assert (p.root / "runs" / run_id / "summary.md").exists()
-    # the run is closed, so the next `run` opens a fresh one and stops at the first ticket
-    nx = run_json(21)
-    assert nx["run_id"] != run_id
+    # the run is closed: `run` and `submit` refuse rather than opening a fresh run (B3)
+    r = cli(p, "run", env=MOCK_DISPATCH)
+    assert r.exit_code == 16
+    r = cli(p, "submit", "NOPE", env=MOCK_DISPATCH)
+    assert r.exit_code == 16
+    r = cli(p, "run", "--new", "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 21 and json.loads(r.output)["run_id"] != run_id
     ex = {
         r["step_id"]: r["runner"]
         for r in p.store.all(
@@ -267,3 +280,35 @@ def test_every_transition_in_7_1(project: Project) -> None:
         transition(store, run_id, "bad", StepStatus.COMPLETED)
     assert store.scalar("SELECT status FROM steps WHERE step_id='bad'") == "pending"
     assert len(EDGES) == 21
+
+
+def test_status_lists_open_holds_with_ids(make_project: InitFn) -> None:
+    """B2: `status --json` lists the open confirm hold before any run, and every open run hold."""
+    p = make_project(owner="alice", reviewer="bob")
+    r = cli(p, "status", "--json")
+    st = json.loads(r.output)
+    assert validate(st, json.loads((SCHEMAS / "status.json").read_text())) == []
+    assert st["run"] is None and st["confirm"] == "pending"
+    assert [h["kind"] for h in st["holds"]] == ["confirm"]
+    h = st["holds"][0]
+    assert h["hold_id"] == p.confirm_hold()["hold_id"]
+    assert h["waits_on"] == "owner" and h["who"] == "alice" and h["step_id"] is None
+    r = cli(p, "status")
+    assert f"hold {h['hold_id']} (confirm) waits on owner alice" in r.output
+    accept_hold(p.store, h["hold_id"])
+    st = json.loads(cli(p, "status", "--json").output)
+    assert st["holds"] == [] and st["confirm"] == "accepted"
+    p2 = confirmed(make_project, pipeline="toy-engine", execution="engine", reviewer="bob")
+    cli(p2, "run", env={**MOCK, "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml")})
+    st = json.loads(cli(p2, "status", "--json").output)
+    assert validate(st, json.loads((SCHEMAS / "status.json").read_text())) == []
+    assert len(st["holds"]) == 1
+    h = st["holds"][0]
+    assert h["kind"] == "run_disagreement" and h["step_id"] == "03_label" and h["item_id"] == "A"
+    assert h["waits_on"] == "reviewer" and h["who"] == "bob"
+    r = cli(p2, "status")
+    assert (
+        f"hold {h['hold_id']} (run_disagreement on 03_label item A) waits on reviewer bob"
+        in r.output
+    )
+    assert f"stringency review --hold {h['hold_id']}" in r.output

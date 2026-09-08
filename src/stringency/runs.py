@@ -172,13 +172,25 @@ def _digest_or_none(executor: Executor, env: str) -> str | None:
         return None
 
 
-def open_or_resume(project: Project, *, allow_dirty: str | None = None) -> RunContext:
-    """Resume the latest open run, or open a new one (design 2.6). Writes on open: runs,
-    run_events, steps, step_events, policy_snapshots, predicate_results (run_open phase)."""
+def open_or_resume(
+    project: Project, *, allow_dirty: str | None = None, new: bool = False
+) -> RunContext:
+    """Resume the latest open run; open the first run; refuse (exit 16) when the latest run is
+    closed unless `new` is set (design 2.6, improvement B3). Writes on open: runs, run_events,
+    steps, step_events, policy_snapshots, predicate_results (run_open phase)."""
     require_confirmed(project)
     last = latest_run(project.store)
     if last is not None and last["status"] in OPEN_STATUSES:
+        if new:
+            raise RefusedError(
+                f"run {last['run_id']} is {last['status']}; finish or abandon it before `run --new`"
+            )
         return _context_for(project, last)
+    if last is not None and not new:
+        raise RefusedError(
+            f"run {last['run_id']} is {last['status']}; `stringency run --new` opens a new run, "
+            f"`stringency deliver` harvests a completed one"
+        )
     return open_run(project, allow_dirty=allow_dirty)
 
 

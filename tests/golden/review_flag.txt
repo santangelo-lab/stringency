@@ -14,7 +14,7 @@ state the gate read (after 01_filter):
   object groups (frame) blake3:<digest>
   object object (frame) blake3:<digest>
   history 01_filter: filter_rows params {"min_value": 10} outputs {"object": "blake3:<digest>"}
-execution: runner=operator  env=toy-py  env_status=as_reported  env_digest=<sha256>
+execution: runner=operator  env=toy-py  env_status=as_reported  expected_env_digest=<sha256>
 
 verdicts:
   accept: the flagged condition is acceptable here; the hold clears and the step is completed

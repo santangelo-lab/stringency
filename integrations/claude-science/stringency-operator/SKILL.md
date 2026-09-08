@@ -83,19 +83,12 @@ The engine records these when it opens a run. Never guess a value; write `unknow
 
 `cd` into the project directory, then `stringency run` and act on the exit code.
 
-**21, a ticket.** `stringency next --json`; read `job_spec`. Write `<step_dir>/job.json`:
-
-    {"inputs": {name: path}, "params": {...}, "outputs": {name: suggested_path},
-     "output_dir": step_dir, "seed": seed}
-
-Run the script with stdin from job.json and both output streams to `<step_dir>/run.log`:
-
-    apptainer exec --containall --pwd <step_dir> --bind <step_dir> --bind <each input dir> \
-        --bind <script dir> <image> python3 <script> < job.json > run.log 2>&1
-
-(`singularity exec` takes the same flags.) Then the `submit` line from the job spec, one
-`--outputs name=path` per output and `--evidence <step_dir>/run.log` when the spec lists
-evidence. Then `stringency run` again.
+**21, a ticket.** `stringency next --json`; read `job_spec`. The engine has already created the
+step directory and written `job_json` there. Run the spec's `exec` line exactly as printed (it
+is the container command with stdin from `job.json` and both output streams to the job log),
+then the spec's `submit` line exactly as printed (it names every output, the evidence, and
+carries `--command` with the line you ran). Then `stringency run` again. Do not compose either
+line yourself; if `exec` is null the module has no script and the ticket says what to do.
 
 **20, a judgment dispatch.** The message names a directory holding `req_1.json` ... `req_N.json`.
 For each request, spawn one fresh delegate and give it only the request file path and this task:
@@ -111,9 +104,10 @@ Then `stringency run` again.
 
 **Anything else.** Stop and report the message.
 
-The run is complete when a submit prints that the run is completed. Do not call `run` after
-that; it opens a new run. Call `stringency deliver`, then save `coverage.md`, `methods.md`, and
-`index.json` from `deliver/<run_id>/` as artifacts.
+The run is complete when a submit prints that the run is completed. Call `stringency deliver`,
+then save `coverage.md`, `methods.md`, and `index.json` from `deliver/<run_id>/` as artifacts.
+A `run` after that is refused (exit 16); only `run --new` opens another run, and only when the
+user asks for one.
 
 ## 5. Changing a parameter
 

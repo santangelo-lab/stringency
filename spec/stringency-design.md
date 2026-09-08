@@ -141,7 +141,7 @@ Every predicate receives the objective. The forward-feasibility predicate (6.5) 
 
 ### 2.6 Runs and forks
 
-A run is one attempt at the bound pipeline. `run` is idempotent: it resumes the project's latest open run, or opens a new one if the latest is closed. Runs close as `completed`, `failed`, or `abandoned` (`stringency abandon --reason "…"`).
+A run is one attempt at the bound pipeline. `run` is idempotent: it resumes the project's latest open run, opens the first run, and refuses (exit 16) when the latest run is closed; `run --new` opens the next one, so a `run` typed after the final submit cannot start a second attempt by accident. Runs close as `completed`, `failed`, or `abandoned` (`stringency abandon --reason "…"`).
 
 `fork --from <run_id> --at <step_id> --set <step>.<param>=<value>… --reason "…"` opens a new run with `parent_run_id` set. It inherits inputs and every completed step before `--at`, applies the declared parameter changes, and records them as `delta_json`. The parent is untouched. Forks may not change pipeline, mode, profile, objective, or design; those need a new project. Forking is how you rerun with a different threshold or contrast without overwriting the first result, and it is in v1 because application 1 is iteration-heavy.
 
@@ -772,9 +772,10 @@ predicate_results(run_id, action_id, phase, predicate_id, predicate_version, fir
                   default_disposition, effective_disposition, reason, evidence_json,
                   severity, policy_digest, ts)                                     -- append-only
 
-executions(action_id, runner, ticket, env_name, env_digest, env_status, command, exit_code, duration_ms,
-           stdout_path, stderr_path, evidence_paths_json, observed_params_json, ts)
-           -- runner: engine | operator; env_status: verified | as_reported                                           -- append-only
+executions(action_id, runner, ticket, env_name, env_digest, expected_env_digest, env_status, command, exit_code,
+           duration_ms, stdout_path, stderr_path, evidence_paths_json, observed_params_json, ts)
+           -- runner: engine | operator; env_status: verified | as_reported; env_digest only when verified,
+           -- expected_env_digest always (added 2026-09-08, migration 2)                          -- append-only
 
 holds(hold_id PK, run_id, step_id, item_id NULL, kind, reason, waits_on_role,
       created, resolved_by_review NULL, resolved_via NULL)
@@ -1050,10 +1051,10 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | Verb | Arguments | Gate | Trace | Eval |
 |---|---|---|---|---|
 | `init <path>` | `--method <git-url>@<tag> --pipeline <name> --mode --profile --owner --reviewer --objective <file> --design <file> --inputs <file> [--judgment-harness api] [--executor apptainer]` | binds; refuses open+strict; runs lint | opens the project record | none |
-| `run` | `[--until <step>] [--allow-dirty "<reason>"] [--json]` | evaluates predicates; halts on hold or block | writes everything | triggers replicates |
+| `run` | `[--until <step>] [--allow-dirty "<reason>"] [--new] [--json]` | evaluates predicates; halts on hold or block | writes everything | triggers replicates |
 | `next` | `[--json]` | reports the next step with its plan template (operation, parameter schema with defaults and ranges, vocabulary, declared outputs, expected evidence), or the current hold | reads | none |
 | `propose <step>` | `[--set k=v]… [--reason "<txt>"] [--json]` | constructs the Action from defaults plus proposed values; runs the pre-gate; issues a ticket on pass | writes the action and verdicts | none |
-| `submit <ticket>` | `--outputs name=path… [--evidence path]… [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |
+| `submit <ticket>` | `--outputs name=path… [--evidence path]… [--command "<string>"] [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |
 | `status` | `[--run <id>] [--overrides [--module]] [--json]` | reports holds and who they wait on | reads | override rates |
 | `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest]` | clears holds by recorded verdict | appends reviews | accumulates override corpus |
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |

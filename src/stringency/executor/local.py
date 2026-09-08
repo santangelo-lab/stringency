@@ -47,6 +47,10 @@ class LocalExecutor:
                 return hashing.hash_file(lock)
         return None
 
+    def command_line(self, job: Job) -> list[str]:
+        """The portable form (`python3 <script>`); `run` resolves `python3` to this interpreter."""
+        return [str(c) for c in job.command]
+
     def run(self, job: Job) -> ExecResult:
         job.cwd.mkdir(parents=True, exist_ok=True)
         out = job.stdout_path or job.cwd / "stdout.txt"

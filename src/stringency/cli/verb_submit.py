@@ -19,6 +19,9 @@ def submit(
     ticket: str = typer.Argument(...),
     outputs: list[str] = typer.Option([], "--outputs", help="name=path; repeatable"),
     evidence: list[Path] = typer.Option([], "--evidence", help="evidence file; repeatable"),
+    command: str | None = typer.Option(
+        None, "--command", help="the exact command you ran; recorded as reported"
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Project.find()
@@ -29,7 +32,7 @@ def submit(
             raise ConfigError(f"--outputs expects name=path, got {o!r}")
         k, _, v = o.partition("=")
         outs[k] = Path(v)
-    out = do_submit(rc, ticket, outs, list(evidence))
+    out = do_submit(rc, ticket, outs, list(evidence), command=command)
     nx = next_step(rc)
     emit(
         {

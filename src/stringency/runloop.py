@@ -127,6 +127,7 @@ def next_step(rc: RunContext) -> Next:
             spec = job_spec(
                 Proposal(action, plan, GateResult("pre", ()), st),
                 rc.env_digests.get(plan.module.manifest.env),
+                rc.executor,
             )
             return Next(
                 "awaiting_execution",

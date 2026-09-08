@@ -126,7 +126,7 @@ def test_rebind_auto_resolves_identical_rerun(make_project: InitFn) -> None:
     cli(p, "run", env=env)  # completes the run
     n_reviews = p.store.scalar("SELECT COUNT(*) FROM reviews")
     # a second run with the same method: the same item disagreement rebinds to the prior accept
-    r = cli(p, "run", "--json", env=env)
+    r = cli(p, "run", "--new", "--json", env=env)
     assert r.exit_code == 0, r.output
     run2 = json.loads(r.output)["run_id"]
     h2 = p.store.one("SELECT * FROM holds WHERE run_id=? AND step_id='03_label'", (run2,))
@@ -148,7 +148,7 @@ def test_bumping_module_version_defeats_rebind(make_project: InitFn) -> None:
     pipe = p.method_root / "pipelines" / "toy-engine.yml"
     pipe.write_text(pipe.read_text().replace("label-groups@0.1.0", "label-groups@0.1.1"))
     git.commit_all(p.method_root, "prompt revision: bump label-groups")
-    r = cli(p, "run", env=env)
+    r = cli(p, "run", "--new", env=env)
     assert r.exit_code == 10, r.output
     h2 = queue(p)[0]
     assert h2["bound_module_version"] == "label-groups@0.1.1" and h2["resolved_by_review"] is None

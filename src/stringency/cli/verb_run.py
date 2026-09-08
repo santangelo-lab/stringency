@@ -16,10 +16,11 @@ def run(
     allow_dirty: str | None = typer.Option(
         None, "--allow-dirty", help="reason to run with uncommitted method changes"
     ),
+    new: bool = typer.Option(False, "--new", help="open a new run when the latest is closed"),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Project.find()
-    rc = open_or_resume(project, allow_dirty=allow_dirty)
+    rc = open_or_resume(project, allow_dirty=allow_dirty, new=new)
     nx = run_loop(rc, until=until)
     payload = {**nx.to_json(), "run_id": rc.run_id, "run_status": rc.run["status"]}
     emit(payload, as_json, f"run {rc.run_id}\n{nx.message}")

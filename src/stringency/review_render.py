@@ -263,6 +263,8 @@ def _execution_lines(rc: RunContext, action_id: str) -> list[str]:
     parts = [f"runner={row['runner']}", f"env={row['env_name']}", f"env_status={row['env_status']}"]
     if row["env_digest"]:
         parts.append(f"env_digest={row['env_digest']}")
+    elif row["expected_env_digest"]:
+        parts.append(f"expected_env_digest={row['expected_env_digest']}")
     if row["exit_code"] is not None:
         parts.append(f"exit={row['exit_code']}")
     return ["execution: " + "  ".join(parts)]

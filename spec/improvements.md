@@ -24,17 +24,17 @@ depth; `notes/2026-09-08-1542-phase-a-exit-bmeseq.md` for the run itself.
 
 | # | observed | change | proof | level |
 |---|---|---|---|---|
-| B1 | operator created the step directory, assembled job.json, and composed the container command from the job spec | at ticket time the engine creates the step dir, writes `job.json` there, and prints the exact `apptainer exec` line and the submit line; `next --json` carries both | M5 operator test asserts the files and the command; the toy operator helper in `stringency-exit/tools` becomes two lines | decisions |
-| B2 | `status --json` does not list the open confirm hold or any hold id | `status --json` includes open holds with id, kind, step, waits_on | schema fixture update; M7 test | decisions |
-| B3 | `run` on a project whose latest run is completed silently opens a new run | refuse with exit 16 and a message naming `run --new`; `--new` opens one | M7 test | decisions (14.1 gains a flag) |
+| B1 | operator created the step directory, assembled job.json, and composed the container command from the job spec | at ticket time the engine creates the step dir, writes `job.json` there, and prints the exact `apptainer exec` line and the submit line; `next --json` carries both | M5 operator test asserts the files and the command; the toy operator helper in `stringency-exit/tools` becomes two lines | decisions; **done 2026-09-08** (`exec` and `submit` in the job spec; `Executor.command_line`; the operator runs the two printed lines) |
+| B2 | `status --json` does not list the open confirm hold or any hold id | `status --json` includes open holds with id, kind, step, waits_on | schema fixture update; M7 test | decisions; **done 2026-09-08** |
+| B3 | `run` on a project whose latest run is completed silently opens a new run | refuse with exit 16 and a message naming `run --new`; `--new` opens one | M7 test | decisions (14.1 gains a flag); **done 2026-09-08** (design 2.6 text updated too) |
 | B4 | remote-mode operators pay one approval per command; 25 authorization points for five steps | B1 and B2 remove several; measure again after them | count in the next exit run | none |
 
 ## C. Trace semantics
 
 | # | observed | change | proof | level |
 |---|---|---|---|---|
-| C1 | operator-run executions carry the expected digest in `env_digest` while `env_status` is `as_reported`; readable as verified | keep the expected digest in a separate field (`expected_env_digest`) and leave `env_digest` null when unverified; coverage report unchanged | M5 test on both runners; trace-schema spec updated | decisions (9.4 adds a column, does not reshape) |
-| C2 | operator-run executions have no `command`; the operator's exact invocation is lost | `submit --command "<string>"` recorded as reported, or the job-log parser captures a `command:` line the ticket tells the operator to echo | M5 test; `toy-cs` shows the gap | decisions |
+| C1 | operator-run executions carry the expected digest in `env_digest` while `env_status` is `as_reported`; readable as verified | keep the expected digest in a separate field (`expected_env_digest`) and leave `env_digest` null when unverified; coverage report unchanged | M5 test on both runners; trace-schema spec updated | decisions (9.4 adds a column, does not reshape); **done 2026-09-08** (migration `0002_expected_env_digest.sql`) |
+| C2 | operator-run executions have no `command`; the operator's exact invocation is lost | `submit --command "<string>"` recorded as reported, or the job-log parser captures a `command:` line the ticket tells the operator to echo | M5 test; `toy-cs` shows the gap | decisions; **done 2026-09-08** (`--command`; the ticket's submit line carries it) |
 | C3 | env verification for operator steps never exercised: toy modules declare only `job_log` evidence | toy operator modules also declare `apptainer_inspect` evidence; the ticket says how to produce it; the exit run then shows `verified` on operator steps | M5 test for the verified operator path | toy method only |
 
 ## D. Judgment contract
@@ -60,7 +60,7 @@ backlog is complete in one place.
 ## Order
 
 1. A1, A2, A3 together: one session, golden tests, `toy-cs` as fixture. Done 2026-09-08.
-2. B1, B2, B3, C1, C2: one session; re-run the toy exit by hand afterwards and count commands.
+2. B1, B2, B3, C1, C2: one session; re-run the toy exit by hand afterwards and count commands. Code done 2026-09-08; the recount (B4) waits for the next exit run.
 3. C3 and D1: toy method edits plus tests; bump the toy module versions.
 4. E1, D2 design text; E2 skill; E3 docs.
 5. A4 when A1 exists. A5 on its trigger.

@@ -77,7 +77,12 @@ def test_reopen_is_idempotent(tmp_path: Path) -> None:
     p = tmp_path / "run.db"
     Store.open(p).close()
     s = Store.open(p)
-    assert s.scalar("SELECT COUNT(*) FROM schema_migrations") == 1
+    # schema.sql is version 1; every file under db/migrations/ adds one
+    from stringency.db.store import MIGRATIONS_DIR
+
+    n_migrations = 1 + len(list(MIGRATIONS_DIR.glob("*.sql")))
+    assert s.scalar("SELECT COUNT(*) FROM schema_migrations") == n_migrations
+    assert "expected_env_digest" in s.columns("executions")
     s.close()
 
 
