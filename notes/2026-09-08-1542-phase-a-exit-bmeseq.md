@@ -39,8 +39,9 @@ design 10.4 assumptions and the section 19 questions that concern the engine.
 - `spec/review-ux.md`: working notes on the review surface (see Learned); design 17 gains the
   deferred review page. `spec/improvements.md`: the full backlog from this run, ordered, to
   work through on the toy before Phase B.
-- An earlier hand-started project at `.../stringency-exit/toy` is parked at the 03_label
-  dispatch; unrelated to the exit result.
+- An earlier hand-started project at `.../stringency-exit/toy`, parked at its dispatch, and the
+  interim `kit/venv` and `kit/bin` were deleted at session end; `kit/stringency-toy-method.git`
+  stays, since the `toy-cs` trace names it as the method repo.
 
 ## Learned
 
@@ -78,9 +79,7 @@ layout and integration directory, and the deferred review page.
 2. PROTSEQ half of the exit: install apptainer and uv (sudo), copy the SIF to `~/envs`, run
    `scripts/install.sh`, repeat the run. Then tag `v0.1.0`, make the repo public, install from
    the tag on both machines, push the singlecell skeleton, and update the design 10.4 text.
-3. Delete `kit/venv` and `kit/bin` under `stringency-exit` (Jim's call; the machine install
-   replaces them). Keep `kit/stringency-toy-method.git`.
-4. Planted controls still unscored (unchanged from the previous note).
+3. Planted controls still unscored (unchanged from the previous note).
 
 ## Verify
 
