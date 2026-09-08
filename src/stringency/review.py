@@ -1,7 +1,7 @@
 """Review (design 7.3 through 7.6): the hold queue, what a reviewer sees, verdicts and their
 effects, binding, and reviewer identity.
 
-Reads: holds, reviews, judgments, consensus, actions, steps. Writes: reviews, holds
+Reads: holds, reviews, judgments, consensus, actions, steps (display: `review_render`). Writes: reviews, holds
 (resolution), consensus, steps and step_events (through `machine.transition`), artifacts.
 """
 
@@ -21,10 +21,9 @@ from stringency.exit_codes import ConfigError, RefusedError
 from stringency.ids import new_id
 from stringency.machine import StepStatus, step_status, transition
 from stringency.project import Project
+from stringency.review_render import HoldView, render
 from stringency.runs import RunContext, load_run
 from stringency.schemas import validate
-from stringency.steps import action_from_row, plan_step
-from stringency.tables import load_table
 
 VERDICTS = ("accept", "override", "reject", "defer")
 
@@ -60,30 +59,6 @@ def get_hold(project: Project, hold_id: str) -> Any:
     return h
 
 
-@dataclass
-class HoldView:
-    hold: Any
-    text: str
-    replicates: list[dict[str, Any]]
-    module_ref: str | None
-
-    def to_json(self) -> dict[str, Any]:
-        h = self.hold
-        return {
-            "hold_id": h["hold_id"],
-            "kind": h["kind"],
-            "run_id": h["run_id"],
-            "step_id": h["step_id"],
-            "item_id": h["item_id"],
-            "reason": h["reason"],
-            "waits_on": h["waits_on_role"],
-            "created": h["created"],
-            "context": json.loads(h["context_json"] or "{}"),
-            "replicates": self.replicates,
-            "module": self.module_ref,
-        }
-
-
 def _replicates_for(project: Project, h: Any) -> list[dict[str, Any]]:
     rows = project.store.all(
         "SELECT * FROM judgments WHERE run_id = ? AND step_id = ? AND item_id = ? ORDER BY replicate",
@@ -109,55 +84,8 @@ def _replicates_for(project: Project, h: Any) -> list[dict[str, Any]]:
 
 
 def show(project: Project, h: Any) -> HoldView:
-    """What the reviewer sees (design 7.3): the evidence the model saw, every replicate's call
-    with its confidence and cited evidence, or the predicate's reason and evidence for a flag."""
-    ctx = json.loads(h["context_json"] or "{}")
-    lines = [f"hold {h['hold_id']}  kind {h['kind']}  waits on {h['waits_on_role']}"]
-    module_ref = None
-    replicates: list[dict[str, Any]] = []
-    if h["kind"] == "confirm":
-        lines.append(project.echo_path().read_text().rstrip())
-        lines.append("verdicts: accept (the declarations match the experiment) or reject")
-        return HoldView(h, "\n".join(lines), [], None)
-    rc = load_run(project, h["run_id"])
-    row = rc.store.one(
-        "SELECT * FROM actions WHERE run_id=? AND step_id=? ORDER BY attempt DESC, rowid DESC LIMIT 1",
-        (h["run_id"], h["step_id"]),
-    )
-    action = action_from_row(row) if row else None
-    module_ref = action.module if action else None
-    lines.append(
-        f"step {h['step_id']}  module {module_ref}  attempt {action.attempt if action else '?'}"
-    )
-    lines.append(f"reason: {h['reason']}")
-    if h["kind"] == "flag":
-        lines.append(f"predicate {ctx.get('predicate')} ({ctx.get('phase')} phase)")
-        lines.append("evidence: " + json.dumps(ctx.get("evidence", {}), sort_keys=True))
-        if action:
-            lines.append("parameters: " + json.dumps(action.parameters, sort_keys=True))
-        lines.append("verdicts: accept --reason, or reject --reason")
-    else:
-        replicates = _replicates_for(project, h)
-        if action:
-            plan = plan_step(rc, h["step_id"], action.attempt)
-            j = plan.module.manifest.judgment
-            if j is not None and j.items_from in plan.inputs:
-                table = load_table(plan.inputs[j.items_from].path, j.items_from, j.item_key)
-                rowv = table.rows.get(str(h["item_id"]), {})
-                lines.append(f"evidence row for item {h['item_id']} ({j.items_from}):")
-                for c in table.columns:
-                    lines.append(f"  {c}: {rowv.get(c)}")
-        lines.append("replicates:")
-        for r in replicates:
-            cites = ", ".join(f"{s['column']}={s['value']}" for s in r["supporting"])
-            call = "abstain" if r["abstain"] else f"{r['label']} ({r['confidence']})"
-            lines.append(
-                f"  {r['replicate']}: {call}  cites [{cites}]  rationale: {r['rationale']}"
-            )
-        lines.append(
-            "verdicts: accept --replicate n, override --correction '{\"label\": ...}' --reason, reject --reason, defer"
-        )
-    return HoldView(h, "\n".join(lines), replicates, module_ref)
+    """What the reviewer sees (design 7.3); rendering lives in `review_render`."""
+    return render(project, h)
 
 
 @dataclass

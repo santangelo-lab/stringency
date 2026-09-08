@@ -1055,7 +1055,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `propose <step>` | `[--set k=v]… [--reason "<txt>"] [--json]` | constructs the Action from defaults plus proposed values; runs the pre-gate; issues a ticket on pass | writes the action and verdicts | none |
 | `submit <ticket>` | `--outputs name=path… [--evidence path]… [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |
 | `status` | `[--run <id>] [--overrides [--module]] [--json]` | reports holds and who they wait on | reads | override rates |
-| `review` | `[--run <id>] [--show] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest]` | clears holds by recorded verdict | appends reviews | accumulates override corpus |
+| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest]` | clears holds by recorded verdict | appends reviews | accumulates override corpus |
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |

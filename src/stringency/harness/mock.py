@@ -14,7 +14,7 @@ Fixture:
           label: abundant
           confidence: high
           supporting: [mean_value, n_units]          # column names; value filled from the evidence
-          contradicting: []
+          contradicting: [{row: C, column: mean_value}]   # a dict names another row; value filled
           rationale: "mean {mean_value} over {n_units} units"   # {col} filled from the evidence
       - item: "*"
         judgment: {abstain: true, rationale: "the statistics do not support a label"}
@@ -95,7 +95,10 @@ def _refs(
     out: list[dict[str, Any]] = []
     for c in cols:
         if isinstance(c, dict):
-            out.append(dict(c))
+            ref = {"table": table_name, "row": item, **c}
+            if "value" not in ref:
+                ref["value"] = table.get(str(ref["row"]), {}).get(str(ref["column"]), "")
+            out.append(ref)
             continue
         row = table.get(item, {})
         out.append(

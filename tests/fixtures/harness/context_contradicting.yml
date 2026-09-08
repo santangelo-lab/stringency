@@ -1,0 +1,43 @@
+# Replays the pattern the toy-cs judges produced on 2026-09-08: unanimous labels, but every
+# replicate cites other rows' cells as contradicting evidence (context, not counter-evidence),
+# so judg.confidence_consistent fires a flag while no item hold opens.
+mock: 1
+model: mock-model-1
+rules:
+  - item: A
+    replicate: 3
+    judgment:
+      label: abundant
+      confidence: medium
+      supporting: [mean_value, sd_value, n_rows]
+      contradicting: [{row: C, column: mean_value}, {row: C, column: sd_value}, {row: C, column: n_rows}]
+      rationale: "mean_value {mean_value} is the highest level; sd_value {sd_value} is small beside it; group C is nearly as high"
+  - item: A
+    judgment:
+      label: abundant
+      confidence: medium
+      supporting: [mean_value, n_rows, {row: B, column: mean_value}]
+      contradicting: [{row: C, column: mean_value}, sd_value]
+      rationale: "mean_value {mean_value} over n_rows {n_rows}, far above group B; group C has a nearly equal mean"
+  - item: B
+    replicate: 3
+    judgment:
+      label: sparse
+      confidence: high
+      supporting: [mean_value, sd_value, n_rows]
+      contradicting: [{row: A, column: n_rows}]
+      rationale: "mean_value {mean_value} with sd_value {sd_value} sits far below the other groups; n_rows {n_rows} equals group A"
+  - item: B
+    judgment:
+      label: sparse
+      confidence: medium
+      supporting: [mean_value, {row: A, column: mean_value}, {row: C, column: mean_value}]
+      contradicting: [n_rows, n_units]
+      rationale: "mean_value {mean_value} sits far below the other two groups; n_rows {n_rows} and n_units {n_units} match them"
+  - item: C
+    judgment:
+      label: variable
+      confidence: medium
+      supporting: [sd_value, {row: A, column: sd_value}, {row: B, column: sd_value}, mean_value]
+      contradicting: [n_rows]
+      rationale: "sd_value {sd_value} is the largest spread while mean_value {mean_value} is comparable to group A; n_rows {n_rows} is the smallest count"

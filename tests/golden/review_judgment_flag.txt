@@ -1,0 +1,89 @@
+hold <id>  kind flag  waits on reviewer tester
+step 03_label  module label-groups@0.1.0  attempt 1  created <ts>
+
+question: is the flagged condition acceptable here
+
+predicate judg.confidence_consistent@1  phase post
+reason: judg.confidence_consistent: declared confidence exceeds what the cited evidence supports
+parameters: none
+
+flagged replicates and items:
+  replicate 1, item A: abundant (medium)
+    fired on: confidence=medium  contradicting=2  supporting=3
+    criterion for medium: at least 2 supporting, at most 1 contradicting
+    supporting:
+      summary[A].mean_value = 74.82
+      summary[A].n_rows = 17
+      summary[B].mean_value = 15.86
+    contradicting:
+      summary[C].mean_value = 74.37
+      summary[A].sd_value = 9.06
+    rationale: "mean_value 74.82 over n_rows 17, far above group B; group C has a nearly equal mean"
+  replicate 1, item B: sparse (medium)
+    fired on: confidence=medium  contradicting=2  supporting=3
+    criterion for medium: at least 2 supporting, at most 1 contradicting
+    supporting:
+      summary[B].mean_value = 15.86
+      summary[A].mean_value = 74.82
+      summary[C].mean_value = 74.37
+    contradicting:
+      summary[B].n_rows = 17
+      summary[B].n_units = 3
+    rationale: "mean_value 15.86 sits far below the other two groups; n_rows 17 and n_units 3 match them"
+  replicate 2, item A: abundant (medium)
+    fired on: confidence=medium  contradicting=2  supporting=3
+    criterion for medium: at least 2 supporting, at most 1 contradicting
+    supporting:
+      summary[A].mean_value = 74.82
+      summary[A].n_rows = 17
+      summary[B].mean_value = 15.86
+    contradicting:
+      summary[C].mean_value = 74.37
+      summary[A].sd_value = 9.06
+    rationale: "mean_value 74.82 over n_rows 17, far above group B; group C has a nearly equal mean"
+  replicate 2, item B: sparse (medium)
+    fired on: confidence=medium  contradicting=2  supporting=3
+    criterion for medium: at least 2 supporting, at most 1 contradicting
+    supporting:
+      summary[B].mean_value = 15.86
+      summary[A].mean_value = 74.82
+      summary[C].mean_value = 74.37
+    contradicting:
+      summary[B].n_rows = 17
+      summary[B].n_units = 3
+    rationale: "mean_value 15.86 sits far below the other two groups; n_rows 17 and n_units 3 match them"
+  replicate 3, item A: abundant (medium)
+    fired on: confidence=medium  contradicting=3  supporting=3
+    criterion for medium: at least 2 supporting, at most 1 contradicting
+    supporting:
+      summary[A].mean_value = 74.82
+      summary[A].sd_value = 9.06
+      summary[A].n_rows = 17
+    contradicting:
+      summary[C].mean_value = 74.37
+      summary[C].sd_value = 18.38
+      summary[C].n_rows = 7
+    rationale: "mean_value 74.82 is the highest level; sd_value 9.06 is small beside it; group C is nearly as high"
+  replicate 3, item B: sparse (high)
+    fired on: confidence=high  contradicting=1  supporting=3
+    criterion for high: at least 3 supporting, at most 0 contradicting
+    supporting:
+      summary[B].mean_value = 15.86
+      summary[B].sd_value = 2.13
+      summary[B].n_rows = 17
+    contradicting:
+      summary[A].n_rows = 17
+    rationale: "mean_value 15.86 with sd_value 2.13 sits far below the other groups; n_rows 17 equals group A"
+
+evidence table (rows cited) summary:
+  group=A  n_rows=17  n_units=3  mean_value=74.82  sd_value=9.06  top_unit=u1
+  group=B  n_rows=17  n_units=3  mean_value=15.86  sd_value=2.13  top_unit=u5
+  group=C  n_rows=7  n_units=3  mean_value=74.37  sd_value=18.38  top_unit=u9
+
+verdicts:
+  accept: the flagged condition is acceptable here; the hold clears and the step is completed
+    stringency review --verdict accept --hold <id> --reason "<why>"
+  reject: the attempt closes; a new attempt needs a change to the method or a fork
+    stringency review --verdict reject --hold <id> --reason "<why>"
+  defer: the hold stays; the deferral is recorded so the queue shows it was seen
+    stringency review --verdict defer --hold <id>

@@ -1,0 +1,48 @@
+hold <id>  kind run_disagreement  waits on reviewer tester
+step 03_label  module label-groups@0.1.0  attempt 1  created <ts>
+
+item A
+question: the replicates split on this item: which call stands, or none
+reason: labels differ: ['abundant', 'uniform']
+
+evidence row in summary:
+  group=A  n_rows=17  n_units=3  mean_value=74.82  sd_value=9.06  top_unit=u1
+
+calls by label:
+  abundant: replicate 1, 2
+  uniform: replicate 3
+
+replicates:
+  replicate 1: abundant (high)
+    supporting:
+      summary[A].mean_value = 74.82
+      summary[A].n_units = 3
+      summary[A].sd_value = 9.06
+    contradicting:
+      none
+    rationale: "mean 74.82"
+  replicate 2: abundant (high)
+    supporting:
+      summary[A].mean_value = 74.82
+      summary[A].n_units = 3
+      summary[A].sd_value = 9.06
+    contradicting:
+      none
+    rationale: "mean 74.82"
+  replicate 3: uniform (medium)
+    supporting:
+      summary[A].mean_value = 74.82
+      summary[A].sd_value = 9.06
+    contradicting:
+      none
+    rationale: "sd 9.06 is small enough"
+
+verdicts:
+  accept: consensus takes replicate n's label, recorded as source accepted
+    stringency review --verdict accept --hold <id> --replicate <n>
+  override: consensus takes the correction, checked against the module schema and vocabulary, recorded as source override
+    stringency review --verdict override --hold <id> --correction '{"label": "<label>"}' --reason "<why>"
+  reject: the attempt closes; a new attempt needs a change to the method or a fork
+    stringency review --verdict reject --hold <id> --reason "<why>"
+  defer: the hold stays; the deferral is recorded so the queue shows it was seen
+    stringency review --verdict defer --hold <id>

@@ -14,9 +14,9 @@ depth; `notes/2026-09-08-1542-phase-a-exit-bmeseq.md` for the run itself.
 
 | # | observed | change | proof | level |
 |---|---|---|---|---|
-| A1 | `review` prints the hold header and predicate JSON; design 7.3 promises the evidence the model saw, each replicate's call with cited cells, and the table slice | render the 7.3 display per hold kind (`spec/review-ux.md`, layer 1) | golden test per hold kind using the `toy-cs` flag hold; the `unanimous`, `split`, `one_abstain` mock fixtures for the item kinds | decisions |
-| A2 | `run`'s hold message names step and reviewer but not the hold id (14.2 says the message names the hold) | include the hold id | assert on the message in the M7 hold test | decisions |
-| A3 | `init` exits 0 with an open confirm hold; `run` on the same hold exits 10 | `init` exits 10 when it leaves a hold open | M2 acceptance test | decisions |
+| A1 | `review` prints the hold header and predicate JSON; design 7.3 promises the evidence the model saw, each replicate's call with cited cells, and the table slice | render the 7.3 display per hold kind (`spec/review-ux.md`, layer 1) | golden test per hold kind using the `toy-cs` flag hold; the `unanimous`, `split`, `one_abstain` mock fixtures for the item kinds | decisions; **done 2026-09-08** (`review_render.py`, goldens in `tests/golden/review_*.txt`, `context_contradicting.yml` replays the toy-cs judges) |
+| A2 | `run`'s hold message names step and reviewer but not the hold id (14.2 says the message names the hold) | include the hold id | assert on the message in the M7 hold test | decisions; **done 2026-09-08** (message names the hold and `review --hold <id>`, which shows one hold) |
+| A3 | `init` exits 0 with an open confirm hold; `run` on the same hold exits 10 | `init` exits 10 when it leaves a hold open | M2 acceptance test | decisions; **done 2026-09-08** |
 | A4 | no way to read a hold without a terminal | review packet on disk per hold, HTML and Markdown (`review-ux.md` layer 2) | packet exists after a hold opens; content equals the A1 render | decisions |
 | A5 | every verdict path is a terminal or the agent | reviewer-run review page, `via: web` (`review-ux.md` layer 3) | deferred in design 17; build when a non-terminal reviewer exists | *design* (7.5, 14.1) |
 
@@ -59,7 +59,7 @@ backlog is complete in one place.
 
 ## Order
 
-1. A1, A2, A3 together: one session, golden tests, `toy-cs` as fixture.
+1. A1, A2, A3 together: one session, golden tests, `toy-cs` as fixture. Done 2026-09-08.
 2. B1, B2, B3, C1, C2: one session; re-run the toy exit by hand afterwards and count commands.
 3. C3 and D1: toy method edits plus tests; bump the toy module versions.
 4. E1, D2 design text; E2 skill; E3 docs.

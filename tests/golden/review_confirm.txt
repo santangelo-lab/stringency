@@ -1,0 +1,28 @@
+hold <id>  kind confirm  waits on owner tester
+created <ts>
+
+question: does the engine's reading of the declarations match the experiment
+
+# Echo-back
+
+This is the engine's reading of the declarations. Accept it with `stringency review` only if it matches the experiment.
+
+50 rows in 9 units across 3 groups (input groups); the replicate is the unit; the question is A versus B.
+
+Inputs: groups (frame).
+Units: the observation is row; the sample is unit.
+Factor group (column group) has levels A, B, C.
+The biological replicate is unit.
+The question is compare_groups: a versus b on group, with at least 2 unit per group.
+Deliverables: comparison_table, group_labels.
+
+Bound to:
+  design.yml: <sha256>
+  inputs.yml: <sha256>
+  objective.yml: <sha256>
+
+verdicts:
+  accept: the engine's reading matches the experiment; runs may open
+    stringency review --verdict accept --hold <id> --reason "<why>"
+  reject: the reading is wrong; the project cannot run until the declarations change and a new echo-back is accepted
+    stringency review --verdict reject --hold <id> --reason "<why>"

@@ -51,9 +51,12 @@ def hold_message(rc: RunContext, holds: list[Any]) -> str:
     h = holds[0]
     what = f"{h['step_id']}" + (f" item {h['item_id']}" if h["item_id"] else "")
     more = f" (+{len(holds) - 1} more)" if len(holds) > 1 else ""
+    roles = rc.project.config.roles
+    who = roles.owner if h["waits_on_role"] == "owner" else roles.reviewer
     return (
-        f"held: {h['kind']} on {what}{more}; waits on {h['waits_on_role']} "
-        f"{rc.project.config.roles.reviewer}; run `stringency review` in {rc.project.root}"
+        f"held: hold {h['hold_id']} ({h['kind']} on {what}){more}; "
+        f"waits on {h['waits_on_role']} {who}; "
+        f"run `stringency review --hold {h['hold_id']}` in {rc.project.root}"
     )
 
 

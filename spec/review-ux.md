@@ -2,7 +2,8 @@
 
 Working notes for the review surface, written during the Phase A exit run on 2026-09-08. Not
 part of the design; a proposal for the change to design 7.3 and 7.5 and for the build order.
-Nothing here is built.
+Layer 1 was built on 2026-09-08 (`src/stringency/review_render.py`, goldens under
+`tests/golden/review_*.txt`); layers 2 and 3 are not.
 
 ## What the exit run showed
 
@@ -92,9 +93,10 @@ lab.
 ## Order of work after the exit run
 
 1. Layer 1, with golden tests for confirm, flag, self_uncertain, run_disagreement, and the
-   judgment-predicate flag using this run's trace as the fixture.
-2. Hold id in the `run` message; `init` exits 10 on an open hold; the engine creates the step
-   directory when it issues a ticket. Each a DECISIONS line.
+   judgment-predicate flag using this run's trace as the fixture. Done 2026-09-08; the trace's
+   judges are replayed through the mock (`context_contradicting.yml`) so the test runs anywhere.
+2. Hold id in the `run` message; `init` exits 10 on an open hold (both done 2026-09-08); the
+   engine creates the step directory when it issues a ticket (B1). Each a DECISIONS line.
 3. Layer 2.
 4. Design amendment for `via: web`, then layer 3, when a non-terminal reviewer exists or when
    the lab decides to onboard one.

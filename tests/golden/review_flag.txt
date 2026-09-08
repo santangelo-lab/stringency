@@ -1,0 +1,25 @@
+hold <id>  kind flag  waits on reviewer tester
+step 01_filter  module filter-rows@0.1.0  attempt 1  created <ts>
+
+question: is the flagged condition acceptable here
+
+predicate repro.env_unverified@1  phase post
+reason: repro.env_unverified: the reported environment could not be matched to the environment manifest
+parameters: min_value=10
+evidence:
+  env_status: as_reported
+  reported: null
+
+state the gate read (after 01_filter):
+  object groups (frame) blake3:<digest>
+  object object (frame) blake3:<digest>
+  history 01_filter: filter_rows params {"min_value": 10} outputs {"object": "blake3:<digest>"}
+execution: runner=operator  env=toy-py  env_status=as_reported  env_digest=<sha256>
+
+verdicts:
+  accept: the flagged condition is acceptable here; the hold clears and the step is completed
+    stringency review --verdict accept --hold <id> --reason "<why>"
+  reject: the attempt closes; a new attempt needs a change to the method or a fork
+    stringency review --verdict reject --hold <id> --reason "<why>"
+  defer: the hold stays; the deferral is recorded so the queue shows it was seen
+    stringency review --verdict defer --hold <id>

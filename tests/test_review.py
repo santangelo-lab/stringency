@@ -40,8 +40,9 @@ def test_queue_and_show(make_project: InitFn) -> None:
     holds = queue(p)
     assert len(holds) == 1 and holds[0]["kind"] == "run_disagreement"
     view = show(p, holds[0])
-    assert "evidence row for item A" in view.text and "mean_value" in view.text
-    assert "1: abundant (high)" in view.text and "3: uniform (medium)" in view.text
+    assert "evidence row in summary:" in view.text and "mean_value=" in view.text
+    assert "replicate 1: abundant (high)" in view.text
+    assert "replicate 3: uniform (medium)" in view.text
     r = cli(p, "review")
     assert r.exit_code == 0 and "run_disagreement" in r.output
 

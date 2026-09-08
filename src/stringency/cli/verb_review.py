@@ -9,7 +9,7 @@ import typer
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError
 from stringency.project import Project
-from stringency.review import queue, record_review, show
+from stringency.review import get_hold, queue, record_review, show
 
 
 @handle_errors
@@ -21,7 +21,9 @@ def review(
     verdict: str | None = typer.Option(
         None, "--verdict", help="accept | override | reject | defer"
     ),
-    hold: str | None = typer.Option(None, "--hold"),
+    hold: str | None = typer.Option(
+        None, "--hold", help="the hold a verdict applies to; alone, show that hold"
+    ),
     item: str | None = typer.Option(None, "--item", help="informational; the hold names its item"),
     replicate: int | None = typer.Option(
         None, "--replicate", help="accept: which replicate's call"
@@ -36,6 +38,10 @@ def review(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Project.find()
+    if verdict is None and hold is not None:
+        view = show(project, get_hold(project, hold))
+        emit({"schema": "stringency.review_queue/1", "holds": [view.to_json()]}, as_json, view.text)
+        return
     if verdict is None:
         holds = queue(project, run_id)
         views = [show(project, h) for h in holds] if (show_only or holds) else []

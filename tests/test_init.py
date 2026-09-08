@@ -227,8 +227,8 @@ def test_cli_init(tmp_path: Path, method_repo: MethodRepo, declarations: dict[st
             "local",
         ],
     )
-    assert r.exit_code == 0, r.output
-    assert "held: confirm" in r.output
+    assert r.exit_code == 10, r.output  # init leaves its confirm hold open (design 14.2)
+    assert "held: hold" in r.output and "(confirm)" in r.output
     r2 = CliRunner().invoke(
         app,
         [

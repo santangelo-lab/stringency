@@ -128,8 +128,11 @@ def status(
                 f"  hold {h['hold_id']} {h['kind']} on {h['step_id']}{item}: waits on {h['waits_on']} {h['who']}"
             )
     elif payload["confirm"] != "accepted":
+        h = project.confirm_hold()
+        hid = h["hold_id"] if h else "?"
         lines.append(
-            f"confirm hold waits on owner {project.config.roles.owner}; run `stringency review`"
+            f"hold {hid} (confirm) waits on owner {project.config.roles.owner}; "
+            f"run `stringency review --hold {hid}`"
         )
     else:
         lines.append("no runs yet")

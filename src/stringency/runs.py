@@ -144,8 +144,8 @@ def require_confirmed(project: Project) -> None:
     hold = project.confirm_hold()
     assert hold is not None
     raise HeldError(
-        f"held: confirm {hold['hold_id']} waits on owner {project.config.roles.owner}; "
-        f"run `stringency review` in {project.root}"
+        f"held: hold {hold['hold_id']} (confirm); waits on owner {project.config.roles.owner}; "
+        f"run `stringency review --hold {hold['hold_id']}` in {project.root}"
     )
 
 
