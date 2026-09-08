@@ -59,7 +59,7 @@ def test_accept_item_hold_at_tty_and_run_continues(make_project: InitFn) -> None
         and cons["review_id"] == res.review_id
     )
     rev = p.store.one("SELECT * FROM reviews WHERE review_id=?", (res.review_id,))
-    assert rev["bound_module_version"] == "label-groups@0.1.0" and rev[
+    assert rev["bound_module_version"] == "label-groups@0.1.1" and rev[
         "bound_input_digest"
     ].startswith("blake3:")
     assert rev["chosen_replicate"] == 1 and rev["reviewer"] == "tester"
@@ -144,14 +144,14 @@ def test_bumping_module_version_defeats_rebind(make_project: InitFn) -> None:
     cli(p, "run", env=env)
     for f in ("module.yml",):
         path = p.method_root / "modules" / "label-groups" / f
-        path.write_text(path.read_text().replace("version: 0.1.0", "version: 0.1.1"))
+        path.write_text(path.read_text().replace("version: 0.1.1", "version: 0.1.2"))
     pipe = p.method_root / "pipelines" / "toy-engine.yml"
-    pipe.write_text(pipe.read_text().replace("label-groups@0.1.0", "label-groups@0.1.1"))
+    pipe.write_text(pipe.read_text().replace("label-groups@0.1.1", "label-groups@0.1.2"))
     git.commit_all(p.method_root, "prompt revision: bump label-groups")
     r = cli(p, "run", "--new", env=env)
     assert r.exit_code == 10, r.output
     h2 = queue(p)[0]
-    assert h2["bound_module_version"] == "label-groups@0.1.1" and h2["resolved_by_review"] is None
+    assert h2["bound_module_version"] == "label-groups@0.1.2" and h2["resolved_by_review"] is None
 
 
 def test_attest_refused_under_strict_and_recorded_under_standard(
@@ -219,7 +219,7 @@ def test_status_overrides_rate(make_project: InitFn) -> None:
     rates = json.loads(r.output)["modules"]
     assert rates == [
         {
-            "module": "label-groups@0.1.0",
+            "module": "label-groups@0.1.1",
             "reviews": 1,
             "accept": 0,
             "override": 1,

@@ -86,9 +86,11 @@ The engine records these when it opens a run. Never guess a value; write `unknow
 **21, a ticket.** `stringency next --json`; read `job_spec`. The engine has already created the
 step directory and written `job_json` there. Run the spec's `exec` line exactly as printed (it
 is the container command with stdin from `job.json` and both output streams to the job log),
-then the spec's `submit` line exactly as printed (it names every output, the evidence, and
-carries `--command` with the line you ran). Then `stringency run` again. Do not compose either
-line yourself; if `exec` is null the module has no script and the ticket says what to do.
+then every command under `evidence_commands` exactly as printed (the container inspect and
+checksum that let the engine verify the environment), then the spec's `submit` line exactly as
+printed (it names every output, the evidence, and carries `--command` with the line you ran).
+Then `stringency run` again. Do not compose any of these lines yourself; if `exec` is null the
+module has no script and the ticket says what to do.
 
 **20, a judgment dispatch.** The message names a directory holding `req_1.json` ... `req_N.json`.
 For each request, spawn one fresh delegate and give it only the request file path and this task:

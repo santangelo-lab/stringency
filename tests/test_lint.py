@@ -152,7 +152,7 @@ def report_consumed(m: Path) -> None:
         d["steps"].append(
             {
                 "id": "06_after",
-                "module": "summarize-groups@0.1.0",
+                "module": "summarize-groups@0.1.1",
                 "inputs": {"object": "$steps.05_report.report"},
             }
         )
@@ -187,7 +187,7 @@ ERROR_CASES: list[tuple[str, Breaker, str]] = [
         "declares variable context that the template never uses",
     ),
     ("script_missing", script_missing, "no pre.* script"),
-    ("pipeline_bad_module_version", pipeline_bad_module_version, "the repo has filter-rows@0.1.0"),
+    ("pipeline_bad_module_version", pipeline_bad_module_version, "the repo has filter-rows@0.1.1"),
     ("pipeline_missing_module", pipeline_missing_module, "not in the repo"),
     ("pipeline_dangling_output", pipeline_dangling_output, "which does not exist"),
     ("pipeline_params_fail_schema", pipeline_params_fail_schema, "params fail"),

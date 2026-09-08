@@ -218,7 +218,7 @@ def test_undeclared_template_variable_fails_before_invocation(
     engine_rc: RunContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run_to_label(engine_rc)
-    tmpl = engine_rc.project.modules.require("label-groups@0.1.0").path / "prompt.md"
+    tmpl = engine_rc.project.modules.require("label-groups@0.1.1").path / "prompt.md"
     tmpl.write_text(tmpl.read_text() + "\n{{ matrix }}\n")
     monkeypatch.setenv("STRINGENCY_MOCK_FIXTURE", str(HARNESS / "unanimous.yml"))
     monkeypatch.setenv("STRINGENCY_MOCK_FAMILY", "direct")
@@ -245,3 +245,19 @@ def test_report_step_numeric_claims(engine_rc: RunContext, monkeypatch: pytest.M
     )
     assert row is not None and row["fired"] == 0
     assert engine_rc.run["status"] == "completed"
+
+
+def test_prompt_carries_the_evidence_slot_definition(
+    engine_rc: RunContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D1: every judgment prompt ends with the definition of the two evidence slots and the
+    bound policy's confidence criteria, whatever the template says."""
+    run_to_label(engine_rc)
+    label(engine_rc, "unanimous.yml", monkeypatch)
+    inv = engine_rc.store.one("SELECT prompt_hash FROM invocations WHERE step_id='03_label'")
+    prompt = engine_rc.store.message(inv["prompt_hash"]) or ""
+    assert "`contradicting_evidence` lists the table cells that argue against it" in prompt
+    assert "high needs at least 3 supporting and at most 0 contradicting" in prompt
+    assert "medium needs at least 2 supporting and at most 1 contradicting" in prompt
+    assert "low needs at least 1 supporting" in prompt
+    assert "a cell from another group that you only compared against is context" in prompt

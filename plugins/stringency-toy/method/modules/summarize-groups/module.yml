@@ -1,6 +1,6 @@
 contract: 1
 name: summarize-groups
-version: 0.1.0
+version: 0.1.1
 kind: deterministic
 operation: summarize_groups
 domain: stringency-toy
@@ -14,4 +14,5 @@ decision_points: []
 stochastic: false
 evidence:
   - {kind: job_log, path: run.log}
+  - {kind: apptainer_inspect, path: inspect.json}
 gates: []

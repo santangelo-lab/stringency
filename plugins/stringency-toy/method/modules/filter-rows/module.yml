@@ -1,6 +1,6 @@
 contract: 1
 name: filter-rows
-version: 0.1.0
+version: 0.1.1
 kind: deterministic
 operation: filter_rows
 domain: stringency-toy
@@ -14,6 +14,7 @@ decision_points: [min_value]
 stochastic: false
 evidence:
   - {kind: job_log, path: run.log}
+  - {kind: apptainer_inspect, path: inspect.json}
 gates:
   - toy.filter_after_summary@1
   - obj.feasibility@1

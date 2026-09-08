@@ -16,6 +16,29 @@ if TYPE_CHECKING:
 
 _env = Environment(undefined=StrictUndefined, autoescape=False, keep_trailing_newline=True)
 
+EVIDENCE_SUFFIX = (
+    "\n\n---\n"
+    "Evidence references. `supporting_evidence` lists the table cells that argue for the label "
+    "you chose. `contradicting_evidence` lists the table cells that argue against it. A cell you "
+    "read for context, or cite only to explain a comparison, belongs in neither list; a number "
+    "written in the rationale must still appear among the cells you cited, so cite such a cell as "
+    "supporting when it is part of the case for the label. The confidence you declare is checked "
+    "against these counts: {criteria}.\n"
+)
+
+
+def evidence_suffix(criteria: Mapping[str, Any]) -> str:
+    """The slot definition and the policy's confidence criteria, appended to every judgment
+    prompt whatever the harness family (improvement D1)."""
+    parts = []
+    for level, c in criteria.items():
+        text = f"{level} needs at least {c.min_supporting} supporting"
+        if c.max_contradicting is not None:
+            text += f" and at most {c.max_contradicting} contradicting"
+        parts.append(text)
+    return EVIDENCE_SUFFIX.format(criteria="; ".join(parts) or "none declared")
+
+
 DISPATCH_SUFFIX = (
     "\n\n---\n"
     "Return only JSON matching the schema you were given. Include the nonce {nonce} verbatim in "

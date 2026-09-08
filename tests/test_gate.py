@@ -322,12 +322,12 @@ def _dropped_ctx(p: Project) -> GateContext:
             "steps": [
                 {
                     "id": "01_filter",
-                    "module": "filter-rows@0.1.0",
+                    "module": "filter-rows@0.1.1",
                     "inputs": {"object": "$inputs.groups"},
                 },
                 {
                     "id": "02_summarize",
-                    "module": "summarize-groups@0.1.0",
+                    "module": "summarize-groups@0.1.1",
                     "inputs": {"object": "$steps.01_filter.object"},
                 },
                 {
@@ -413,7 +413,7 @@ def test_seed_unset_and_considered_set(project: Project) -> None:
     )
     assert _run_one("repro.seed_unset", GateContext(**{**ctx2.__dict__, "action": act})) is False
 
-    lab = project.modules.require("label-groups@0.1.0").manifest
+    lab = project.modules.require("label-groups@0.1.1").manifest
     cs = lab.model_copy(
         update={"judgment": lab.judgment.model_copy(update={"considered_set": True})}
     )  # type: ignore[union-attr]
@@ -590,7 +590,7 @@ def test_gate_writes_action_and_results_even_when_blocked(project: Project) -> N
 
 
 def test_in_scope_specs_by_kind_and_runner(project: Project) -> None:
-    lab = project.modules.require("label-groups@0.1.0").manifest
+    lab = project.modules.require("label-groups@0.1.1").manifest
     post_ids = {
         s.id
         for s in in_scope_specs(
@@ -598,7 +598,7 @@ def test_in_scope_specs_by_kind_and_runner(project: Project) -> None:
         )
     }
     assert "judg.evidence_exists" in post_ids and "exec.plan_drift" not in post_ids
-    filt = project.modules.require("filter-rows@0.1.0").manifest
+    filt = project.modules.require("filter-rows@0.1.1").manifest
     post_ids = {
         s.id
         for s in in_scope_specs(

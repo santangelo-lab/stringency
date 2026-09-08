@@ -25,7 +25,13 @@ from stringency.harness.mock import MockHarness, fixture_path
 from stringency.harness.subagent import SubagentHarness, request_path, write_requests
 from stringency.machine import StepStatus, step_status, transition
 from stringency.predicates.context import EvidenceTable
-from stringency.prompting import DISPATCH_SUFFIX, render, store_prompt, table_to_tsv
+from stringency.prompting import (
+    DISPATCH_SUFFIX,
+    evidence_suffix,
+    render,
+    store_prompt,
+    table_to_tsv,
+)
 from stringency.repeat import (
     Replicate,
     collect_dispatch,
@@ -196,7 +202,9 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
     template_text = plan.module.prompt_template or ""
     template_rel = str((plan.module.path / m.prompt.template).relative_to(rc.project.method_root))
     template_blob = git.blob_hash(rc.project.method_root, template_rel)
-    prompt = render(template_text, m.prompt.vars, prompt_values(rc, plan, ev))
+    prompt = render(template_text, m.prompt.vars, prompt_values(rc, plan, ev)) + evidence_suffix(
+        rc.project.policy.confidence_criteria
+    )
     prompt_hash = store_prompt(store, prompt)
     for text in ev.texts.values():
         store.store_message(hashing.hash_text(text), text)  # exactly what the model saw

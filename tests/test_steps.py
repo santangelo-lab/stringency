@@ -17,7 +17,7 @@ from stringency.operator_exec.tickets import job_spec, render_job_spec
 from stringency.project import Project
 from stringency.runs import RunContext, open_or_resume
 from stringency.steps import execute_engine, propose
-from tests.conftest import InitFn, accept_hold
+from tests.conftest import InitFn, MethodRepo, accept_hold
 
 EVIDENCE = Path(__file__).parent / "fixtures" / "evidence"
 
@@ -129,7 +129,7 @@ def test_engine_runner_feasibility_rejects_post(erc: RunContext) -> None:
 
 
 def test_engine_runner_script_failure(erc: RunContext) -> None:
-    script = erc.project.modules.require("filter-rows@0.1.0").entry_script
+    script = erc.project.modules.require("filter-rows@0.1.1").entry_script
     assert script is not None
     script.write_text("import sys; sys.exit(3)\n")
     prop = propose(erc, "01_filter")
@@ -147,7 +147,10 @@ def test_propose_issues_ticket_and_job_spec(rc: RunContext) -> None:
     assert prop.ticket == prop.action.action_id
     spec = job_spec(prop, rc.env_digests["toy-py"])
     assert spec["params"] == {"min_value": 30} and spec["param_source"] == {"min_value": "agent"}
-    assert spec["evidence"] == [{"kind": "job_log", "path": "run.log"}]
+    assert spec["evidence"] == [
+        {"kind": "job_log", "path": "run.log"},
+        {"kind": "apptainer_inspect", "path": "inspect.json"},
+    ]
     text = render_job_spec(spec)
     assert "min_value = 30" in text and "stringency submit" in text
     assert (
@@ -388,3 +391,161 @@ def test_execution_digest_columns(rc: RunContext, erc: RunContext) -> None:
     assert eex["env_status"] == "verified"
     assert eex["env_digest"] == eex["expected_env_digest"] == erc.env_digests["toy-py"]
     assert eex["command"]  # the engine's own command line
+
+
+# -- improvement C3 (2026-09-08): env verification on operator steps -------------------------
+
+
+def test_apptainer_inspect_with_checksum_line(tmp_path: Path) -> None:
+    labels = {"org.label-schema.usage.singularity.deffile.from": "python:3.12-slim"}
+    text = (
+        json.dumps({"data": {"attributes": {"labels": labels}}, "type": "container"}, indent=1)
+        + "\n"
+        + "a" * 64
+        + "  /home/x/envs/toy-py.sif\n"
+    )
+    f = tmp_path / "inspect.json"
+    f.write_text(text)
+    obs = parse_evidence("apptainer_inspect", f)
+    assert obs.container_digest == "a" * 64 and obs.containers == ["/home/x/envs/toy-py.sif"]
+    assert obs.processes[0]["labels"] == labels
+    # a bare JSON document, as before, still parses and reports no digest
+    f.write_text(json.dumps({"data": {"attributes": {"labels": labels}}}))
+    obs = parse_evidence("apptainer_inspect", f)
+    assert obs.container_digest is None and obs.processes[0]["labels"] == labels
+
+
+FAKE_APPTAINER = """#!/bin/bash
+# A stand-in for apptainer in tests: `inspect --json <image>` prints a label stub;
+# `exec [--containall] [--pwd D] [--bind B]... <image> <cmd...>` runs <cmd> on the host, with
+# python3 resolved to the test interpreter so the toy scripts see the same Python.
+if [ "$1" = inspect ]; then
+  echo '{"data": {"attributes": {"labels": {"org.label-schema.usage.singularity.deffile.from": "python:3.12-slim"}}}, "type": "container"}'
+  exit 0
+fi
+shift
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --containall) shift ;;
+    --pwd|--bind) shift 2 ;;
+    *) break ;;
+  esac
+done
+shift  # the image
+if [ "$1" = python3 ]; then shift; set -- "$STRINGENCY_TEST_PYTHON" "$@"; fi
+exec "$@"
+"""
+
+
+def _pinned_method(tmp_path: Path, method_repo: MethodRepo) -> tuple[str, Path, str]:
+    """A method spec whose manifest names a (fake) image and its sha256, tagged for init."""
+    import hashlib
+
+    from stringency import git
+
+    sif = tmp_path / "envs" / "toy-py.sif"
+    sif.parent.mkdir(exist_ok=True)
+    sif.write_bytes(b"not a real sif")
+    sha = hashlib.sha256(sif.read_bytes()).hexdigest()
+    manifest = method_repo.path / "envs" / "manifest.yml"
+    manifest.write_text(
+        manifest.read_text()
+        .replace("image: null", f"image: {sif}")
+        .replace("sha256: null", f"sha256: {sha}")
+    )
+    git.commit_all(method_repo.path, "pin the toy image")
+    git.tag(method_repo.path, "v0.1.0-pinned")
+    return f"{method_repo.path}@v0.1.0-pinned", sif, sha
+
+
+def test_operator_env_verified_through_inspect_evidence(
+    tmp_path: Path, make_project: InitFn, method_repo: MethodRepo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Strict profile, apptainer project: the operator runs the ticket's evidence command as
+    printed; the execution is verified and repro.env_unverified does not hold. A checksum that
+    disagrees with the manifest is plan drift and is rejected."""
+    import os
+    import subprocess
+
+    fake = tmp_path / "bin" / "apptainer"
+    fake.parent.mkdir()
+    fake.write_text(FAKE_APPTAINER)
+    fake.chmod(0o755)
+    monkeypatch.setenv("STRINGENCY_APPTAINER_BIN", str(fake))
+    monkeypatch.setenv("STRINGENCY_TEST_PYTHON", sys.executable)
+    spec_ref, sif, sha = _pinned_method(tmp_path, method_repo)
+    p = make_project(profile="strict", executor="apptainer", method=spec_ref)
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+    rc = open_or_resume(p)
+    assert rc.env_digests["toy-py"] == sha  # the executor verified the pinned image
+    prop = propose(rc, "01_filter")
+    spec = job_spec(prop, rc.env_digests["toy-py"], rc.executor)
+    ev = {e["kind"]: e for e in spec["evidence_commands"]}
+    insp = prop.plan.step_dir / "inspect.json"
+    assert ev["apptainer_inspect"]["command"] == (
+        f"{{ {fake} inspect --json {sif}; sha256sum {sif}; }} > {insp}"
+    )
+    assert ev["job_log"]["command"] is None
+    assert f"--evidence {prop.plan.step_dir / 'run.log'} --evidence {insp}" in spec["submit"]
+    assert spec["exec"] is not None and spec["exec"].startswith(f"{fake} exec --containall --pwd ")
+    # the operator runs the three printed lines: exec, the evidence command, submit
+    env = {**os.environ, "STRINGENCY_TEST_PYTHON": sys.executable}
+    subprocess.run(spec["exec"], shell=True, check=True, executable="/bin/bash", env=env)
+    subprocess.run(
+        ev["apptainer_inspect"]["command"], shell=True, check=True, executable="/bin/bash", env=env
+    )
+    assert insp.read_text().splitlines()[-1].split()[0] == sha
+    outputs = {k: Path(v["suggested_path"]) for k, v in spec["outputs"].items()}
+    out = submit(rc, prop.ticket or "", outputs, [Path(spec["log"]), insp], command=spec["exec"])
+    assert out.status == StepStatus.COMPLETED, out.message
+    ex = rc.store.one("SELECT * FROM executions WHERE action_id=?", (prop.action.action_id,))
+    assert ex["env_status"] == "verified" and ex["command"] == spec["exec"]
+    assert ex["env_digest"] == ex["expected_env_digest"] == sha
+    fired = rc.store.scalar(
+        "SELECT fired FROM predicate_results WHERE action_id=? AND predicate_id='repro.env_unverified'",
+        (prop.action.action_id,),
+    )
+    assert fired == 0
+    # a checksum that does not match the manifest: not verified, and exec.plan_drift rejects
+    prop2 = propose(rc, "02_summarize")
+    spec2 = job_spec(prop2, None, rc.executor)
+    assert spec2["exec"] is not None
+    subprocess.run(spec2["exec"], shell=True, check=True, executable="/bin/bash", env=env)
+    insp2 = prop2.plan.step_dir / "inspect.json"
+    insp2.write_text("{}\n" + "f" * 64 + f"  {sif}\n")
+    outputs2 = {k: Path(v["suggested_path"]) for k, v in spec2["outputs"].items()}
+    out2 = submit(rc, prop2.ticket or "", outputs2, [Path(spec2["log"]), insp2])
+    assert out2.status == StepStatus.REJECTED
+    assert out2.gate is not None and "exec.plan_drift" in [r.spec.id for r in out2.gate.blocked]
+    ex2 = rc.store.one("SELECT * FROM executions WHERE action_id=?", (prop2.action.action_id,))
+    assert ex2["env_status"] == "as_reported" and ex2["env_digest"] is None
+    assert ex2["expected_env_digest"] == sha
+
+
+def test_apptainer_ticket_names_the_evidence_command(tmp_path: Path) -> None:
+    import hashlib
+
+    from stringency.executor.apptainer import ApptainerExecutor
+    from stringency.operator_exec.tickets import evidence_command
+
+    envs = tmp_path / "envs"
+    envs.mkdir()
+    sif = tmp_path / "toy.sif"
+    sif.write_bytes(b"sif")
+    (envs / "manifest.yml").write_text(
+        f"environments:\n  toy-py:\n    image: {sif}\n    sha256: {hashlib.sha256(b'sif').hexdigest()}\n"
+    )
+    ex = ApptainerExecutor(envs, binary="apptainer")
+    e = evidence_command("apptainer_inspect", tmp_path / "step" / "inspect.json", ex, "toy-py")
+    assert (
+        e["command"]
+        == f"{{ apptainer inspect --json {sif}; sha256sum {sif}; }} > {tmp_path / 'step' / 'inspect.json'}"
+    )
+    assert evidence_command("job_log", tmp_path / "run.log", ex, "toy-py")["command"] is None
+    assert evidence_command("nextflow_trace", tmp_path / "t.txt", ex, "toy-py")["note"].startswith(
+        "produced by"
+    )
+    assert (
+        evidence_command("apptainer_inspect", tmp_path / "i.json", ex, "no-such-env")["command"]
+        is None
+    )

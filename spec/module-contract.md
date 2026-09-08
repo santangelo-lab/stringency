@@ -59,6 +59,16 @@ the agent's log is the evidence). A judgment `pre.*` receives `evidence_dir` and
 `<evidence_dir>/<name>.tsv` for evidence not already an input. `post.*` receives
 `{"replicates": [{replicate, valid, structured}]}` and prints the same shape.
 
+## Judgment records: the two evidence slots
+
+`supporting_evidence` holds the cells that argue for the label the replicate chose;
+`contradicting_evidence` holds the cells that argue against it. A cell read for context, or cited
+only to explain a comparison, belongs in neither; a numeral in the rationale must still resolve
+to a cited cell, so such a cell is cited as supporting when it is part of the case for the label.
+`judg.confidence_consistent` counts the two lists against the policy's confidence criteria
+mechanically. The engine appends this definition and the bound policy's criteria to every
+rendered judgment prompt (`prompting.evidence_suffix`), so a module template need not repeat it.
+
 ## Prompt variables
 
 Available: `evidence_table` (TSV of `items_from`), `evidence_tables` (name to TSV), `vocabulary`

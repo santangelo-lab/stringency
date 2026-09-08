@@ -35,13 +35,13 @@ depth; `notes/2026-09-08-1542-phase-a-exit-bmeseq.md` for the run itself.
 |---|---|---|---|---|
 | C1 | operator-run executions carry the expected digest in `env_digest` while `env_status` is `as_reported`; readable as verified | keep the expected digest in a separate field (`expected_env_digest`) and leave `env_digest` null when unverified; coverage report unchanged | M5 test on both runners; trace-schema spec updated | decisions (9.4 adds a column, does not reshape); **done 2026-09-08** (migration `0002_expected_env_digest.sql`) |
 | C2 | operator-run executions have no `command`; the operator's exact invocation is lost | `submit --command "<string>"` recorded as reported, or the job-log parser captures a `command:` line the ticket tells the operator to echo | M5 test; `toy-cs` shows the gap | decisions; **done 2026-09-08** (`--command`; the ticket's submit line carries it) |
-| C3 | env verification for operator steps never exercised: toy modules declare only `job_log` evidence | toy operator modules also declare `apptainer_inspect` evidence; the ticket says how to produce it; the exit run then shows `verified` on operator steps | M5 test for the verified operator path | toy method only |
+| C3 | env verification for operator steps never exercised: toy modules declare only `job_log` evidence | toy operator modules also declare `apptainer_inspect` evidence; the ticket says how to produce it; the exit run then shows `verified` on operator steps | M5 test for the verified operator path | toy method only; **done 2026-09-08** (ticket `evidence_commands`; the inspect file also carries `sha256sum <image>`, because inspect labels have no digest of the SIF) |
 
 ## D. Judgment contract
 
 | # | observed | change | proof | level |
 |---|---|---|---|---|
-| D1 | all three judges used `contradicting_evidence` for context cells, firing `judg.confidence_consistent` | define the slot in the prompt suffix and in `spec/module-contract.md`: a contradicting ref is a cell that argues against the chosen label; or count only such refs in the criteria. Pick one; the first is simpler and keeps the predicate mechanical | toy prompt updated; the `toy-cs` responses replayed through the gate as a regression fixture | decisions; module-contract text |
+| D1 | all three judges used `contradicting_evidence` for context cells, firing `judg.confidence_consistent` | define the slot in the prompt suffix and in `spec/module-contract.md`: a contradicting ref is a cell that argues against the chosen label; or count only such refs in the criteria. Pick one; the first is simpler and keeps the predicate mechanical | toy prompt updated; the `toy-cs` responses replayed through the gate as a regression fixture | decisions; module-contract text; **done 2026-09-08** (`evidence_suffix` on every prompt; toy prompt and label-groups 0.1.1; `context_contradicting.yml`) |
 | D2 | delegates cannot be tool-restricted to one file; isolation is instructional | none in the engine; record the answer in design 10.2 and 19 | text | *design* (text only) |
 
 ## E. Deployment and operator identity
@@ -61,7 +61,7 @@ backlog is complete in one place.
 
 1. A1, A2, A3 together: one session, golden tests, `toy-cs` as fixture. Done 2026-09-08.
 2. B1, B2, B3, C1, C2: one session; re-run the toy exit by hand afterwards and count commands. Code done 2026-09-08; the recount (B4) waits for the next exit run.
-3. C3 and D1: toy method edits plus tests; bump the toy module versions.
+3. C3 and D1: toy method edits plus tests; bump the toy module versions. Done 2026-09-08 (modules and pipelines 0.1.1 in the plugin template and in `~/github/stringency-toy-method`, tagged v0.1.1).
 4. E1, D2 design text; E2 skill; E3 docs.
 5. A4 when A1 exists. A5 on its trigger.
 6. Then PROTSEQ exit run on the updated engine, `v0.1.0`, Phase B.

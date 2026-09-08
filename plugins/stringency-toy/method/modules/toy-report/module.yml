@@ -1,6 +1,6 @@
 contract: 1
 name: toy-report
-version: 0.1.0
+version: 0.1.1
 kind: report
 operation: report
 domain: stringency-toy
@@ -14,5 +14,8 @@ outputs:
   group_labels: {type: json, format: json}
 decision_points: []
 stochastic: false
+evidence:
+  - {kind: job_log, path: run.log}
+  - {kind: apptainer_inspect, path: inspect.json}
 gates:
   - judg.numeric_claims_match@1
