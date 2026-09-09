@@ -14,14 +14,17 @@ it is the first thing a new session reads.
   `~/github/stringency-toy-method`, mirror on `/data-raid` not updated).
 - Phase A exit run done on BMESEQ (`toy-cs`, run `01M2172HKP6E3RNQNEPP6DSFCE`) on the
   pre-backlog engine. PROTSEQ half not done; BMESEQ machine install is stale.
-- 2026-09-09: `exec.script_drift` closes the edited-script gap (G1). Open design question G2:
-  how code the agent writes in a session is captured.
+- 2026-09-09: `exec.script_drift` closes the edited-script gap (G1). `declare --check`,
+  `init --drafted-by --brief`, `derived_from` inputs, and the `stringency-declare` skill are
+  built (H1 to H4); `spec/declarations-and-objectives.md` holds the design. Toy method at
+  `v0.1.2` locally. Open design questions: G2 (session-written code), H5 (staged mode).
 - Not done: PROTSEQ run, `v0.1.0` tag, public repo, singlecell push, review page (A5), G2.
-- Next session should start with: `notes/2026-09-09-0847-script-drift.md` then
+- Next session should start with: `notes/2026-09-09-1059-declare-and-chained-projects.md`, then `notes/2026-09-09-0847-script-drift.md` then
   `notes/2026-09-08-1655-improvements-backlog.md`, section **Open**.
 
 ## Notes
 
+- `2026-09-09-1059-declare-and-chained-projects.md` — declare --check, drafted-by and brief, derived_from chained projects, the declare skill.
 - `2026-09-09-0847-script-drift.md` — script drift check; the two classes of analysis code and the open G2 question.
 - `2026-09-08-1655-improvements-backlog.md` — the improvements backlog worked through on the toy:
   review display and packets, operator ergonomics, trace semantics, toy method 0.1.1, design text.
