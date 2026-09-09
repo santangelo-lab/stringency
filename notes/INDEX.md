@@ -3,7 +3,7 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-08, evening)
+## Current state (2026-09-09)
 
 - Phase A M0 through M11 green on `main`. The improvements backlog (`spec/improvements.md`)
   is worked through on the toy except A5 (on its trigger) and the E2 in-session version route:
@@ -14,11 +14,15 @@ it is the first thing a new session reads.
   `~/github/stringency-toy-method`, mirror on `/data-raid` not updated).
 - Phase A exit run done on BMESEQ (`toy-cs`, run `01M2172HKP6E3RNQNEPP6DSFCE`) on the
   pre-backlog engine. PROTSEQ half not done; BMESEQ machine install is stale.
-- Not done: PROTSEQ run, `v0.1.0` tag, public repo, singlecell push, review page (A5).
-- Next session should start with: `notes/2026-09-08-1655-improvements-backlog.md`, section **Open**.
+- 2026-09-09: `exec.script_drift` closes the edited-script gap (G1). Open design question G2:
+  how code the agent writes in a session is captured.
+- Not done: PROTSEQ run, `v0.1.0` tag, public repo, singlecell push, review page (A5), G2.
+- Next session should start with: `notes/2026-09-09-0847-script-drift.md` then
+  `notes/2026-09-08-1655-improvements-backlog.md`, section **Open**.
 
 ## Notes
 
+- `2026-09-09-0847-script-drift.md` — script drift check; the two classes of analysis code and the open G2 question.
 - `2026-09-08-1655-improvements-backlog.md` — the improvements backlog worked through on the toy:
   review display and packets, operator ergonomics, trace semantics, toy method 0.1.1, design text.
 - `2026-09-08-1542-phase-a-exit-bmeseq.md` — Phase A exit on BMESEQ from Claude Science: sandbox limits, remote-host
