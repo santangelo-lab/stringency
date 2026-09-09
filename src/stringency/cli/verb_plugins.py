@@ -29,6 +29,8 @@ def list_(as_json: bool = typer.Option(False, "--json")) -> None:
                 "object_types": sorted(p.object_types),
                 "questions": list(p.objective_questions),
                 "vocabularies": sorted(p.vocabularies),
+                "vocabulary_terms": {k: list(v) for k, v in p.vocabularies.items()},
+                "design_schema": p.design_schema,
                 "tools": sorted(p.tools),
                 "predicates": preds,
             }

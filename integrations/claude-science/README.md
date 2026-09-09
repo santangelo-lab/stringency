@@ -12,6 +12,7 @@ project needs; `examples/toy-cs/` shows a completed run.
 | `render_brief.py`, `templates/` | render the session brief and the agent context from a project's `stringency.yml` |
 | `stringency-operator/SKILL.md` | the skill: find the engine, the rules, the run loop, in two modes |
 | `agent-context.md` | generic agent context; prefer the rendered one |
+| `stringency-declare/SKILL.md` | drafts the three declaration files from a brief and a sample manifest, checks them with `declare --check`, runs `init --drafted-by agent` |
 | `examples/toy-cs/` | the 2026-09-08 exit run: brief, context, agent reports, deliverables |
 
 ## Machine install

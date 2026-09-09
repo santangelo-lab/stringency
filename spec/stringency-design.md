@@ -100,6 +100,8 @@ items:
 
 `init` computes and verifies every hash and refuses on mismatch. `run` re-verifies at open (`repro.input_digest_mismatch`, 6.5). The `type` field decides which state extractor applies.
 
+An item may carry `derived_from: {run_id, step_id, output, project}` when the file is a delivered artifact of an earlier stringency run (chained projects; added 2026-09-09). `init` reads the sidecar beside the file and refuses unless it names that run, step, and output with the same hash. Run open captures the upstream run ids and the methods paragraph names them.
+
 ### 2.4 Design declaration
 
 The domain plugin supplies the schema; the engine stores validated JSON and passes it to predicates. For `stringency-singlecell` the shape is approximately:
@@ -148,6 +150,8 @@ A run is one attempt at the bound pipeline. `run` is idempotent: it resumes the 
 ### 2.7 Init: validation, compatibility predicates, echo-back
 
 `init` is where the agent's reading of the experiment becomes the declarations every later gate trusts, so it gets three layers of checking before the project is usable.
+
+The declarations may be drafted by an agent from the person's brief and a sample manifest (the `stringency-declare` skill), under the rule that every value has a source in the manifest, the brief, or a plugin default. `declare --check <dir>` runs every check below without creating a project and prints the echo-back, so the drafting loop never leaves a half-made project behind. `init --drafted-by agent --brief <file>` records the drafter, harness, and session reference in `stringency.yml` and keeps the brief as `brief.md`; the confirm hold's context carries the brief's hash beside the three declaration hashes. The echo-back and the owner's acceptance are what make the result the person's declaration whoever typed it (added 2026-09-09).
 
 Validation: every input hash matches; `design.yml` validates against the plugin schema; `objective.yml` validates against the engine core plus the plugin's question vocabulary; lint passes on the method repo.
 
@@ -1054,7 +1058,8 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 
 | Verb | Arguments | Gate | Trace | Eval |
 |---|---|---|---|---|
-| `init <path>` | `--method <git-url>@<tag> --pipeline <name> --mode --profile --owner --reviewer --objective <file> --design <file> --inputs <file> [--judgment-harness api] [--executor apptainer]` | binds; refuses open+strict; runs lint | opens the project record | none |
+| `init <path>` | `--method <git-url>@<tag> --pipeline <name> --mode --profile --owner --reviewer --objective <file> --design <file> --inputs <file> [--judgment-harness api] [--executor apptainer] [--drafted-by person\|agent] [--brief <file>]` | binds; refuses open+strict; runs lint | opens the project record | none |
+| `declare <dir>` | `--check --method <git-url>@<tag> --pipeline <name> [--objective --design --inputs] [--profile] [--executor] [--json]` | every `init` check, in a temporary directory | none; prints the echo-back | none |
 | `run` | `[--until <step>] [--allow-dirty "<reason>"] [--new] [--json]` | evaluates predicates; halts on hold or block | writes everything | triggers replicates |
 | `next` | `[--json]` | reports the next step with its plan template (operation, parameter schema with defaults and ranges, vocabulary, declared outputs, expected evidence), or the current hold | reads | none |
 | `propose <step>` | `[--set k=v]… [--reason "<txt>"] [--json]` | constructs the Action from defaults plus proposed values; runs the pre-gate; issues a ticket on pass | writes the action and verdicts | none |

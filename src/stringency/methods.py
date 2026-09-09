@@ -19,6 +19,13 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
         f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile "
         f"and policy {run['policy_version']}."
     )
+    for item in project.inputs.items:
+        if item.derived_from is not None:
+            d = item.derived_from
+            where = f" (step {d.step_id}, output {d.output})" if d.step_id and d.output else ""
+            sentences.append(
+                f"Input {item.name} was delivered by stringency run {d.run_id}{where}."
+            )
     described: list[str] = []
     for step in project.pipeline.steps:
         st = store.scalar(

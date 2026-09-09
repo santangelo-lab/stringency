@@ -70,10 +70,10 @@ See `spec/declarations-and-objectives.md`. Summary rows so the backlog is comple
 
 | # | change | proof | level |
 |---|---|---|---|
-| H1 | `declare --check <dir>`: every `init` check without creating a project; echo-back on success, exit 15 naming the failure | test on the toy declarations, good and each broken | decisions (14.1 additive) |
-| H2 | `init --drafted-by agent --brief <file>`: `stringency.yml` records who drafted, `brief.md` kept, its hash in the confirm hold context | M2 test | decisions (2.7 text) |
-| H3 | `inputs.yml` item `derived_from: {run_id, artifact_id}`, verified against the sidecar at `init`; captured at run open; named in the methods paragraph | two-project chain on the toy | decisions (2.3 optional field) |
-| H4 | `stringency-declare` skill | PROTSEQ exit run starts from a brief and a manifest | skill |
+| H1 | `declare --check <dir>`: every `init` check without creating a project; echo-back on success, exit 15 naming the failure | test on the toy declarations, good and each broken | decisions (14.1 additive); **done 2026-09-09** |
+| H2 | `init --drafted-by agent --brief <file>`: `stringency.yml` records who drafted, `brief.md` kept, its hash in the confirm hold context | M2 test | decisions (2.7 text); **done 2026-09-09** |
+| H3 | `inputs.yml` item `derived_from: {run_id, artifact_id}`, verified against the sidecar at `init`; captured at run open; named in the methods paragraph | two-project chain on the toy | decisions (2.3 optional field); **done 2026-09-09** (keys are `run_id, step_id, output`, what the sidecar carries) |
+| H4 | `stringency-declare` skill | PROTSEQ exit run starts from a brief and a manifest | skill; **written 2026-09-09**, untested against a live session until PROTSEQ |
 | H5 | staged mode: objective list with stages, `run --objective`, fork at a stage boundary carries an objective, `obj.declared_after_result` | after app-1 as two chained projects shows where option 1 chafes | *design* |
 
 ## Order

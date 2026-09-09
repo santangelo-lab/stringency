@@ -8,6 +8,7 @@ from stringency import __version__
 from stringency.cli import (
     verb_abandon,
     verb_controls,
+    verb_declare,
     verb_deliver,
     verb_fork,
     verb_init,
@@ -31,6 +32,7 @@ app = typer.Typer(
 )
 
 app.command("init")(verb_init.init)
+app.command("declare")(verb_declare.declare)
 app.command("run")(verb_run.run)
 app.command("next")(verb_next.next_)
 app.command("propose")(verb_propose.propose)

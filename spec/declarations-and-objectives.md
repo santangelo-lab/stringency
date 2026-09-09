@@ -131,7 +131,8 @@ Cell-type labels reviewed upstream arrive downstream as data, already signed off
 review bindings are in the upstream trace.
 
 One addition makes the chain explicit: an input item may carry `derived_from: {run_id,
-artifact_id}`. `init` reads the sidecar beside the file, checks that it names that run and that
+step_id, output}` (built 2026-09-09 with those keys, since the sidecar carries step and output
+name but not the artifact id). `init` reads the sidecar beside the file, checks that it names that run and that
 its hash equals the declared `blake3`, and refuses otherwise. The `captures` event at run open
 records the upstream run ids, and the methods paragraph says "inputs derived from run X." This
 is the whole of the engine work for option 1 (DECISIONS-level; 2.3 gains an optional field).

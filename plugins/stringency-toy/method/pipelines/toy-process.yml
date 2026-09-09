@@ -1,0 +1,13 @@
+# Processing only: filter the frame and deliver it. A downstream project binds the delivered
+# object through `derived_from` (chained projects, spec/declarations-and-objectives.md option 1).
+pipeline: 1
+name: toy-process
+version: 0.1.0
+domain: stringency-toy
+answers: [process_rows]
+steps:
+  - id: 01_filter
+    module: filter-rows@0.1.1
+    inputs: {object: $inputs.groups}
+    params:
+      min_value: {default: 10, range: [0, 40]}

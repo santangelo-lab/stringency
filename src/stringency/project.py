@@ -9,16 +9,19 @@ from __future__ import annotations
 
 import getpass
 import json
+import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from stringency import __version__, hashing
 from stringency.actions import Action
 from stringency.clock import now_iso
 from stringency.config import (
+    Declarations,
     Design,
+    InputItem,
     InputsManifest,
     MethodRef,
     Objective,
@@ -67,6 +70,23 @@ class InitRequest:
     judgment_harness: str = "subagent"
     execution: str = "operator"
     executor: str = "apptainer"
+    drafted_by: str = "person"  # person | agent (design 2.7)
+    brief: Path | None = None  # the person's own words, kept beside the declarations
+    check_only: bool = False  # `declare --check`: every init check, no project record
+
+
+@dataclass
+class DeclarationCheck:
+    """What `declare --check` returns: the echo-back and what was verified."""
+
+    echo: str
+    hashes: dict[str, str]
+    inputs: dict[str, str]
+    predicates: list[dict[str, Any]]
+    method_sha: str
+
+    def to_json(self) -> dict[str, Any]:
+        return {"schema": "stringency.declare/1", **self.__dict__}
 
 
 class Project:
@@ -296,6 +316,13 @@ class Project:
         text = self.render_echo(objects)
         self.echo_path().write_text(text)
         hashes = self.declaration_hashes()
+        context: dict[str, Any] = {"echo_path": str(self.echo_path()), "hashes": hashes}
+        decl = self.config.declarations
+        if decl is not None:
+            context["drafted_by"] = decl.drafted_by
+            if decl.brief and (self.root / decl.brief).exists():
+                context["brief"] = decl.brief
+                context["brief_blake3"] = hashing.hash_file(self.root / decl.brief)
         return self.store.create_hold(
             {
                 "run_id": None,
@@ -304,7 +331,7 @@ class Project:
                 "reason": "init echo-back awaits the owner's acceptance",
                 "waits_on_role": "owner",
                 "bound_input_digest": hashing.prefixed(self.declaration_digest()),
-                "context_json": {"echo_path": str(self.echo_path()), "hashes": hashes},
+                "context_json": context,
             }
         )
 
@@ -345,7 +372,7 @@ def init_project(req: InitRequest) -> Project:
         raise ConfigError(f"mode {req.mode} is reserved; v1 accepts only pipeline")
     root.mkdir(parents=True, exist_ok=True)
     try:
-        return _init_in(root, req)
+        return _init_in(root, req)[0]
     except BaseException:
         if not existed:
             shutil.rmtree(root, ignore_errors=True)
@@ -355,7 +382,64 @@ def init_project(req: InitRequest) -> Project:
         raise
 
 
-def _init_in(root: Path, req: InitRequest) -> Project:
+def check_declarations(req: InitRequest) -> DeclarationCheck:
+    """`declare --check` (design 2.7): run every check `init` runs, in a temporary directory
+    that is removed afterwards, and return the echo-back. Writes nothing that persists."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="stringency-declare-") as tmp:
+        root = Path(tmp) / "check"
+        root.mkdir()
+        probe = InitRequest(**{**req.__dict__, "path": root, "check_only": True})
+        project, objects, gate = _init_in(root, probe)
+        return DeclarationCheck(
+            echo=project.render_echo(objects),
+            hashes=project.declaration_hashes(),
+            inputs={i.name: i.blake3 for i in project.inputs.items},
+            predicates=[
+                {"predicate_id": r.spec.id, "fired": r.verdict.fired, "reason": r.verdict.reason}
+                for r in gate.records
+            ],
+            method_sha=project.config.method.sha,
+        )
+
+
+def _verify_derived_from(item: InputItem) -> None:
+    """A chained input must sit beside a stringency sidecar naming the run it came from, with
+    the same hash (design 2.3)."""
+    from stringency.artifacts import sidecar_path
+
+    d = item.derived_from
+    assert d is not None
+    sc = sidecar_path(Path(item.path))
+    if not sc.exists():
+        raise ConfigError(
+            f"input {item.name}: derived_from names run {d.run_id} but no sidecar exists at {sc}"
+        )
+    try:
+        meta = json.loads(sc.read_text())
+    except json.JSONDecodeError as e:
+        raise ConfigError(f"input {item.name}: sidecar {sc} is not JSON: {e}") from None
+    if meta.get("run_id") != d.run_id:
+        raise ConfigError(
+            f"input {item.name}: sidecar names run {meta.get('run_id')}, derived_from says {d.run_id}"
+        )
+    if meta.get("blake3") != item.blake3:
+        raise ConfigError(
+            f"input {item.name}: sidecar hash {str(meta.get('blake3'))[:12]} differs from the declared {item.blake3[:12]}"
+        )
+    if d.step_id is not None and meta.get("step_id") != d.step_id:
+        raise ConfigError(
+            f"input {item.name}: sidecar step {meta.get('step_id')}, derived_from says {d.step_id}"
+        )
+    if d.output is not None and meta.get("name") != d.output:
+        raise ConfigError(
+            f"input {item.name}: sidecar output {meta.get('name')}, derived_from says {d.output}"
+        )
+
+
+def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectState], GateResult]:
+    """Returns the project, the init extractor states, and the init gate result."""
     from stringency.git import clone_at
     from stringency.lint import lint_path
 
@@ -411,6 +495,8 @@ def _init_in(root: Path, req: InitRequest) -> Project:
             raise ConfigError(
                 f"input {item.name}: type {item.type} is unknown to plugin {plugin.name}"
             )
+        if item.derived_from is not None:
+            _verify_derived_from(item)
 
     # modules resolve and admit the mode
     modules = ModuleIndex(root / "method")
@@ -435,6 +521,25 @@ def _init_in(root: Path, req: InitRequest) -> Project:
     owner = req.owner or getpass.getuser()
     reviewer = req.reviewer or owner
     project_id = new_id()
+    drafted_by: Literal["person", "agent"]
+    if req.drafted_by == "person":
+        drafted_by = "person"
+    elif req.drafted_by == "agent":
+        drafted_by = "agent"
+    else:
+        raise ConfigError("--drafted-by must be person or agent")
+    brief_name = None
+    if req.brief is not None:
+        if not Path(req.brief).exists():
+            raise ConfigError(f"brief {req.brief} does not exist")
+        shutil.copyfile(req.brief, root / "brief.md")
+        brief_name = "brief.md"
+    declarations = Declarations(
+        drafted_by=drafted_by,
+        harness=os.environ.get("STRINGENCY_OPERATOR") if req.drafted_by == "agent" else None,
+        session_ref=os.environ.get("STRINGENCY_SESSION_REF") if req.drafted_by == "agent" else None,
+        brief=brief_name,
+    )
     cfg = StringencyConfig(
         project_id=project_id,
         created=now_iso(),
@@ -447,6 +552,7 @@ def _init_in(root: Path, req: InitRequest) -> Project:
         judgment_harness=req.judgment_harness,
         execution=req.execution,
         executor=req.executor,
+        declarations=declarations,
     )
     dump_yaml(cfg.model_dump(mode="json"), root / "stringency.yml")
 
@@ -459,6 +565,8 @@ def _init_in(root: Path, req: InitRequest) -> Project:
     gate = project.run_init_predicates(objects, record=False)
     if gate.blocked:
         raise ConfigError("init refused:\n" + "\n".join("  " + r.line() for r in gate.blocked))
+    if req.check_only:
+        return project, objects, gate  # `declare --check`: nothing below is written
 
     store = project.store
     store.insert(
@@ -486,4 +594,4 @@ def _init_in(root: Path, req: InitRequest) -> Project:
     )
     project.run_init_predicates(objects, record=True)
     project.ensure_confirm_hold(objects)
-    return project
+    return project, objects, gate

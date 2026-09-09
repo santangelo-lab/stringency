@@ -14,7 +14,7 @@ from stringency_toy import phrasing
 from stringency_toy.schemas import DESIGN_SCHEMA, OPERATIONS
 
 NAME = "stringency-toy"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 _HERE = Path(__file__).parent
 
 VOCABULARIES = {
@@ -31,7 +31,7 @@ PLUGIN = Plugin(
         "frame": ObjectType(name="frame", extractor="extract_frame", extractor_id="toy.frame@1"),
     },
     design_schema=DESIGN_SCHEMA,
-    objective_questions=("compare_groups",),
+    objective_questions=("compare_groups", "process_rows"),
     vocabularies=VOCABULARIES,
     tools={
         "extract_frame": Tool("extract_frame", _HERE / "tools" / "extract_frame.py"),

@@ -12,6 +12,9 @@ runs in the Claude Science sandbox, so no directory grants are needed.
 3. The method repository reachable by git URL from the workstation, tagged.
 4. Data on the array, and the three declaration files (`objective.yml`, `design.yml`,
    `inputs.yml`) in the project's parent directory. `inputs.yml` carries the blake3 of each input.
+   Write them by hand, or let the agent draft them from your brief and a sample manifest with the
+   `stringency-declare` skill, which checks them with `declare --check` and shows you the
+   echo-back before `init`.
 
 ## In Claude Science, once per instance
 

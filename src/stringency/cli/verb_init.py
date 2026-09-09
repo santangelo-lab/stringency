@@ -26,6 +26,14 @@ def init(
     judgment_harness: str = typer.Option("subagent", "--judgment-harness"),
     execution: str = typer.Option("operator", "--execution"),
     executor: str = typer.Option("apptainer", "--executor"),
+    drafted_by: str = typer.Option(
+        "person", "--drafted-by", help="person | agent: who wrote the three declaration files"
+    ),
+    brief: Path | None = typer.Option(
+        None,
+        "--brief",
+        help="the person's own description, kept as brief.md beside the declarations",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = init_project(
@@ -43,6 +51,8 @@ def init(
             judgment_harness=judgment_harness,
             execution=execution,
             executor=executor,
+            drafted_by=drafted_by,
+            brief=brief,
         )
     )
     hold = project.confirm_hold()
@@ -53,6 +63,9 @@ def init(
         "method_sha": project.config.method.sha,
         "confirm_hold": hold["hold_id"] if hold else None,
         "echo": str(project.echo_path()),
+        "declarations": project.config.declarations.model_dump()
+        if project.config.declarations
+        else None,
     }
     human = (
         f"project {project.config.project_id} bound at {project.root}\n"

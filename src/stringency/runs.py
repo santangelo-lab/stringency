@@ -318,6 +318,11 @@ def open_run(
             "captures",
             {
                 "inputs": rc.input_digests_now,
+                "derived_from": [
+                    {"input": i.name, **i.derived_from.model_dump()}
+                    for i in project.inputs.items
+                    if i.derived_from is not None
+                ],
                 "env_digests": env_digests,
                 "script_blobs": script_blobs,
                 "executor": executor.kind,

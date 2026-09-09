@@ -41,6 +41,15 @@ class Roles(Strict):
     reviewer: str
 
 
+class Declarations(Strict):
+    """Who drafted the three declaration files, and the brief they were drafted from."""
+
+    drafted_by: Literal["person", "agent"] = "person"
+    harness: str | None = None
+    session_ref: str | None = None
+    brief: str | None = None  # file name in the project root, when a brief was given
+
+
 class StringencyConfig(Strict):
     """stringency.yml. Written by init, read-only after."""
 
@@ -58,6 +67,7 @@ class StringencyConfig(Strict):
     executor: ExecutorKind = "apptainer"
     policy: str = "method/policy.yml"
     splits: dict[str, Any] | None = None
+    declarations: Declarations | None = None
 
     @model_validator(mode="after")
     def _refuse_open_strict(self) -> StringencyConfig:
@@ -68,6 +78,16 @@ class StringencyConfig(Strict):
         return self
 
 
+class DerivedFrom(Strict):
+    """An input that is a delivered artifact of an earlier stringency run (chained projects).
+    `init` verifies it against the sidecar beside the file."""
+
+    run_id: str
+    step_id: str | None = None
+    output: str | None = None
+    project: str | None = None  # informational: where the upstream project lives
+
+
 class InputItem(Strict):
     name: str
     path: str
@@ -75,6 +95,7 @@ class InputItem(Strict):
     blake3: str
     source: str | None = None
     build: str | None = None  # reference build, checked by init.reference_mismatch
+    derived_from: DerivedFrom | None = None
 
 
 class InputsManifest(Strict):
