@@ -93,7 +93,22 @@ def _num(n: int) -> str:
         "nineteen",
         "twenty",
     ]
-    return words[n] if 0 <= n < len(words) else str(n)
+    if 0 <= n < len(words):
+        return words[n]
+    tens = {
+        20: "twenty",
+        30: "thirty",
+        40: "forty",
+        50: "fifty",
+        60: "sixty",
+        70: "seventy",
+        80: "eighty",
+        90: "ninety",
+    }
+    if 20 < n < 100:
+        # the count opens a sentence, so it is spelled out up to ninety-nine
+        return tens[n - n % 10] + ("" if n % 10 == 0 else "-" + words[n % 10])
+    return str(n)
 
 
 __all__ = ["methods_paragraph", "json"]

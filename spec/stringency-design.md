@@ -554,6 +554,7 @@ Domain-free, live in the engine, apply to every plugin.
 | `param.locked_changed` | pre | * | a parameter with no `range`, or any parameter under `params: locked`, differs from its default | block |
 | `param.out_of_range` | pre | * | a proposed value is outside the declared range or options | block (flag under `params: free`) |
 | `exec.plan_drift` | post | operator-run steps | the evidence shows parameters, seed, or container different from the admitted Action | block |
+| `exec.script_drift` | post | * | the module script that ran (hashed by the engine before running it, or at `submit`) differs from the script present when the run opened; added 2026-09-09 | block |
 | `repro.env_unverified` | post | operator-run steps | the reported container or lockfile cannot be matched to the environment manifest | flag |
 | `init.contrast_undeclared` | init | project | a contrast names a factor not in the design | block |
 | `init.level_undeclared` | init | project | a contrast names a level the design does not list for that factor | block |
@@ -736,7 +737,7 @@ Complete, append-only, written whether or not an action ran. The rejections are 
 
 ### 9.1 Captured at run open
 
-Run ID, project ID, parent run ID; method repo remote, tag, SHA, dirty flag, `allow_dirty_reason`; hostname and OS user; operator harness kind, version, and session reference when the wrapper exposes them (10.1); wall-clock start; every input re-hashed and verified; policy version and digest; executor kind and the environment digest for every module env in the topology, resolved up front so a missing image fails at open rather than at step 9; stringency version.
+Run ID, project ID, parent run ID; method repo remote, tag, SHA, dirty flag, `allow_dirty_reason`; the hash of every module entry script as it is on disk at open (`captures.script_blobs`, added 2026-09-09); hostname and OS user; operator harness kind, version, and session reference when the wrapper exposes them (10.1); wall-clock start; every input re-hashed and verified; policy version and digest; executor kind and the environment digest for every module env in the topology, resolved up front so a missing image fails at open rather than at step 9; stringency version.
 
 ### 9.2 Captured per step
 
@@ -772,10 +773,11 @@ predicate_results(run_id, action_id, phase, predicate_id, predicate_version, fir
                   default_disposition, effective_disposition, reason, evidence_json,
                   severity, policy_digest, ts)                                     -- append-only
 
-executions(action_id, runner, ticket, env_name, env_digest, expected_env_digest, env_status, command, exit_code,
-           duration_ms, stdout_path, stderr_path, evidence_paths_json, observed_params_json, ts)
+executions(action_id, runner, ticket, env_name, env_digest, expected_env_digest, env_status, command, script_blob,
+           exit_code, duration_ms, stdout_path, stderr_path, evidence_paths_json, observed_params_json, ts)
            -- runner: engine | operator; env_status: verified | as_reported; env_digest only when verified,
-           -- expected_env_digest always (added 2026-09-08, migration 2)                          -- append-only
+           -- expected_env_digest always (added 2026-09-08, migration 2); script_blob: hash of the
+           -- module script as it ran (added 2026-09-09, migration 3)                             -- append-only
 
 holds(hold_id PK, run_id, step_id, item_id NULL, kind, reason, waits_on_role,
       created, resolved_by_review NULL, resolved_via NULL)

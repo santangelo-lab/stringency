@@ -39,6 +39,7 @@ class RunContext:
     git_dirty: bool = False
     allow_dirty_reason: str | None = None
     operator: dict[str, str | None] = field(default_factory=dict)
+    script_blobs: dict[str, str] = field(default_factory=dict)  # module ref -> hash at open
 
     @property
     def store(self) -> Store:
@@ -103,6 +104,7 @@ class RunContext:
             input_digests_now=self.input_digests_now,
             env_digests=self.env_digests,
             step_status=self.step_status(),
+            script_blobs=self.script_blobs,
         )
 
     def gate_context(
@@ -149,6 +151,37 @@ def require_confirmed(project: Project) -> None:
     )
 
 
+def module_script_blobs(project: Project) -> dict[str, str]:
+    """blake3 of every module entry script in the bound pipeline as it is on disk now.
+    Captured at run open (design 9.1); `exec.script_drift` compares against it later."""
+    from stringency.steps import script_blob
+
+    out: dict[str, str] = {}
+    for sid in project.pipeline.order():
+        module = project.modules.require(project.pipeline.step(sid).module)
+        blob = script_blob(module)
+        if blob is not None:
+            out[module.ref] = blob
+    return out
+
+
+def captured_script_blobs(store: Store, run_id: str) -> dict[str, str]:
+    """Reads: run_events (`captures`) for the run's script blobs; {} for runs opened before
+    the capture existed, which disables the drift check for them."""
+    import json
+
+    row = store.one(
+        "SELECT payload_json FROM run_events WHERE run_id = ? AND event = 'captures' "
+        "ORDER BY seq LIMIT 1",
+        (run_id,),
+    )
+    if row is None:
+        return {}
+    payload = json.loads(row["payload_json"] or "{}")
+    blobs = payload.get("script_blobs", {})
+    return {str(k): str(v) for k, v in blobs.items()} if isinstance(blobs, dict) else {}
+
+
 def _context_for(project: Project, run_row: Any, *, executor_kind: str | None = None) -> RunContext:
     executor = project.executor(executor_kind)
     env_digests = {e: _digest_or_none(executor, e) for e in project.env_names()}
@@ -162,6 +195,7 @@ def _context_for(project: Project, run_row: Any, *, executor_kind: str | None = 
         git_dirty=bool(run_row["git_dirty"]),
         allow_dirty_reason=run_row["allow_dirty_reason"],
         operator=operator_env(),
+        script_blobs=captured_script_blobs(project.store, run_row["run_id"]),
     )
 
 
@@ -212,6 +246,7 @@ def open_run(
     executor = project.executor()
     env_digests = {e: _digest_or_none(executor, e) for e in project.env_names()}
     policy_digest = project.policy_digest()
+    script_blobs = module_script_blobs(project)
     rc = RunContext(
         project=project,
         run_id=run_id,
@@ -222,6 +257,7 @@ def open_run(
         git_dirty=dirty,
         allow_dirty_reason=allow_dirty,
         operator=operator_env(),
+        script_blobs=script_blobs,
     )
     # run-open gate: repro.dirty_tree, repro.input_digest_mismatch
     action = Action(
@@ -283,6 +319,7 @@ def open_run(
             {
                 "inputs": rc.input_digests_now,
                 "env_digests": env_digests,
+                "script_blobs": script_blobs,
                 "executor": executor.kind,
                 "method": {
                     "repo": project.config.method.repo,

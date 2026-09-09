@@ -6,7 +6,7 @@ import shlex
 from typing import Any
 
 from stringency.executor.base import Executor
-from stringency.steps import JOB_FILE, Proposal, exec_line, job_log_path
+from stringency.steps import JOB_FILE, Proposal, exec_line, job_log_path, script_blob
 
 
 def job_spec(
@@ -44,6 +44,7 @@ def job_spec(
         "operation": m.operation,
         "kind": m.kind,
         "script": str(plan.module.entry_script) if plan.module.entry_script else None,
+        "script_blob": script_blob(plan.module),
         "inputs": {
             k: {"path": str(v.path), "blake3": v.digest, "type": v.type}
             for k, v in plan.inputs.items()

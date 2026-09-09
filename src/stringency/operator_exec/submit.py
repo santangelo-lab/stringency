@@ -18,6 +18,7 @@ from stringency.steps import (
     action_from_row,
     finish,
     plan_step,
+    script_blob,
     write_execution,
 )
 
@@ -81,6 +82,7 @@ def submit(
         exit_code=max(observed.exit_codes) if observed.exit_codes else None,
         evidence_paths=evidence_paths,
         observed=observed.to_json(),
+        script_blob=script_blob(plan.module),  # as on disk now; exec.script_drift compares
     )
     if any(code != 0 for code in observed.exit_codes):
         write_execution(rc, action, plan, info)

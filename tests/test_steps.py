@@ -549,3 +549,69 @@ def test_apptainer_ticket_names_the_evidence_command(tmp_path: Path) -> None:
         evidence_command("apptainer_inspect", tmp_path / "i.json", ex, "no-such-env")["command"]
         is None
     )
+
+
+# -- exec.script_drift (2026-09-09): the code that ran is the code present at run open ---------
+
+
+def test_operator_step_with_edited_script_is_rejected(rc: RunContext) -> None:
+    """The run opened clean; the script is edited after the ticket; submit hashes it and
+    exec.script_drift blocks. The executions row keeps the hash of what ran."""
+    from stringency import hashing
+
+    prop = propose(rc, "01_filter", {"min_value": 12})
+    spec = job_spec(prop, None, rc.executor)
+    script = prop.plan.module.entry_script
+    assert script is not None
+    at_open = rc.script_blobs["filter-rows@0.1.1"]
+    assert spec["script_blob"] == at_open == hashing.hash_file(script)
+    script.write_text(script.read_text() + "\n# edited after the ticket was issued\n")
+    outputs, log = play_agent(spec)
+    out = submit(rc, prop.ticket or "", outputs, [log])
+    assert out.status == StepStatus.REJECTED
+    assert out.gate is not None
+    fired = {r.spec.id: r for r in out.gate.blocked}
+    assert "exec.script_drift" in fired
+    ev = fired["exec.script_drift"].verdict.evidence
+    assert ev["at_open"] == at_open and ev["at_execution"] == hashing.hash_file(script)
+    assert ev["path"] == "modules/filter-rows/pre.py"
+    ex = rc.store.one("SELECT * FROM executions WHERE action_id=?", (prop.action.action_id,))
+    assert ex["script_blob"] == hashing.hash_file(script)
+
+
+def test_engine_step_with_edited_script_is_rejected(erc: RunContext) -> None:
+    script = erc.project.modules.require("filter-rows@0.1.1").entry_script
+    assert script is not None
+    script.write_text(script.read_text() + "\n# edited after run open\n")
+    prop = propose(erc, "01_filter")
+    out = execute_engine(erc, prop)
+    assert out.status == StepStatus.REJECTED, out.message
+    assert out.gate is not None and "exec.script_drift" in [r.spec.id for r in out.gate.blocked]
+
+
+def test_unedited_scripts_pass_and_dirty_run_measures_from_open(make_project: InitFn) -> None:
+    """Must-pass: a clean run records equal hashes. A run opened with --allow-dirty compares
+    against the tree at open, so the uncommitted edit it declared is not drift."""
+    from stringency import hashing
+
+    p = make_project(pipeline="toy-engine", execution="engine")
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+    script = p.modules.require("filter-rows@0.1.1").entry_script
+    assert script is not None
+    script.write_text(script.read_text() + "\n# uncommitted edit before open\n")
+    rc = open_or_resume(p, allow_dirty="testing an edit before committing it")
+    assert rc.git_dirty and rc.script_blobs["filter-rows@0.1.1"] == hashing.hash_file(script)
+    prop = propose(rc, "01_filter")
+    out = execute_engine(rc, prop)
+    assert out.status == StepStatus.COMPLETED, out.message
+    ex = rc.store.one("SELECT * FROM executions WHERE action_id=?", (prop.action.action_id,))
+    assert ex["script_blob"] == rc.script_blobs["filter-rows@0.1.1"]
+    # a resumed context reads the same blobs back from the captures event
+    rc2 = open_or_resume(p)
+    assert rc2.run_id == rc.run_id and rc2.script_blobs == rc.script_blobs
+    assert set(rc.script_blobs) == {
+        "filter-rows@0.1.1",
+        "summarize-groups@0.1.1",
+        "compare-groups@0.1.0",
+        "toy-report@0.1.1",
+    }  # label-groups is a judgment module with no script: nothing to hash, nothing to drift

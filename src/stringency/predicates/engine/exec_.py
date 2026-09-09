@@ -48,3 +48,29 @@ def plan_drift(ctx: GateContext) -> Verdict:
             {"drift": drift},
         )
     return Verdict(False)
+
+
+@predicate(
+    id="exec.script_drift",
+    version=1,
+    scope=["*"],
+    phase="post",
+    default=Disposition.BLOCK,
+)
+def script_drift(ctx: GateContext) -> Verdict:
+    """The module script that ran (hashed by the engine before running it, or at `submit` for an
+    operator step) is not the script present when the run opened. The run's SHA and dirty flag
+    describe the tree at open; an edit after that would otherwise run under the same SHA."""
+    if ctx.output is None:
+        return Verdict(False)
+    script = ctx.output.observed.get("script")
+    if not isinstance(script, dict) or not script.get("blob"):
+        return Verdict(False)
+    at_open = ctx.project.script_blobs.get(ctx.action.module)
+    if at_open is None or at_open == script["blob"]:
+        return Verdict(False)
+    return Verdict(
+        True,
+        "the module script differs from the one present when the run opened",
+        {"path": script.get("path"), "at_open": at_open, "at_execution": script["blob"]},
+    )

@@ -80,6 +80,7 @@ class ExecInfo:
     stderr_path: str | None = None
     evidence_paths: list[str] = field(default_factory=list)
     observed: dict[str, Any] = field(default_factory=dict)
+    script_blob: str | None = None  # hash of the entry script as it was when it ran
 
 
 @dataclass
@@ -341,6 +342,25 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
 JOB_FILE = "job.json"
 
 
+def script_blob(module: Module) -> str | None:
+    """blake3 of the module's entry script as it is on disk now, or None without a script.
+    Hashed at run open for every module (runs.py), before an engine run, and at `submit`."""
+    script = module.entry_script
+    if script is None or not script.exists():
+        return None
+    return hashing.hash_file(script)
+
+
+def script_relpath(rc: RunContext, module: Module) -> str | None:
+    script = module.entry_script
+    if script is None:
+        return None
+    try:
+        return str(script.relative_to(rc.project.method_root))
+    except ValueError:
+        return str(script)
+
+
 def job_log_path(plan: StepPlan) -> Path:
     """Where the ticket tells the operator to send the script's output: the declared
     `job_log` evidence path under the step directory, else `run.log` there."""
@@ -394,6 +414,7 @@ def execute_engine(rc: RunContext, proposal: Proposal) -> StepOutcome:
         raise ConfigError(f"module {plan.module.ref} has no entry script")
     transition(store, rc.run_id, action.step_id, StepStatus.RUNNING)
     plan.step_dir.mkdir(parents=True, exist_ok=True)
+    blob = script_blob(plan.module)  # hashed before it runs; exec.script_drift compares
     res = rc.executor.run(job_for(action, plan, script))
     info = ExecInfo(
         runner="engine",
@@ -403,6 +424,7 @@ def execute_engine(rc: RunContext, proposal: Proposal) -> StepOutcome:
         duration_ms=res.duration_ms,
         stdout_path=str(res.stdout_path),
         stderr_path=str(res.stderr_path),
+        script_blob=blob,
     )
     if res.exit_code != 0:
         write_execution(rc, action, plan, info)
@@ -444,6 +466,7 @@ def write_execution(rc: RunContext, action: Action, plan: StepPlan, info: ExecIn
             "expected_env_digest": expected,
             "env_status": info.env_status,
             "command": info.command,
+            "script_blob": info.script_blob,
             "exit_code": info.exit_code,
             "duration_ms": info.duration_ms,
             "stdout_path": info.stdout_path,
@@ -577,11 +600,14 @@ def finish(
         if spec.type == "prose":
             prose = produced[name].read_text()
     extra = dict(bundle_extra or {})
+    observed = dict(info.observed)
+    if info.script_blob:
+        observed["script"] = {"path": script_relpath(rc, plan.module), "blob": info.script_blob}
     bundle = OutputBundle(
         outputs=outputs,
         prose=prose,
         evidence_tables=extra.pop("evidence_tables", evidence_tables_for(plan)),
-        observed=info.observed,
+        observed=observed,
         env_status=info.env_status,
         schema_errors=schema_errors,
         **extra,

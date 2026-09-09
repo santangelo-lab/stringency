@@ -57,6 +57,13 @@ depth; `notes/2026-09-08-1542-phase-a-exit-bmeseq.md` for the run itself.
 Hold id in message (A2), init exit code (A3), step dir at ticket time (B1). Listed here so the
 backlog is complete in one place.
 
+## G. Found after the backlog
+
+| # | observed | change | proof | level |
+|---|---|---|---|---|
+| G1 | `repro.dirty_tree` checks the tree at run open only; a module script edited afterwards runs under the run's SHA with nothing in the trace, and for operator steps the engine never hashes what ran | capture every module script's hash at open, hash again before an engine run and at `submit`, store it in `executions.script_blob`, and block on a difference with `exec.script_drift` | must-fire and must-pass in `test_gate`; operator and engine edit cases and the `--allow-dirty` case in `test_steps` | decisions (6.5 gains a predicate, 9.4 a column); **done 2026-09-09** |
+| G2 | code the agent writes itself in a session (notebook cells, plotting scripts) is not captured anywhere; only its inability to produce a final artifact is enforced (`prov.orphan_artifact`) | either the rule alone (Commandment 5: no computation outside modules; new code becomes a module commit) or a capture verb that files a session script into the method repo or run directory with a sidecar before its output can be cross-linked | decide first | *design*; Jim's call |
+
 ## Order
 
 1. A1, A2, A3 together: one session, golden tests, `toy-cs` as fixture. Done 2026-09-08.

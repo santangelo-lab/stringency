@@ -124,6 +124,27 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         lambda p: make_ctx(p, "02_summarize"),
     ),
     (
+        "exec.script_drift",
+        lambda p: make_ctx(
+            p,
+            "01_filter",
+            phase="post",
+            output=_deterministic_bundle(
+                observed={"script": {"path": "modules/filter-rows/pre.py", "blob": "b" * 64}}
+            ),
+            script_blobs={"filter-rows@0.1.1": "a" * 64},
+        ),
+        lambda p: make_ctx(
+            p,
+            "01_filter",
+            phase="post",
+            output=_deterministic_bundle(
+                observed={"script": {"path": "modules/filter-rows/pre.py", "blob": "a" * 64}}
+            ),
+            script_blobs={"filter-rows@0.1.1": "a" * 64},
+        ),
+    ),
+    (
         "exec.plan_drift",
         lambda p: make_ctx(
             p,

@@ -43,6 +43,9 @@ class ProjectConfig:
     allow_dirty_reason: str | None = None
     input_digests_now: Mapping[str, str] = field(default_factory=dict)  # name -> hash at open
     env_digests: Mapping[str, str | None] = field(default_factory=dict)  # env name -> digest
+    script_blobs: Mapping[str, str] = field(
+        default_factory=dict
+    )  # module ref -> entry script hash at run open
     step_status: Mapping[str, str] = field(default_factory=dict)  # step id -> status
     plugin_modes: tuple[str, ...] = ("pipeline",)
     vocabularies: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
