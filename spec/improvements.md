@@ -64,6 +64,18 @@ backlog is complete in one place.
 | G1 | `repro.dirty_tree` checks the tree at run open only; a module script edited afterwards runs under the run's SHA with nothing in the trace, and for operator steps the engine never hashes what ran | capture every module script's hash at open, hash again before an engine run and at `submit`, store it in `executions.script_blob`, and block on a difference with `exec.script_drift` | must-fire and must-pass in `test_gate`; operator and engine edit cases and the `--allow-dirty` case in `test_steps` | decisions (6.5 gains a predicate, 9.4 a column); **done 2026-09-09** |
 | G2 | code the agent writes itself in a session (notebook cells, plotting scripts) is not captured anywhere; only its inability to produce a final artifact is enforced (`prov.orphan_artifact`) | either the rule alone (Commandment 5: no computation outside modules; new code becomes a module commit) or a capture verb that files a session script into the method repo or run directory with a sidecar before its output can be cross-linked | decide first | *design*; Jim's call |
 
+## H. From the design conversation of 2026-09-09
+
+See `spec/declarations-and-objectives.md`. Summary rows so the backlog is complete in one place.
+
+| # | change | proof | level |
+|---|---|---|---|
+| H1 | `declare --check <dir>`: every `init` check without creating a project; echo-back on success, exit 15 naming the failure | test on the toy declarations, good and each broken | decisions (14.1 additive) |
+| H2 | `init --drafted-by agent --brief <file>`: `stringency.yml` records who drafted, `brief.md` kept, its hash in the confirm hold context | M2 test | decisions (2.7 text) |
+| H3 | `inputs.yml` item `derived_from: {run_id, artifact_id}`, verified against the sidecar at `init`; captured at run open; named in the methods paragraph | two-project chain on the toy | decisions (2.3 optional field) |
+| H4 | `stringency-declare` skill | PROTSEQ exit run starts from a brief and a manifest | skill |
+| H5 | staged mode: objective list with stages, `run --objective`, fork at a stage boundary carries an objective, `obj.declared_after_result` | after app-1 as two chained projects shows where option 1 chafes | *design* |
+
 ## Order
 
 1. A1, A2, A3 together: one session, golden tests, `toy-cs` as fixture. Done 2026-09-08.
