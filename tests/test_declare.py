@@ -345,3 +345,4 @@ def test_plugins_list_json_exposes_what_the_declare_skill_needs() -> None:
     assert toy["design_schema"]["required"] == ["design", "units", "factors", "replication_unit"]
     assert "abundant" in toy["vocabulary_terms"]["group_labels@1"]
     assert toy["object_types"] == ["frame"]
+    assert toy["defaults"] == {"min_n_per_group": 2}

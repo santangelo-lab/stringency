@@ -12,6 +12,7 @@ import yaml
 
 from stringency.lint import lint_path
 from stringency_toy import METHOD_TEMPLATE
+from tests.conftest import MethodRepo
 
 Breaker = Callable[[Path], None]
 
@@ -276,3 +277,26 @@ def test_cli_lint_and_plugins_list(method_copy: Path) -> None:
     r = CliRunner().invoke(app, ["plugins", "list"])
     assert r.exit_code == 0
     assert "stringency-toy" in r.output and "toy.replication_unit" in r.output
+    assert "min_n_per_group=2" in r.output
+
+
+def test_cli_lint_accepts_method_spec_with_tag(method_repo: MethodRepo) -> None:
+    """I6: `lint <repo>@<tag>` clones the tag into a temporary directory, as `init` does."""
+    from typer.testing import CliRunner
+
+    from stringency.cli.app import app
+    from stringency.git import tag
+
+    r = CliRunner().invoke(app, ["lint", method_repo.spec])
+    assert r.exit_code == 0, r.output
+    assert "no policy.yml" not in r.output
+    # break the tree after the tag: the new tag fails, the old tag still lints clean
+    (method_repo.path / "modules/label-groups/controls/negative-shuffled-groups.yml").unlink()
+    method_repo.commit("drop the negative control")
+    tag(method_repo.path, "v0.1.1")
+    r = CliRunner().invoke(app, ["lint", f"{method_repo.path}@v0.1.1"])
+    assert r.exit_code == 15 and "lacks a negative control" in r.output
+    r = CliRunner().invoke(app, ["lint", method_repo.spec])
+    assert r.exit_code == 0, r.output
+    r = CliRunner().invoke(app, ["lint", f"{method_repo.path}@nope"])
+    assert r.exit_code == 15 and "could not clone" in (r.output + str(r.stderr))

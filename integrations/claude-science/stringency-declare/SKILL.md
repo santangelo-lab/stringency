@@ -21,9 +21,11 @@ mode B: on the registered compute host, prefixed the way the operator skill desc
 Run `stringency plugins list --json` once. For the plugin the person's method uses, read:
 `questions` (the only values `objective.question` may take), `object_types` (the only values an
 input `type` may take, plus `json`, `table`, `tsv`, `csv`, `text` for plain files),
-`design_schema` (which design fields are required and what shape they have), and
-`vocabulary_terms`. If the person's question fits no entry in `questions`, stop and say so: that
-is a plugin gap, not something to approximate.
+`design_schema` (which design fields are required and what shape they have), `vocabulary_terms`,
+and `defaults` (declaration values the plugin publishes, for example `min_n_per_group`; when the
+person gives no number, use the plugin's default and say so in the source table). If the person's
+question fits no entry in `questions`, stop and say so: that is a plugin gap, not something to
+approximate. Do not read the engine's source or tests to learn file shapes; section 3 has them.
 
 ## 1. Save the brief
 
@@ -37,7 +39,10 @@ If the person gave a sample manifest (one row per sample, columns for the variab
 list every column with the values it takes. Classify each column as a factor (biology the
 experiment varies), a technical variable (batch, slide, lane, date), an identifier (sample id,
 file name), or a measurement, and show the person the classification. Do not guess from column
-names alone; ask for confirmation of the classification before writing the design.
+names alone; ask for confirmation of the classification before writing the design. A manifest
+the person supplied becomes an input item in `inputs.yml` in its own right (plain type `csv` or
+`tsv`, hashed, `source` saying it is the sample manifest); no step consumes it, but the design was
+derived from it, so it belongs in the trace.
 
 If there is no manifest and the design is encoded in sample names, propose a parse (for example
 `treatment_rep1` into `treatment=treatment, replicate=1`), write the parsed table to
@@ -46,12 +51,50 @@ item in `inputs.yml` in its own right, so the mapping is in the trace.
 
 ## 3. Draft the three files under `<parent>/declarations/`
 
-`inputs.yml`: one item per file the person named. `name` is a short handle; `path` is absolute;
-`type` from the plugin's object types; `blake3` computed with `python3 -c "import blake3,sys;
+The three files have these shapes and no other keys (the engine refuses unknown keys in
+`inputs.yml`; `design.yml` and `objective.yml` accept plugin-specific extras only where the
+plugin's `design_schema` names them):
+
+    # inputs.yml
+    inputs: 1
+    items:
+      - name: <short handle the pipeline binds, e.g. groups>
+        path: /absolute/path
+        type: <one of the plugin's object_types, or json | table | tsv | csv | text>
+        blake3: <64 hex>
+        source: <what the person said the file is>
+        build: <reference build, only for reference files>          # optional
+        derived_from: {run_id, step_id, output, project}              # optional, see below
+
+    # design.yml
+    design: 1
+    units: {observation: <what a row is>, sample: <what a sample is>, ...}
+    factors:
+      <factor name>: {column: <column as spelled in the data>, levels: [<as they appear>]}
+    batch: [<technical columns>]
+    replication_unit: <one of the units>
+    holdout: [{type: <kind>, note: <text>}]                         # usually []
+    <plugin fields from design_schema, e.g. organism>
+
+    # objective.yml
+    objective: 1
+    id: <short slug from the person's words>
+    question: <one of the plugin's questions>
+    contrasts: [[<factor>, <level>, <level>], ...]                  # [] for a processing question
+    replication_unit: <equal to the design's>
+    min_n_per_group: <the person's number, else the plugin default>
+    deliverables: [<output names the pipeline produces>]
+    domain: {}
+
+`inputs.yml`: one item per file the person named, plus the manifest (section 2). `name` is the
+handle the pipeline's first step binds (read `pipelines/<name>.yml`: `inputs: {object:
+$inputs.groups}` means the handle is `groups`); `path` is absolute; `type` from the plugin's
+object types; `blake3` computed with `python3 -c "import blake3,sys;
 print(blake3.blake3(open(sys.argv[1],'rb').read()).hexdigest())" <path>` (the engine's venv has
 it); `source` is what the person said the file is. If a file is a delivered artifact of an
-earlier stringency run (a sidecar `<file>.stringency.json` sits beside it), add `derived_from:
-{run_id, step_id, output}` copied from that sidecar's `run_id`, `step_id`, `name`.
+earlier stringency run (a sidecar `<file>.stringency.json` sits beside it), add `derived_from`
+with `run_id`, `step_id`, and `output` copied from that sidecar's `run_id`, `step_id`, `name`,
+and `project` set to the upstream project's root directory (the parent of its `deliver/`).
 
 `design.yml`: `units` (observation and sample, from the manifest's row and grouping), `factors`
 (from the confirmed classification, `column` exactly as spelled in the data, `levels` exactly as
@@ -62,8 +105,10 @@ person named).
 `objective.yml`: `id` (a short slug from the person's words), `question` (from the plugin
 list), `contrasts` as `[factor, level, level]` triples using declared factors and levels only,
 `replication_unit` equal to the design's, `min_n_per_group` (the person's number; if none, the
-plugin default, and say so), `deliverables` (what the person asked to get out, as output names
-the pipeline produces; run `stringency lint <method>` or read the pipeline to find the names),
+plugin's published default, and say so), `deliverables` (what the person asked to get out, named
+exactly as the producing module declares them: read `modules/<module>/module.yml` `outputs:` for
+each step of the pipeline and enumerate the names; a `$steps.<id>.<name>` reference in the
+pipeline is a consumer, not the list of what exists, and a report step's outputs count too),
 `domain: {}` unless the plugin's documentation names domain fields the person supplied.
 
 Ambiguities to ask about rather than resolve: "compare A, B, and C" (pairwise or one omnibus

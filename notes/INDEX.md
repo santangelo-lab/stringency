@@ -3,23 +3,25 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-14)
+## Current state (2026-09-14, evening)
 
-- Phase A M0 through M11 green on `main`; improvements backlog through section H done except
-  A5 (on its trigger), E2's in-session route, G2 and H5 (design questions).
-- Phase A exit complete on both machines: BMESEQ `toy-cs` (2026-09-08, pre-backlog engine) and
-  PROTSEQ as two chained projects from agent-drafted declarations (2026-09-14, engine at
-  bf1639b): `toy-process` run `01M2GH5BY478331H517CV7BK1Z`, `toy-compare` run
-  `01M2GJRNPDFVVWJ4GW76M44Q9W`. Files in `integrations/claude-science/examples/protseq-chain/`.
-- PROTSEQ tooling under `~/mytools/stringency/` (engine install, checkouts) and `~/envs/toy-py.sif`;
-  machine texts in `integrations/claude-science/hosts/`. BMESEQ machine install still stale.
-- New backlog section I (skill gaps, `run` output, `lint` path@tag, render_brief flags).
-- Not done: `v0.1.0` tag, public repo, singlecell push, section I, review page (A5), G2, H5.
-- Next session should start with: `notes/2026-09-14-1445-protseq-exit-run.md`, then
-  `spec/improvements.md` section I and Order item 6.
+- Phase A exit complete on both machines (BMESEQ `toy-cs` 2026-09-08; PROTSEQ two chained projects
+  from agent-drafted declarations 2026-09-14). Backlog sections A to I done except A5 (review page,
+  now scheduled as Track 1e), E2's in-session route, G2 and H5 (design questions).
+- Roadmap approved 2026-09-14: `spec/roadmap-2026-09.md`. Track 0 (section I code and skill text)
+  done. Track 1 (two audiences: fewer plainer cards, relayed and web holds, analysis skills,
+  `summary.md`, shared PROTSEQ install) detailed in `spec/ux-two-audiences.md`; its five amendment
+  texts await the owner. Track 2 (bulk RNA-seq plugin and method) in `spec/bulkrna-plan.md`;
+  thirteen session-0 decisions await the owner. Track 3 (Lyons CLP Xenium, QC first) in
+  `spec/app1-spatial-qc-plan.md`.
+- Not done: `v0.1.0` tag, public repo, singlecell push, toy method remote, reinstall on both
+  machines (owner's items).
+- Next session should start with: `notes/2026-09-14-1600-track0-and-roadmap.md`, then
+  `spec/ux-two-audiences.md` sections 3.2 and 5.1 (Track 1 engine flags and skill text).
 
 ## Notes
 
+- `2026-09-14-1600-track0-and-roadmap.md` — surveys, the approved roadmap and its three track notes, section I code and skill text done.
 - `2026-09-14-1445-protseq-exit-run.md` — PROTSEQ tooling, both skills live, two chained projects from agent-drafted declarations; section I of the backlog.
 - `2026-09-09-1059-declare-and-chained-projects.md` — declare --check, drafted-by and brief, derived_from chained projects, the declare skill.
 - `2026-09-09-0847-script-drift.md` — script drift check; the two classes of analysis code and the open G2 question.

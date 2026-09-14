@@ -57,6 +57,9 @@ class Plugin:
     tools: Mapping[str, Tool]
     describe: Callable[[Action], str]
     echo: Callable[[Design, Objective, InputsManifest, Mapping[str, Any]], str]
+    # declaration defaults the plugin publishes (for example `min_n_per_group`), so a drafting
+    # skill can name a default instead of asking or borrowing one; `plugins list --json` shows them
+    defaults: Mapping[str, Any] = field(default_factory=dict)
 
     def predicates(self) -> list[str]:
         """Predicate ids registered by this plugin (after import)."""

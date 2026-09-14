@@ -14,7 +14,7 @@ from stringency_toy import phrasing
 from stringency_toy.schemas import DESIGN_SCHEMA, OPERATIONS
 
 NAME = "stringency-toy"
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 _HERE = Path(__file__).parent
 
 VOCABULARIES = {
@@ -37,6 +37,7 @@ PLUGIN = Plugin(
         "extract_frame": Tool("extract_frame", _HERE / "tools" / "extract_frame.py"),
         "shuffle_groups": Tool("shuffle_groups", _HERE / "tools" / "shuffle_groups.py"),
     },
+    defaults={"min_n_per_group": 2},
     describe=phrasing.describe,
     echo=phrasing.echo,
 )

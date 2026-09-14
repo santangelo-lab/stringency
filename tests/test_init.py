@@ -190,7 +190,7 @@ def test_editing_objective_reopens_confirm_hold(project: Project) -> None:
     second = reloaded.confirm_hold()
     assert second is not None and second["hold_id"] != first["hold_id"]
     assert reloaded.echo_path().read_text() != echo_before
-    assert "at least 3 unit per group" in reloaded.echo_path().read_text()
+    assert "at least 3 units per group" in reloaded.echo_path().read_text()
     n = reloaded.store.scalar("SELECT COUNT(*) FROM holds WHERE kind='confirm'")
     assert n == 2
 

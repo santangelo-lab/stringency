@@ -31,6 +31,7 @@ def list_(as_json: bool = typer.Option(False, "--json")) -> None:
                 "vocabularies": sorted(p.vocabularies),
                 "vocabulary_terms": {k: list(v) for k, v in p.vocabularies.items()},
                 "design_schema": p.design_schema,
+                "defaults": dict(p.defaults),
                 "tools": sorted(p.tools),
                 "predicates": preds,
             }
@@ -42,6 +43,7 @@ def list_(as_json: bool = typer.Option(False, "--json")) -> None:
             f"  object types: {', '.join(sorted(p.object_types))}\n"
             f"  questions: {', '.join(p.objective_questions)}\n"
             f"  vocabularies: {', '.join(sorted(p.vocabularies))}\n"
+            f"  defaults: {', '.join(f'{k}={v}' for k, v in sorted(p.defaults.items())) or 'none'}\n"
             f"  tools: {', '.join(sorted(p.tools))}\n"
             f"  predicates: {', '.join(preds) or 'none'}"
         )

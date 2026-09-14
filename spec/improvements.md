@@ -85,16 +85,16 @@ after completion (exit 16). Everything below is skill, brief, or presentation.
 
 | # | change | proof | level |
 |---|---|---|---|
-| I1 | the declare skill carries the shapes of the three declaration files (fields, types, which are required) so the agent does not read engine source to learn them | the agent spent about ten commands on `src/` and `tests/` before drafting | skill |
-| I2 | the skill says what a supplied manifest becomes: an input item of plain type `csv`, hashed, consumed by nothing | the agent asked | skill |
-| I3 | `plugins list --json` publishes the engine default for `min_n_per_group` (0) so the skill can name a default instead of asking twice | asked in both projects | decisions (additive) |
-| I4 | the skill says deliverable names come from the pipeline's step outputs as declared in `module.yml`, enumerated, not from `$steps.*` references | `consensus` chosen for "the group labels" where `group_labels` exists | skill |
-| I5 | the skill writes `derived_from.project` (the upstream project root) when it copies a sidecar | captured as `null` | skill |
-| I6 | `lint` accepts `<path>@<tag>` like `init` does, or refuses it clearly | passing the spec string produced "no policy.yml" | code |
-| I7 | `render_brief.py` for an unbound project takes `--image` (or reads the manifest at the method path) so Phase 0 checks the image, and a `--declare` variant renders Phase 1 as the declare-skill hand-over instead of `init` from files | both patched by hand for this run (`hosts/protseq-*.md`) | code |
-| I8 | `run` prints the engine-run steps it completed before issuing a ticket | the operator misreported `01_filter` as "satisfied from `derived_from`, not re-executed" | code, presentation |
+| I1 | the declare skill carries the shapes of the three declaration files (fields, types, which are required) so the agent does not read engine source to learn them | the agent spent about ten commands on `src/` and `tests/` before drafting | skill; **done 2026-09-14** (shapes in section 3 of the skill) ||
+| I2 | the skill says what a supplied manifest becomes: an input item of plain type `csv`, hashed, consumed by nothing | the agent asked | skill; **done 2026-09-14** ||
+| I3 | `plugins list --json` publishes the engine default for `min_n_per_group` (0) so the skill can name a default instead of asking twice | asked in both projects | decisions (additive); **done 2026-09-14**: `Plugin.defaults`, shown by `plugins list` and `--json`; toy publishes `min_n_per_group: 2` ||
+| I4 | the skill says deliverable names come from the pipeline's step outputs as declared in `module.yml`, enumerated, not from `$steps.*` references | `consensus` chosen for "the group labels" where `group_labels` exists | skill; **done 2026-09-14** ||
+| I5 | the skill writes `derived_from.project` (the upstream project root) when it copies a sidecar | captured as `null` | skill; **done 2026-09-14** ||
+| I6 | `lint` accepts `<path>@<tag>` like `init` does, or refuses it clearly | passing the spec string produced "no policy.yml" | code; **done 2026-09-14** ||
+| I7 | `render_brief.py` for an unbound project takes `--image` (or reads the manifest at the method path) so Phase 0 checks the image, and a `--declare` variant renders Phase 1 as the declare-skill hand-over instead of `init` from files | both patched by hand for this run (`hosts/protseq-*.md`) | code; **done 2026-09-14** (`--image`, repeatable; `--declare`) ||
+| I8 | `run` prints the engine-run steps it completed before issuing a ticket | the operator misreported `01_filter` as "satisfied from `derived_from`, not re-executed" | code, presentation; **done 2026-09-14** (`completed_steps` in `run --json`, one line in the human output) ||
 | I9 | operator skill and brief: `submit` and the next `run` are separate commands; one heredoc per file | `run` fired after completion (refused, 16); three heredocs joined with `;` wrote nothing | skill; **skill text done 2026-09-14** |
-| I10 | echo-back grammar: "at least 2 units per group" | "with at least 2 unit per group" | code, presentation |
+| I10 | echo-back grammar: "at least 2 units per group" | "with at least 2 unit per group" | code, presentation; **done 2026-09-14** ||
 | I11 | B4 recount: 12 approval-gated calls for `toy-process` (one step), 26 for `toy-engine` (five steps, one dispatch) against 25 for `toy` on BMESEQ | agent counts | measurement, no change |
 
 ## Order
@@ -104,4 +104,4 @@ after completion (exit 16). Everything below is skill, brief, or presentation.
 3. C3 and D1: toy method edits plus tests; bump the toy module versions. Done 2026-09-08 (modules and pipelines 0.1.1 in the plugin template and in `~/github/stringency-toy-method`, tagged v0.1.1).
 4. E1, D2 design text; E2 skill; E3 docs. Done 2026-09-08 (E2 partly: see its row).
 5. A4 when A1 exists (done 2026-09-08). A5 on its trigger.
-6. PROTSEQ exit run on the updated engine: done 2026-09-14. Then section I (I1 to I5 and I9 in the skills; I6 to I8 and I10 in code), `v0.1.0`, Phase B.
+6. PROTSEQ exit run on the updated engine: done 2026-09-14. Section I done 2026-09-14 (I11 is a measurement). Then `v0.1.0`, and the roadmap in `spec/roadmap-2026-09.md`: UX (two audiences), the bulk RNA-seq plugin, spatial QC.

@@ -19,8 +19,9 @@ def contrast_sentence(objective: Objective) -> str:
         return f"the question is {objective.question} with no contrast declared"
     s = f"the question is {objective.question}: " + "; ".join(parts)
     if objective.min_n_per_group:
-        unit = objective.replication_unit or "replicates"
-        s += f", with at least {objective.min_n_per_group} {unit} per group"
+        n = objective.min_n_per_group
+        unit = objective.replication_unit or "replicate"
+        s += f", with at least {n} {unit}{'' if n == 1 else 's'} per group"
     return s
 
 

@@ -13,7 +13,7 @@ Inputs: groups (frame).
 Units: the observation is row; the sample is unit.
 Factor group (column group) has levels A, B, C.
 The biological replicate is unit.
-The question is compare_groups: a versus b on group, with at least 2 unit per group.
+The question is compare_groups: a versus b on group, with at least 2 units per group.
 Deliverables: comparison_table, group_labels.
 
 Bound to:

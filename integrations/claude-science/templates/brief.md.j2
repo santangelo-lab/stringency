@@ -43,7 +43,25 @@ signal you act on.
 {% endfor %}       "true", intent="stringency probe: engine, image, container start")
 
 Report the output and wait.
-{% if not bound %}
+{% if not bound and declare %}
+## Phase 1: draft the declarations, then init, then stop
+
+There are no hand-written declaration files. Load the `stringency-declare` skill and follow it,
+running its commands through `sx` on `{{ provider }}`. My brief is the section "Brief" at the end
+of this message; the data files and the sample manifest are named there.
+
+Method `{{ method }}`, pipeline `{{ pipeline }}`, parent directory `{{ parent }}`, project
+directory `{{ project }}`; profile `{{ profile }}`, judgment harness `{{ harness }}`, executor
+`{{ executor }}`.
+
+Save my brief verbatim as `{{ parent }}/brief.md` (the skill's step 1) and write the three files
+under `{{ parent }}/declarations/`. Every value needs a source in the manifest, the brief, or the
+plugin's published defaults; ask me rather than pick when two readings are possible. Run
+`declare --check`, show me the echo-back and the table of fields with sources, and wait for my
+yes before `init`. `init` runs with `--drafted-by agent --brief {{ parent }}/brief.md` and ends
+with a confirm hold. Print its id and stop. I accept it at my own terminal.
+
+{% elif not bound %}
 ## Phase 1: init, then stop
 
     sx("cd {{ parent }} && stringency init {{ name }} "
@@ -86,3 +104,8 @@ Download `coverage.md`, `methods.md`, and `index.json` from `deliver/<run_id>/` 
 artifacts. Then report: how many approval cards the run needed, whether delegates were used and
 whether each saw only its request, what model identity each reported, your frame id, and where
 the saved artifacts live.
+{% if declare %}
+## Brief
+
+<your brief, in your own words: the data files, what a row is, the replicate, the comparison or the processing wanted, what to deliver>
+{% endif %}

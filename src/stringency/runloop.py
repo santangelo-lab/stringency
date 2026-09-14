@@ -223,6 +223,12 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
     """Loop on `next` until it returns something other than a runnable step (design 7.1)."""
     collected: set[str] = set()
     dispatched_now: set[str] = set()
+    completed_now: list[str] = []  # steps this invocation ran to completion (I8)
+
+    def _done(nx: Next) -> Next:
+        nx.detail["completed_steps"] = list(completed_now)
+        return nx
+
     while True:
         nx = next_step(rc)
         if (
@@ -234,7 +240,9 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
             collected.add(nx.step_id or "")
             ddir = rc.project.step_dir(rc.run_id, nx.step_id or "") / "dispatch"
             if any(ddir.glob("resp_*.json")) or _mock_dispatch(rc):
-                resume_dispatching(rc, nx.step_id or "")
+                res = resume_dispatching(rc, nx.step_id or "")
+                if res.status == StepStatus.COMPLETED:
+                    completed_now.append(res.step_id)
                 continue
         if nx.kind != "runnable":
             if nx.kind == "completed":
@@ -244,21 +252,21 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
                     write_summary(rc)
             elif nx.kind in ("blocked", "rejected", "failed"):
                 rc.refresh_status()
-            return nx
+            return _done(nx)
         sid = nx.step_id
         assert sid is not None
         if until is not None and rc.project.pipeline.order().index(
             sid
         ) > rc.project.pipeline.order().index(until):
-            return Next("completed", None, {"until": until}, 0, f"stopped after {until}")
+            return _done(Next("completed", None, {"until": until}, 0, f"stopped after {until}"))
         st = StepStatus(rc.step_status()[sid])
         if st == StepStatus.PENDING:
             proposal = propose(rc, sid, rc.delta_for(sid) or None)
         elif st == StepStatus.ADMISSIBLE:
             proposal = resume_after_hold(rc, sid)
         else:
-            return Next(
-                str(st), sid, {}, int(Exit.INTERNAL), f"step {sid} is {st}; cannot continue"
+            return _done(
+                Next(str(st), sid, {}, int(Exit.INTERNAL), f"step {sid} is {st}; cannot continue")
             )
         if proposal.status in (StepStatus.BLOCKED, StepStatus.HELD, StepStatus.AWAITING_EXECUTION):
             continue  # next_step reports it
@@ -266,9 +274,11 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
         if out.status == StepStatus.DISPATCHING:
             dispatched_now.add(sid)  # this `run` stops here with exit 20; the next one collects
             continue
+        if out.status == StepStatus.COMPLETED:
+            completed_now.append(sid)
         if until is not None and sid == until:
             rc.refresh_status()
-            return Next("completed", sid, {"until": until}, 0, f"stopped after {until}")
+            return _done(Next("completed", sid, {"until": until}, 0, f"stopped after {until}"))
 
 
 def resume_dispatching(rc: RunContext, step_id: str) -> StepOutcome:

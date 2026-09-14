@@ -1069,7 +1069,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
-| `lint` | `<path>` | static checks | none | none |
+| `lint` | `<path>` or `<repo-or-url>@<tag>` | static checks on a module directory or a method repo; a tagged spec is cloned into a temporary directory first | none | none |
 | `controls run` | `[--module <name>]` | real gates on a single module | writes controls_runs | metrics and regression diff |
 | `policy show` | `[--profile]` | prints resolved dispositions | none | none |
 | `plugins list` | | | | |

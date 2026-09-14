@@ -57,6 +57,14 @@ def test_all_engine_pipeline_completes_through_direct_mock(make_project: InitFn)
     assert r.exit_code == 0, r.output
     out = json.loads(r.output)
     assert out["kind"] == "completed" and out["run_status"] == "completed"
+    # I8: the invocation names every step it ran to completion, in order
+    assert out["completed_steps"] == [
+        "01_filter",
+        "02_summarize",
+        "03_label",
+        "04_compare",
+        "05_report",
+    ]
     assert (p.root / "runs" / out["run_id"] / "summary.md").exists()
     steps = p.store.all("SELECT status FROM steps WHERE run_id=?", (out["run_id"],))
     assert all(s["status"] == "completed" for s in steps) and len(steps) == 5

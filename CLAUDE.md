@@ -7,7 +7,9 @@ Read `spec/stringency-design.md` first; it is the spec. Then `spec/stringency-bu
 says what to build in what order. `spec/commandments.md` is the source of the constraints.
 `spec/improvements.md` is the backlog of changes the exit runs showed are needed before Phase B;
 `spec/review-ux.md`, `spec/declarations-and-objectives.md` (agent-drafted declarations, chained
-projects, staged mode), and `integrations/claude-science/README.md` are working notes, not the spec.
+projects, staged mode), `spec/roadmap-2026-09.md` (the approved plan after the Phase A exit, with
+`spec/ux-two-audiences.md`, `spec/bulkrna-plan.md`, `spec/app1-spatial-qc-plan.md` per track), and
+`integrations/claude-science/README.md` are working notes, not the spec.
 
 ## Rules
 
