@@ -52,9 +52,10 @@ depend on `defaults`).
 
 ## Open
 
-1. Owner: tag `v0.1.0` and push it, make the repo public, push `stringency-singlecell`, give
-   `stringency-toy-method` a remote; commit the 51 uncommitted files in `ROSC_MTA2`; reinstall the
-   engine from the tag on BMESEQ (stale) and PROTSEQ.
+1. Done 2026-09-14 evening: `v0.1.0` tagged and pushed, engine repo public, `stringency-singlecell`
+   pushed (private), `stringency-toy-method` pushed with its three tags, engine 0.1.0 installed from
+   the tag on BMESEQ (`/usr/local/lib/stringency`) and PROTSEQ (`~/mytools/stringency/engine`).
+   Still the owner's: commit the 51 uncommitted files in `ROSC_MTA2`.
 2. Owner: read `spec/ux-two-audiences.md` section 8 and approve or amend the five texts; answer
    the thirteen session-0 decisions in `spec/bulkrna-plan.md` section 8 and the five in
    `spec/app1-spatial-qc-plan.md` section 4.

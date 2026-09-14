@@ -14,8 +14,8 @@ it is the first thing a new session reads.
   texts await the owner. Track 2 (bulk RNA-seq plugin and method) in `spec/bulkrna-plan.md`;
   thirteen session-0 decisions await the owner. Track 3 (Lyons CLP Xenium, QC first) in
   `spec/app1-spatial-qc-plan.md`.
-- Not done: `v0.1.0` tag, public repo, singlecell push, toy method remote, reinstall on both
-  machines (owner's items).
+- `v0.1.0` tagged and pushed 2026-09-14; engine repo public; singlecell and toy method repos
+  pushed; engine 0.1.0 installed from the tag on both machines.
 - Next session should start with: `notes/2026-09-14-1600-track0-and-roadmap.md`, then
   `spec/ux-two-audiences.md` sections 3.2 and 5.1 (Track 1 engine flags and skill text).
 
