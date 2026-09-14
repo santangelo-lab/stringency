@@ -1,4 +1,4 @@
-"""Agent-drafted declarations and chained projects (spec/declarations-and-objectives.md, H1 to
+"""Agent-drafted declarations and chained projects (spec/plans/declarations-and-objectives.md, H1 to
 H3): `declare --check`, `init --drafted-by --brief`, and `derived_from` on an input item."""
 
 from __future__ import annotations

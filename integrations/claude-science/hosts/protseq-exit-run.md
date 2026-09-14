@@ -1,7 +1,7 @@
 # PROTSEQ exit run through Claude Science: the walkthrough
 
 The second half of the Phase A exit (build plan, "Phase A exit"), on PROTSEQ, with the two
-additions from `spec/declarations-and-objectives.md` step 3: the agent drafts the declarations
+additions from `spec/plans/declarations-and-objectives.md` step 3: the agent drafts the declarations
 from your brief and a sample manifest, and the work is two chained projects so `derived_from` is
 exercised. Everything the session touches is on PROTSEQ; the session itself runs in the Claude
 Science app on your MacBook with `protseq` as an SSH compute provider, exactly as `bmeseq` was on
@@ -152,7 +152,7 @@ From the design note, step 3, plus the exit checks the build plan asks for:
    exits 15 naming the control.
 
 Send the agents' reports and the four `deliver/` files back to the engine session on BMESEQ, and
-that session writes the note, updates `spec/improvements.md` (H4 tested), and moves on to the
+that session writes the note, updates `spec/archive/improvements.md` (H4 tested), and moves on to the
 `v0.1.0` tag.
 
 ## If something goes wrong

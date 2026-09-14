@@ -1,5 +1,7 @@
 # Improvements backlog: iterate on the toy before Phase B
 
+> Archived 2026-09-14: the backlog from the two exit runs, sections A to I, closed. The four open rows (A5, E2, G2, H5) moved to `spec/plans/backlog.md`.
+
 What the Phase A exit run on 2026-09-08 showed should change before the engine meets a real
 pipeline. Each item says what was observed, what to change, how the toy tests prove it, and
 whether it touches a contract. Nothing here reshapes a frozen contract; items marked *design*
@@ -7,14 +9,14 @@ change design text and need Jim's approval; the rest are DECISIONS-level.
 
 Work through this list on the toy pipeline, with the `toy-cs` trace at
 `/data-raid/Projects/Jim/stringency-exit/toy-cs/prov/run.db` as a fixture where noted, before
-starting the single-cell plugin. Cross-reference: `spec/review-ux.md` for the review surface in
+starting the single-cell plugin. Cross-reference: `spec/archive/review-ux.md` for the review surface in
 depth; `notes/2026-09-08-1542-phase-a-exit-bmeseq.md` for the run itself.
 
 ## A. Review surface (highest value)
 
 | # | observed | change | proof | level |
 |---|---|---|---|---|
-| A1 | `review` prints the hold header and predicate JSON; design 7.3 promises the evidence the model saw, each replicate's call with cited cells, and the table slice | render the 7.3 display per hold kind (`spec/review-ux.md`, layer 1) | golden test per hold kind using the `toy-cs` flag hold; the `unanimous`, `split`, `one_abstain` mock fixtures for the item kinds | decisions; **done 2026-09-08** (`review_render.py`, goldens in `tests/golden/review_*.txt`, `context_contradicting.yml` replays the toy-cs judges) |
+| A1 | `review` prints the hold header and predicate JSON; design 7.3 promises the evidence the model saw, each replicate's call with cited cells, and the table slice | render the 7.3 display per hold kind (`spec/archive/review-ux.md`, layer 1) | golden test per hold kind using the `toy-cs` flag hold; the `unanimous`, `split`, `one_abstain` mock fixtures for the item kinds | decisions; **done 2026-09-08** (`review_render.py`, goldens in `tests/golden/review_*.txt`, `context_contradicting.yml` replays the toy-cs judges) |
 | A2 | `run`'s hold message names step and reviewer but not the hold id (14.2 says the message names the hold) | include the hold id | assert on the message in the M7 hold test | decisions; **done 2026-09-08** (message names the hold and `review --hold <id>`, which shows one hold) |
 | A3 | `init` exits 0 with an open confirm hold; `run` on the same hold exits 10 | `init` exits 10 when it leaves a hold open | M2 acceptance test | decisions; **done 2026-09-08** |
 | A4 | no way to read a hold without a terminal | review packet on disk per hold, HTML and Markdown (`review-ux.md` layer 2) | packet exists after a hold opens; content equals the A1 render | decisions; **done 2026-09-08** (`runs/<run>/<step>/review/<hold_id>.{md,html}`; named in the hold message) |
@@ -66,7 +68,7 @@ backlog is complete in one place.
 
 ## H. From the design conversation of 2026-09-09
 
-See `spec/declarations-and-objectives.md`. Summary rows so the backlog is complete in one place.
+See `spec/plans/declarations-and-objectives.md`. Summary rows so the backlog is complete in one place.
 
 | # | change | proof | level |
 |---|---|---|---|
@@ -104,4 +106,4 @@ after completion (exit 16). Everything below is skill, brief, or presentation.
 3. C3 and D1: toy method edits plus tests; bump the toy module versions. Done 2026-09-08 (modules and pipelines 0.1.1 in the plugin template and in `~/github/stringency-toy-method`, tagged v0.1.1).
 4. E1, D2 design text; E2 skill; E3 docs. Done 2026-09-08 (E2 partly: see its row).
 5. A4 when A1 exists (done 2026-09-08). A5 on its trigger.
-6. PROTSEQ exit run on the updated engine: done 2026-09-14. Section I done 2026-09-14 (I11 is a measurement). Then `v0.1.0`, and the roadmap in `spec/roadmap-2026-09.md`: UX (two audiences), the bulk RNA-seq plugin, spatial QC.
+6. PROTSEQ exit run on the updated engine: done 2026-09-14. Section I done 2026-09-14 (I11 is a measurement). Then `v0.1.0`, and the roadmap in `spec/plans/roadmap-2026-09.md`: UX (two audiences), the bulk RNA-seq plugin, spatial QC.

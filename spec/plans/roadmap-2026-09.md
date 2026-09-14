@@ -1,14 +1,14 @@
 # stringency: roadmap after the Phase A exit (2026-09-14)
 
-Working note, not the spec. Approved by the owner on 2026-09-14. Detail per track: `spec/ux-two-audiences.md`
-(Track 1), `spec/bulkrna-plan.md` (Track 2), `spec/app1-spatial-qc-plan.md` (Track 3). Track 0 was done the
+Working note, not the spec. Approved by the owner on 2026-09-14. Detail per track: `spec/plans/ux-two-audiences.md`
+(Track 1), `spec/plans/bulkrna-plan.md` (Track 2), `spec/plans/app1-spatial-qc-plan.md` (Track 3). Track 0 was done the
 same day; see `notes/2026-09-14-1600-track0-and-roadmap.md`.
 
 ## Context
 
 Phase A is complete on both machines (2026-09-14). Three things now pull on the project at once:
 
-1. **The backlog** (`spec/improvements.md` section I, plus `v0.1.0`, public repo, singlecell push).
+1. **The backlog** (`spec/archive/improvements.md` section I, plus `v0.1.0`, public repo, singlecell push).
 2. **Usability.** The owner's judgment: "much of the json sent by the AI operator is unintelligible to
    the human running it, so all these approval-gated calls will turn people off"; holds need a
    non-terminal approval route; the machinery should sit behind per-analysis skills
@@ -54,7 +54,7 @@ dispatch), not from the gates. Two holds needed a person; the other 24 were mech
 
 ### 1a. Design note and amendments [need owner approval]
 
-New working note `spec/ux-two-audiences.md` (like `review-ux.md`). Amendment texts for:
+New working note `spec/plans/ux-two-audiences.md` (like `spec/archive/review-ux.md`). Amendment texts for:
 
 | section | change |
 |---|---|
@@ -132,7 +132,7 @@ one Claude Science instance per person (identity per AD user, so roles and `via`
 engine change); `hosts/protseq-lab.md`, `onboarding.md`, `publish-skills.md`. Method manifests
 name the shared image path; BMESEQ gets the same path by symlink.
 
-### 1g. Measurements (before/after, into `spec/improvements.md` section J)
+### 1g. Measurements (before/after, into `spec/plans/backlog.md` (measurements))
 
 Cards per project, person turns to result, time to first delivered file, count of unrequested
 commands/JSON/ids shown, holds and `via`, operator misreports vs trace. Two session tests on
@@ -215,7 +215,7 @@ PROTSEQ Nextflow install + `nfcore-rnaseq` module; 12 Project B run and A' chain
 
 ## Track 3: spatial (Lyons CLP), QC first
 
-The app-1 plan (`spec/app1-spatial-tma-plan.md`) predates both the dataset and `ROSC_MTA2`; its
+The app-1 plan (`spec/archive/app1-spatial-tma-plan.md`) predates both the dataset and `ROSC_MTA2`; its
 inventory (section 2) is now answerable and its sessions 1 to 3 are reframed around wrapping
 existing steps rather than inventing them.
 

@@ -1,5 +1,7 @@
 # Application 1: spatial TMA pipeline, working plan
 
+> Archived 2026-09-14: written before the Lyons CLP data and the ROSC_MTA2 pipeline existed. Its inventory questions and sessions 4 to 14 still inform the work; its opening is revised in `spec/plans/app1-spatial-qc-plan.md`.
+
 How we turn the engine into something that runs your TMA analysis. Claude Code builds the engine from `stringency-build-plan.md`; you and I fill in `stringency-singlecell` and the method repo through the sessions below. Each session produces a spec file that Claude Code implements against the frozen contracts, so the two tracks interleave rather than serialize.
 
 Section numbers in parentheses refer to `stringency-design.md`.

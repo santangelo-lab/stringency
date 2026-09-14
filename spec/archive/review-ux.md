@@ -1,5 +1,7 @@
 # Review: what the reviewer sees, and how a verdict gets in
 
+> Archived 2026-09-14: layers 1 and 2 were built on 2026-09-08; layer 3 (the review page) is carried forward in `spec/plans/ux-two-audiences.md` section 5.2.
+
 Working notes for the review surface, written during the Phase A exit run on 2026-09-08. Not
 part of the design; a proposal for the change to design 7.3 and 7.5 and for the build order.
 Layers 1 and 2 were built on 2026-09-08 (`src/stringency/review_render.py`, goldens under

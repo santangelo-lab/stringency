@@ -1,6 +1,6 @@
 # Two audiences: the analyst and the operator
 
-Working note, not the spec. Roadmap Track 1 (`spec/roadmap-2026-09.md`). Proposes changes to design
+Working note, not the spec. Roadmap Track 1 (`spec/plans/roadmap-2026-09.md`). Proposes changes to design
 7.5, 10.4, 12.1, 14.1, and 17; the amendment texts are in section 8 and need the owner's approval
 before build. Everything else here is DECISIONS-level or skill text.
 
@@ -91,7 +91,7 @@ intent names the project by directory name and the step by title, never a verb, 
 2. Standing grants: does the card for `call_command` offer an "always allow" scope (provider,
    prefix, session); if so, grant `stringency` commands and re-count.
 
-Record both in `integrations/claude-science/README.md` and `spec/improvements.md` section J.
+Record both in `integrations/claude-science/README.md` and `spec/plans/backlog.md` (measurements).
 
 ### 3.5 Card estimate, all-engine five-step pipeline with one dispatch
 
@@ -292,7 +292,7 @@ skill template and the toy instance; 5. `summary.md` and the review page after a
 parallel; 6. PROTSEQ shared deployment and onboarding; 7. the toy re-run through the analysis
 skill by someone other than the owner.
 
-Measure on the toy before and after each step, one row per run in `spec/improvements.md` section J:
+Measure on the toy before and after each step, one row per run in `spec/plans/backlog.md` (measurements):
 approval cards; the person's turns from first message to delivered result; wall-clock to first
 delivered file; unrequested commands, JSON, exit codes, or ids shown (target zero); holds and how
 each was resolved; operator misreports against the trace (target zero). Baseline: 26 cards,

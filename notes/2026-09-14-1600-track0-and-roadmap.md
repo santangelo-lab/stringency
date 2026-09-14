@@ -30,6 +30,16 @@ PROTSEQ (bulk RNA-seq and Lyons CLP Xenium).
   `derived_from.project`. Design 14.1 `lint` row; five DECISIONS lines; section I rows marked done;
   Order item 6 points at the roadmap.
 
+- `spec/` reorganised at the owner's request: the spec and frozen contracts and the two ledgers
+  stay at the top; live plans in `spec/plans/` (roadmap, the three track notes,
+  declarations-and-objectives, a new `backlog.md` with the four open rows and the measurement
+  table); finished or superseded plans in `spec/archive/` (build plan, app-1 TMA plan, review-ux,
+  improvements, the original design) each with a banner saying why and where its successor is;
+  `spec/original/` removed (two identical copies, one renamed). `spec/README.md` maps the directory.
+  References rewritten in CLAUDE.md, README, the design's reading-order line and app-1 pointer,
+  DECISIONS, the plan notes, INDEX, and one test docstring; older session notes keep their
+  historical paths.
+
 ## Learned
 
 - The 26 approval cards of the toy come from the loop's shape, not from the gates: two were

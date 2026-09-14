@@ -1,7 +1,7 @@
 # Application 1, revised: Lyons CLP Xenium, QC first
 
-Working note, not the spec. Roadmap Track 3 (`spec/roadmap-2026-09.md`). Revises the opening of
-`spec/app1-spatial-tma-plan.md`, which predates both the dataset and the mature pipeline; its
+Working note, not the spec. Roadmap Track 3 (`spec/plans/roadmap-2026-09.md`). Revises the opening of
+`spec/archive/app1-spatial-tma-plan.md`, which predates both the dataset and the mature pipeline; its
 sessions 1 to 3 become wrapping work, and its inventory (section 2) is now answerable. The owner's
 direction, 2026-09-14: start with a QC tool; punch coordinates stay a manual step; XenSplitter is
 still required; there is no IF image for this dataset, so module 7 is not needed.
@@ -47,13 +47,13 @@ parameterised module per step.
 
 ## 3. The plan
 
-**S0, inventory note** (`notes/<date>-app1-inventory.md`): answer `app1-spatial-tma-plan.md`
+**S0, inventory note** (`notes/<date>-app1-inventory.md`): answer `spec/archive/app1-spatial-tma-plan.md`
 section 2 from the survey and the owner: platform and format (above), what processing exists
 (vendor `analysis/` only), experimental structure (slide, tissue, punch, animal, condition; the
 punch layout per region from the coordinates), the biological replicate (owner to confirm),
 controls, existing code (section 2), environments (`setup/envs/` locks to become images), storage
 (PROTSEQ, 137 TB free). Record where `/data/lab/env` and the shared image directory meet
-(`spec/ux-two-audiences.md` section 7).
+(`spec/plans/ux-two-audiences.md` section 7).
 
 **S1, splitter determinism** (in `jrose835/Xen_TMA_pipeline`): make barcode order independent of
 `PYTHONHASHSEED` per the handoff note; add a test that two runs produce byte-identical outputs;
@@ -68,7 +68,7 @@ annotation in Xenium Explorer`, extractor emits the punch ids and their region);
 `split_punches`, `qc_cells`; question `processed_object` added to the three declared; design
 schema per the app-1 session 1 questions (units observation cell, sample punch, animal; factors
 tissue, condition; batch slide; replication unit to be confirmed). Extractors stdlib or pyarrow
-inside the Python image (E6 in `spec/bulkrna-plan.md` applies).
+inside the Python image (E6 in `spec/plans/bulkrna-plan.md` applies).
 
 **S3, method repo `stringency-spatial-method`**: module `split-punches` (wraps the fixed splitter;
 inputs bundle and coordinates; params `min_transcripts 10`, `min_area 50`, `qv_threshold 25` with
@@ -80,7 +80,7 @@ all engine-run; predicates `sc.low_cell_count` (flag), `sc.qc_fail_fraction` (fl
 band), `spatial.coords_missing` (block) with fixtures; one Python image pinned from
 `lock_rosc_downstream.yml` (scanpy 1.11.5, squidpy 1.8.1, anndata 0.12.0, pyarrow). Deliverable:
 QC'd per-punch objects with sidecars, so clustering and annotation projects chain through
-`derived_from` (option 1 of `spec/declarations-and-objectives.md`).
+`derived_from` (option 1 of `spec/plans/declarations-and-objectives.md`).
 
 **S4, first runs**: `xenium-qc` on one Lyons CLP region from Claude Science through the operator
 skill, then all eight; retrospective note. What it teaches feeds the remaining app-1 sessions:

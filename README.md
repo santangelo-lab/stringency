@@ -8,16 +8,18 @@ plugins registered under the `stringency.plugins` entry point group. `plugins/st
 reference plugin and the one the test suite uses; `stringency-singlecell` (separate repository) is
 the plugin for application 1.
 
-The spec is `spec/stringency-design.md`. The build order is `spec/stringency-build-plan.md`. The
+The spec is `spec/stringency-design.md`; `spec/README.md` maps the rest of that directory. The
 motivation is `spec/commandments.md`. Choices made where the design is silent are in
-`spec/DECISIONS.md`; contract deviations, if any, in `spec/DEVIATIONS.md`.
+`spec/DECISIONS.md`; contract deviations, if any, in `spec/DEVIATIONS.md`. Current plans are in
+`spec/plans/`, starting with `roadmap-2026-09.md`.
 
 ## Status
 
-Phase A milestones M0 through M11 are implemented with their acceptance tests. The Phase A exit
-run has been completed on BMESEQ from a Claude Science session (2026-09-08); the PROTSEQ run and
-the `v0.1.0` tag remain. `spec/improvements.md` lists what that run showed should change before
-Phase B, and `integrations/claude-science/` holds the operator skill and install notes.
+Phase A is complete: milestones M0 through M11 with their acceptance tests, the exit run on BMESEQ
+(2026-09-08) and on PROTSEQ as two chained projects from agent-drafted declarations (2026-09-14),
+tagged `v0.1.0`. The backlog those runs produced is closed (`spec/archive/improvements.md`); the
+open items are in `spec/plans/backlog.md`. `integrations/claude-science/` holds the operator and
+declare skills, the brief renderer, host notes, and two worked examples.
 
 ## Quickstart
 

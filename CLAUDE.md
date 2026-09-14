@@ -3,13 +3,13 @@
 Start every session by reading `notes/INDEX.md` and the most recent note it lists; end every
 session by writing a note there (convention in `notes/README.md`) and updating the index.
 
-Read `spec/stringency-design.md` first; it is the spec. Then `spec/stringency-build-plan.md`, which
-says what to build in what order. `spec/commandments.md` is the source of the constraints.
-`spec/improvements.md` is the backlog of changes the exit runs showed are needed before Phase B;
-`spec/review-ux.md`, `spec/declarations-and-objectives.md` (agent-drafted declarations, chained
-projects, staged mode), `spec/roadmap-2026-09.md` (the approved plan after the Phase A exit, with
-`spec/ux-two-audiences.md`, `spec/bulkrna-plan.md`, `spec/app1-spatial-qc-plan.md` per track), and
-`integrations/claude-science/README.md` are working notes, not the spec.
+Read `spec/stringency-design.md` first; it is the spec. `spec/README.md` says what every file under
+`spec/` is. The frozen contracts are `spec/module-contract.md`, `spec/predicate-contract.md`, and
+`spec/trace-schema.md`; `spec/commandments.md` is the source of the constraints; `spec/DECISIONS.md`
+and `spec/DEVIATIONS.md` are the ledgers. Current plans live in `spec/plans/` (start with
+`roadmap-2026-09.md`; `backlog.md` holds the open items); finished or superseded plans are in
+`spec/archive/` and are history, not instructions. `integrations/claude-science/README.md` is a
+working note.
 
 ## Rules
 

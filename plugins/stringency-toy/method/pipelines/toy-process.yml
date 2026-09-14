@@ -1,5 +1,5 @@
 # Processing only: filter the frame and deliver it. A downstream project binds the delivered
-# object through `derived_from` (chained projects, spec/declarations-and-objectives.md option 1).
+# object through `derived_from` (chained projects, spec/plans/declarations-and-objectives.md option 1).
 pipeline: 1
 name: toy-process
 version: 0.1.0

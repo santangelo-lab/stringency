@@ -1,6 +1,6 @@
 # Bulk RNA-seq: plugin and method plan
 
-Working note, not the spec. Roadmap Track 2 (`spec/roadmap-2026-09.md`). Two new repositories:
+Working note, not the spec. Roadmap Track 2 (`spec/plans/roadmap-2026-09.md`). Two new repositories:
 `stringency-bulkrna` (the plugin) and `stringency-bulkrna-method` (the method). Decided by the
 owner on 2026-09-14: counts first, alignment second; this is the first real plugin; it must be
 runnable by a non-computational lab member through an analysis skill.
@@ -148,7 +148,7 @@ with limma, edgeR, fgsea, jsonlite, data.table, ggplot2, ggrepel, pheatmap, matr
 and `python3` for the extractors; `renv.lock` generated inside the image for the local executor
 digest. Build route decided in session 0: `sudo apptainer build` on PROTSEQ, or a Dockerfile built
 by GitHub Actions to GHCR and pulled by digest (no root on either workstation). Path: the shared
-image directory of `spec/ux-two-audiences.md` section 7 once it exists; until then `~/envs/` as the
+image directory of `spec/plans/ux-two-audiences.md` section 7 once it exists; until then `~/envs/` as the
 toy does. Project B adds a pinned Nextflow image to satisfy `repro.env_unpinned`.
 
 Fixtures: `controls/fixtures/make_synthetic.py` (stdlib, fixed seed) generates 2 tissues x 3

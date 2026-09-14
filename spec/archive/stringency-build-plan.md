@@ -1,5 +1,7 @@
 # stringency: Phase A build plan
 
+> Archived 2026-09-14: the Phase A build plan, completed (M0 to M11 and the exit run on both machines). History, not instructions. The current plan is `spec/plans/roadmap-2026-09.md`.
+
 For Claude Code. Read `stringency-design.md` first; it is the spec. This document says what to build, in what order, and how to know each piece is done. Section references in parentheses point into the design document.
 
 Phase A builds the engine and a toy domain plugin, with no biology. The exit criterion is a two-module toy pipeline that runs on both workstations through the CLI, with a trace sufficient to reconstruct it, a gate that cannot be skipped, a computed coverage report, a correct methods paragraph, and a linter that rejects a judgment module without a negative control.

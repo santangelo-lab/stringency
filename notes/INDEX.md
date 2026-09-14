@@ -8,16 +8,18 @@ it is the first thing a new session reads.
 - Phase A exit complete on both machines (BMESEQ `toy-cs` 2026-09-08; PROTSEQ two chained projects
   from agent-drafted declarations 2026-09-14). Backlog sections A to I done except A5 (review page,
   now scheduled as Track 1e), E2's in-session route, G2 and H5 (design questions).
-- Roadmap approved 2026-09-14: `spec/roadmap-2026-09.md`. Track 0 (section I code and skill text)
+- Roadmap approved 2026-09-14: `spec/plans/roadmap-2026-09.md`. Track 0 (section I code and skill text)
   done. Track 1 (two audiences: fewer plainer cards, relayed and web holds, analysis skills,
-  `summary.md`, shared PROTSEQ install) detailed in `spec/ux-two-audiences.md`; its five amendment
-  texts await the owner. Track 2 (bulk RNA-seq plugin and method) in `spec/bulkrna-plan.md`;
+  `summary.md`, shared PROTSEQ install) detailed in `spec/plans/ux-two-audiences.md`; its five amendment
+  texts await the owner. Track 2 (bulk RNA-seq plugin and method) in `spec/plans/bulkrna-plan.md`;
   thirteen session-0 decisions await the owner. Track 3 (Lyons CLP Xenium, QC first) in
-  `spec/app1-spatial-qc-plan.md`.
+  `spec/plans/app1-spatial-qc-plan.md`.
 - `v0.1.0` tagged and pushed 2026-09-14; engine repo public; singlecell and toy method repos
   pushed; engine 0.1.0 installed from the tag on both machines.
+- `spec/` reorganised 2026-09-14: spec and contracts at the top, `spec/plans/` live, `spec/archive/`
+  history; `spec/README.md` maps it.
 - Next session should start with: `notes/2026-09-14-1600-track0-and-roadmap.md`, then
-  `spec/ux-two-audiences.md` sections 3.2 and 5.1 (Track 1 engine flags and skill text).
+  `spec/plans/ux-two-audiences.md` sections 3.2 and 5.1 (Track 1 engine flags and skill text).
 
 ## Notes
 

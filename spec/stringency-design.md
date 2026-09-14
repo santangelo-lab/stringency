@@ -8,7 +8,7 @@ This document specifies every component of the `stringency` engine to the level 
 
 It defers: open and staged modes (schema reservations only), application 2, the openai-compatible harness, the re-audit path, and a Nextflow executor. Section 17 lists each with the trigger that would pull it forward.
 
-Reading order for Claude Code: this document, then `stringency-build-plan.md`. The implementation plan is background. The Commandments and the git note are the source of the constraints and should be read once.
+Reading order for Claude Code: this document, then the current plan in `plans/roadmap-2026-09.md` (the Phase A build plan is in `archive/`). The implementation plan is background. The Commandments and the git note are the source of the constraints and should be read once.
 
 ## 1. Objects
 
@@ -1180,4 +1180,4 @@ Everything in the eval column is either a control, a rate computed from the trac
 
 ## 19. Questions the app-1 sessions must answer
 
-Listed in `app1-spatial-tma-plan.md`. The ones that shape the engine rather than the plugin: whether `all_items` batching needs an item cap for large cluster counts (session 7); whether the confidence criteria should count distinct evidence columns or distinct rows (session 6); whether the niche vocabulary can be closed or needs a `proposed_label` escape hatch that always holds (session 6); whether Claude Science subagents can be tool-restricted to a single file, and whether they report their model identity (session 13; answered on the toy 2026-09-08: no, isolation is instructional and recorded `as_reported`; yes, they report model, harness, and tools); and whether Claude Science exposes a session reference and a readable artifact store on disk (sessions 13 and 14; on the toy: a frame id serves as the session reference, artifacts live in the app's own store, and the deliver directory on the workstation is the durable copy).
+Listed in `archive/app1-spatial-tma-plan.md` and revised in `plans/app1-spatial-qc-plan.md`. The ones that shape the engine rather than the plugin: whether `all_items` batching needs an item cap for large cluster counts (session 7); whether the confidence criteria should count distinct evidence columns or distinct rows (session 6); whether the niche vocabulary can be closed or needs a `proposed_label` escape hatch that always holds (session 6); whether Claude Science subagents can be tool-restricted to a single file, and whether they report their model identity (session 13; answered on the toy 2026-09-08: no, isolation is instructional and recorded `as_reported`; yes, they report model, harness, and tools); and whether Claude Science exposes a session reference and a readable artifact store on disk (sessions 13 and 14; on the toy: a frame id serves as the session reference, artifacts live in the app's own store, and the deliver directory on the workstation is the durable copy).

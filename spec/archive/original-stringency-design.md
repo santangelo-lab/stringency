@@ -1,5 +1,7 @@
 # stringency: component design
 
+> Archived 2026-09-14: the design as first written on 2026-09-03, before the build. `spec/stringency-design.md` is the current spec; `diff` these two to see what the build changed. The original build plan and app-1 plan were identical to the archived current copies and are not kept twice.
+
 Version 0.1, 3 September 2026. Companion to the implementation plan (September 2026), the admissibility design note, the Commandments, the git-practice note, and the eval-controls note. Where this document and the implementation plan disagree, this document is the spec; section 18 lists every such point.
 
 ## 0. Scope and reading order
