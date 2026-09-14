@@ -59,7 +59,7 @@ if [ -z "$label" ]; then
 fi
 if [ $toy -eq 1 ]; then
   if [ -d "$source" ]; then plugins+=("$source/plugins/stringency-toy")
-  else plugins+=("${source%%@*}#subdirectory=plugins/stringency-toy${source##*@}") ; fi
+  else plugins+=("${source%%@*}@${source##*@}#subdirectory=plugins/stringency-toy") ; fi
 fi
 
 venv=$prefix/versions/$label
