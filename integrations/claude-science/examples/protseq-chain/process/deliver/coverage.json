@@ -1,0 +1,48 @@
+{
+  "controls": [],
+  "execution": {
+    "as_reported": [],
+    "engine_run": 0,
+    "env_verified": 1,
+    "operator_run": 1,
+    "plan_drift": 0
+  },
+  "gate": {
+    "evaluated": 15,
+    "fired": {
+      "block": 0,
+      "flag": 0,
+      "log": 0
+    },
+    "flags": [],
+    "in_scope": 15,
+    "registered": 34,
+    "uncovered_decision_points": [],
+    "ungated_steps": []
+  },
+  "judgment": [],
+  "method_dirty": false,
+  "method_sha": "b5b0e27c1f88dac5b0e712384623c82b429b47e5",
+  "mode": "pipeline",
+  "pipeline": "toy-process@0.1.0",
+  "policy_digest": "8f946ad4a256b1b6f3a617ee9a1af46b002ca0c51734d3c6f44776d3169f9a44",
+  "policy_version": "0.1.0",
+  "profile": "standard",
+  "project_id": "01M2GH14YB2K4G2X5ABR1WQRQY",
+  "reproducibility": {
+    "env_digest": "46c71e1a21bf1f3edcb05fe3e4fba6f904d7be93a2e34d78c8e92faaa6655d92",
+    "invocations": null,
+    "seeded": 0,
+    "stochastic_steps": 0
+  },
+  "run_id": "01M2GH5BY478331H517CV7BK1Z",
+  "steps": {
+    "blocked": 0,
+    "completed": 1,
+    "declared": 1,
+    "failed": 0,
+    "held": 0,
+    "rejected": 0
+  },
+  "stringency_version": "0.1.0.dev0"
+}

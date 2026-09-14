@@ -1,0 +1,14 @@
+inputs: 1
+items:
+  - name: groups
+    path: /data/lab/projects/2026-09_stringency-exit_jrrose5/data/groups.csv
+    type: frame
+    blake3: 0ec1e2d905fe497a60fb307d378b3e12bfdc4994b6be234b82874aa3b46b3fd1
+    source: >-
+      a small table of toy measurements; each row is one measurement: a row id, the group the
+      measurement came from (A, B, or C), the unit it was measured on, and a value
+  - name: samples
+    path: /data/lab/projects/2026-09_stringency-exit_jrrose5/data/samples.csv
+    type: csv
+    blake3: 868a2a7b97c5d6032f34a5838de130b320d1ed5d67e9915c82a28c66c2e658c5
+    source: lists every unit and its group

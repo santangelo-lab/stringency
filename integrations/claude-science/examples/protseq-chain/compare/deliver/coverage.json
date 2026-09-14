@@ -1,0 +1,77 @@
+{
+  "controls": [],
+  "execution": {
+    "as_reported": [],
+    "engine_run": 3,
+    "env_verified": 2,
+    "operator_run": 2,
+    "plan_drift": 0
+  },
+  "gate": {
+    "evaluated": 23,
+    "fired": {
+      "block": 0,
+      "flag": 0,
+      "log": 0
+    },
+    "flags": [],
+    "in_scope": 23,
+    "registered": 34,
+    "uncovered_decision_points": [],
+    "ungated_steps": []
+  },
+  "judgment": [
+    {
+      "accepted": 0,
+      "agreed": 3,
+      "cumulative_items": 3,
+      "cumulative_overrides": 0,
+      "items": 3,
+      "module": "label-groups@0.1.1",
+      "override": 0,
+      "replicates": 3,
+      "run_disagreement": 0,
+      "self_uncertain": 0,
+      "step": "03_label",
+      "unresolved": 0
+    }
+  ],
+  "method_dirty": false,
+  "method_sha": "b5b0e27c1f88dac5b0e712384623c82b429b47e5",
+  "mode": "pipeline",
+  "pipeline": "toy-engine@0.1.1",
+  "policy_digest": "8f946ad4a256b1b6f3a617ee9a1af46b002ca0c51734d3c6f44776d3169f9a44",
+  "policy_version": "0.1.0",
+  "profile": "standard",
+  "project_id": "01M2GJN5Q8PX0C14MSC6TQVACD",
+  "reproducibility": {
+    "env_digest": "46c71e1a21bf1f3edcb05fe3e4fba6f904d7be93a2e34d78c8e92faaa6655d92",
+    "invocations": {
+      "count": 3,
+      "harness": [
+        "subagent"
+      ],
+      "isolation": [
+        "as_reported"
+      ],
+      "models": [
+        "claude-opus-5"
+      ],
+      "via": [
+        "subagent"
+      ]
+    },
+    "seeded": 0,
+    "stochastic_steps": 0
+  },
+  "run_id": "01M2GJRNPDFVVWJ4GW76M44Q9W",
+  "steps": {
+    "blocked": 0,
+    "completed": 5,
+    "declared": 5,
+    "failed": 0,
+    "held": 0,
+    "rejected": 0
+  },
+  "stringency_version": "0.1.0.dev0"
+}

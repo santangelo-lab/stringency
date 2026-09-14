@@ -50,7 +50,7 @@ depth; `notes/2026-09-08-1542-phase-a-exit-bmeseq.md` for the run itself.
 |---|---|---|---|---|
 | E1 | a Claude Science sandbox on the workstation cannot start containers; runs go through an SSH compute host | design 10.4 text says so; the skill's mode B is the default for apptainer projects | text; integration README already records it | *design* (10.4 text); **done 2026-09-08** (10.4 text) |
 | E2 | `STRINGENCY_OPERATOR_VERSION` recorded as `unknown` because the agent had no sanctioned way to learn the app version | the skill names a route (the app exposes its version to the session; find and cite it) | next exit run records a version | skill only; **partly done 2026-09-08**: the skill names the brief's `PRE` line (`render_brief.py --app-version`) as the route and forbids guessing; an in-session route from the app itself was not found from here and stays open until the next exit run |
-| E3 | machine-wide install matters only for mode A; remote mode works from a per-user install | `scripts/install.sh --prefix ~/.local/lib/stringency` documented as the no-sudo route for compute hosts | run it on PROTSEQ | docs; **documented 2026-09-08**; running it on PROTSEQ is part of the PROTSEQ exit |
+| E3 | machine-wide install matters only for mode A; remote mode works from a per-user install | `scripts/install.sh --prefix ~/.local/lib/stringency` documented as the no-sudo route for compute hosts | run it on PROTSEQ | docs; **documented 2026-09-08, done on PROTSEQ 2026-09-14** (`--prefix ~/mytools/stringency/engine`) |
 
 ## F. Small fixes already listed elsewhere
 
@@ -73,8 +73,29 @@ See `spec/declarations-and-objectives.md`. Summary rows so the backlog is comple
 | H1 | `declare --check <dir>`: every `init` check without creating a project; echo-back on success, exit 15 naming the failure | test on the toy declarations, good and each broken | decisions (14.1 additive); **done 2026-09-09** |
 | H2 | `init --drafted-by agent --brief <file>`: `stringency.yml` records who drafted, `brief.md` kept, its hash in the confirm hold context | M2 test | decisions (2.7 text); **done 2026-09-09** |
 | H3 | `inputs.yml` item `derived_from: {run_id, artifact_id}`, verified against the sidecar at `init`; captured at run open; named in the methods paragraph | two-project chain on the toy | decisions (2.3 optional field); **done 2026-09-09** (keys are `run_id, step_id, output`, what the sidecar carries) |
-| H4 | `stringency-declare` skill | PROTSEQ exit run starts from a brief and a manifest | skill; **written 2026-09-09**, untested against a live session until PROTSEQ |
+| H4 | `stringency-declare` skill | PROTSEQ exit run starts from a brief and a manifest | skill; **written 2026-09-09, tested 2026-09-14** on PROTSEQ as two chained projects (`examples/protseq-chain/`); gaps in section I |
 | H5 | staged mode: objective list with stages, `run --objective`, fork at a stage boundary carries an objective, `obj.declared_after_result` | after app-1 as two chained projects shows where option 1 chafes | *design* |
+
+## I. From the PROTSEQ chained exit run of 2026-09-14
+
+Reports and files in `integrations/claude-science/examples/protseq-chain/`. The engine did what
+the design says at every point, including refusing a pipeline that does not answer the drafted
+question (`init.question_unsupported`, exit 15, before anything was created) and refusing `run`
+after completion (exit 16). Everything below is skill, brief, or presentation.
+
+| # | change | proof | level |
+|---|---|---|---|
+| I1 | the declare skill carries the shapes of the three declaration files (fields, types, which are required) so the agent does not read engine source to learn them | the agent spent about ten commands on `src/` and `tests/` before drafting | skill |
+| I2 | the skill says what a supplied manifest becomes: an input item of plain type `csv`, hashed, consumed by nothing | the agent asked | skill |
+| I3 | `plugins list --json` publishes the engine default for `min_n_per_group` (0) so the skill can name a default instead of asking twice | asked in both projects | decisions (additive) |
+| I4 | the skill says deliverable names come from the pipeline's step outputs as declared in `module.yml`, enumerated, not from `$steps.*` references | `consensus` chosen for "the group labels" where `group_labels` exists | skill |
+| I5 | the skill writes `derived_from.project` (the upstream project root) when it copies a sidecar | captured as `null` | skill |
+| I6 | `lint` accepts `<path>@<tag>` like `init` does, or refuses it clearly | passing the spec string produced "no policy.yml" | code |
+| I7 | `render_brief.py` for an unbound project takes `--image` (or reads the manifest at the method path) so Phase 0 checks the image, and a `--declare` variant renders Phase 1 as the declare-skill hand-over instead of `init` from files | both patched by hand for this run (`hosts/protseq-*.md`) | code |
+| I8 | `run` prints the engine-run steps it completed before issuing a ticket | the operator misreported `01_filter` as "satisfied from `derived_from`, not re-executed" | code, presentation |
+| I9 | operator skill and brief: `submit` and the next `run` are separate commands; one heredoc per file | `run` fired after completion (refused, 16); three heredocs joined with `;` wrote nothing | skill; **skill text done 2026-09-14** |
+| I10 | echo-back grammar: "at least 2 units per group" | "with at least 2 unit per group" | code, presentation |
+| I11 | B4 recount: 12 approval-gated calls for `toy-process` (one step), 26 for `toy-engine` (five steps, one dispatch) against 25 for `toy` on BMESEQ | agent counts | measurement, no change |
 
 ## Order
 
@@ -83,4 +104,4 @@ See `spec/declarations-and-objectives.md`. Summary rows so the backlog is comple
 3. C3 and D1: toy method edits plus tests; bump the toy module versions. Done 2026-09-08 (modules and pipelines 0.1.1 in the plugin template and in `~/github/stringency-toy-method`, tagged v0.1.1).
 4. E1, D2 design text; E2 skill; E3 docs. Done 2026-09-08 (E2 partly: see its row).
 5. A4 when A1 exists (done 2026-09-08). A5 on its trigger.
-6. Then PROTSEQ exit run on the updated engine, `v0.1.0`, Phase B.
+6. PROTSEQ exit run on the updated engine: done 2026-09-14. Then section I (I1 to I5 and I9 in the skills; I6 to I8 and I10 in code), `v0.1.0`, Phase B.

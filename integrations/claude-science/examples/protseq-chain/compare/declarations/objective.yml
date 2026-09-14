@@ -1,0 +1,9 @@
+objective: 1
+id: compare_a_vs_b
+question: compare_groups
+contrasts:
+  - [group, A, B]
+replication_unit: unit
+min_n_per_group: 2
+deliverables: [comparison_table, group_labels]
+domain: {}

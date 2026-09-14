@@ -1,0 +1,11 @@
+{
+  "action_id": "01M2GK56RSSBXF1ZR8VYRZFRK9",
+  "blake3": "cfea0c42f24bfd7c578f8597f4163e412a57988f29285b378aae6e2db1cc4262",
+  "engine_version": "0.1.0.dev0",
+  "kind": "json",
+  "name": "group_labels",
+  "run_id": "01M2GJRNPDFVVWJ4GW76M44Q9W",
+  "size": 106,
+  "step_id": "05_report",
+  "stringency": 1
+}

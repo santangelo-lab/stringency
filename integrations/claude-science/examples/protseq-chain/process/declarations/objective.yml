@@ -1,0 +1,8 @@
+objective: 1
+id: process_toy_measurements
+question: process_rows
+contrasts: []
+replication_unit: unit
+min_n_per_group: 0
+deliverables: [object]
+domain: {}

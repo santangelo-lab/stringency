@@ -1,0 +1,1 @@
+Analysis was run with stringency 0.1.0.dev0 using the toy-process pipeline v0.1.0 (commit b5b0e27) under the standard profile and policy 0.1.0. Rows with value below 10 were removed (step 01_filter). Fifteen admissibility predicates were evaluated with no blocks. Run 01M2GH5BY478331H517CV7BK1Z; environment digest 46c71e1a21bf1f3edcb05fe3e4fba6f904d7be93a2e34d78c8e92faaa6655d92.

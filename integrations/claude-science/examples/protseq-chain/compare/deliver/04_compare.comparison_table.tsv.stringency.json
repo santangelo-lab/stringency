@@ -1,0 +1,11 @@
+{
+  "action_id": "01M2GK56DDRE7X6YG2VSZK73T6",
+  "blake3": "585228fdfb0618b390d31d7e50c109e088a92e18df56085deee48c5635fb39f3",
+  "engine_version": "0.1.0.dev0",
+  "kind": "table",
+  "name": "comparison_table",
+  "run_id": "01M2GJRNPDFVVWJ4GW76M44Q9W",
+  "size": 186,
+  "step_id": "04_compare",
+  "stringency": 1
+}

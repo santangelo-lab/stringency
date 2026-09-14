@@ -1,0 +1,27 @@
+{
+  "coverage": {
+    "blake3": "07ee95d90c97e18740723df0e19c6b24e42b66b7e3cfeba52485d3f5730e1c0f",
+    "file": "coverage.md"
+  },
+  "delivered": "2026-09-14T17:59:44Z",
+  "engine_version": "0.1.0.dev0",
+  "files": [
+    {
+      "action_id": "01M2GH5BZG3XTAKQJ2YXS4J49A",
+      "artifact_id": "01M2GH65EQENNNK81YHR11P25Z",
+      "blake3": "2493583d8095ef4d2ed73663489ff200f8eefca4dfa3aedf24cc8b44299c8b0d",
+      "file": "01_filter.object.csv",
+      "kind": "frame",
+      "output": "object",
+      "sidecar": "01_filter.object.csv.stringency.json",
+      "step_id": "01_filter"
+    }
+  ],
+  "methods": {
+    "blake3": "0ed540bce1b479d1f7e881e4908aec8fabe7d82181763c62429ee6f7c167d9b0",
+    "file": "methods.md"
+  },
+  "project_id": "01M2GH14YB2K4G2X5ABR1WQRQY",
+  "run_id": "01M2GH5BY478331H517CV7BK1Z",
+  "stringency": 1
+}

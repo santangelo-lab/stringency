@@ -1,0 +1,11 @@
+design: 1
+units:
+  observation: row
+  sample: unit
+factors:
+  group:
+    column: group
+    levels: [A, B, C]
+batch: []
+replication_unit: unit
+holdout: []

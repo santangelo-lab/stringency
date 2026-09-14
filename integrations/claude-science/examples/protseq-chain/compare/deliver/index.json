@@ -1,0 +1,47 @@
+{
+  "coverage": {
+    "blake3": "762ab6bd14f3a607847547ff24d42b981da29dc2efdc2cbc632d0d4bd75d2365",
+    "file": "coverage.md"
+  },
+  "delivered": "2026-09-14T18:34:36Z",
+  "engine_version": "0.1.0.dev0",
+  "files": [
+    {
+      "action_id": "01M2GK56DDRE7X6YG2VSZK73T6",
+      "artifact_id": "01M2GK56RKBZH2JK5H2MYSD82K",
+      "blake3": "585228fdfb0618b390d31d7e50c109e088a92e18df56085deee48c5635fb39f3",
+      "file": "04_compare.comparison_table.tsv",
+      "kind": "table",
+      "output": "comparison_table",
+      "sidecar": "04_compare.comparison_table.tsv.stringency.json",
+      "step_id": "04_compare"
+    },
+    {
+      "action_id": "01M2GK56RSSBXF1ZR8VYRZFRK9",
+      "artifact_id": "01M2GK5NPA8A5322H3AEGMMA66",
+      "blake3": "cfea0c42f24bfd7c578f8597f4163e412a57988f29285b378aae6e2db1cc4262",
+      "file": "05_report.group_labels.json",
+      "kind": "json",
+      "output": "group_labels",
+      "sidecar": "05_report.group_labels.json.stringency.json",
+      "step_id": "05_report"
+    },
+    {
+      "action_id": "01M2GK56RSSBXF1ZR8VYRZFRK9",
+      "artifact_id": "01M2GK5NP8CT5SZCN81F62XP0K",
+      "blake3": "8a27dc09d9910d4910c315f18e5f56dbe8dd2b7acdb9200a1f3e74adf7af13df",
+      "file": "05_report.report.md",
+      "kind": "prose",
+      "output": "report",
+      "sidecar": "05_report.report.md.stringency.json",
+      "step_id": "05_report"
+    }
+  ],
+  "methods": {
+    "blake3": "efb1067e0e6ec62f5159457eb8a524cd3d2d7c6e245c5ba36559f606e82376ff",
+    "file": "methods.md"
+  },
+  "project_id": "01M2GJN5Q8PX0C14MSC6TQVACD",
+  "run_id": "01M2GJRNPDFVVWJ4GW76M44Q9W",
+  "stringency": 1
+}

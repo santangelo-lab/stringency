@@ -60,8 +60,12 @@ repository (or copy the file into a granted directory), then in a `repl` cell:
     host.skills.edit("stringency-operator", "SKILL.md", content)
     host.skills.publish("stringency-operator")
 
-Every unrestricted agent profile then sees it through skill discovery, and a session that
-mentions stringency loads it. Re-publish with `overwrite=True` after changing the file.
+Or from a compute host, without a grant: `t = c.download("<host path>/SKILL.md")` returns a
+transfer dict, and `open(t["local_path"]).read()` is the content. Every unrestricted agent profile
+then sees the skill through discovery, and a session that mentions stringency loads it. To
+replace a published skill, `host.skills.edit` needs the current body as `old_string` (it creates
+a file only when none exists), then `publish(name, overwrite=True)`. The same steps publish
+`stringency-declare`. Both were published this way on 2026-09-14.
 
 ## Rendering the brief and context
 

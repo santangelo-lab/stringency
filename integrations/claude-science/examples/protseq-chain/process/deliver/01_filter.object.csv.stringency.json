@@ -1,0 +1,11 @@
+{
+  "action_id": "01M2GH5BZG3XTAKQJ2YXS4J49A",
+  "blake3": "2493583d8095ef4d2ed73663489ff200f8eefca4dfa3aedf24cc8b44299c8b0d",
+  "engine_version": "0.1.0.dev0",
+  "kind": "frame",
+  "name": "object",
+  "run_id": "01M2GH5BY478331H517CV7BK1Z",
+  "size": 640,
+  "step_id": "01_filter",
+  "stringency": 1
+}

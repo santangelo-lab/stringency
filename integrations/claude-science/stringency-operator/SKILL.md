@@ -29,9 +29,13 @@ there through the compute connection from a `repl` cell:
                        intent="stringency run", login_shell=True)
     r.exit_code, r.stdout, r.stderr
 
-Files the loop writes on the host (`job.json`, dispatch responses) go through `call_command` with
-a quoted heredoc; files it reads come back with `c.download(<abs path>)`. This is the mode for any
-project whose executor is `apptainer`, which is the production default.
+The engine path above is the machine-wide default; when the session brief's `PRE` line names
+another path (a per-user install such as `~/mytools/stringency/engine/current/bin`), the brief
+wins. Files the loop writes on the host (`job.json`, dispatch responses) go through `call_command`
+with a quoted heredoc, one command per file; files it reads come back with `c.download(<abs path>)`,
+which returns a transfer dict whose `local_path` is the copy. Run `submit` and the next `run` as
+separate commands, so the completion line is read before `run` is called again. This is the mode
+for any project whose executor is `apptainer`, which is the production default.
 
 In mode A, run this in bash first. It prints the path in use or tells you to stop.
 
