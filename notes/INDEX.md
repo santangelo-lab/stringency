@@ -21,12 +21,14 @@ it is the first thing a new session reads.
 - Approvals collected 2026-09-15: the five Track 1a amendments applied to the design; Track 2
   session-0 decisions answered (DESeq2 replaces limma-voom; all pairwise within tissue; GHCR image;
   reviewer = the person running) except the DESeq2 parameter list; Track 3 decisions answered
-  except the Lyons CLP design, which waits on the owner's experimental plan document.
+  including the Lyons CLP design (animal replicate, n = 2 per time point, no sham, no contrasts
+  in the QC project); Track 3 S0 inventory done: `notes/2026-09-15-1300-app1-inventory.md`.
 - Next session should start with: `notes/2026-09-15-1130-approvals-walkthrough.md`, then
   `spec/plans/ux-two-audiences.md` sections 3.2 and 5.1 (Track 1 engine flags and skill text).
 
 ## Notes
 
+- `2026-09-15-1300-app1-inventory.md` — Track 3 S0: Lyons CLP inventory from the collaborator's plan and TMA maps; slide-to-TMA mapping; layout table filed in the project directory.
 - `2026-09-15-1130-approvals-walkthrough.md` — Track 1a amendments approved and applied; Track 2 and Track 3 decisions answered and recorded; DESeq2, Proseg mix, GHCR images.
 - `2026-09-14-1600-track0-and-roadmap.md` — surveys, the approved roadmap and its three track notes, section I code and skill text done.
 - `2026-09-14-1445-protseq-exit-run.md` — PROTSEQ tooling, both skills live, two chained projects from agent-drafted declarations; section I of the backlog.

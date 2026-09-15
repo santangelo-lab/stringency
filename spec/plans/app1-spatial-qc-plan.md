@@ -13,7 +13,8 @@ Analysis 6.1.0 region bundles, two slides (`0076570`, `0076581`) by four tissues
 Spleen), FFPE, cassette TMA2, panel `mAtlas_v1` plus the custom add-on `mMulti_100g`. Each bundle
 holds `cells.parquet`, `transcripts.parquet`, boundaries, `cell_feature_matrix.h5`, morphology
 images and focus channels, the vendor `analysis/`, `metrics_summary.csv`, `experiment.xenium`,
-`gene_panel.json`. Example: slide 0076570 Lung, 209,365 cells, median 184 transcripts per cell.
+`gene_panel.json` (5,175 targets). `metrics_summary.csv` `cassette_name` maps slide 0076581 to
+TMA1 and 0076570 to TMA2; `experiment.xenium` records `analysis_sw_version xenium-4.0.2.2`. Example: slide 0076570 Lung, 209,365 cells, median 184 transcripts per cell.
 Each region contains several punches (animals) whose boundaries are drawn by hand in Xenium
 Explorer; the punch, not the region, is the unit the pipeline works on.
 
@@ -67,7 +68,8 @@ cell, panel ids, from `metrics_summary.csv`, `experiment.xenium`, `gene_panel.js
 annotation in Xenium Explorer`, extractor emits the punch ids and their region); operations
 `split_punches`, `qc_cells`; question `processed_object` added to the three declared; design
 schema per the app-1 session 1 questions (units observation cell, sample punch, animal; factors
-tissue, condition; batch slide; replication unit to be confirmed). Extractors stdlib or pyarrow
+timepoint_h (6, 24, 48), condition fixed CLP; batch slide; replication unit animal, n = 2; the
+layout table supplies punch, animal, and time point after the split). Extractors stdlib or pyarrow
 inside the Python image (E6 in `spec/plans/bulkrna-plan.md` applies).
 
 **S3, method repo `stringency-spatial-method`**: module `resegment-proseg` (wraps the ROSC
@@ -95,8 +97,15 @@ a per-tissue copy.
 
 ## 4. Decisions for the owner (answered 2026-09-15 unless marked open)
 
-1. Replication unit and design for Lyons CLP: **open**. The owner has an experimental plan
-   document to share and will walk through it in a dedicated conversation; S0 waits on it.
+1. Replication unit and design for Lyons CLP (answered 2026-09-15 from the collaborator's plan,
+   TMA maps, and email, filed at `/lab/projects/Lyons_CLP/`): six wild-type CLP animals, two per
+   time point (6, 24, 48 h), no sham; four organs; gut, spleen, lung two punches per animal (a, b),
+   liver one; TMA 1 = slide 0076581 (6-1, 6-2, 24-1), TMA 2 = slide 0076570 (24-2, 48-1, 48-2).
+   **Replication unit: the animal, n = 2 per time point, punches nested within animal**; start
+   there, judge power, then punch-level analysis as hypothesis generation, declared as such. The
+   QC project declares **no contrasts**. Ids: animal `<tp>-<n>`, punch `<tp>-<n>-<Organ>[-A|B]`,
+   slide as batch (partially confounded with time point). The transcribed layout
+   `tma_layout.csv` is a declared manual input. Inventory: `notes/2026-09-15-1300-app1-inventory.md`.
 2. Segmentation: **a mix following ROSC**: liver and spleen keep the vendor (XOA 6.1)
    segmentation; lung and gut are resegmented with Proseg. Confirmed against
    `setup/sample_manifest_complete_v2.csv` on BMESEQ (Liver, Spleen, FRT `10xSeg`; Brain, Heart,

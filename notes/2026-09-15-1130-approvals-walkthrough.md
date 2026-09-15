@@ -44,8 +44,8 @@ in the design text with the approval date). No frozen contract touched. No code.
 
 ## Open
 
-1. Owner: share the Lyons CLP experimental plan document and walk through the replication unit,
-   factors, and levels (Track 3 decision 1) in a dedicated conversation; S0 waits on it.
+1. Done later the same day: Lyons CLP design settled from the collaborator's documents; see
+   `notes/2026-09-15-1300-app1-inventory.md`.
 2. Session 0 of Track 2: the DESeq2 parameter list (which of `fit_type`, `lfc_shrink`,
    `cooks_cutoff`, `independent_filtering`, `alpha`, `block_by_animal` are adjustable, and their
    defaults) is to be discussed while designing, then `spec/bulkrna-design.md` written.

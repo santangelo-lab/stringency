@@ -253,8 +253,8 @@ existing steps rather than inventing them.
 ## What needs the owner's approval before build
 
 Status 2026-09-15: item 1 approved as written; item 2 answered except the DESeq2 parameter list
-(session 0); item 3 answered except the replication unit and design, which wait on the owner's
-experimental plan document. Answers are recorded in section 8 of `bulkrna-plan.md` and section 4
+(session 0); item 3 answered in full (the Lyons CLP design from the collaborator's documents on
+2026-09-15; Track 3 S0 inventory note written the same day). Answers are recorded in section 8 of `bulkrna-plan.md` and section 4
 of `app1-spatial-qc-plan.md`.
 
 1. Track 1a amendment texts (7.5 `via: web` incl. strict, 10.4 two-kinds-of-skill, 12.1
