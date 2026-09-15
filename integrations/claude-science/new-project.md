@@ -6,7 +6,8 @@ runs in the Claude Science sandbox, so no directory grants are needed.
 ## On the workstation, once
 
 1. Engine installed: `scripts/install.sh` from a checkout (see the integration README). Check
-   with `/usr/local/lib/stringency/current/bin/stringency plugins list`.
+   with `/usr/local/lib/stringency/current/bin/stringency plugins list`. On PROTSEQ the install
+   is per user under `~/mytools/stringency/engine` (`hosts/protseq-setup.md`).
 2. Container runtime present (`apptainer` or `singularity`) and the method's images at the paths
    its `envs/manifest.yml` names.
 3. The method repository reachable by git URL from the workstation, tagged.
@@ -39,14 +40,16 @@ runs in the Claude Science sandbox, so no directory grants are needed.
    `stringency.yml` and the manifest, and the brief skips the init phase.
 8. Create the project in Claude Science. Paste `context.md` into its Agent Context.
 9. Paste `brief.md` as the first message and ask for Phase 0 only. Read the probe.
-10. Tell the agent to run Phase 1. When it reports the confirm hold, read `echo.md` in the
-    project directory and accept at your terminal:
+10. Tell the agent to run Phase 1. It ends with a confirm hold, which the agent presents by the
+    skill's hold protocol: where it paused, what the engine recorded, the verdicts with their
+    effects, and the ask. Answer with a verdict word and your reason in the chat; the agent
+    records it with `review --attest` under your name, `via: relayed`. Or accept at your terminal:
 
         cd <project> && stringency review --verdict accept --hold <id> --reason "echo-back matches"
 
-11. Tell the agent to start Phase 2. Every exit 10 comes back to you the same way; `stringency
-    review` in the project directory shows the hold. When the agent reports the run completed and
-    delivered, the deliverables are in `<project>/deliver/<run_id>/`.
+11. Tell the agent to start Phase 2. Every exit 10 comes back to you the same way. When the agent
+    reports the run completed and delivered, the deliverables are in `<project>/deliver/<run_id>/`,
+    and `summary.md` there is the page written for you.
 
 ## What to expect
 

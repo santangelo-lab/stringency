@@ -19,8 +19,9 @@ it is the first thing a new session reads.
 - Lane A step 1 done 2026-09-15 (commit "Lane A step 1"): `operator_line`,
   `run --responses`, `run --deliver`, `steps[].title`, `plain` and `completed_steps`, `--attest`
   needs a session ref, `reviews.operator_harness` (migration 4), `summary.md`; operator skill and
-  templates rewritten with the intent table and the hold protocol. Engine not yet re-tagged; toy
-  method repo has titled pipelines committed, untagged.
+  templates rewritten with the intent table and the hold protocol. Engine not re-tagged; installed
+  on PROTSEQ as `0.1.0+lane-a-1` (`current`); toy method tagged `v0.1.3` locally, not pushed. A
+  test drive is prepared: `integrations/claude-science/hosts/protseq-track1b-drive.md`.
 - `v0.1.0` tagged and pushed 2026-09-14; engine repo public; singlecell and toy method repos
   pushed; engine 0.1.0 installed from the tag on both machines.
 - Next sessions: Lane A step 2 (`spec/plans/bulkrna-plan.md` section 2, E1 and E2); Lane B with

@@ -39,6 +39,14 @@ applied 2026-09-15 before this session; nothing here touches a contract.
   reviews row names `operator_harness`. Roadmap Lane A item 1 marked done; plan 3.2 carries a
   built note; backlog row J1 for `declare --check --print-hashes`.
 
+- Test drive prepared on PROTSEQ (`integrations/claude-science/hosts/protseq-track1b-drive.md`):
+  engine installed as `~/mytools/stringency/engine/versions/0.1.0+lane-a-1` with `current` moved
+  to it; toy method tagged `v0.1.3` locally (not pushed); declarations in
+  `/data/lab/projects/2026-09_stringency-exit_jrrose5/track1b/` pass `declare --check` against
+  `toy-engine@v0.1.3`; brief and context rendered to `~/mytools/stringency/brief-track1b.md` and
+  `context-track1b.md`. The brief template and `new-project.md` now route the confirm hold through
+  the hold protocol instead of "I accept it at my own terminal".
+
 ## Learned
 
 - `IOSpec` has no `description`, so `summary.md` names each delivered file by output name, step
@@ -64,6 +72,7 @@ parameter; the responses document goes through a quoted heredoc.
 2. Lane A step 2 (E1 and E2: `design` and `objective` in the job JSON, `considered_set`), then
    step 3 (review page) and step 4 (re-tag and reinstall on both machines; the toy method repo
    needs a tag for its titled pipelines).
-3. Lane E opens: republish the operator skill on each Claude Science instance (README, Operator
-   skill), then the 3.4 session tests and a measured toy run against the 26-card baseline.
+3. Lane E opens: the owner runs the prepared test drive (`hosts/protseq-track1b-drive.md`:
+   republish the operator skill, then one `toy-compare` project on `toy-engine`); the next session
+   writes its note and the measurement row from the agent's report and the four `deliver/` files.
 4. `templates/method-repo/README.md` still lacks the 3.1 all-engine paragraph (Track 1a text).
