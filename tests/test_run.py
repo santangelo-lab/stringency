@@ -23,11 +23,11 @@ SCHEMAS = Path(__file__).parent / "fixtures" / "schemas"
 runner = CliRunner()
 
 
-def cli(project: Project, *args: str, env: dict[str, str] | None = None):  # type: ignore[no-untyped-def]
+def cli(project: Project, *args: str, env: dict[str, str] | None = None, input: str | None = None):  # type: ignore[no-untyped-def]
     cwd = os.getcwd()
     os.chdir(project.root)
     try:
-        return runner.invoke(app, list(args), env=env)
+        return runner.invoke(app, list(args), env=env, input=input)
     finally:
         os.chdir(cwd)
 
@@ -105,6 +105,14 @@ def test_operator_pipeline_with_dispatch_mock(make_project: InitFn) -> None:
     nx = run_json(21)
     assert nx["kind"] == "awaiting_execution" and nx["step_id"] == "01_filter"
     spec = nx["job_spec"]
+    # ux-two-audiences 3.2: one string the operator runs, exec then evidence then submit
+    assert spec["operator_line"].startswith(spec["exec"] + " && ")
+    assert spec["operator_line"].endswith(" && " + spec["submit"])
+    assert nx["title"] == "Filter low-value rows"
+    assert nx["plain"] == (
+        "No step has completed. Stopped: Filter low-value rows is ready for the operator to "
+        "run and hand back."
+    )
     # running again without submitting repeats the ticket and does not advance
     assert run_json(21)["job_spec"]["ticket"] == spec["ticket"]
     assert submit_json(spec, ["object"])["status"] == "completed"
@@ -167,6 +175,7 @@ def test_next_json_matches_schema_and_reports_range(make_project: InitFn) -> Non
     nx2 = {**next_step(rc).to_json(), "run_id": rc.run_id}
     assert validate(nx2, json.loads((SCHEMAS / "next.json").read_text())) == []
     assert nx2["kind"] == "runnable" and nx2["plan"]["parameters"]["min_value"]["range"] == [0, 40]
+    assert nx2["plan"]["title"] == "Filter low-value rows"
     assert nx2["plan"]["parameters"]["min_value"]["decision_point"] is True
 
 
@@ -320,3 +329,257 @@ def test_status_lists_open_holds_with_ids(make_project: InitFn) -> None:
         in r.output
     )
     assert f"stringency review --hold {h['hold_id']}" in r.output
+
+
+# -- ux-two-audiences 3.2: run --responses, run --deliver, plain ---------------------------------
+
+
+def dispatching_project(make_project: InitFn) -> tuple[Project, dict]:
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    r = cli(p, "run", "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 20, r.output
+    return p, json.loads(r.output)
+
+
+def harvested_responses(make_project: InitFn) -> list[dict]:
+    """Response documents the mock wrote for another project on the same data; only the nonces
+    differ between projects."""
+    p, nx = dispatching_project(make_project)
+    r = cli(p, "run", "--json", env=MOCK_DISPATCH)  # the mock plays the subagents on collect
+    assert r.exit_code == 0, r.output
+    manifest = json.loads((Path(nx["dispatch_dir"]) / "manifest.json").read_text())
+    return [json.loads(Path(rp).read_text()) for rp in manifest["responses"]]
+
+
+def responses_doc(nx: dict, answers: list[dict]) -> dict:
+    manifest = json.loads((Path(nx["dispatch_dir"]) / "manifest.json").read_text())
+    docs = []
+    for req_path, ans in zip(manifest["requests"], answers, strict=True):
+        req = json.loads(Path(req_path).read_text())
+        docs.append({**ans, "nonce": req["nonce"]})
+    return {"step_id": nx["step_id"], "responses": docs}
+
+
+def test_run_responses_files_one_document_and_continues(
+    make_project: InitFn, tmp_path: Path
+) -> None:
+    answers = harvested_responses(make_project)
+    p, nx = dispatching_project(make_project)
+    assert nx["plain"] == (
+        "Completed: Filter low-value rows, Summarize each group. "
+        "Stopped: three judgments requested for Label the groups."
+    )
+    doc = tmp_path / "responses.json"
+    doc.write_text(json.dumps(responses_doc(nx, answers)))
+    r = cli(p, "run", "--responses", str(doc), "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 0, r.output
+    out = json.loads(r.output)
+    assert out["kind"] == "completed" and out["completed_steps"] == [
+        "03_label",
+        "04_compare",
+        "05_report",
+    ]
+    ddir = Path(nx["dispatch_dir"])
+    assert sorted(f.name for f in ddir.glob("resp_*.json")) == [
+        "resp_1.json",
+        "resp_2.json",
+        "resp_3.json",
+    ]
+    # the files hold what the document carried (10.2 contract unchanged) and the nonces matched
+    assert (
+        json.loads((ddir / "resp_2.json").read_text())["nonce"]
+        == responses_doc(nx, answers)["responses"][1]["nonce"]
+    )
+    assert p.store.scalar("SELECT COUNT(*) FROM invocations WHERE nonce_ok=1") == 3
+    assert p.store.scalar("SELECT status FROM steps WHERE step_id='03_label'") == "completed"
+
+
+def test_run_responses_from_stdin(make_project: InitFn) -> None:
+    answers = harvested_responses(make_project)
+    p, nx = dispatching_project(make_project)
+    r = cli(
+        p,
+        "run",
+        "--responses",
+        "-",
+        "--json",
+        env=MOCK_DISPATCH,
+        input=json.dumps(responses_doc(nx, answers)),
+    )
+    assert r.exit_code == 0, r.output
+    assert p.store.scalar("SELECT COUNT(*) FROM invocations") == 3
+
+
+def test_run_responses_refusals_exit_16(make_project: InitFn, tmp_path: Path) -> None:
+    answers = harvested_responses(make_project)
+    p, nx = dispatching_project(make_project)
+    good = responses_doc(nx, answers)
+    ddir = Path(nx["dispatch_dir"])
+
+    def attempt(doc: object) -> object:
+        f = tmp_path / "doc.json"
+        f.write_text(json.dumps(doc))
+        return cli(p, "run", "--responses", str(f), env=MOCK_DISPATCH)
+
+    r = attempt({**good, "responses": good["responses"][:2]})  # count differs from manifest.json
+    assert r.exit_code == 16 and "expects 3" in str(r.stderr)
+    r = attempt({**good, "step_id": "04_compare"})  # names another step
+    assert r.exit_code == 16 and "dispatching step is 03_label" in str(r.stderr)
+    r = attempt({"responses": "nope"})  # malformed document
+    assert r.exit_code == 15
+    assert not list(ddir.glob("resp_*.json"))  # nothing was written by a refused call
+    assert p.store.scalar("SELECT COUNT(*) FROM invocations") == 0
+    # not dispatching: a fresh project stops at a ticket, not a dispatch
+    p2 = confirmed(make_project)
+    cli(p2, "run", env=MOCK_DISPATCH)
+    f = tmp_path / "doc2.json"
+    f.write_text(json.dumps(good))
+    r = cli(p2, "run", "--responses", str(f), env=MOCK_DISPATCH)
+    assert r.exit_code == 16 and "no step is dispatching" in str(r.stderr)
+    # files already present: refused, and the files are untouched
+    r = attempt(good)
+    assert r.exit_code == 0, r.output
+    p3, nx3 = dispatching_project(make_project)
+    (Path(nx3["dispatch_dir"]) / "resp_1.json").write_text("{}")
+    f.write_text(json.dumps(responses_doc(nx3, answers)))
+    r = cli(p3, "run", "--responses", str(f), env=MOCK_DISPATCH)
+    assert r.exit_code == 16 and "already present" in str(r.stderr)
+    assert (Path(nx3["dispatch_dir"]) / "resp_1.json").read_text() == "{}"
+
+
+def test_run_deliver_delivers_in_the_same_invocation(make_project: InitFn) -> None:
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    r = cli(p, "run", "--deliver", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    out = json.loads(r.output)
+    assert out["kind"] == "completed" and out["plain"].endswith("The run is complete.")
+    dest = Path(out["delivery"]["path"])
+    assert dest == p.root / "deliver" / out["run_id"]
+    for name in ("coverage.md", "methods.md", "summary.md", "index.json"):
+        assert (dest / name).exists()
+    assert p.store.scalar("SELECT COUNT(*) FROM deliveries") == 1
+    # --deliver on a run that stops short delivers nothing
+    p2 = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    r = cli(p2, "run", "--deliver", "--until", "02_summarize", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    out2 = json.loads(r.output)
+    assert "delivery" not in out2
+    assert out2["plain"] == (
+        "Completed: Filter low-value rows, Summarize each group. "
+        "Stopped after Summarize each group, as asked."
+    )
+    assert p2.store.scalar("SELECT COUNT(*) FROM deliveries") == 0
+    p3 = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    r = cli(
+        p3,
+        "run",
+        "--deliver",
+        "--json",
+        env={**MOCK, "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml")},
+    )
+    assert r.exit_code == 10
+    assert "delivery" not in json.loads(r.output)
+
+
+def test_plain_golden_per_next_kind(project: Project, request: pytest.FixtureRequest) -> None:
+    """One golden per `Next.kind` (ux-two-audiences 3.2), rendered from the toy pipeline's
+    titles and synthetic details; `run --json` and `status --json` carry the same renderer."""
+    from stringency.plain import plain_next
+
+    pipe = project.pipeline
+    roles = project.config.roles
+    done = {"01_filter": "completed", "02_summarize": "completed"}
+    hold = {
+        "hold_id": "H1",
+        "kind": "run_disagreement",
+        "step_id": "03_label",
+        "item_id": "C",
+        "waits_on_role": "reviewer",
+    }
+    confirm = {
+        "hold_id": "H0",
+        "kind": "confirm",
+        "step_id": None,
+        "item_id": None,
+        "waits_on_role": "owner",
+    }
+    cases = {
+        "runnable": ("runnable", "03_label", {}, done),
+        "runnable_waiting": ("runnable", "04_compare", {"waiting_on": ["03_label"]}, done),
+        "held": ("held", "03_label", {"holds": [hold]}, done),
+        "held_many": (
+            "held",
+            "03_label",
+            {"holds": [hold, {**hold, "item_id": "A"}, {**hold, "item_id": "B"}]},
+            done,
+        ),
+        "held_confirm": ("held", None, {"holds": [confirm]}, {}),
+        "blocked": (
+            "blocked",
+            "01_filter",
+            {
+                "predicates": [
+                    {
+                        "predicate_id": "obj.feasibility",
+                        "reason": "min_value 50 leaves group B with 1 unit",
+                    }
+                ]
+            },
+            {},
+        ),
+        "rejected": (
+            "rejected",
+            "04_compare",
+            {
+                "predicates": [
+                    {
+                        "predicate_id": "out.schema",
+                        "reason": "comparison_table lacks column p_value",
+                    }
+                ]
+            },
+            done,
+        ),
+        "failed": ("failed", "02_summarize", {}, {"01_filter": "completed"}),
+        "awaiting_execution": ("awaiting_execution", "01_filter", {}, {}),
+        "dispatching": ("dispatching", "03_label", {"requests": 3}, done),
+        "dispatching_one": ("dispatching", "03_label", {"requests": 1}, done),
+        "completed": ("completed", None, {}, {s: "completed" for s in pipe.order()}),
+        "completed_until": ("completed", "02_summarize", {"until": "02_summarize"}, done),
+    }
+    for name, (kind, sid, detail, statuses) in cases.items():
+        got = plain_next(pipe, roles, kind, sid, detail, statuses) + "\n"
+        golden = SCHEMAS.parent.parent / "golden" / f"plain_{name}.txt"
+        if request.config.getoption("--update-golden"):
+            golden.write_text(got)
+        assert got == golden.read_text(), name
+        assert "\n" not in got.rstrip() and got.endswith(".\n")
+
+
+def test_status_json_carries_plain_and_completed_steps(make_project: InitFn) -> None:
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    r = cli(p, "status", "--json")
+    st = json.loads(r.output)
+    assert st["completed_steps"] == [] and st["plain"] == "No run has started."
+    cli(p, "run", env={**MOCK, "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml")})
+    r = cli(p, "status", "--json")
+    st = json.loads(r.output)
+    assert validate(st, json.loads((SCHEMAS / "status.json").read_text())) == []
+    assert st["completed_steps"] == ["01_filter", "02_summarize"]
+    assert st["plain"].startswith(
+        "Completed: Filter low-value rows, Summarize each group. Stopped: Label the groups waits for the reviewer (tester) to decide on item "
+    )
+    # before the confirm hold is accepted, status says what waits
+    p2 = make_project(pipeline="toy-engine", execution="engine")
+    st2 = json.loads(cli(p2, "status", "--json").output)
+    assert (
+        st2["plain"]
+        == "No run has started. The plan for this project waits for the owner (tester) to confirm it."
+    )
+    # an abandoned run says so
+    p3 = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    cli(p3, "run", "--until", "01_filter", env=MOCK)
+    run_id = p3.store.scalar("SELECT run_id FROM runs")
+    assert cli(p3, "abandon", "--run", run_id, "--reason", "test").exit_code == 0
+    st3 = json.loads(cli(p3, "status", "--json").output)
+    assert st3["plain"] == "Completed: Filter low-value rows. The run was abandoned."

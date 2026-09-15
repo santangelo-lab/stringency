@@ -79,6 +79,7 @@ class StepDecl(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     id: str
     module: str
+    title: str | None = None  # plain phrase for a lay reader ("Filter low-count genes")
     inputs: dict[str, str] = Field(default_factory=dict)
     params: dict[str, ParamDecl] = Field(default_factory=dict)
     runner: Runner | None = None
@@ -151,6 +152,16 @@ class Pipeline(BaseModel):
 
     def has_step(self, step_id: str) -> bool:
         return any(s.id == step_id for s in self.steps)
+
+    def title(self, step_id: str) -> str:
+        """The step's plain title, or its id when the pipeline declares none."""
+        for s in self.steps:
+            if s.id == step_id:
+                return s.title or s.id
+        return step_id
+
+    def untitled(self) -> list[str]:
+        return [s.id for s in self.steps if not s.title]
 
     def _order(self) -> list[str]:
         """Topological order; file order breaks ties (design 3.1)."""

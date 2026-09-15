@@ -80,6 +80,44 @@ def test_deliver_writes_reports_and_index(
         golden.parent.mkdir(exist_ok=True)
         golden.write_text(got)
     assert got == golden.read_text()
+    # summary.md (design 12.1 amendment): engine-rendered, against its golden
+    assert index["summary"]["file"] == "summary.md"
+    summary = (d.path / "summary.md").read_text()
+    assert summary == d.summary
+    golden_s = GOLDEN / "summary_toy_engine.md"
+    got_s = normalise(summary)
+    if request.config.getoption("--update-golden"):
+        golden_s.write_text(got_s)
+    assert got_s == golden_s.read_text()
+    assert summary.rstrip().endswith("not checked: anything not listed above")
+
+
+def test_summary_names_flags_and_changed_parameters(
+    make_project: InitFn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("stringency.review.detect_via", lambda: "tty")
+    monkeypatch.setattr("stringency.review.current_user", lambda: "tester")
+    p = make_project(pipeline="toy-engine", execution="engine")
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+    env = {**MOCK, "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml")}
+    r = cli(
+        p, "propose", "01_filter", "--set", "min_value=12", "--reason", "test", "--json", env=env
+    )
+    assert r.exit_code == 0, r.output
+    cli(p, "run", env=env)
+    record_review(
+        p, queue(p)[0]["hold_id"], "override", correction={"label": "uniform"}, reason="sd is small"
+    )
+    r = cli(p, "run", "--json", env=env)
+    assert r.exit_code == 0, r.output
+    d = deliver(load_run(p, json.loads(r.output)["run_id"]))
+    assert "- Filter low-value rows (step 01_filter): min_value set to 12." in d.summary
+    assert "- Compare the groups (step 04_compare): at defaults." in d.summary
+    assert (
+        "one in disagreement; reviews: none accepted, one corrected, none unresolved." in d.summary
+    )
+    assert "- toy.run_disagreement" not in d.summary  # item holds are judgments, not flags
+    assert "## What was analyzed\n\n50 rows in 9 units across 3 groups (input groups)" in d.summary
 
 
 def test_uncovered_decision_point_is_computed(make_project: InitFn) -> None:

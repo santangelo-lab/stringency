@@ -112,8 +112,9 @@ def record_review(
     attest: bool = False,
     via_override: str | None = None,
 ) -> ReviewResult:
-    """Record one verdict and apply its effect (design 7.3, 7.5). Writes: reviews, holds,
-    consensus, steps, step_events, artifacts, run_events."""
+    """Record one verdict and apply its effect (design 7.3, 7.5). Writes: reviews (with
+    `operator_session_ref` and `operator_harness` from the environment), holds, consensus, steps,
+    step_events, artifacts, run_events."""
     if verdict not in VERDICTS:
         raise ConfigError(f"verdict must be one of {', '.join(VERDICTS)}")
     h = get_hold(project, hold_id)
@@ -128,6 +129,11 @@ def record_review(
     if via == "relayed" and not profile.relayed_review:
         raise RefusedError(
             f"profile {project.config.profile} does not accept relayed review (--attest); review at a terminal"
+        )
+    if via == "relayed" and not os.environ.get("STRINGENCY_SESSION_REF"):
+        raise RefusedError(
+            "--attest needs STRINGENCY_SESSION_REF set to the operator's session reference; "
+            "a relayed verdict names the session it came from (design 7.5)"
         )
     user = current_user()
     role = h["waits_on_role"]
@@ -180,6 +186,7 @@ def record_review(
                 "host": socket.gethostname(),
                 "via": via,
                 "operator_session_ref": os.environ.get("STRINGENCY_SESSION_REF"),
+                "operator_harness": os.environ.get("STRINGENCY_OPERATOR"),
                 "ts": now_iso(),
                 "verdict": verdict,
                 "correction_json": correction,

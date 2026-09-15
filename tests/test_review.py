@@ -170,11 +170,36 @@ def test_attest_refused_under_strict_and_recorded_under_standard(
     assert r.exit_code == 16
     p2, _ = held_project(make_project, profile="standard")
     h2 = queue(p2)[0]
+    # ux-two-audiences 3.2: a relayed verdict must name its session
+    monkeypatch.delenv("STRINGENCY_SESSION_REF", raising=False)
+    before = p2.store.scalar("SELECT COUNT(*) FROM reviews")
+    with pytest.raises(RefusedError, match="STRINGENCY_SESSION_REF"):
+        record_review(p2, h2["hold_id"], "accept", replicate=1, attest=True)
+    r = cli(
+        p2, "review", "--verdict", "accept", "--hold", h2["hold_id"], "--replicate", "1", "--attest"
+    )
+    assert r.exit_code == 16 and "STRINGENCY_SESSION_REF" in str(r.stderr)
+    assert p2.store.scalar("SELECT COUNT(*) FROM reviews") == before  # nothing was written
+    monkeypatch.setenv("STRINGENCY_SESSION_REF", "frame-42")
+    monkeypatch.setenv("STRINGENCY_OPERATOR", "claude-science")
     res = record_review(p2, h2["hold_id"], "accept", replicate=1, attest=True)
     assert res.via == "relayed"
-    assert (
-        p2.store.scalar("SELECT via FROM reviews WHERE review_id=?", (res.review_id,)) == "relayed"
+    row = p2.store.one("SELECT * FROM reviews WHERE review_id=?", (res.review_id,))
+    assert row["via"] == "relayed"
+    assert row["operator_session_ref"] == "frame-42"
+    assert row["operator_harness"] == "claude-science"  # migration 0004
+
+
+def test_tty_review_records_no_operator_harness(
+    make_project: InitFn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("STRINGENCY_OPERATOR", raising=False)
+    p, _ = held_project(make_project)
+    res = record_review(p, queue(p)[0]["hold_id"], "accept", replicate=1)
+    row = p.store.one(
+        "SELECT via, operator_harness FROM reviews WHERE review_id=?", (res.review_id,)
     )
+    assert row["via"] == "tty" and row["operator_harness"] is None
 
 
 def test_reviewer_identity_checked(make_project: InitFn, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -54,6 +54,10 @@ all-engine except its alignment step.
 
 ### 3.2 Engine flags (DECISIONS-level, additive)
 
+Built 2026-09-15 (Lane A step 1, engine commit named "Lane A step 1") except
+`declare --check --print-hashes`, which stays open in `backlog.md`. `next --json` and `run --json`
+also carry `title` beside `job_spec` and `dispatch_dir`.
+
 | change | where | note |
 |---|---|---|
 | `job_spec.operator_line` | `operator_exec/tickets.py` | exec, evidence commands, and submit joined by `&&`; the operator runs one string; schema stays `stringency.job_spec/1` with one added key |

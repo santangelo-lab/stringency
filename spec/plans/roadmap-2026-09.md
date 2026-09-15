@@ -285,7 +285,9 @@ on the eight Lyons CLP regions; two items in Lane D gate it.
 
 1. Track 1b flags with the 1c operator skill text in one session: `operator_line`,
    `run --responses`, `run --deliver`, `steps[].title` and `plain`, `--attest` requires a session
-   ref, `reviews.operator_harness`, `summary.md` and its golden.
+   ref, `reviews.operator_harness`, `summary.md` and its golden. Done 2026-09-15
+   (`notes/2026-09-15-1500-lane-a-step1-flags-and-skill.md`); `declare --check --print-hashes`
+   left to the backlog.
 2. E1 and E2 (`bulkrna-plan.md` section 2): `design` and `objective` in the job JSON;
    `considered_set` filled. Small; early because Lane B session 5 needs E1.
 3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`.

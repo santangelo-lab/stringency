@@ -13,7 +13,9 @@ def job_spec(
     proposal: Proposal, env_digest: str | None, executor: Executor | None = None
 ) -> dict[str, Any]:
     """The ticket as the operator sees it. With an executor, `exec` is the exact line to run
-    and `submit` the exact line to call afterwards, `--command` carrying `exec` verbatim."""
+    and `submit` the exact line to call afterwards, `--command` carrying `exec` verbatim;
+    `operator_line` is `exec`, the producible evidence commands, and `submit` joined by `&&`,
+    one string the operator runs as one command (ux-two-audiences 3.2)."""
     plan, action = proposal.plan, proposal.action
     m = plan.module.manifest
     seed = action.parameters.get(m.seed_param) if m.stochastic and m.seed_param else None
@@ -34,6 +36,11 @@ def job_spec(
     )
     if run_line is not None:
         submit += f" --command {shlex.quote(run_line)}"
+    operator_line = (
+        " && ".join([run_line, *(c["command"] for c in ev_cmds if c["command"]), submit])
+        if run_line is not None
+        else None
+    )
     return {
         "schema": "stringency.job_spec/1",
         "ticket": action.ticket,
@@ -64,6 +71,7 @@ def job_spec(
         "log": str(log),
         "exec": run_line,
         "submit": submit,
+        "operator_line": operator_line,
     }
 
 
@@ -131,4 +139,6 @@ def render_job_spec(spec: dict[str, Any]) -> str:
         elif e["kind"] != "job_log":
             lines.append(f"evidence {e['kind']}: {e['note']}")
     lines.append(f"then: {spec['submit']}")
+    if spec.get("operator_line"):
+        lines.append(f"as one command: {spec['operator_line']}")
     return "\n".join(lines)

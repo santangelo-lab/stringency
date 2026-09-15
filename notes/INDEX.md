@@ -3,36 +3,34 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-15, midday)
+## Current state (2026-09-15, afternoon)
 
 - Phase A exit complete on both machines (BMESEQ `toy-cs` 2026-09-08; PROTSEQ two chained projects
   from agent-drafted declarations 2026-09-14). Backlog sections A to I done except A5 (review page,
-  now scheduled as Track 1e), E2's in-session route, G2 and H5 (design questions).
-- Roadmap approved 2026-09-14: `spec/plans/roadmap-2026-09.md`. Track 0 (section I code and skill text)
-  done. The 'await the owner' items below were answered 2026-09-15. Track 1 (two audiences: fewer plainer cards, relayed and web holds, analysis skills,
-  `summary.md`, shared PROTSEQ install) detailed in `spec/plans/ux-two-audiences.md`; its five amendment
-  texts await the owner. Track 2 (bulk RNA-seq plugin and method) in `spec/plans/bulkrna-plan.md`;
-  thirteen session-0 decisions await the owner. Track 3 (Lyons CLP Xenium, QC first) in
-  `spec/plans/app1-spatial-qc-plan.md`.
+  now Lane A step 3), E2's in-session route, G2 and H5 (design questions); J1 added 2026-09-15.
+- Roadmap approved 2026-09-14: `spec/plans/roadmap-2026-09.md`, Order rewritten as five lanes
+  2026-09-15 (A engine, B bulk, C spatial on the critical path, D owner and operations, E skills).
+  Track 1 detail in `spec/plans/ux-two-audiences.md`; Track 2 in `spec/plans/bulkrna-plan.md`;
+  Track 3 in `spec/plans/app1-spatial-qc-plan.md`.
+- Approvals collected 2026-09-15: the five Track 1a amendments applied to the design; Track 2
+  session-0 decisions answered except the DESeq2 parameter list; Track 3 decisions answered; Track
+  3 S0 inventory done. Bulk delivery is development data; Track 3 S1 to S4 precede Track 2
+  sessions 9 to 12.
+- Lane A step 1 done 2026-09-15 (commit "Lane A step 1"): `operator_line`,
+  `run --responses`, `run --deliver`, `steps[].title`, `plain` and `completed_steps`, `--attest`
+  needs a session ref, `reviews.operator_harness` (migration 4), `summary.md`; operator skill and
+  templates rewritten with the intent table and the hold protocol. Engine not yet re-tagged; toy
+  method repo has titled pipelines committed, untagged.
 - `v0.1.0` tagged and pushed 2026-09-14; engine repo public; singlecell and toy method repos
   pushed; engine 0.1.0 installed from the tag on both machines.
-- `spec/` reorganised 2026-09-14: spec and contracts at the top, `spec/plans/` live, `spec/archive/`
-  history; `spec/README.md` maps it.
-- Approvals collected 2026-09-15: the five Track 1a amendments applied to the design; Track 2
-  session-0 decisions answered (DESeq2 replaces limma-voom; all pairwise within tissue; GHCR image;
-  reviewer = the person running) except the DESeq2 parameter list; Track 3 decisions answered
-  including the Lyons CLP design (animal replicate, n = 2 per time point, no sham, no contrasts
-  in the QC project); Track 3 S0 inventory done: `notes/2026-09-15-1300-app1-inventory.md`.
-- Bulk delivery is development data (2026-09-15): re-sequencing likely; Track 3 S1 to S4 now come
-  before Track 2 sessions 9 to 12. Order in `spec/plans/roadmap-2026-09.md`.
-- Work now runs in five lanes (roadmap, Order): A engine, B bulk, C spatial (critical path), D owner
-  and operations, E skills. Three agent sessions at once: A, B, C.
-- Next sessions: Lane A step 1 starts with `spec/plans/ux-two-audiences.md` sections 3.2 and 5.1;
-  Lane B with `spec/plans/bulkrna-plan.md` section 8; Lane C with `spec/plans/app1-spatial-qc-plan.md`
-  section 3 S1. Read `notes/2026-09-15-1400-bulk-depth-replan.md` first in any lane.
+- Next sessions: Lane A step 2 (`spec/plans/bulkrna-plan.md` section 2, E1 and E2); Lane B with
+  `spec/plans/bulkrna-plan.md` section 8; Lane C with `spec/plans/app1-spatial-qc-plan.md` section
+  3 S1; Lane E (republish the operator skill, 3.4 session tests) now open. Read
+  `notes/2026-09-15-1500-lane-a-step1-flags-and-skill.md` first in Lanes A and E.
 
 ## Notes
 
+- `2026-09-15-1500-lane-a-step1-flags-and-skill.md` — Lane A step 1: Track 1b engine flags (`operator_line`, `run --responses`, `run --deliver`, titles, `plain`, attest session ref, migration 4, `summary.md`) and the Track 1c operator skill with the hold protocol.
 - `2026-09-15-1400-bulk-depth-replan.md` — the RMLDH7 delivery is shallow (spleen 0.9 M reads); Projects A and B become development projects; Track 3 moves ahead of Track 2 sessions 9 to 12.
 - `2026-09-15-1300-app1-inventory.md` — Track 3 S0: Lyons CLP inventory from the collaborator's plan and TMA maps; slide-to-TMA mapping; layout table filed in the project directory.
 - `2026-09-15-1130-approvals-walkthrough.md` — Track 1a amendments approved and applied; Track 2 and Track 3 decisions answered and recorded; DESeq2, Proseg mix, GHCR images.

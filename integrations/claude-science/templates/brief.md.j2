@@ -15,17 +15,21 @@ compute connection, from a `repl` cell.
         return r
 
 `sx` is the only way you call stringency. Print every result in full. The exit code is the
-signal you act on.
+signal you act on. The `intent` is a sentence from the table in the `stringency-operator` skill
+(section 4): it names this project as `{{ name }}` and a step by its title, never a verb, an exit
+code, or a path. What you say to me is the `plain` line from `run --json` or `status --json` and,
+at the end, `summary.md`; show me a code, an id, or a path only when I ask.
 
 ## Ground rules
 
-1. Never accept, override, reject, or defer a hold. Exit 10 names a hold: print the id and the
-   message verbatim, then stop and wait for me. I resolve holds at my own terminal.
+1. Never give a verdict on a hold. Exit 10 means a person must act: follow the hold protocol in
+   the `stringency-operator` skill (section 6), which is the only way you present a hold and the
+   only way you relay my decision. If I say I will resolve it at my own terminal or on the review
+   page, wait for me to say it is done.
 2. Never write under `prov/`, never edit anything under `method/`, never edit `stringency.yml`,
    `objective.yml`, `design.yml`, or `inputs.yml`.
-3. Module scripts run only as the ticket's job spec describes, inside the container image, via
-   `apptainer exec --containall --pwd <step_dir> --bind <step_dir> --bind <each input dir> --bind <script dir> <image> python3 <script>`,
-   with stdin from `<step_dir>/job.json` and both output streams to `<step_dir>/run.log`.
+3. Module scripts run only as the ticket's job spec describes: its `operator_line`, one string,
+   run once as printed. Compose no part of it yourself.
 4. Exit codes: 0 ok, 10 held, 11 blocked pre-gate, 12 rejected post-gate, 13 failed, 14 dirty
    tree, 15 config error, 16 refused, 20 judgment dispatched, 21 ticket issued.
 
@@ -40,7 +44,7 @@ signal you act on.
 
     sx("id; hostname; which stringency apptainer singularity; stringency plugins list | head -1; "
 {% for i in images %}       "ls -la {{ i }}; apptainer exec --containall {{ i }} python3 -c 'import sys; print(sys.version)'; "
-{% endfor %}       "true", intent="stringency probe: engine, image, container start")
+{% endfor %}       "true", intent="Check that the analysis engine and its software image are ready on {{ provider }}.")
 
 Report the output and wait.
 {% if not bound and declare %}
@@ -68,42 +72,47 @@ with a confirm hold. Print its id and stop. I accept it at my own terminal.
        "--method {{ method }} --pipeline {{ pipeline }} "
        "--objective objective.yml --design design.yml --inputs inputs.yml "
        "--profile {{ profile }} --judgment-harness {{ harness }} --executor {{ executor }}",
-       intent="stringency init {{ name }}")
+       intent="Create the {{ name }} analysis project and show you what it will do.")
 
 This ends with a confirm hold. Print its id and stop. I accept it at my own terminal.
 {% endif %}
 ## Phase 2: the loop
 
-    sx("stringency run", intent="stringency run")
+    r = sx("stringency run --json", intent="Run the next analysis steps of {{ name }} until something needs you.")
 
-- **21, a ticket.** `r = sx("stringency next --json", ...)`; parse `json.loads(r.stdout)["job_spec"]`.
-  Build the job dict `{"inputs": {name: path}, "params": ..., "outputs": {name: suggested_path},
-  "output_dir": step_dir, "seed": seed}`, create the step directory if needed, and write the job
-  to the host with one command: `sx(f"mkdir -p {step_dir} && cat > {step_dir}/job.json <<'JSON'\n{json.dumps(job)}\nJSON", ...)`.
-  Run the script per rule 3, binding the step dir, each input's parent directory, and the script's
-  directory. Then run the job spec's `submit` line with one `--outputs name=path` per output and
-  `--evidence <step_dir>/run.log` when the spec lists evidence. Then `stringency run` again.
-- **20, a dispatch.** The message names a directory holding `req_1.json` ... `req_N.json`. For each
-  request, spawn one fresh delegate. Give it only the request's host path and this task: fetch
-  that file with `host.compute.create("{{ provider }}").download(path)`, read it, produce JSON with
-  `nonce` copied verbatim, `structured` matching its `schema`, and `reported` with the model it is,
-  the agent running it, its tools, and `saw_conversation: false`, and return that JSON as its
-  result. You then write each result to the `response_file` the request names, again with a
-  heredoc through `sx`. You do not read the prompts. If you have no delegate tool, fetch and
-  answer each request in its own fresh cell and say so in your report. Then `stringency run` again.
-- **10, a hold.** Stop and report.
-- **Anything else.** Stop and report the full output.
+Parse `json.loads(r.stdout)`; tell me its `plain` line; act on the exit code.
 
-The run is complete when a submit prints that the run is completed. Do not call `run` after that.
+- **21, a ticket.** `r = sx("stringency next --json", ...)`; `spec = json.loads(r.stdout)["job_spec"]`
+  and `title = json.loads(r.stdout)["title"]`. Run `sx(spec["operator_line"], intent=f"Run the
+  {title} step of {{ name }} in its container and hand the results back.")`. That one string is the
+  container command, the evidence commands, and the submit, joined by `&&`. Then `run --json` again.
+- **20, a dispatch.** The payload names `dispatch_dir` and `requests`. Fetch each `req_N.json` with
+  `c.download(...)` and spawn one fresh delegate per request. Give it only the file's local path
+  and this task: read it, produce JSON with `nonce` copied verbatim, `structured` matching its
+  `schema`, and `reported` with the model it is, the agent running it, its tools, and
+  `saw_conversation: false`, and return that JSON as its result. You do not read the prompts. If
+  you have no delegate tool, answer each request in its own fresh cell and say so in your report.
+  Assemble `doc = {"step_id": <the step>, "responses": [<reply 1>, ...]}` in request order and run
+  it through stdin with a quoted heredoc, one command:
+  `sx(f"stringency run --responses - --json <<'JSON'\n{json.dumps(doc)}\nJSON", intent=f"Record
+  the three independent judgments for {title} and continue {{ name }}.")`. The engine files the
+  responses and continues.
+- **10, a hold.** The hold protocol, skill section 6.
+- **Anything else.** Stop and tell me the `plain` line, then the full output.
+
+Add `--deliver` to the `run` calls once the last ticket or dispatch is done, so delivery happens
+in the same call: the payload's `delivery.path` names `deliver/<run_id>/`. Do not call `run` after
+the run is complete.
 
 ## Phase 3: deliver and report
 
-    sx("stringency deliver && ls deliver/*/ && cat deliver/*/coverage.md deliver/*/methods.md", intent="stringency deliver")
+If `--deliver` did not run, `sx("stringency deliver --json", intent="Collect the finished results,
+methods text, and coverage report for {{ name }}.")`.
 
-Download `coverage.md`, `methods.md`, and `index.json` from `deliver/<run_id>/` and save them as
-artifacts. Then report: how many approval cards the run needed, whether delegates were used and
-whether each saw only its request, what model identity each reported, your frame id, and where
-the saved artifacts live.
+Download `summary.md`, `coverage.md`, `methods.md`, and `index.json` from `deliver/<run_id>/` and
+save them as artifacts. Show me `summary.md` as it is. Then report: how many approval cards the
+run needed, whether delegates were used and whether each saw only its request, what model
+identity each reported, your frame id, and where the saved artifacts live.
 {% if declare %}
 ## Brief
 

@@ -8,7 +8,9 @@ import typer
 
 from stringency.cli.common import emit, handle_errors
 from stringency.holds import open_holds
+from stringency.plain import plain_next, progress_sentence
 from stringency.project import Project
+from stringency.runloop import next_step
 from stringency.runs import latest_run, load_run
 
 
@@ -57,11 +59,14 @@ def status_payload(project: Project, run_id: str | None) -> dict[str, Any]:
         "run": None,
         "steps": [],
         "holds": [],
+        "completed_steps": [],
+        "plain": "",
     }
     ch = project.confirm_hold()
     if ch is not None and ch["resolved_by_review"] is None:
         payload["holds"].append(_hold_entry(project, ch))
     if row is None:
+        payload["plain"] = _plain_no_run(project, ch)
         return payload
     rc = load_run(project, row["run_id"])
     payload["run"] = {
@@ -81,7 +86,32 @@ def status_payload(project: Project, run_id: str | None) -> dict[str, Any]:
         )
     ]
     payload["holds"] += [_hold_entry(project, h) for h in open_holds(project.store, rc.run_id)]
+    statuses = rc.step_status()
+    payload["completed_steps"] = [
+        s for s in project.pipeline.order() if statuses.get(s) == "completed"
+    ]
+    payload["plain"] = _plain_run(rc, statuses)
     return payload
+
+
+def _plain_no_run(project: Project, confirm_hold: Any) -> str:
+    if confirm_hold is not None and confirm_hold["resolved_by_review"] is None:
+        return (
+            "No run has started. The plan for this project waits for the owner "
+            f"({project.config.roles.owner}) to confirm it."
+        )
+    return "No run has started."
+
+
+def _plain_run(rc: Any, statuses: dict[str, str]) -> str:
+    """`plain` for `status --json`: the same sentences `run --json` carries, from the same
+    `next` reading; an abandoned run says so instead. Reads: steps, holds, actions."""
+    if rc.run["status"] == "abandoned":
+        return progress_sentence(rc.project.pipeline, statuses) + " The run was abandoned."
+    nx = next_step(rc)
+    return plain_next(
+        rc.project.pipeline, rc.project.config.roles, nx.kind, nx.step_id, nx.detail, statuses
+    )
 
 
 def _hold_entry(project: Project, h: Any) -> dict[str, Any]:
@@ -128,6 +158,7 @@ def status(
             )
     else:
         lines.append("no runs yet")
+    lines.append(payload["plain"])
     for h in payload["holds"]:
         item = f" item {h['item_id']}" if h["item_id"] else ""
         where = f" on {h['step_id']}{item}" if h["step_id"] else ""

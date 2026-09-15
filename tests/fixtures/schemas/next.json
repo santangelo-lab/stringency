@@ -33,6 +33,8 @@
     },
     "holds": {"type": "array"},
     "predicates": {"type": "array"},
-    "job_spec": {"type": "object"}
+    "job_spec": {"type": "object"},
+    "completed_steps": {"type": "array", "items": {"type": "string"}},
+    "plain": {"type": "string"}
   }
 }

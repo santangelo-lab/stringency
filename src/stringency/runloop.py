@@ -7,14 +7,17 @@ than a runnable step comes back, then exits with the matching code.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
-from stringency.exit_codes import Exit
+from stringency.exit_codes import ConfigError, Exit, RefusedError
 from stringency.gate import GateResult
 from stringency.holds import open_holds
 from stringency.machine import StepStatus
 from stringency.operator_exec.tickets import job_spec, render_job_spec
+from stringency.plain import plain_next
 from stringency.review_render import packet_paths
 from stringency.runs import RunContext, close_run, write_summary
 from stringency.steps import (
@@ -86,6 +89,7 @@ def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
     vocab = list(rc.project.plugin.vocabulary(m.vocabulary) or ()) if m.vocabulary else None
     return {
         "step_id": step_id,
+        "title": rc.project.pipeline.title(step_id),
         "module": module.ref,
         "kind": m.kind,
         "operation": m.operation,
@@ -135,7 +139,7 @@ def next_step(rc: RunContext) -> Next:
             return Next(
                 "awaiting_execution",
                 sid,
-                {"job_spec": spec},
+                {"job_spec": spec, "title": rc.project.pipeline.title(sid)},
                 int(Exit.AWAITING_EXECUTION),
                 f"awaiting execution: ticket {action.ticket} for {sid}\n" + render_job_spec(spec),
             )
@@ -145,7 +149,7 @@ def next_step(rc: RunContext) -> Next:
             return Next(
                 "dispatching",
                 sid,
-                {"dispatch_dir": str(ddir), "requests": n},
+                {"dispatch_dir": str(ddir), "requests": n, "title": rc.project.pipeline.title(sid)},
                 int(Exit.DISPATCHING),
                 f"dispatching: {n} request(s) in {ddir}; have one fresh subagent answer each, then run again",
             )
@@ -227,6 +231,7 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
 
     def _done(nx: Next) -> Next:
         nx.detail["completed_steps"] = list(completed_now)
+        nx.detail["plain"] = plain_for(rc, nx)
         return nx
 
     while True:
@@ -279,6 +284,57 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
         if until is not None and sid == until:
             rc.refresh_status()
             return _done(Next("completed", sid, {"until": until}, 0, f"stopped after {until}"))
+
+
+def plain_for(rc: RunContext, nx: Next) -> str:
+    """The `plain` sentences for a `Next` (ux-two-audiences 3.2). Reads: steps."""
+    return plain_next(
+        rc.project.pipeline,
+        rc.project.config.roles,
+        nx.kind,
+        nx.step_id,
+        nx.detail,
+        rc.step_status(),
+    )
+
+
+def file_responses(rc: RunContext, doc: Any) -> Path:
+    """`run --responses`: write one JSON document's responses to `resp_N.json` in the dispatching
+    step's directory, in order, so the loop collects them (design 10.2; the file contract and the
+    nonce check are unchanged). Refuses (exit 16) when no step is dispatching, when the document
+    names another step, when the count differs from `manifest.json`, or when response files
+    already exist. Writes: `runs/<run>/<step>/dispatch/resp_N.json` only; nothing in the trace."""
+    if not isinstance(doc, dict) or not isinstance(doc.get("responses"), list):
+        raise ConfigError("--responses expects a JSON object with step_id and a responses list")
+    nx = next_step(rc)
+    if nx.kind != "dispatching":
+        where = f" for {nx.step_id}" if nx.step_id else ""
+        raise RefusedError(f"--responses: no step is dispatching; next is {nx.kind}{where}")
+    step_id = nx.step_id or ""
+    if doc.get("step_id") != step_id:
+        raise RefusedError(
+            f"--responses names step {doc.get('step_id')!r}; the dispatching step is {step_id}"
+        )
+    ddir = Path(nx.detail["dispatch_dir"])
+    manifest_path = ddir / "manifest.json"
+    if not manifest_path.exists():
+        raise ConfigError(f"{manifest_path} is missing")
+    manifest = json.loads(manifest_path.read_text())
+    expected = int(manifest["replicates"])
+    got = len(doc["responses"])
+    if got != expected:
+        raise RefusedError(
+            f"--responses carries {got} response(s); manifest.json for {step_id} expects {expected}"
+        )
+    paths = [Path(p) for p in manifest["responses"]]
+    existing = [p.name for p in paths if p.exists()]
+    if existing:
+        raise RefusedError(
+            f"response file(s) already present in {ddir}: {', '.join(existing)}; run again to collect them"
+        )
+    for path, response in zip(paths, doc["responses"], strict=True):
+        path.write_text(json.dumps(response, indent=2) + "\n")
+    return ddir
 
 
 def resume_dispatching(rc: RunContext, step_id: str) -> StepOutcome:

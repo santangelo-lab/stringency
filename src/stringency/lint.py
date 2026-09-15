@@ -179,9 +179,21 @@ def lint_module(
 
 
 def lint_pipeline(
-    pipeline: Pipeline, modules: ModuleIndex, report: LintReport, *, plugin: Plugin | None
+    pipeline: Pipeline,
+    modules: ModuleIndex,
+    report: LintReport,
+    *,
+    plugin: Plugin | None,
+    method_root: Path | None = None,
 ) -> None:
     where = f"pipeline {pipeline.name}"
+    if method_root is not None and (method_root / "skills" / f"{pipeline.name}.yml").exists():
+        untitled = pipeline.untitled()
+        if untitled:
+            report.warn(
+                where,
+                f"skills/{pipeline.name}.yml exists but steps have no title: {', '.join(untitled)}",
+            )
     if plugin is None:
         report.error(where, f"domain {pipeline.domain} is not a loaded plugin")
     else:
@@ -287,5 +299,7 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
             except ConfigError as e:
                 report.errors.append(str(e))
                 continue
-            lint_pipeline(pipeline, modules, report, plugin=plugins.get(pipeline.domain))
+            lint_pipeline(
+                pipeline, modules, report, plugin=plugins.get(pipeline.domain), method_root=path
+            )
     return report

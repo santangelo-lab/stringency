@@ -9,6 +9,7 @@ design text and need the owner's approval.
 | A5 | reviewer-run review page, `via: web` | roadmap Track 1e (`ux-two-audiences.md` section 5.2); the trigger, a reviewer without a terminal, is met | *design* (7.5, 14.1) |
 | E2 | `STRINGENCY_OPERATOR_VERSION` is `unknown` unless the brief carries `--app-version`; no in-session route to the app's version was found | the next exit run records a version | skill |
 | G2 | code the agent writes in a session (notebook cells, plotting scripts) is captured nowhere; only its inability to yield a final artifact is enforced (`prov.orphan_artifact`) | decide: the rule alone (Commandment 5) or a capture verb that files a session script with a sidecar | *design*; the owner's call |
+| J1 | `declare --check --print-hashes`: print blake3 for input items lacking one and exit 15 naming the field, so the declare skill fills hashes from engine output rather than its own Python | `ux-two-audiences.md` 3.2, the one row of that table not built in Lane A step 1 (2026-09-15); a test that a manifest without hashes gets them printed | engine, DECISIONS-level |
 | H5 | staged mode: objective list with stages, `run --objective`, fork at a stage boundary carries an objective, `obj.declared_after_result` | after application 1 as two chained projects shows where option 1 chafes (`declarations-and-objectives.md`) | *design* |
 
 ## Measurements

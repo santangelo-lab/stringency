@@ -75,3 +75,21 @@ def test_param_declarations() -> None:
                 }
             ]
         )
+
+
+def test_step_title_is_optional_and_falls_back_to_id() -> None:
+    p = Pipeline.model_validate(
+        {
+            "pipeline": 1,
+            "name": "t",
+            "version": "0.0.1",
+            "domain": "stringency-toy",
+            "steps": [
+                {"id": "a", "module": "m@1.0.0", "title": "Filter low-count genes"},
+                {"id": "b", "module": "m@1.0.0", "inputs": {"x": "$steps.a.y"}},
+            ],
+        }
+    )
+    assert p.title("a") == "Filter low-count genes"
+    assert p.title("b") == "b" and p.title("zzz") == "zzz"
+    assert p.untitled() == ["b"]

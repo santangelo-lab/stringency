@@ -65,7 +65,9 @@ transfer dict, and `open(t["local_path"]).read()` is the content. Every unrestri
 then sees the skill through discovery, and a session that mentions stringency loads it. To
 replace a published skill, `host.skills.edit` needs the current body as `old_string` (it creates
 a file only when none exists), then `publish(name, overwrite=True)`. The same steps publish
-`stringency-declare`. Both were published this way on 2026-09-14.
+`stringency-declare`. Both were published this way on 2026-09-14. The operator skill was revised
+2026-09-15 (Track 1c): the intent table, the hold protocol, `operator_line`, `run --responses`,
+`run --deliver`, `plain`, `summary.md`; republish it on each instance.
 
 ## Rendering the brief and context
 

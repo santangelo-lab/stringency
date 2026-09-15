@@ -300,3 +300,23 @@ def test_cli_lint_accepts_method_spec_with_tag(method_repo: MethodRepo) -> None:
     assert r.exit_code == 0, r.output
     r = CliRunner().invoke(app, ["lint", f"{method_repo.path}@nope"])
     assert r.exit_code == 15 and "could not clone" in (r.output + str(r.stderr))
+
+
+def test_warning_untitled_steps_when_pipeline_has_a_skill(method_copy: Path) -> None:
+    assert not any("no title" in w for w in lint_path(method_copy).warnings)
+    (method_copy / "skills").mkdir()
+    (method_copy / "skills" / "toy.yml").write_text("pipeline: toy\n")
+    pf = method_copy / "pipelines" / "toy.yml"
+    pf.write_text(pf.read_text().replace("    title: Label the groups\n", ""))
+    report = lint_path(method_copy)
+    assert report.ok
+    assert any(
+        "skills/toy.yml exists but steps have no title: 03_label" in w for w in report.warnings
+    )
+    # every step titled: no warning
+    pf.write_text(
+        pf.read_text().replace(
+            "  - id: 03_label\n", "  - id: 03_label\n    title: Label the groups\n"
+        )
+    )
+    assert not any("no title" in w for w in lint_path(method_copy).warnings)

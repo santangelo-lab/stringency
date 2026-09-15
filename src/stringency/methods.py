@@ -76,7 +76,8 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
     return " ".join(sentences) + "\n"
 
 
-def _num(n: int) -> str:
+def number_word(n: int) -> str:
+    """Counts spelled out up to ninety-nine (a count may open a sentence)."""
     words = [
         "no",
         "one",
@@ -118,4 +119,6 @@ def _num(n: int) -> str:
     return str(n)
 
 
-__all__ = ["methods_paragraph", "json"]
+_num = number_word
+
+__all__ = ["methods_paragraph", "number_word", "json"]

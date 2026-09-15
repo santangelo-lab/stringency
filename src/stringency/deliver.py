@@ -1,5 +1,6 @@
 """Deliver (design 12.1): harvest finals with sidecars, verify deliverables, write the
-coverage report, the methods paragraph, and index.json, and record the delivery.
+coverage report, the methods paragraph, the plain summary, and index.json, and record the
+delivery.
 
 Reads: artifacts, steps, and everything coverage reads. Writes: artifacts.is_final, deliveries.
 """
@@ -24,6 +25,7 @@ from stringency.methods import methods_paragraph
 from stringency.predicates import registry
 from stringency.predicates.context import OutputBundle
 from stringency.runs import RunContext
+from stringency.summary import render_summary
 
 
 @dataclass
@@ -33,6 +35,7 @@ class Delivery:
     files: list[dict[str, Any]]
     coverage: str
     methods: str
+    summary: str = ""
 
 
 def final_artifacts(rc: RunContext, include: list[str]) -> list[Any]:
@@ -129,8 +132,10 @@ def deliver(rc: RunContext, include: list[str] | None = None) -> Delivery:
     cov = coverage_data(rc)
     coverage_text = render_coverage(cov)
     methods_text = methods_paragraph(rc, cov)
+    summary_text = render_summary(rc, cov, files)
     (dest / "coverage.md").write_text(coverage_text)
     (dest / "methods.md").write_text(methods_text)
+    (dest / "summary.md").write_text(summary_text)
     (dest / "coverage.json").write_text(
         json.dumps(cov, indent=2, sort_keys=True, default=str) + "\n"
     )
@@ -143,6 +148,7 @@ def deliver(rc: RunContext, include: list[str] | None = None) -> Delivery:
         "files": files,
         "coverage": {"file": "coverage.md", "blake3": hashing.hash_text(coverage_text)},
         "methods": {"file": "methods.md", "blake3": hashing.hash_text(methods_text)},
+        "summary": {"file": "summary.md", "blake3": hashing.hash_text(summary_text)},
     }
     index_text = json.dumps(index, indent=2, sort_keys=True) + "\n"
     (dest / "index.json").write_text(index_text)
@@ -162,7 +168,7 @@ def deliver(rc: RunContext, include: list[str] | None = None) -> Delivery:
     store.run_event(
         rc.run_id, "delivered", {"delivery_id": did, "path": str(dest), "files": len(files)}
     )
-    return Delivery(did, dest, files, coverage_text, methods_text)
+    return Delivery(did, dest, files, coverage_text, methods_text, summary_text)
 
 
 def _sidecar_ok(path: Path, digest: str) -> bool:

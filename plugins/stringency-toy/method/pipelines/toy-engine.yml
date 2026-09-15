@@ -1,22 +1,26 @@
 pipeline: 1
 name: toy-engine
-version: 0.1.1
+version: 0.1.2
 domain: stringency-toy
 answers: [compare_groups]
 steps:
   - id: 01_filter
+    title: Filter low-value rows
     module: filter-rows@0.1.1
     inputs: {object: $inputs.groups}
     params:
       min_value: {default: 10, range: [0, 40]}
     runner: engine
   - id: 02_summarize
+    title: Summarize each group
     module: summarize-groups@0.1.1
     inputs: {object: $steps.01_filter.object}
   - id: 03_label
+    title: Label the groups
     module: label-groups@0.1.1
     inputs: {summary: $steps.02_summarize.table}
   - id: 04_compare
+    title: Compare the groups
     module: compare-groups@0.1.0
     inputs: {object: $steps.01_filter.object}
     params:
@@ -24,5 +28,6 @@ steps:
       correction: {default: bh, options: [bh, bonferroni, none]}
     runner: engine
   - id: 05_report
+    title: Write the report
     module: toy-report@0.1.1
     inputs: {comparison: $steps.04_compare.comparison_table, labels: $steps.03_label.consensus}
