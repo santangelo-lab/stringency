@@ -25,8 +25,11 @@ it is the first thing a new session reads.
   in the QC project); Track 3 S0 inventory done: `notes/2026-09-15-1300-app1-inventory.md`.
 - Bulk delivery is development data (2026-09-15): re-sequencing likely; Track 3 S1 to S4 now come
   before Track 2 sessions 9 to 12. Order in `spec/plans/roadmap-2026-09.md`.
-- Next session should start with: `notes/2026-09-15-1130-approvals-walkthrough.md`, then
-  `spec/plans/ux-two-audiences.md` sections 3.2 and 5.1 (Track 1 engine flags and skill text).
+- Work now runs in five lanes (roadmap, Order): A engine, B bulk, C spatial (critical path), D owner
+  and operations, E skills. Three agent sessions at once: A, B, C.
+- Next sessions: Lane A step 1 starts with `spec/plans/ux-two-audiences.md` sections 3.2 and 5.1;
+  Lane B with `spec/plans/bulkrna-plan.md` section 8; Lane C with `spec/plans/app1-spatial-qc-plan.md`
+  section 3 S1. Read `notes/2026-09-15-1400-bulk-depth-replan.md` first in any lane.
 
 ## Notes
 

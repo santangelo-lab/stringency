@@ -21,6 +21,9 @@ pipeline rather than to answer the question.
   and `xenium-qc` becomes the first scientific deliverable; Project B uses the small spleen fastqs
   as its smoke test; the final bulk run is a declare-run-deliver on the new delivery.
 
+- Roadmap Order rewritten as five lanes (A engine, B bulk, C spatial, D owner and operations, E
+  skills) so three agent sessions can run at once; Lane C is the critical path.
+
 ## Learned
 
 - `bulk.low_library_size` at the wide band (1e6) fires on every spleen sample; the pipeline's

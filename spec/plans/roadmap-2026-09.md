@@ -276,21 +276,61 @@ of `app1-spatial-qc-plan.md`.
 
 ## Order (revised 2026-09-15: the bulk delivery is development data; Lyons CLP is final data)
 
-1. Track 0 (done).
-2. Track 1b + 1c in one session (engine flags and the skill text that uses them belong together);
-   Track 1g session tests on PROTSEQ. (1a approved 2026-09-15.)
-3. Track 2 sessions 0 to 7 with Track 1d (toy analysis skill) in between; Track 1e and 1f in
-   parallel. Synthetic data drives these sessions, so the shallow delivery costs nothing here.
-4. Track 2 session 8: Project A (development) on the DARPA files, QC report first. Its
-   retrospective and the QC report go to the owner for the re-sequencing decision.
-5. Track 3 S1 to S4 (S0 done 2026-09-15): the Lyons CLP data is final, so the first scientific
-   deliverable of the whole effort is `xenium-qc` on the eight regions, and it moves ahead of the
-   remaining bulk sessions.
-6. Track 2 sessions 9 to 10 (judgment module; analysis skill run by a lab member on the
-   development data: the acceptance test for the UX work is about the experience, not the result).
-7. Track 2 sessions 11 to 12 (Project B) when Nextflow is installed; the shallow spleen fastqs are
-   the smoke test.
-8. Final bulk projects when the re-sequenced delivery arrives: deposit, declare, run, deliver.
+Work runs in lanes. A lane is a chain of half-day sessions that touches its own repositories, so
+lanes run as separate sessions at the same time. The engine is one lane so that nothing races on
+`src/stringency/`. Lane C is the critical path to the first scientific deliverable, `xenium-qc`
+on the eight Lyons CLP regions; two items in Lane D gate it.
+
+### Lane A: engine (serial, engine repo)
+
+1. Track 1b flags with the 1c operator skill text in one session: `operator_line`,
+   `run --responses`, `run --deliver`, `steps[].title` and `plain`, `--attest` requires a session
+   ref, `reviews.operator_harness`, `summary.md` and its golden.
+2. E1 and E2 (`bulkrna-plan.md` section 2): `design` and `objective` in the job JSON;
+   `considered_set` filled. Small; early because Lane B session 5 needs E1.
+3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`.
+4. Re-tag and reinstall on both machines after each step that Lane B or C depends on.
+
+### Lane B: bulk (bulkrna plugin and method repos)
+
+Sessions 0 to 8 of Track 2 in order. Session 0 (DESeq2 parameter list, `spec/bulkrna-design.md`)
+wants the owner present. Sessions 1, 2, 4 run on synthetic data and need nothing from Lane A.
+Session 5 needs E1 (Lane A step 2) installed. Session 8 ends with the development Project A and
+its QC report for the re-sequencing decision. Sessions 9 to 12 follow Lane C's S4.
+
+### Lane C: spatial (splitter, singlecell plugin, spatial method repos)
+
+S1 splitter determinism (its own repo, tag), S2 plugin object types and design schema, S3 the
+modules `resegment-proseg`, `split-punches`, `qc-cells` with the Python image, S4 runs on one
+region then all eight. S3 needs the image build route (Lane D item 2); S4 needs the punch
+coordinates (Lane D item 1).
+
+### Lane D: owner and operations (no agent session needed except item 3)
+
+1. Draw the punch coordinates for the eight regions in Xenium Explorer from
+   `/lab/projects/Lyons_CLP/tma_layout.csv`; file them under `/lab/projects/Lyons_CLP/`. Longest
+   lead item; gates S4.
+2. Create the GitHub repositories (`stringency-bulkrna`, `stringency-bulkrna-method`,
+   `stringency-spatial-method`) with Actions enabled and GHCR write permission. Gates S3 and Lane
+   B session 4.
+3. Track 1f: create `/data/lab/env/images/` (`sudo`), then the shared engine install and the
+   onboarding notes (agent-doable after the `sudo` step).
+4. Commit the 51 uncommitted files in `ROSC_MTA2`.
+5. Re-sequencing decision with the session 8 QC report in hand; deposit the new delivery with
+   the raw-deposit skill when it arrives.
+6. Java and Nextflow on PROTSEQ, for Track 2 sessions 11 and 12 only.
+
+### Lane E: skills and UX (after Lane A step 1)
+
+Track 1d analysis skill template and the toy instance; the two Track 1g session tests on PROTSEQ;
+the measurement rows; Track 2 session 10 with a lab member once Lane B session 8 is done.
+
+### Running it
+
+Three agent sessions at once: Lanes A, B, C, each in its own terminal and repository. Lane E
+opens when Lane A step 1 lands. Lane B session 0 fits a session the owner attends; Lanes A and C
+run with less attention. Final bulk projects on the re-sequenced delivery are a declare, run,
+deliver from the same method tag, in whichever lane is free.
 
 ## Verification
 
