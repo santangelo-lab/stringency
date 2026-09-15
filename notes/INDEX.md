@@ -23,11 +23,14 @@ it is the first thing a new session reads.
   reviewer = the person running) except the DESeq2 parameter list; Track 3 decisions answered
   including the Lyons CLP design (animal replicate, n = 2 per time point, no sham, no contrasts
   in the QC project); Track 3 S0 inventory done: `notes/2026-09-15-1300-app1-inventory.md`.
+- Bulk delivery is development data (2026-09-15): re-sequencing likely; Track 3 S1 to S4 now come
+  before Track 2 sessions 9 to 12. Order in `spec/plans/roadmap-2026-09.md`.
 - Next session should start with: `notes/2026-09-15-1130-approvals-walkthrough.md`, then
   `spec/plans/ux-two-audiences.md` sections 3.2 and 5.1 (Track 1 engine flags and skill text).
 
 ## Notes
 
+- `2026-09-15-1400-bulk-depth-replan.md` — the RMLDH7 delivery is shallow (spleen 0.9 M reads); Projects A and B become development projects; Track 3 moves ahead of Track 2 sessions 9 to 12.
 - `2026-09-15-1300-app1-inventory.md` — Track 3 S0: Lyons CLP inventory from the collaborator's plan and TMA maps; slide-to-TMA mapping; layout table filed in the project directory.
 - `2026-09-15-1130-approvals-walkthrough.md` — Track 1a amendments approved and applied; Track 2 and Track 3 decisions answered and recorded; DESeq2, Proseg mix, GHCR images.
 - `2026-09-14-1600-track0-and-roadmap.md` — surveys, the approved roadmap and its three track notes, section I code and skill text done.

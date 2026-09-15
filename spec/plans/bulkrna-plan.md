@@ -17,6 +17,15 @@ an nf-core samplesheet (`fastq_2` empty, strandedness auto) and `metadata.csv` (
 tissue, vendor_quantified). PROTSEQ has no Nextflow, Java, R, or conda on PATH; references at
 `/data/lab/ref/refgenomes/` (mouse GRCm39 Ensembl 112 FASTA and GTF, no STAR or salmon index).
 
+Data status (2026-09-15, from `vendor_results/RMLDH7_mapping-stats/*.tsv`): the run is shallow.
+Spleen: 22 samples, median 0.9 M input reads (0.5 to 3.7 M), median 0.25 M reads after UMI
+deduplication (0.10 M lowest). Liver: median 8.0 M input (3.2 to 19.4 M), median 2.5 M after
+deduplication (1.0 M lowest). Deduplication keeps about 30 percent of mapped reads in every
+sample. The owner's judgment: this delivery is development data; the experiment will probably be
+re-sequenced, and the final project will run on that delivery. Everything below that touches the
+DARPA files is therefore about exercising the pipeline on real inputs, and its first useful output
+is the QC report that documents the depth problem.
+
 Reference design for the downstream steps: `github.com/mkendzel/plasmid_bulk_rna` (R scripts:
 import vendor zip, QC with thirteen warn/fail metrics, limma-voom with a cell-means design and a
 contrast registry, Hallmark GSEA, figures). We take steps, metric names, and defaults from it, not
@@ -156,6 +165,17 @@ binomial counts; outputs committed and hashed; shared by plugin tests, method te
 
 ## 5. Project A and Project B on the DARPA data
 
+Both projects on the RMLDH7 delivery are development projects (section 1, data status). They run
+under the `exploratory` profile so that the expected blocks (`bulk.qc_fail_retained` on shallow
+spleen samples) become flags with recorded reasons, and their `deliver/` output is labelled
+development in the objective's title and in `methods.md`. Project A is run in two stages: first
+`--until 02_qc` and deliver `qc_report`, which is the evidence for the re-sequencing request
+(`bulk.low_library_size` is expected to fire on every spleen sample even at the wide band of
+1e6); then the full pipeline, whose DE tables are for pipeline verification, not for the project.
+When the re-sequenced delivery lands (deposited with the raw-deposit skill), the final project is
+declared from the same method tag under `standard`, and the development projects stay in the
+trace as history.
+
 Project A sample sheet from `metadata.csv`: `sample` (the vendor column stem), `animal`, `group`,
 `replicate`, `tissue`, `condition`, `vendor_quantified`; all 44 rows, with
 `bulk.samples_unquantified` accepted once (the more honest trace). Declarations: inputs counts
@@ -199,11 +219,12 @@ and E2 on the toy.
 two extractors, synthetic data; 2 schemas, defaults, phrasing; 3 engine E1; 4 method skeleton,
 image, manifest, policy, import and qc modules run by hand in the image; 5 filter, DE, GSEA,
 pipeline lints; 6 predicates with fixtures, the qc extractor, policy ranges; 7 report, end to end
-on synthetic data on both machines, tag plugin and method `v0.1.0`; 8 Project A on the DARPA data
-through the declare skill, retrospective; 9 judgment module, E2, controls, method `v0.2.0`; 10
+on synthetic data on both machines, tag plugin and method `v0.1.0`; 8 Project A (development) on the DARPA data
+through the declare skill, QC report delivered first, retrospective; 9 judgment module, E2, controls, method `v0.2.0`; 10
 the analysis skill `stringency-analyze-bulk-rnaseq`, a run by a non-computational member; 11
-PROTSEQ Nextflow install and the `nfcore-rnaseq` module; 12 Project B on the 44 fastq, Project A'
-chained, comparison note.
+PROTSEQ Nextflow install and the `nfcore-rnaseq` module; 12 Project B on the 44 fastq (the spleen files, 24 to 71 MB each, are the smoke-test subset),
+Project A' chained, comparison note. Final projects on the re-sequenced delivery when it arrives:
+declare, run, deliver; no new sessions unless the run finds something.
 
 ## 8. Decisions for session 0 (answered by the owner 2026-09-15 unless marked open)
 

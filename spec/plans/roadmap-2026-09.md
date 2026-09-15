@@ -16,7 +16,9 @@ Phase A is complete on both machines (2026-09-14). Three things now pull on the 
    pipeline alone. The spec is silent on all of this and assumes a technical operator, so part of
    this is new design, not execution.
 3. **Real data has landed on PROTSEQ.** Bulk RNA-seq: 44 UMI fastqs + vendor counts (32 of 44
-   quantified) at `/data/lab/raw/2026-09_plasmidsaurus_darpa-united-sarna-comparison/`. Spatial:
+   quantified) at `/data/lab/raw/2026-09_plasmidsaurus_darpa-united-sarna-comparison/`; shallow
+   (spleen median 0.9 M reads, liver 8 M; 2026-09-15), so this delivery is development data and
+   the experiment will probably be re-sequenced. Spatial:
    Xenium XOA 6.1, 2 slides x 4 tissues (115 GiB) at `/data/lab/raw/2026-08_xenium_lyons-clp/`;
    the mature spatial pipeline is `ROSC_MTA2` on BMESEQ (18 declared steps, gated state, conda,
    per-tissue script copies, built on a different dataset).
@@ -193,6 +195,10 @@ plugin tests, method tests, and controls.
 
 ### Project A (DARPA vendor counts) and Project B (alignment)
 
+Both are development projects on a shallow delivery (`bulkrna-plan.md` section 1 data status):
+`exploratory` profile, labelled development, QC report delivered first as the evidence for
+re-sequencing; the final projects run on the new delivery from the same method tag.
+
 A: sample sheet from `metadata.csv` (all 44 rows, `bulk.samples_unquantified` accepted once);
 `design.yml` with group, tissue, condition; all pairwise contrasts within tissue;
 deliverables `de_tables, de_summary, gsea_tables, qc_report, report`. Driven through the declare
@@ -268,17 +274,23 @@ of `app1-spatial-qc-plan.md`.
 3. Track 3: confirm the replication unit and design for Lyons CLP; confirm no IF module; confirm
    the splitter fix happens in the splitter repo first.
 
-## Order
+## Order (revised 2026-09-15: the bulk delivery is development data; Lyons CLP is final data)
 
-1. Track 0 (one session).
-2. Track 1a note + amendments written for approval; Track 1b + 1c in one session (engine flags and
-   the skill text that uses them belong together); Track 1g session tests on PROTSEQ.
+1. Track 0 (done).
+2. Track 1b + 1c in one session (engine flags and the skill text that uses them belong together);
+   Track 1g session tests on PROTSEQ. (1a approved 2026-09-15.)
 3. Track 2 sessions 0 to 7 with Track 1d (toy analysis skill) in between; Track 1e and 1f in
-   parallel once 1a is approved.
-4. Track 2 sessions 8 to 10 (Project A, judgment, analysis skill run by a lab member: the
-   acceptance test for the UX work).
-5. Track 3 S0 to S4.
-6. Track 2 sessions 11 to 12 (Project B) when Nextflow is installed.
+   parallel. Synthetic data drives these sessions, so the shallow delivery costs nothing here.
+4. Track 2 session 8: Project A (development) on the DARPA files, QC report first. Its
+   retrospective and the QC report go to the owner for the re-sequencing decision.
+5. Track 3 S1 to S4 (S0 done 2026-09-15): the Lyons CLP data is final, so the first scientific
+   deliverable of the whole effort is `xenium-qc` on the eight regions, and it moves ahead of the
+   remaining bulk sessions.
+6. Track 2 sessions 9 to 10 (judgment module; analysis skill run by a lab member on the
+   development data: the acceptance test for the UX work is about the experience, not the result).
+7. Track 2 sessions 11 to 12 (Project B) when Nextflow is installed; the shallow spleen fastqs are
+   the smoke test.
+8. Final bulk projects when the re-sequenced delivery arrives: deposit, declare, run, deliver.
 
 ## Verification
 
@@ -292,6 +304,7 @@ of `app1-spatial-qc-plan.md`.
 - UX: the toy re-run through `stringency-analyze-toy-compare` by someone other than the owner,
   measured against the 2026-09-14 baseline (26 cards); a hold resolved via chat (`via: relayed`)
   and one via the page (`via: web`) both visible in `reviews`.
-- Real data: Project A delivered on the vendor counts with `methods.md`, `coverage.md`,
-  `summary.md`; `xenium-qc` delivered on one Lyons CLP region with sidecars a downstream project
+- Real data: Project A (development) delivered on the vendor counts with `methods.md`,
+  `coverage.md`, `summary.md`, its QC report naming every shallow sample; the final bulk
+  deliverable waits for the re-sequenced data; `xenium-qc` delivered on one Lyons CLP region with sidecars a downstream project
   binds through `derived_from`.
