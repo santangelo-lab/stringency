@@ -20,7 +20,7 @@ tissue, vendor_quantified). PROTSEQ has no Nextflow, Java, R, or conda on PATH; 
 Reference design for the downstream steps: `github.com/mkendzel/plasmid_bulk_rna` (R scripts:
 import vendor zip, QC with thirteen warn/fail metrics, limma-voom with a cell-means design and a
 contrast registry, Hallmark GSEA, figures). We take steps, metric names, and defaults from it, not
-code. Its defaults: adjusted p 0.05, |log2FC| 1.5, filter 10 counts in 3 samples, QC warn/fail
+code; the DE method deviates (DESeq2, decided 2026-09-15, section 8). Its defaults: adjusted p 0.05, |log2FC| 1.5, filter 10 counts in 3 samples, QC warn/fail
 pairs for input reads, mapping rate, dedup rate, total counts, top-100 fraction, detected genes,
 genes at 10 counts, protein-coding fraction, rRNA fraction, mito fraction, within-condition
 correlation, PCA centroid distance, median absolute M.
@@ -115,8 +115,8 @@ the job JSON with jsonlite.
 |---|---|---|---|---|---|
 | 01_import | import-counts | counts, samples | id_column fixed | none | counts (canonical), samples (matrix order), genes (id, name, biotype) |
 | 02_qc | qc-metrics | counts, samples, genes, alignment_stats | the 13 warn/fail pairs with ranges; detection_min 10; complexity_top_n 100; pca_n_feats 500; pca_n_pcs 5; mito prefix by organism | the fail thresholds | qc_metrics, qc_report (md), figures |
-| 03_filter | filter-features | counts, samples, qc_metrics | method filterByExpr or min_count; min_count 10 [5, 20]; min_samples 3 [2, 6]; drop_qc_fail true; exclude_samples fixed [] | method, drop_qc_fail | counts, samples, filter_summary |
-| 04_de | de-limma-voom | counts, samples, genes | design cell_means; covariates fixed []; normalization TMM [TMM, TMMwsp, upperquartile]; voom_quality_weights false; ebayes_robust false; correction BH [BH, bonferroni, none]; p_cut 0.05 [0.01, 0.1]; lfc_cut 1.5 [0, 2]; block_by_animal false | all but design | de_tables (long), de_summary, de_significant, design_matrix, assumption_checks |
+| 03_filter | filter-features | counts, samples, qc_metrics | minimal prefilter ahead of DESeq2's independent filtering: min_count 10 [5, 20] summed over min_samples = smallest group size [2, 6]; drop_qc_fail true; exclude_samples fixed [] | min_count, drop_qc_fail | counts, samples, filter_summary |
+| 04_de | de-deseq2 | counts, samples, genes | design `~ condition` (median-of-ratios size factors, Wald test); covariates fixed []; correction BH [BH, bonferroni, none]; p_cut 0.05 [0.01, 0.1]; lfc_cut 1.0 [0, 2]; block_by_animal false; DESeq2 choices (fit_type, lfc_shrink, cooks_cutoff, independent_filtering, alpha) settled in session 0 | all but design | de_tables (long), de_summary, de_significant, design_matrix, assumption_checks |
 | 05_gsea | gsea-fgsea | de_tables, genes | gene_sets hallmark [hallmark, hallmark_kegg]; rank_stat t [t, signed_logp]; min_size 15; max_size 500; seed (stochastic) | rank_stat | gsea_tables |
 | 06_report | de-report (kind report) | de_summary, de_tables, gsea_tables, qc_metrics, filter_summary | none | report (md, every numeral a table cell), volcano per contrast, PCA, heatmap, GSEA bars |
 
@@ -144,12 +144,11 @@ already QC'd.
 on the Nextflow module until E5.
 
 Environments: `bulkrna-r-0.1.0.sif` from `bioconductor/bioconductor_docker:RELEASE_3_21` (R 4.5)
-with limma, edgeR, fgsea, jsonlite, data.table, ggplot2, ggrepel, pheatmap, matrixStats, rmarkdown,
+with DESeq2, apeglm, fgsea, jsonlite, data.table, ggplot2, ggrepel, pheatmap, matrixStats, rmarkdown,
 and `python3` for the extractors; `renv.lock` generated inside the image for the local executor
-digest. Build route decided in session 0: `sudo apptainer build` on PROTSEQ, or a Dockerfile built
-by GitHub Actions to GHCR and pulled by digest (no root on either workstation). Path: the shared
-image directory of `spec/plans/ux-two-audiences.md` section 7 once it exists; until then `~/envs/` as the
-toy does. Project B adds a pinned Nextflow image to satisfy `repro.env_unpinned`.
+digest. Build route (decided 2026-09-15): a Dockerfile in the method repo built by GitHub Actions to GHCR
+and pulled by digest, no root on either workstation. Path: `/data/lab/env/images/` with a
+`MANIFEST.md` (`spec/plans/ux-two-audiences.md` section 7), created when the first image lands. Project B adds a pinned Nextflow image to satisfy `repro.env_unpinned`.
 
 Fixtures: `controls/fixtures/make_synthetic.py` (stdlib, fixed seed) generates 2 tissues x 3
 groups x 4 animals, 2000 genes, 100 planted DE genes with known log2 fold changes, negative
@@ -162,17 +161,21 @@ Project A sample sheet from `metadata.csv`: `sample` (the vendor column stem), `
 `bulk.samples_unquantified` accepted once (the more honest trace). Declarations: inputs counts
 (vendor matrix), samples (sheet), vendor_stats (mapping statistics); design organism mouse, units
 observation sample, sample sample, animal animal, factors group, tissue, condition, replication
-unit animal; objective differential_expression with within-tissue contrasts against the reference
-group, `min_n_per_group: 3`, deliverables `de_tables, de_summary, gsea_tables, qc_report, report`.
-The declare skill must ask which group is the reference and whether cross-tissue contrasts are
-wanted. Project A' later binds `counts` to Project B's delivered matrix through `derived_from`.
+unit animal; objective differential_expression with all pairwise contrasts within tissue (ten per
+tissue, no reference group, no cross-tissue contrasts), `min_n_per_group: 3`, deliverables
+`de_tables, de_summary, gsea_tables, qc_report, report`. The project README's rule that vendor
+outputs are reference only gets a line naming Project A as the deliberate exception, superseded by
+Project B and A'. Project A' later binds `counts` to Project B's delivered matrix through `derived_from`.
 
 Project B module `nfcore-rnaseq`: `kind: deterministic`, `operation: align_quantify`, `runner:
 operator`, `env: nextflow`, inputs samplesheet (`nf_samplesheet`), fasta, gtf; params named as
 nf-core params so `nextflow_log` evidence matches the Action: `aligner star_salmon [star_salmon,
 star_rsem]`, `with_umi true` (fixed), `umitools_extract_method`, `umitools_bc_pattern`,
 `umi_dedup_tool umicollapse [umitools, umicollapse]`, `strandedness auto` (fixed), `revision`
-(fixed), `save_reference true`. Evidence: `nextflow_trace` (the config adds the `container` field
+(fixed), `save_reference true`. The UMI is already in the read name (14 nt after an underscore in
+the fastq header, checked 2026-09-15), so the route is `--with_umi --skip_umi_extract
+--umitools_umi_separator _` rather than extraction; `umitools_extract_method` and
+`umitools_bc_pattern` drop out. Evidence: `nextflow_trace` (the config adds the `container` field
 and `trace.overwrite`), `nextflow_log`, `job_log`. `pre.sh` is the canonical command, so
 `exec.script_drift` has a script to hash, followed by a reshape into a canonical `counts_matrix`
 and `samples`. PROTSEQ needs Java 17 or later, Nextflow, `NXF_APPTAINER_CACHEDIR`, a smoke run with
@@ -202,25 +205,41 @@ the analysis skill `stringency-analyze-bulk-rnaseq`, a run by a non-computationa
 PROTSEQ Nextflow install and the `nfcore-rnaseq` module; 12 Project B on the 44 fastq, Project A'
 chained, comparison note.
 
-## 8. Decisions for session 0
+## 8. Decisions for session 0 (answered by the owner 2026-09-15 unless marked open)
 
-1. DE method: limma-voom as the reference does, or edgeR QL and DESeq2 as options; quality weights
-   and robust eBayes adjustable or fixed.
-2. Contrasts: the `condition = group.tissue` convention; the reference group per tissue; any
-   cross-tissue or interaction contrasts; pair liver and spleen by animal.
-3. Thresholds: adjusted p 0.05 and |log2FC| 1.5 as defaults with ranges [0.01, 0.1] and [0, 2];
-   1.5 in log2 is about 2.8-fold and is strict.
-4. Gene filter: `filterByExpr` defaults or 10 counts in 3 samples.
-5. Gene ids: ENSMUSG primary, symbols from the vendor; which Ensembl release the vendor used;
-   duplicate-symbol rule for GSEA.
-6. Minimum replicates: plugin default 3; policy bands 4, 3, 2.
-7. Gene sets: Hallmark only offline, or KEGG too (needs an Entrez mapping in the image).
-8. QC: adopt the thirteen metrics and their warn/fail values verbatim; the format and path of the
-   vendor mapping statistics.
-9. Judgment: the salient-genes module in v0.2, its vocabulary, who reviews.
-10. Environment: build route and storage path; Bioconductor 3.21 on R 4.5.
-11. Project B: where the UMI sits in the reads and the vendor's UMIcollapse settings; nf-core
-    version and aligner; whether a salmon versus featureCounts difference is acceptable.
-12. Roles for members' runs: owner the member, reviewer the PI; `relayed_review` stays true under
-    standard.
-13. Samples for Project A: the 32 quantified only, or all 44 with the flag accepted.
+1. DE method: **DESeq2**, not limma-voom; the owner knows it better. Module `de-deseq2`, design
+   `~ condition`, median-of-ratios size factors, Wald test. Which DESeq2 choices are adjustable
+   params (`fit_type`, `lfc_shrink`, `cooks_cutoff`, `independent_filtering`, `alpha`,
+   `block_by_animal`) and their defaults: **open, to be discussed in session 0 while designing**.
+2. Contrasts: `condition = group.tissue` stands. **All pairwise contrasts within tissue** (ten
+   per tissue for groups 1, 3, 5, 7, 11); no reference group; no cross-tissue or interaction
+   contrasts in v0.1; `block_by_animal` false by default.
+3. Thresholds: adjusted p **0.05** [0.01, 0.1] and |log2FC| **1.0** [0, 2]. The reference design's
+   1.5 stays within range and is named as a non-default when used.
+4. Gene filter: **minimal prefilter** (genes with fewer than `min_count` 10 counts summed over the
+   smallest group's number of samples are dropped), with DESeq2's independent filtering kept.
+   `filterByExpr` is not used; edgeR leaves the image.
+5. Gene ids: ENSMUSG ids from the matrix; **symbols and biotypes from the GRCm39 Ensembl 112 GTF in
+   `/lab/ref`** for both projects. Ids absent from the GTF keep symbol NA and are counted in a flag.
+   Duplicate symbols for GSEA: keep the id with the highest mean count. The vendor's release stays
+   unknown.
+6. Minimum replicates: default **3**; `bulk.low_replicates` bands **4 / 3 / 2** (strict, standard,
+   exploratory), a flag. Note: the vendor quantified 3, 2, 2, 1, 2 spleen samples per group, so
+   spleen contrasts on vendor counts hold for review under standard.
+7. Gene sets: **Hallmark only** in v0.1, committed GMTs named with the MSigDB version.
+8. QC: **adopt the thirteen metrics and their warn/fail values verbatim** as params. Vendor mapping
+   statistics: `vendor_results/RMLDH7-mapping-stats-reads.csv` (per run: unique, multi, unmapped)
+   and `vendor_results/RMLDH7_mapping-stats/<sample>.tsv` (eleven `Metric\tValue` rows: input,
+   mapped, unmapped, unique, multi, mapping rate, and the dedup counterparts).
+9. Judgment: **keep `categorise-salient-genes` in v0.2** as described in section 4.
+10. Environment: **Dockerfile in the method repo, GitHub Actions to GHCR, pulled by digest into
+    `/data/lab/env/images/`**; Bioconductor 3.21 on R 4.5 with DESeq2 and apeglm.
+11. Project B: the UMI is in the read name (section 5), recorded now. **nf-core/rnaseq version and
+    aligner are decided in session 11**; default STAR + salmon unless the vendor comparison needs
+    featureCounts.
+12. Roles for members' runs: **owner and reviewer are the same person, the member running the
+    pipeline**; no separate-person review yet. Design line 75 allows this ("may equal owner; the
+    record is the point, not the separation"). `relayed_review` stays true under standard.
+13. Samples for Project A: **all 44 declared**, vendor counts for the 32, `bulk.samples_unquantified`
+    accepted once so the twelve missing spleen samples are in the trace.
+

@@ -651,6 +651,8 @@ The reviewer is the OS user running `review`, checked against `roles.reviewer` (
 
 `via: tty` when `review` runs attached to a terminal. `via: relayed` when it runs non-interactively with `--attest`, which is the path a harness skill uses after presenting the hold to the person in chat and receiving an explicit yes. Relayed rows record the operator harness and session reference.
 
+A third value, `web`, means the verdict was entered through a form served by `stringency review --serve`, a process the reviewer started under their own account, protected by a per-start token and reachable on loopback or through a tunnel. It proves which account's process recorded the verdict, as `tty` does, and nothing more: an agent with shell access as that user could start the server, read the token, and post. That is the boundary `tty` rests on as well, which is why profiles treat `web` like `tty`, strict included, and why the trace records `via` at all. The speed bump is the account, not the form. Relayed reviews must carry the operator's session reference; `--attest` without one is refused. (Amendment approved 2026-09-15; `spec/plans/ux-two-audiences.md` section 8.)
+
 Profiles with `relayed_review: false` (strict by default) refuse `--attest`; manuscript-bound sign-offs happen at a terminal. Standard and exploratory allow relayed verdicts and mark them visibly, which is the honest rendering of "a person said yes in the chat." This is a speed bump, not a cryptographic guarantee: an agent with shell access as the reviewer's user could fabricate an attestation. The trace makes every relayed verdict findable, and the skill instructions forbid running `review` without a confirmation in the conversation. The design says this plainly rather than implying a stronger property.
 
 ### 7.6 Override corpus
@@ -940,6 +942,8 @@ The engine assumes the following about Claude Science, taken from implementation
 
 Skill wrappers set the `STRINGENCY_OPERATOR*` variables so the trace can cross-link. `deliver`'s write-back and the skill's artifact-save step are what keep a durable copy on the array. Nothing else in the engine depends on Claude Science.
 
+Skills are of two kinds. The two engine skills, `stringency-declare` and `stringency-operator`, are the operator's reference and live in the engine repository. One analysis skill per pipeline, rendered from the engine's template and the method repository's `skills/<pipeline>.yml`, lives in the method repository and is what a person loads by describing their experiment; it presents intent, progress, results, and holds in sentences and shows the CLI only on request. Both kinds set the `STRINGENCY_OPERATOR*` variables and neither resolves a hold. (Amendment approved 2026-09-15.)
+
 ## 11. Controls
 
 A module ships its controls as `controls/*.yml`.
@@ -993,6 +997,8 @@ Fixtures are identified by hash; the path is a hint. The engine resolves fixture
 ### 12.1 Harvest and write-back
 
 `deliver` requires the run to be `completed`. It copies every artifact marked final (report-module outputs by default, `--include <step>.<output>` for others) with sidecars into `deliver/<run_id>/`, verifies that every deliverable named in the objective is present, writes `coverage.md` (12.2) and `methods.md` (12.3), writes `index.json` linking each file to run, step, action, and hash, and records the delivery. In the Claude Science deployment the skill then saves these as session artifacts, so both stores carry the run ID.
+
+`deliver` also writes `summary.md`: the engine's plain rendering of the run for a reader who will not open the trace: what was analyzed, what ran, what was checked and who decided what, what was delivered, what was not checked. Every sentence is filled from the trace; the file contains no interpretation. (Amendment approved 2026-09-15.)
 
 ### 12.2 Coverage report
 
@@ -1060,12 +1066,12 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 |---|---|---|---|---|
 | `init <path>` | `--method <git-url>@<tag> --pipeline <name> --mode --profile --owner --reviewer --objective <file> --design <file> --inputs <file> [--judgment-harness api] [--executor apptainer] [--drafted-by person\|agent] [--brief <file>]` | binds; refuses open+strict; runs lint | opens the project record | none |
 | `declare <dir>` | `--check --method <git-url>@<tag> --pipeline <name> [--objective --design --inputs] [--profile] [--executor] [--json]` | every `init` check, in a temporary directory | none; prints the echo-back | none |
-| `run` | `[--until <step>] [--allow-dirty "<reason>"] [--new] [--json]` | evaluates predicates; halts on hold or block | writes everything | triggers replicates |
+| `run` | `[--until <step>] [--allow-dirty "<reason>"] [--new] [--json] [--responses <file\|->] [--deliver]` | evaluates predicates; halts on hold or block; `--responses` files dispatch responses from one document; `--deliver` delivers on completion | writes everything | triggers replicates |
 | `next` | `[--json]` | reports the next step with its plan template (operation, parameter schema with defaults and ranges, vocabulary, declared outputs, expected evidence), or the current hold | reads | none |
 | `propose <step>` | `[--set k=v]… [--reason "<txt>"] [--json]` | constructs the Action from defaults plus proposed values; runs the pre-gate; issues a ticket on pass | writes the action and verdicts | none |
 | `submit <ticket>` | `--outputs name=path… [--evidence path]… [--command "<string>"] [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |
 | `status` | `[--run <id>] [--overrides [--module]] [--json]` | reports holds and who they wait on | reads | override rates |
-| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest]` | clears holds by recorded verdict | appends reviews | accumulates override corpus |
+| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest] [--serve [--port <n>] [--bind <addr>] [--project <path>]... [--projects <dir>]]` | clears holds by recorded verdict; `--serve` reads holds and records verdicts with `via: web` (7.5) | appends reviews | accumulates override corpus |
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
@@ -1165,7 +1171,7 @@ Everything in the eval column is either a control, a rate computed from the trac
 5. Plugins have a predicate half in the engine environment and a tool half executed in module environments. State extraction runs once per step, post-execution, and predicates read the stored summary.
 6. Forward feasibility is `obj.feasibility`, a pre- and post-gate check on declared unit counts per contrast level, rather than a prediction.
 7. Reviews are bound to module version, input digest, and params hash, and prior verdicts auto-resolve identical holds (`rebind`).
-8. Reviewer identity carries `via: tty | relayed`; profiles decide whether relayed verdicts are accepted.
+8. Reviewer identity carries `via: tty | relayed | web`; profiles decide whether relayed verdicts are accepted, and treat `web` as `tty`.
 9. Coverage is computed from predicate `covers` declarations and module `decision_points`.
 10. `fork` and `abandon` are in v1; `trace` is a flag on `status`.
 11. Judgment modules declare `batching` and `evidence`; the engine renders prompts from declared variables only.

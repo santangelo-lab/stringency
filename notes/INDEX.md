@@ -3,13 +3,13 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-14, evening)
+## Current state (2026-09-15, midday)
 
 - Phase A exit complete on both machines (BMESEQ `toy-cs` 2026-09-08; PROTSEQ two chained projects
   from agent-drafted declarations 2026-09-14). Backlog sections A to I done except A5 (review page,
   now scheduled as Track 1e), E2's in-session route, G2 and H5 (design questions).
 - Roadmap approved 2026-09-14: `spec/plans/roadmap-2026-09.md`. Track 0 (section I code and skill text)
-  done. Track 1 (two audiences: fewer plainer cards, relayed and web holds, analysis skills,
+  done. The 'await the owner' items below were answered 2026-09-15. Track 1 (two audiences: fewer plainer cards, relayed and web holds, analysis skills,
   `summary.md`, shared PROTSEQ install) detailed in `spec/plans/ux-two-audiences.md`; its five amendment
   texts await the owner. Track 2 (bulk RNA-seq plugin and method) in `spec/plans/bulkrna-plan.md`;
   thirteen session-0 decisions await the owner. Track 3 (Lyons CLP Xenium, QC first) in
@@ -18,11 +18,16 @@ it is the first thing a new session reads.
   pushed; engine 0.1.0 installed from the tag on both machines.
 - `spec/` reorganised 2026-09-14: spec and contracts at the top, `spec/plans/` live, `spec/archive/`
   history; `spec/README.md` maps it.
-- Next session should start with: `notes/2026-09-14-1600-track0-and-roadmap.md`, then
+- Approvals collected 2026-09-15: the five Track 1a amendments applied to the design; Track 2
+  session-0 decisions answered (DESeq2 replaces limma-voom; all pairwise within tissue; GHCR image;
+  reviewer = the person running) except the DESeq2 parameter list; Track 3 decisions answered
+  except the Lyons CLP design, which waits on the owner's experimental plan document.
+- Next session should start with: `notes/2026-09-15-1130-approvals-walkthrough.md`, then
   `spec/plans/ux-two-audiences.md` sections 3.2 and 5.1 (Track 1 engine flags and skill text).
 
 ## Notes
 
+- `2026-09-15-1130-approvals-walkthrough.md` — Track 1a amendments approved and applied; Track 2 and Track 3 decisions answered and recorded; DESeq2, Proseg mix, GHCR images.
 - `2026-09-14-1600-track0-and-roadmap.md` — surveys, the approved roadmap and its three track notes, section I code and skill text done.
 - `2026-09-14-1445-protseq-exit-run.md` — PROTSEQ tooling, both skills live, two chained projects from agent-drafted declarations; section I of the backlog.
 - `2026-09-09-1059-declare-and-chained-projects.md` — declare --check, drafted-by and brief, derived_from chained projects, the declare skill.

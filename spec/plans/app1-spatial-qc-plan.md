@@ -29,7 +29,7 @@ tissues), not on Lyons CLP. Stages and their state:
 
 | stage | script | state for wrapping |
 |---|---|---|
-| resegmentation (Nextflow, Docker, Proseg) | `resegmentation/*/main.nf` | frozen for MTA; optional here |
+| resegmentation (Nextflow, Docker, Proseg) | `resegmentation/*/main.nf` | frozen for MTA; required here for lung and gut (ROSC manifest: liver, spleen, FRT use `10xSeg`, all other tissues `Proseg`; Proseg runs on the whole region before the split) |
 | punch coordinates | manual, Xenium Explorer | stays manual; becomes a declared input |
 | punch splitting | `data_split/Xen_TMA_pipeline` (separate repo) | required; barcode order depends on `PYTHONHASHSEED`, documented in `setup/Claude/HANDOFF_XeniumSplitter.md`; must be fixed first |
 | histology QC and manifest | Quarto, manual include column | becomes the QC module plus a reviewed flag |
@@ -70,7 +70,10 @@ schema per the app-1 session 1 questions (units observation cell, sample punch, 
 tissue, condition; batch slide; replication unit to be confirmed). Extractors stdlib or pyarrow
 inside the Python image (E6 in `spec/plans/bulkrna-plan.md` applies).
 
-**S3, method repo `stringency-spatial-method`**: module `split-punches` (wraps the fixed splitter;
+**S3, method repo `stringency-spatial-method`**: module `resegment-proseg` (wraps the ROSC
+Nextflow Proseg run with its Docker image converted to a SIF; inputs a region bundle; output a
+resegmented bundle; applied to lung and gut, skipped for liver and spleen, so `xenium-qc` runs on
+either bundle kind; about one extra session), module `split-punches` (wraps the fixed splitter;
 inputs bundle and coordinates; params `min_transcripts 10`, `min_area 50`, `qv_threshold 25` with
 ranges; outputs one bundle per punch plus `region_metrics`); module `qc-cells` (inputs a punch
 bundle; params `min_nCount`, `min_nFeature`, `min_cellarea`, `max_cellarea` from
@@ -90,13 +93,20 @@ schema; controls before the first real run, as the app-1 risks section says), ni
 neighbourhoods, DE. Each wraps a `ROSC_MTA2` step as one module with declared params rather than
 a per-tissue copy.
 
-## 4. Decisions for the owner
+## 4. Decisions for the owner (answered 2026-09-15 unless marked open)
 
-1. The replication unit for Lyons CLP (animal, punch) and the factors and levels.
-2. Whether resegmentation is wanted for this dataset or the vendor segmentation stands.
-3. Confirm the splitter fix happens in its own repo first and that the MTA split outputs stay
-   frozen.
-4. Which QC thresholds are per tissue and which are shared; whether the histology include or
-   exclude decision is a reviewed flag on `qc-cells` or a separate manual input like the
-   coordinates.
-5. Image location and build route, shared with the bulk plan.
+1. Replication unit and design for Lyons CLP: **open**. The owner has an experimental plan
+   document to share and will walk through it in a dedicated conversation; S0 waits on it.
+2. Segmentation: **a mix following ROSC**: liver and spleen keep the vendor (XOA 6.1)
+   segmentation; lung and gut are resegmented with Proseg. Confirmed against
+   `setup/sample_manifest_complete_v2.csv` on BMESEQ (Liver, Spleen, FRT `10xSeg`; Brain, Heart,
+   Kidney, LN, LgIntest, Lung, Sintest, Skin `Proseg`). The plan gains a `resegment-proseg` module
+   ahead of `split-punches` (section 3).
+3. Splitter: **fix in `jrose835/Xen_TMA_pipeline` first**, with a byte-identical determinism test
+   and a tag; the ROSC MTA split outputs stay frozen and are never regenerated.
+4. QC thresholds: **per-tissue defaults from `tissue_configs.yaml`** with shared ranges. The
+   histology include or exclude decision is **a manual input file** like the coordinates: hashed,
+   with a source line, read by `qc-cells`, which records the excluded punches.
+5. Image location and build route: **as the bulk plan** (`bulkrna-plan.md` section 8 item 10):
+   Dockerfile, GitHub Actions to GHCR, pulled by digest into `/data/lab/env/images/`.
+

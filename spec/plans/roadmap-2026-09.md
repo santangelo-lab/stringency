@@ -52,7 +52,7 @@ dispatch), not from the gates. Two holds needed a person; the other 24 were mech
 
 ## Track 1: UX, two audiences (runs alongside Track 2)
 
-### 1a. Design note and amendments [need owner approval]
+### 1a. Design note and amendments [approved 2026-09-15, applied to the design]
 
 New working note `spec/plans/ux-two-audiences.md` (like `spec/archive/review-ux.md`). Amendment texts for:
 
@@ -179,21 +179,22 @@ Two new repos: `~/github/stringency-bulkrna` (plugin, modelled on `stringency-si
 ### Method repo, pipeline `bulk-de` (all `runner: engine`, env `bulkrna-r`)
 
 `01_import` import-counts -> `02_qc` qc-metrics (13 reference metrics with warn/fail as params;
-tissue-marker and sex-gene consistency as code) -> `03_filter` filter-features (`filterByExpr` or
-min_count) -> `04_de` de-limma-voom (cell-means, TMM, BH, p 0.05, |log2FC| 1.5 as defaults with
-ranges; contrasts from the job's `objective`) -> `05_gsea` fgsea on committed Hallmark GMTs
+tissue-marker and sex-gene consistency as code) -> `03_filter` filter-features (minimal prefilter
+ahead of DESeq2's independent filtering) -> `04_de` de-deseq2 (single `condition` factor, all
+pairwise contrasts within tissue, BH, p 0.05, |log2FC| 1.0 as defaults with ranges; the DESeq2
+parameter list is settled in session 0; contrasts from the job's `objective`) -> `05_gsea` fgsea on committed Hallmark GMTs
 (seeded) -> `06_report` (code-generated prose, every numeral a table cell). v0.2 adds
 `07_salient` judgment module `categorise-salient-genes` (vocabulary `gene_categories`, 3
 replicates, negative control scrambled symbols, positive control known ISGs). Image
-`bulkrna-r-0.1.0.sif` from `bioconductor/bioconductor_docker:RELEASE_3_21` (limma, edgeR, fgsea,
-jsonlite, ggplot2, rmarkdown); build route decided in session 0 (sudo build on PROTSEQ vs GHCR
-pull). Synthetic fixture generator `controls/fixtures/make_synthetic.py` (planted DE genes) serves
+`bulkrna-r-0.1.0.sif` from `bioconductor/bioconductor_docker:RELEASE_3_21` (DESeq2, apeglm, fgsea,
+jsonlite, ggplot2, rmarkdown); built by GitHub Actions from a Dockerfile in the method repo to
+GHCR and pulled by digest into `/data/lab/env/images/` (decided 2026-09-15). Synthetic fixture generator `controls/fixtures/make_synthetic.py` (planted DE genes) serves
 plugin tests, method tests, and controls.
 
 ### Project A (DARPA vendor counts) and Project B (alignment)
 
 A: sample sheet from `metadata.csv` (all 44 rows, `bulk.samples_unquantified` accepted once);
-`design.yml` with group, tissue, condition; contrasts within tissue vs the reference group;
+`design.yml` with group, tissue, condition; all pairwise contrasts within tissue;
 deliverables `de_tables, de_summary, gsea_tables, qc_report, report`. Driven through the declare
 skill from Jim's brief, then by a non-computational member through `stringency-analyze-bulk-rnaseq`.
 B: `modules/nfcore-rnaseq` `runner: operator`, params named as nf-core params so `nextflow_log`
@@ -234,7 +235,9 @@ existing steps rather than inventing them.
   `qc_cells`; questions `processed_object` (option 1 of the objectives note) alongside the three
   already declared; design schema per app-1 session 1 (slide, tissue, animal, punch; replication
   unit).
-- **Session S3, method repo `stringency-spatial-method`**: module `split-punches` (wraps the fixed
+- **Session S3, method repo `stringency-spatial-method`**: module `resegment-proseg` (wraps the
+  ROSC Nextflow Proseg run as a SIF; lung and gut only, following the ROSC manifest where liver,
+  spleen and FRT keep the vendor segmentation; decided 2026-09-15), module `split-punches` (wraps the fixed
   splitter; params `min_transcripts, min_area, qv_threshold`) and module `qc-cells` (the
   `tissue_configs.yaml` thresholds `min_nCount, min_nFeature, min_cellarea, max_cellarea` as params
   with ranges and decision points; outputs filtered object, `cellstats`, QC report); pipeline
@@ -248,6 +251,11 @@ existing steps rather than inventing them.
   `ROSC_MTA2` as a parameterised module instead of a per-tissue script copy.
 
 ## What needs the owner's approval before build
+
+Status 2026-09-15: item 1 approved as written; item 2 answered except the DESeq2 parameter list
+(session 0); item 3 answered except the replication unit and design, which wait on the owner's
+experimental plan document. Answers are recorded in section 8 of `bulkrna-plan.md` and section 4
+of `app1-spatial-qc-plan.md`.
 
 1. Track 1a amendment texts (7.5 `via: web` incl. strict, 10.4 two-kinds-of-skill, 12.1
    `summary.md` engine-rendered, 14.1 flags, 17 row).

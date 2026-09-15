@@ -255,7 +255,7 @@ re-renders with the engine's message; a strict-profile project accepts `web`; th
   computational member; the PATH line; provider, data root, publish cell in their instance;
   optionally `review-page.sh` on their laptop; a two-paragraph "what to expect".
 
-## 8. Amendment texts (need the owner's approval)
+## 8. Amendment texts (approved by the owner 2026-09-15, all five as written; applied to the design the same day, the 17 row removal deferred until the page is built)
 
 **7.5, add after the `relayed` paragraph.** "A third value, `web`, means the verdict was entered
 through a form served by `stringency review --serve`, a process the reviewer started under their
