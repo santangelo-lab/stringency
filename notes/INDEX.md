@@ -21,7 +21,9 @@ it is the first thing a new session reads.
   needs a session ref, `reviews.operator_harness` (migration 4), `summary.md`; operator skill and
   templates rewritten with the intent table and the hold protocol. Engine not re-tagged; installed
   on PROTSEQ as `0.1.0+lane-a-1` (`current`); toy method tagged `v0.1.3` locally, not pushed. A
-  test drive is prepared: `integrations/claude-science/hosts/protseq-track1b-drive.md`.
+  test drive ran 2026-09-15: 17 cards against 26, relayed confirm, no flags
+  (`integrations/claude-science/hosts/protseq-track1b-drive.md`; row in `backlog.md`). Open: J1
+  `--print-hashes`, J2 `submit --deliver`, the standing-grant question of 3.4, transfers as cards.
 - `v0.1.0` tagged and pushed 2026-09-14; engine repo public; singlecell and toy method repos
   pushed; engine 0.1.0 installed from the tag on both machines.
 - Next sessions: Lane A step 2 (`spec/plans/bulkrna-plan.md` section 2, E1 and E2); Lane B with

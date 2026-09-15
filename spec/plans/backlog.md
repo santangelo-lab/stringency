@@ -10,6 +10,7 @@ design text and need the owner's approval.
 | E2 | `STRINGENCY_OPERATOR_VERSION` is `unknown` unless the brief carries `--app-version`; no in-session route to the app's version was found | the next exit run records a version | skill |
 | G2 | code the agent writes in a session (notebook cells, plotting scripts) is captured nowhere; only its inability to yield a final artifact is enforced (`prov.orphan_artifact`) | decide: the rule alone (Commandment 5) or a capture verb that files a session script with a sidecar | *design*; the owner's call |
 | J1 | `declare --check --print-hashes`: print blake3 for input items lacking one and exit 15 naming the field, so the declare skill fills hashes from engine output rather than its own Python | `ux-two-audiences.md` 3.2, the one row of that table not built in Lane A step 1 (2026-09-15); a test that a manifest without hashes gets them printed | engine, DECISIONS-level |
+| J2 | `submit --deliver`: when the last step is an operator ticket the run completes inside `submit`, so `run --deliver` never applies and delivery costs one more card (seen 2026-09-15, `deliver` was the tenth command) | the same guard as `run --deliver`; one test | engine, DECISIONS-level |
 | H5 | staged mode: objective list with stages, `run --objective`, fork at a stage boundary carries an objective, `obj.declared_after_result` | after application 1 as two chained projects shows where option 1 chafes (`declarations-and-objectives.md`) | *design* |
 
 ## Measurements
@@ -21,3 +22,4 @@ One row per toy run, before and after each Track 1 step. Baseline from the PROTS
 | 2026-09-08 | toy (BMESEQ) | 25 | not counted | not counted | not counted | confirm tty, flag tty | 0 |
 | 2026-09-14 | toy-process | 12 | 3 drafting turns | not counted | many (raw commands in reports) | confirm tty | 0 |
 | 2026-09-14 | toy-engine | 26 | 4 drafting turns, one lost to a wrong brief | not counted | many | confirm tty | 1 (filter step reported as skipped) |
+| 2026-09-15 | toy-engine (Lane A step 1 flags and skill; hand-written declarations, no drafting phase) | 17: 10 commands (probe, init, `review --hold`, `review --attest`, three `run`, two `operator_line`, `deliver`), 7 transfers (3 request files, 4 delivered files) | about 6 (Phase 0, Phase 1, "ok", the verdict, Phase 2, Phase 3) | not counted | final report only, on request | confirm relayed (session ref and `operator_harness` recorded) | 0 in the final report; intermediate turns not audited |

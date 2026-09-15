@@ -3,8 +3,7 @@
 One toy project, `toy-compare` on the `toy-engine` pipeline, driven from a Claude Science session
 with PROTSEQ as the `protseq` SSH compute provider, as on 2026-09-14. The point is to see the new
 engine flags and the rewritten operator skill in use and to count approval cards against the
-2026-09-14 baseline (26 for the chained pair of projects; one project of that pair is the shape
-run here). Nothing
+2026-09-14 baseline (26 for the `toy-engine` project, drafting phase included). Nothing
 here needs the declare skill: the declarations are the known-good ones from the tooling check, so
 the variables are the operator skill and the engine.
 

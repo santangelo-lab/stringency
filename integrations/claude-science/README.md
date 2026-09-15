@@ -69,6 +69,11 @@ a file only when none exists), then `publish(name, overwrite=True)`. The same st
 2026-09-15 (Track 1c): the intent table, the hold protocol, `operator_line`, `run --responses`,
 `run --deliver`, `plain`, `summary.md`; republish it on each instance.
 
+Session test 3.4 of `spec/plans/ux-two-audiences.md`, measured 2026-09-15 on PROTSEQ: delegate
+downloads of request files and the operator's downloads of delivered files raise one card each
+even inside a configured data root (7 of 17 cards on the toy-engine drive). Whether the
+`call_command` card offers a standing grant is still unrecorded.
+
 ## Rendering the brief and context
 
     /usr/local/lib/stringency/current/bin/python integrations/claude-science/render_brief.py <project> --provider <alias> [--context]

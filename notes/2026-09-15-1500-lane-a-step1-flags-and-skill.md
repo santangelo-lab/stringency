@@ -47,12 +47,24 @@ applied 2026-09-15 before this session; nothing here touches a contract.
   `context-track1b.md`. The brief template and `new-project.md` now route the confirm hold through
   the hold protocol instead of "I accept it at my own terminal".
 
+- Test drive run by the owner the same day: 17 cards (10 commands, 7 transfers) against 26 on
+  2026-09-14 for the same pipeline (that run included about 6 drafting cards this one skipped);
+  confirm hold resolved by the relayed protocol, `via: relayed` with session ref and harness;
+  three isolated delegates, all `claude-opus-5`, `saw_conversation: false`; no flags; `summary.md`
+  shown as written. Measurement row added to `spec/plans/backlog.md`; backlog J2 (`submit
+  --deliver`) opened; 3.4 answer 1 recorded in the integration README.
+
 ## Learned
 
 - `IOSpec` has no `description`, so `summary.md` names each delivered file by output name, step
   title, type, and format. A description key is a module-contract question for the owner.
 - `run --json` `completed_steps` (this invocation, Track 0) and `status --json` `completed_steps`
   (the run so far) share a key with different scope; recorded in DECISIONS rather than renamed.
+- Downloads still cost a card each inside a data root, so 7 of 17 cards were transfers; the
+  request files could be read by the delegate on the host instead of downloaded, which is a skill
+  question for Lane E.
+- When the last pipeline step is an operator ticket, the run completes inside `submit`, so
+  `run --deliver` has nothing to attach to; `submit --deliver` would close that gap (J2).
 - The mock dispatch harness reads response files it did not write, so `--responses` is testable
   end to end by harvesting the mock's own replies from a sibling project and re-noncing them.
 
