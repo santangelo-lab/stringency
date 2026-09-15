@@ -24,17 +24,15 @@ To go back to the tagged 0.1.0 engine afterwards:
 
 ## A. Once, in the Claude Science app
 
-1. Republish the operator skill. The text changed (intent table, hold protocol, the new flags).
-   In any session, in a `repl` cell:
+1. Update the operator skill through the app's skills interface. Its text changed. The current
+   file is, on PROTSEQ:
 
-        c = host.compute.create("protseq")
-        base = "/home/jrrose5/mytools/stringency/stringency/integrations/claude-science"
-        t = c.download(f"{base}/stringency-operator/SKILL.md")
-        content = open(t["local_path"]).read()
-        host.skills.edit("stringency-operator", "SKILL.md", content)   # existing file: read-then-replace
-        host.skills.publish("stringency-operator", overwrite=True)
+        /home/jrrose5/mytools/stringency/stringency/integrations/claude-science/stringency-operator/SKILL.md
 
-   `stringency-declare` is unchanged and needs no republish.
+   Replace the body of the existing `stringency-operator` skill with that file's contents; the
+   name stays the same. To get a copy on the MacBook:
+   `scp protseq:mytools/stringency/stringency/integrations/claude-science/stringency-operator/SKILL.md ~/Desktop/`.
+   `stringency-declare` is unchanged and needs nothing.
 2. App version. Read it from the app's version display and replace `unknown` in the `PRE` line
    of `brief-track1b.md`. Without it the trace records `unknown`.
 3. Compute provider and data root are already set from 2026-09-14 (`protseq`,
