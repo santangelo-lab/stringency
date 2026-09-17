@@ -83,6 +83,41 @@ def test_wrong_input_hash_refused(tmp_path: Path, toy_data: Path, make_project: 
     assert not (tmp_path / "proj1").exists() or not any((tmp_path / "proj1").iterdir())
 
 
+def test_directory_input_hashed_as_tree(
+    tmp_path: Path, toy_data: Path, make_project: InitFn
+) -> None:
+    """A directory is a valid declared input (design 2.3; a Xenium bundle is one input); its hash
+    is the tree hash and a mismatch is refused like a file's."""
+    from stringency import hashing
+
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / "cells.csv").write_text("cell_id,area\n1,10\n")
+    (bundle / "sub").mkdir()
+    (bundle / "sub" / "meta.txt").write_text("k=v\n")
+    good = hashing.hash_path(bundle)
+    decl = write_declarations(
+        tmp_path / "dir_ok",
+        toy_data,
+        inputs={
+            "inputs": 1,
+            "items": [
+                {
+                    "name": "groups",
+                    "path": str(toy_data),
+                    "type": "frame",
+                    "blake3": hashing.hash_file(toy_data),
+                },
+                {"name": "bundle", "path": str(bundle), "type": "text", "blake3": good},
+            ],
+        },
+    )
+    project = make_project(inputs=decl["inputs.yml"])
+    assert project.input_digests_now()["bundle"] == good
+    (bundle / "sub" / "meta.txt").write_text("k=changed\n")
+    assert project.verify_inputs() == ["bundle"]
+
+
 def test_open_strict_refused(make_project: InitFn) -> None:
     with pytest.raises(ConfigError, match="open with profile strict"):
         make_project(mode="open", profile="strict")

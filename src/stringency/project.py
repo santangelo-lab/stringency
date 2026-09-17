@@ -198,7 +198,7 @@ class Project:
         out: dict[str, str] = {}
         for item in self.inputs.items:
             p = Path(item.path)
-            out[item.name] = hashing.hash_file(p) if p.exists() else "missing"
+            out[item.name] = hashing.hash_path(p) if p.exists() else "missing"
         return out
 
     def verify_inputs(self) -> list[str]:
@@ -480,7 +480,7 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         p = Path(item.path)
         if not p.exists():
             raise ConfigError(f"input {item.name}: {p} does not exist")
-        actual = hashing.hash_file(p)
+        actual = hashing.hash_path(p)
         if actual != item.blake3:
             raise ConfigError(
                 f"input {item.name}: hash mismatch (recorded {item.blake3[:12]}, actual {actual[:12]})"

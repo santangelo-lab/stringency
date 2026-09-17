@@ -47,6 +47,21 @@ def hash_dir(path: Path | str) -> str:
     return h.hexdigest()
 
 
+def hash_path(path: Path | str) -> str:
+    """Content hash of an input: `hash_file` for a file, `hash_dir` for a directory (a Xenium
+    region bundle or a directory of punch coordinates is one declared input)."""
+    p = Path(path)
+    return hash_dir(p) if p.is_dir() else hash_file(p)
+
+
+def path_size(path: Path | str) -> int:
+    """Bytes in a file, or summed over every file under a directory."""
+    p = Path(path)
+    if p.is_dir():
+        return sum(q.stat().st_size for q in p.rglob("*") if q.is_file())
+    return p.stat().st_size
+
+
 def canonical_json(obj: Any) -> str:
     """Sorted keys, no whitespace, no NaN. Stable under key reordering."""
     return json.dumps(

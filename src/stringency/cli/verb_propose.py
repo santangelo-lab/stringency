@@ -35,9 +35,14 @@ def propose(
         None, "--reason", help="the agent's stated reason for its choices"
     ),
     as_json: bool = typer.Option(False, "--json"),
+    new: bool = typer.Option(
+        False,
+        "--new",
+        help="open a new run when the latest is closed (so the first step can be proposed)",
+    ),
 ) -> None:
     project = Project.find()
-    rc = open_or_resume(project)
+    rc = open_or_resume(project, new=new)
     prop = do_propose(rc, step, parse_sets(sets), rationale=reason)
     if prop.status == StepStatus.AWAITING_EXECUTION:
         spec = job_spec(prop, rc.env_digests.get(prop.plan.module.manifest.env), rc.executor)
