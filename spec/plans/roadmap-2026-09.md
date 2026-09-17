@@ -49,7 +49,8 @@ dispatch), not from the gates. Two holds needed a person; the other 24 were mech
 - Skill text I1 to I5 in `integrations/claude-science/stringency-declare/SKILL.md`.
 - I3 engine: `Plugin` gains optional `defaults`, surfaced by `plugins list --json`.
 - Tag `v0.1.0`, make the repo public, reinstall from the tag on BMESEQ (stale) and PROTSEQ,
-  push `~/github/stringency-singlecell`, give `stringency-toy-method` a remote.
+  fold `~/github/stringency-singlecell` (BMESEQ) into the `stringency-plugins` repo as
+  `plugins/stringency-singlecell` (Lane D item 2), give `stringency-toy-method` a remote.
 - Commit the 51 uncommitted files in `ROSC_MTA2` (owner) before any wrapping work touches it.
 
 ## Track 1: UX, two audiences (runs alongside Track 2)
@@ -143,8 +144,10 @@ PROTSEQ first: do delegate downloads under a data root raise cards; do standing 
 
 ## Track 2: bulk RNA-seq plugin and method (first real plugin)
 
-Two new repos: `~/github/stringency-bulkrna` (plugin, modelled on `stringency-singlecell` and
-`plugins/stringency-toy`) and `~/github/stringency-bulkrna-method` (from `templates/method-repo/`).
+One new package and one new repo: the plugin `stringency-bulkrna` lives at
+`plugins/stringency-bulkrna` in the shared `stringency-plugins` repository (modelled on
+`stringency-singlecell` and `plugins/stringency-toy`; repository layout decided 2026-09-17, Lane D
+item 2), and `~/github/stringency-plasmidsaurusRNAseq-method` (from `templates/method-repo/`) is its own repo.
 
 ### Engine prerequisites found by reading the code
 
@@ -234,14 +237,14 @@ existing steps rather than inventing them.
 - **Session S1, splitter determinism.** Fix `PYTHONHASHSEED`-dependent barcode order in
   `jrose835/Xen_TMA_pipeline` per `setup/Claude/HANDOFF_XeniumSplitter.md`; add a determinism
   test; tag. Without this the split module cannot pass the engine's reproducibility checks.
-- **Session S2, singlecell plugin first real pieces** (`~/github/stringency-singlecell`): object
+- **Session S2, singlecell plugin first real pieces** (`stringency-plugins/plugins/stringency-singlecell`): object
   type `xenium_bundle` (`sc.xenium_bundle@1`: regions, cells, transcripts, panel, metrics from
   `metrics_summary.csv` and `cells.parquet` summaries) and `punch_coordinates` (the hand-drawn
   file, hashed, `source: manual annotation in Xenium Explorer`); operations `split_punches`,
   `qc_cells`; questions `processed_object` (option 1 of the objectives note) alongside the three
   already declared; design schema per app-1 session 1 (slide, tissue, animal, punch; replication
   unit).
-- **Session S3, method repo `stringency-spatial-method`**: module `resegment-proseg` (wraps the
+- **Session S3, method repo `stringency-xenium-method`**: module `resegment-proseg` (wraps the
   ROSC Nextflow Proseg run as a SIF; lung and gut only, following the ROSC manifest where liver,
   spleen and FRT keep the vendor segmentation; decided 2026-09-15), module `split-punches` (wraps the fixed
   splitter; params `min_transcripts, min_area, qv_threshold`) and module `qc-cells` (the
@@ -312,9 +315,28 @@ coordinates (Lane D item 1).
 1. Draw the punch coordinates for the eight regions in Xenium Explorer from
    `/lab/projects/Lyons_CLP/tma_layout.csv`; file them under `/lab/projects/Lyons_CLP/`. Longest
    lead item; gates S4.
-2. Create the GitHub repositories (`stringency-bulkrna`, `stringency-bulkrna-method`,
-   `stringency-spatial-method`) with Actions enabled and GHCR write permission. Gates S3 and Lane
-   B session 4.
+2. Create the GitHub repositories (`stringency-plugins`, `stringency-plasmidsaurusRNAseq-method`,
+   `stringency-xenium-method`) with Actions enabled and GHCR write permission. Gates S3 and Lane
+   B session 4. Done 2026-09-17 except the `stringency` team (owner, web UI): `stringency-plugins`
+   restructured and pushed; both method repos seeded from the template; topic `stringency` on all
+   five repos; Actions enabled. The org's workflow-token default is read-only, so each image
+   workflow declares `permissions: {contents: read, packages: write}` rather than relying on the
+   repo default.
+   Repository layout (decided 2026-09-17, to limit clutter in the lab org): **all plugins share
+   one repo**, `stringency-plugins`, one package per subdirectory under `plugins/` in a single uv
+   workspace, installed with `scripts/install.sh --plugin <url>@<tag>#subdirectory=plugins/<name>`
+   (the syntax the toy plugin already uses). The existing `santangelo-lab/stringency-singlecell`
+   repo becomes it: rename it to `stringency-plugins` on GitHub (the old URL redirects), move its
+   contents to `plugins/stringency-singlecell/`, add `plugins/stringency-bulkrna/` in Lane B
+   session 1. **Method repos stay one per method**, because the engine clones a method repo at a
+   tag and records remote, tag, and SHA in provenance; sharing a repo would couple the version
+   numbers and `policy.yml` of unrelated methods. Method repos are named for the assay and
+   delivery they analyse, never for a collaborator project (`stringency-xenium-method`,
+   `stringency-plasmidsaurusRNAseq-method`; decided 2026-09-17): the project identity lives in the
+   project directory and in provenance, and one method serves every project on that assay. A
+   project-specific analysis becomes a pipeline in the assay's method repo first, and its own
+   method repo only if it grows its own modules and policy. Give every repo the topic `stringency` and
+   assign them to a `stringency` team in the org so they list together and share access.
 3. Track 1f: create `/data/lab/env/images/` (`sudo`), then the shared engine install and the
    onboarding notes (agent-doable after the `sudo` step).
 4. Commit the 51 uncommitted files in `ROSC_MTA2`.
@@ -339,8 +361,9 @@ deliver from the same method tag, in whichever lane is free.
 - Engine: `uv run pytest && uv run ruff check . && uv run ruff format --check . && uv run mypy &&
   scripts/check_no_biology.sh` green after every engine session; goldens for `plain`, `summary.md`,
   review page; every new predicate in `CASES`.
-- Plugins: `uv run pytest` in each plugin repo (no network, no R); `stringency plugins list` shows
-  the plugin; `stringency lint .` clean in each method repo.
+- Plugins: `uv run pytest` at the root of `stringency-plugins` (one workspace, every plugin; no
+  network, no R); `stringency plugins list` shows each plugin; `stringency lint .` clean in each
+  method repo.
 - Method repos: synthetic end-to-end `stringency run` under apptainer on BMESEQ and PROTSEQ with
   planted DE genes recovered; coverage report with no uncovered decision points except those named.
 - UX: the toy re-run through `stringency-analyze-toy-compare` by someone other than the owner,

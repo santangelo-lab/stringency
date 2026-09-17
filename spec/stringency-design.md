@@ -54,7 +54,7 @@ Reading order for Claude Code: this document, then the current plan in `plans/ro
   .stringency/              engine scratch; safe to delete
 ```
 
-Raw data lives wherever `inputs.yml` points, normally elsewhere on the array. The project directory holds no raw data and is not itself a git repository; the method repo under `method/` is. `prov/` and `runs/` live on the data array and never on a CIFS mount.
+Raw data lives wherever `inputs.yml` points, normally elsewhere on the array. A declared input or a step output may be a directory (a Xenium region bundle, a set of punch bundles); it is hashed as a tree (sorted relative path plus content per file) and carries one sidecar beside it (amendment 2026-09-17, Lane C). The project directory holds no raw data and is not itself a git repository; the method repo under `method/` is. `prov/` and `runs/` live on the data array and never on a CIFS mount.
 
 ### 2.2 Configuration bound at init
 
@@ -64,7 +64,7 @@ project_id: 01J9K…                 # ULID
 created: 2026-09-10T14:02:11Z
 stringency_version: 0.1.0
 method:
-  repo: git+https://github.com/santangelo-lab/spatial-tma-method
+  repo: git+https://github.com/santangelo-lab/stringency-xenium-method
   tag: v0.2.0
   sha: 3f9c1a…
 pipeline: spatial-tma              # file name in method/pipelines/
@@ -1124,7 +1124,9 @@ Ships in the engine repository under `plugins/stringency-toy` and is what the Ph
 
 ### 15.4 stringency-singlecell for application 1
 
-A separate repository. Phase A creates the skeleton (entry point, one extractor stub, an empty predicate registry, a vocabularies directory). The app-1 design sessions fill it. The engine does not depend on any of it.
+A repository separate from the engine: since 2026-09-17 the package `plugins/stringency-singlecell`
+in the shared `stringency-plugins` repository, which holds every domain plugin as one package per
+subdirectory (amendment approved 2026-09-17; roadmap Lane D item 2). Phase A creates the skeleton (entry point, one extractor stub, an empty predicate registry, a vocabularies directory). The app-1 design sessions fill it. The engine does not depend on any of it.
 
 ## 16. Commandments mapped to mechanism, predicate, or eval
 

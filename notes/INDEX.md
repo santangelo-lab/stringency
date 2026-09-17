@@ -3,7 +3,16 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-15, afternoon)
+## Current state (2026-09-17, evening)
+
+- Lane C day 1 done: `xenium-qc` delivered on the four vendor-segmented Lyons CLP regions;
+  `xenium-qc-proseg` running on 0076581 Lung (Proseg since 15:24 local). Everything in
+  `spec/plans/lane-c-day1-2026-09-17.md` (running log, hold ids, decisions, engine gaps) and
+  `notes/2026-09-17-1900-lane-c-day1-clp-qc.md` (summary, pick-up point). Engine changes for
+  directory inputs/outputs, symlinked binds, per-step tmp, and `propose --new` are UNCOMMITTED in
+  the PROTSEQ checkout pending the owner. Lane D items 2 and 6 done; Lane A steps 2 to 4 open.
+
+## Previous state (2026-09-15, afternoon)
 
 - Phase A exit complete on both machines (BMESEQ `toy-cs` 2026-09-08; PROTSEQ two chained projects
   from agent-drafted declarations 2026-09-14). Backlog sections A to I done except A5 (review page,
@@ -47,3 +56,4 @@ it is the first thing a new session reads.
   mode, machine install, review-surface findings.
 - `2026-09-03-1605-phase-a-m0-m11.md` — first build session: repository created, M0 through M11
   implemented against the design, end-to-end CLI rehearsal of the toy pipeline, singlecell skeleton.
+- 2026-09-17-1900-lane-c-day1-clp-qc.md: Lane C day 1, Lyons CLP QC on four regions, resegmentation started, engine gaps.

@@ -61,7 +61,8 @@ controls, existing code (section 2), environments (`setup/envs/` locks to become
 tag. Without this the split module cannot satisfy the engine's reproducibility predicates and a
 re-split can never be compared to a previous one.
 
-**S2, plugin pieces** (`~/github/stringency-singlecell`): object types `xenium_bundle`
+**S2, plugin pieces** (`stringency-plugins/plugins/stringency-singlecell`, formerly
+`~/github/stringency-singlecell`; roadmap Lane D item 2): object types `xenium_bundle`
 (`sc.xenium_bundle@1`: region id, slide, tissue, cell count, median transcripts and genes per
 cell, panel ids, from `metrics_summary.csv`, `experiment.xenium`, `gene_panel.json`, and
 `cells.parquet` summaries) and `punch_coordinates` (the hand-drawn file, hashed, `source: manual
@@ -72,7 +73,7 @@ timepoint_h (6, 24, 48), condition fixed CLP; batch slide; replication unit anim
 layout table supplies punch, animal, and time point after the split). Extractors stdlib or pyarrow
 inside the Python image (E6 in `spec/plans/bulkrna-plan.md` applies).
 
-**S3, method repo `stringency-spatial-method`**: module `resegment-proseg` (wraps the ROSC
+**S3, method repo `stringency-xenium-method`**: module `resegment-proseg` (wraps the ROSC
 Nextflow Proseg run with its Docker image converted to a SIF; inputs a region bundle; output a
 resegmented bundle; applied to lung and gut, skipped for liver and spleen, so `xenium-qc` runs on
 either bundle kind; about one extra session), module `split-punches` (wraps the fixed splitter;
