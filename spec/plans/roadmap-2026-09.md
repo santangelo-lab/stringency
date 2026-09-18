@@ -313,7 +313,9 @@ on the eight Lyons CLP regions; two items in Lane D gate it.
    Also from the same days: `submit --failed`; an extractor env per tool or object type; a
    variable-arity input type; lint parses `envs/manifest.yml`; `echo.md` wrapped at 100 columns;
    `abandon` closes the step row; the dispatch suffix must name the `structured` envelope key the
-   subagent harness parses (fixed on the branch 2026-09-18).
+   subagent harness parses (fixed on the branch 2026-09-18); invalid replicates must open ONE hold
+   for the step, not one `run_disagreement` hold per item (42 on the first real judgment), and a
+   rejected judgment hold should open attempt 2 rather than surface the next per-item hold.
 
 ### Lane B: bulk (bulkrna plugin and method repos)
 
