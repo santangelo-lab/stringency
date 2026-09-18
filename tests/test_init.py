@@ -284,3 +284,28 @@ def test_cli_init(tmp_path: Path, method_repo: MethodRepo, declarations: dict[st
         ],
     )
     assert r2.exit_code == 15
+
+
+def test_column_missing_skips_derived_inputs(project: Project) -> None:
+    """A `derived_from` input is a delivered artifact, not a raw input: its columns are the
+    upstream module's output, so `init.column_missing` does not read the design against it."""
+    import dataclasses
+
+    from stringency.config import DerivedFrom
+    from stringency.predicates.engine.init_ import column_missing
+    from stringency.state import ObjectState
+    from tests.helpers import make_ctx
+
+    step = project.pipeline.order()[0]
+    summary = {"n_obs": 3, "fields": {"columns": ["value"]}}  # lacks the design column `group`
+    obj = ObjectState(type="frame", digest="blake3:" + "00" * 32, summary=summary)
+    ctx = make_ctx(project, step, phase="init", objects={"groups": obj})
+    assert column_missing(ctx).fired, "a raw input missing a design column fires"
+
+    items = [
+        i.model_copy(update={"derived_from": DerivedFrom(run_id="01UPSTREAM")})
+        for i in project.inputs.items
+    ]
+    derived = ctx.project.inputs.model_copy(update={"items": items})
+    ctx2 = dataclasses.replace(ctx, project=dataclasses.replace(ctx.project, inputs=derived))
+    assert not column_missing(ctx2).fired, "the same object bound through derived_from is skipped"
