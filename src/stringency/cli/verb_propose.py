@@ -5,6 +5,7 @@ from __future__ import annotations
 import typer
 
 from stringency.actions import coerce_value
+from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError, Exit
 from stringency.machine import StepStatus
@@ -74,6 +75,7 @@ def propose(
             raise typer.Exit(code=nx.exit_code)
         return
     nx = next_step(rc)
+    refresh_if_present(project.root)
     emit(
         {
             "schema": "stringency.propose/1",
