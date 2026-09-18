@@ -1075,6 +1075,8 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
+| `board <root>` | `[--write] [--json]` | none | reads every project under `<root>` (one level; skips `superseded/`, `declarations/`): plan status, latest run and step, open holds and who they wait on, latest delivery's files; `--write` rewrites `<root>/STATUS.md`, which `init`, `run`, `propose`, `submit`, `review`, `deliver` and `abandon` refresh when it exists | none |
+| `present` | `[--run <id>] [--hold <id>] [--skills-dir <dir>] [--json]` | none | reads the run's delivery or the hold and renders what the method's delivery skill (14.4) says a person should see; the engine default is the progress sentence and the deliverables | none |
 | `lint` | `<path>` or `<repo-or-url>@<tag>` | static checks on a module directory or a method repo; a tagged spec is cloned into a temporary directory first | none | none |
 | `controls run` | `[--module <name>]` | real gates on a single module | writes controls_runs | metrics and regression diff |
 | `policy show` | `[--profile]` | prints resolved dispositions | none | none |
@@ -1103,6 +1105,41 @@ The hold message is terse by design: what is held, who it waits on, the one comm
 ### 14.3 Output modes
 
 Human-readable by default; `--json` on every verb emits a stable, versioned schema for the skill wrappers. Every write verb prints the run ID.
+
+### 14.4 Delivery skill and the two reading verbs (added 2026-09-18)
+
+A method may state what a person should see: `skills/<pipeline>.yml` in the method repository,
+read by `stringency present` and by the operator skill. It never changes what runs.
+
+```yaml
+skill: 1
+pipeline: <name>
+after_delivery:            # rendered by `present --run`, in order
+  - title: "..."
+    source: <path relative to deliver/<run>/, falling back to runs/<run>/>
+    kind: table | json_table | jsonl | text | file
+    columns: [...]         # optional subset and order (table, json_table, jsonl)
+    format: {col: percent | int | "<n>f"}   # optional per-column formatting
+    path: <key of the list of row dicts>    # json_table only; dotted keys allowed; a dict renders as one row
+never_show: [run ids, hashes, ...]          # echoed as a footer, a rule for the operator
+hold_view:                 # rendered by `present --hold` for the predicate that opened the hold
+  - predicate: <predicate id>
+    source: <path relative to runs/<run>/>
+    kind: table | json_table | jsonl
+    columns: [...]
+```
+
+`table` reads CSV or TSV; `jsonl` reads one JSON object per line (the judgment log
+`judgments.jsonl` is one); a cell that is a dict renders compactly as `k=v; k=v`, a list as
+`a, b`. `kind: file` is not printed but listed under "Files to send" with its absolute path. A
+missing or malformed skill file, or a missing source, degrades to the engine default with a note
+saying so; nothing here can fail a run. `present` and `board` read `stringency.yml`, the trace and
+the pipeline file directly and load no plugin, so they work from any engine install.
+
+`board` is the progress view a person keeps open: one row per project under a directory, in
+sentences, ids only where a command needs them. The verbs that change a project's state rewrite
+`STATUS.md` beside the projects when one exists, so the board is current without the operator
+remembering.
 
 ## 15. Plugins
 
