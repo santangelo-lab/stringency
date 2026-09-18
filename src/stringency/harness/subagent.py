@@ -113,6 +113,12 @@ def read_response(req: Request, dispatch_dir: Path) -> Invocation:
     model = str(reported.get("model")) if reported and reported.get("model") else "unknown"
     nonce_ok = data.get("nonce") == req.nonce
     structured = data.get("structured") if isinstance(data.get("structured"), dict) else None
+    if structured is None:
+        # A replicate that followed the schema literally puts the answer's keys at the top level
+        # beside `nonce` and `reported` (every replicate did so on 2026-09-18, before the dispatch
+        # suffix named the envelope). Accept that shape: the answer is everything else.
+        rest = {k: v for k, v in data.items() if k not in ("nonce", "reported")}
+        structured = rest or None
     inv = Invocation(
         structured if nonce_ok else None,
         text,
