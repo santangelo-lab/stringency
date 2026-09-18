@@ -3,7 +3,16 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-17, evening)
+## Current state (2026-09-18, evening)
+
+- Lane C S4 delivered on all eight Lyons CLP regions (four vendor, four Proseg via chained
+  `reseg_*` projects); cross-region summary delivered; first real judgment (outlier proposal) at
+  its flag hold for the owner. `notes/2026-09-18-2000-lane-c-day2-proseg-summary-judgment.md`.
+  Engine changes of both days live on branch `lane-c-directory-inputs` (PR to open); method
+  v0.3.2-rc2, plugin v0.1.10. Data-side log: `/lab/projects/Lyons_CLP/PROGRESS.md` and
+  `STATUS.md` (the `board`). Roadmap Lane A item 5 records the hold redesign.
+
+## Previous state (2026-09-17, evening)
 
 - Lane C day 1 done: `xenium-qc` delivered on the four vendor-segmented Lyons CLP regions;
   `xenium-qc-proseg` running on 0076581 Lung (Proseg since 15:24 local). Everything in
@@ -56,4 +65,5 @@ it is the first thing a new session reads.
   mode, machine install, review-surface findings.
 - `2026-09-03-1605-phase-a-m0-m11.md` — first build session: repository created, M0 through M11
   implemented against the design, end-to-end CLI rehearsal of the toy pipeline, singlecell skeleton.
+- 2026-09-18-2000-lane-c-day2-proseg-summary-judgment.md: Lane C day 2, Proseg route, summary, first judgment, board and present.
 - 2026-09-17-1900-lane-c-day1-clp-qc.md: Lane C day 1, Lyons CLP QC on four regions, resegmentation started, engine gaps.
