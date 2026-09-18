@@ -295,6 +295,25 @@ on the eight Lyons CLP regions; two items in Lane D gate it.
    `considered_set` filled. Small; early because Lane B session 5 needs E1.
 3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`.
 4. Re-tag and reinstall on both machines after each step that Lane B or C depends on.
+5. **Holds that ask the right question** (owner, 2026-09-18, after two days of live Lyons CLP
+   runs: fourteen chained projects meant fourteen confirm holds restating one design, while every
+   agent-chosen parameter was admitted silently). Three engine changes, in this order:
+   a. `param.agent_proposed`: a flag predicate (standard profile) whenever an admitted parameter
+      has `param_source: agent`; its hold view is the table parameter / default / proposed /
+      reason. `exec.plan_drift` already covers deviations; judgment holds already exist. This turns
+      standard from "the agent may choose within range" into "the agent proposes, the person
+      approves".
+   b. Inherited confirmation: a project whose every input is `derived_from` a run of a project the
+      same owner confirmed, with a byte-identical design, records its confirmation as inherited
+      (upstream hold id and acceptance in the trace) and opens no hold; its echo-back shows only
+      what is new (pipeline, deliverables, the bound runs). A raw input, a changed design, or a
+      method major-version change still opens a hold.
+   c. Batch review: `review --holds A,B,C` with one echo-back that diffs sibling declarations
+      (the eight QC regions differed only in the bundle) so one acceptance covers a set.
+   Also from the same days: `submit --failed`; an extractor env per tool or object type; a
+   variable-arity input type; lint parses `envs/manifest.yml`; `echo.md` wrapped at 100 columns;
+   `abandon` closes the step row; the dispatch suffix must name the `structured` envelope key the
+   subagent harness parses (fixed on the branch 2026-09-18).
 
 ### Lane B: bulk (bulkrna plugin and method repos)
 
