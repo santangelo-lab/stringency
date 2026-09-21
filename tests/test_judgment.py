@@ -261,3 +261,16 @@ def test_prompt_carries_the_evidence_slot_definition(
     assert "medium needs at least 2 supporting and at most 1 contradicting" in prompt
     assert "low needs at least 1 supporting" in prompt
     assert "a cell from another group that you only compared against is context" in prompt
+
+
+def test_secondary_evidence_table_is_keyed_by_its_first_column(tmp_path: Path) -> None:
+    """A pre-script may write evidence tables beside the items table (a metric guide, a reference
+    summary) whose rows are not items; they load keyed by their first column, not item_key."""
+    from stringency.tables import load_table
+
+    guide = tmp_path / "metric_guide.tsv"
+    guide.write_text("metric\tconcern_direction\nnum_cells\tlow\nfail_fraction\thigh\n")
+    t = load_table(guide, "metric_guide", None)
+    assert t.key_column == "metric" and set(t.rows) == {"num_cells", "fail_fraction"}
+    ok, cell = t.cell("fail_fraction", "concern_direction")
+    assert ok and cell == "high"

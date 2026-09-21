@@ -109,7 +109,9 @@ def prepare_evidence(rc: RunContext, plan: StepPlan) -> Evidence:
         if spec is not None and spec.type == "json":
             context[n] = json.loads(p.read_text())
         else:
-            tables[n] = load_table(p, n, m.judgment.item_key)
+            # the items table is keyed by item_key; any other evidence table (a guide, a reference
+            # summary) by its first column, which need not be the item key
+            tables[n] = load_table(p, n, m.judgment.item_key if n == m.judgment.items_from else None)
             texts[n] = p.read_text()
         digests[n] = hashing.prefixed(hashing.hash_file(p))
     items_table = tables.get(m.judgment.items_from)
