@@ -3,7 +3,17 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-18, evening)
+## Current state (2026-09-21, evening)
+
+- Outlier judgment v2: the owner rejected the v1 rule on Lyons CLP; method 0.2.0 (v0.3.3-rc1,
+  local tag) has reviewers reason from direction-aware MAD bands, a guide, floors, group and
+  reference bands; plugin 0.1.8 (v0.1.11) adds `punch_qc_verdict@2` (no exclude). Engine branch
+  `lane-c-directory-inputs` +3: optional module inputs, secondary evidence keys, `role: reference`
+  (`notes/2026-09-21-1600-outlier-judgment-v2-engine.md`); installed as `0.1.0+optin3-sc0.1.8`.
+  First real run held on six item holds and the flag for the owner. Open: packet renderer for
+  multi-table evidence, `any_low` on unanimous items, Lane A per-item flag resolution, the PR.
+
+## Previous state (2026-09-18, evening)
 
 - Lane C S4 delivered on all eight Lyons CLP regions (four vendor, four Proseg via chained
   `reseg_*` projects); cross-region summary delivered; first real judgment (outlier proposal) at
@@ -51,6 +61,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-09-21-1600-outlier-judgment-v2-engine.md` — optional module inputs, pre-produced evidence tables keyed by their own column, `role: reference` inputs; first three-replicate real judgment on Lyons CLP and what it showed about confidence criteria and the packet renderer.
 - `2026-09-15-1500-lane-a-step1-flags-and-skill.md` — Lane A step 1: Track 1b engine flags (`operator_line`, `run --responses`, `run --deliver`, titles, `plain`, attest session ref, migration 4, `summary.md`) and the Track 1c operator skill with the hold protocol.
 - `2026-09-15-1400-bulk-depth-replan.md` — the RMLDH7 delivery is shallow (spleen 0.9 M reads); Projects A and B become development projects; Track 3 moves ahead of Track 2 sessions 9 to 12.
 - `2026-09-15-1300-app1-inventory.md` — Track 3 S0: Lyons CLP inventory from the collaborator's plan and TMA maps; slide-to-TMA mapping; layout table filed in the project directory.
