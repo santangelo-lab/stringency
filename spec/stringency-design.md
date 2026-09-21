@@ -100,7 +100,7 @@ items:
 
 `init` computes and verifies every hash and refuses on mismatch. `run` re-verifies at open (`repro.input_digest_mismatch`, 6.5). The `type` field decides which state extractor applies.
 
-An item may carry `derived_from: {run_id, step_id, output, project}` when the file is a delivered artifact of an earlier stringency run (chained projects; added 2026-09-09). `init` reads the sidecar beside the file and refuses unless it names that run, step, and output with the same hash. Run open captures the upstream run ids and the methods paragraph names them.
+An item may carry `role: reference` when it describes other studies' observations rather than this design's (a table of earlier punches, an atlas); `init.column_missing` does not require the design columns in it (2026-09-21). An item may carry `derived_from: {run_id, step_id, output, project}` when the file is a delivered artifact of an earlier stringency run (chained projects; added 2026-09-09). `init` reads the sidecar beside the file and refuses unless it names that run, step, and output with the same hash. Run open captures the upstream run ids and the methods paragraph names them.
 
 ### 2.4 Design declaration
 

@@ -309,3 +309,23 @@ def test_column_missing_skips_derived_inputs(project: Project) -> None:
     derived = ctx.project.inputs.model_copy(update={"items": items})
     ctx2 = dataclasses.replace(ctx, project=dataclasses.replace(ctx.project, inputs=derived))
     assert not column_missing(ctx2).fired, "the same object bound through derived_from is skipped"
+
+
+def test_column_missing_skips_reference_inputs(project: Project) -> None:
+    """An input declared `role: reference` describes other studies' observations (earlier punches,
+    an atlas), so the design columns are not required in it."""
+    import dataclasses
+
+    from stringency.predicates.engine.init_ import column_missing
+    from stringency.state import ObjectState
+    from tests.helpers import make_ctx
+
+    step = project.pipeline.order()[0]
+    summary = {"n_obs": 3, "fields": {"columns": ["value"]}}
+    obj = ObjectState(type="frame", digest="blake3:" + "00" * 32, summary=summary)
+    ctx = make_ctx(project, step, phase="init", objects={"groups": obj})
+    assert column_missing(ctx).fired
+    items = [i.model_copy(update={"role": "reference"}) for i in project.inputs.items]
+    ref = ctx.project.inputs.model_copy(update={"items": items})
+    ctx2 = dataclasses.replace(ctx, project=dataclasses.replace(ctx.project, inputs=ref))
+    assert not column_missing(ctx2).fired, "a reference input is not read against the design"

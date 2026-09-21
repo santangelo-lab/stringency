@@ -96,6 +96,9 @@ class InputItem(Strict):
     source: str | None = None
     build: str | None = None  # reference build, checked by init.reference_mismatch
     derived_from: DerivedFrom | None = None
+    # `reference`: the input describes other studies' observations (a table of earlier punches,
+    # an atlas), not this design's; init.column_missing does not require the design columns in it
+    role: Literal["observation", "reference"] = "observation"
 
 
 class InputsManifest(Strict):
