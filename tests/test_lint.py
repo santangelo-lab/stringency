@@ -161,7 +161,28 @@ def report_consumed(m: Path) -> None:
     _edit_yaml(m / "pipelines/toy.yml", fn)
 
 
+def evidence_not_input_without_pre(m: Path) -> None:
+    # label-groups has no pre.* script, so every evidence name must be an input
+    _edit_yaml(
+        m / "modules/label-groups/module.yml",
+        lambda d: d["judgment"].update(evidence=["summary", "guide"]),
+    )
+
+
+def required_input_unwired(m: Path) -> None:
+    _edit_yaml(
+        m / "modules/filter-rows/module.yml",
+        lambda d: d["inputs"].update(reference={"type": "frame", "format": "csv"}),
+    )
+
+
 ERROR_CASES: list[tuple[str, Breaker, str]] = [
+    (
+        "evidence_not_input_without_pre",
+        evidence_not_input_without_pre,
+        "judgment.evidence guide is not an input",
+    ),
+    ("required_input_unwired", required_input_unwired, "leaves input reference of"),
     ("contract_not_1", contract_not_1, "contract must be 1"),
     ("manifest_bad_field", manifest_bad_field, "colour"),
     ("op_not_in_vocab", op_not_in_vocab, "operation explode_rows is not in"),
@@ -218,6 +239,28 @@ def test_lint_error_classes(method_copy: Path, name: str, breaker: Breaker, expe
     report = lint_path(method_copy)
     assert not report.ok, f"{name}: expected an error"
     assert any(expected in e for e in report.errors), f"{name}: {report.errors}"
+
+
+def test_optional_input_may_stay_unwired(method_copy: Path) -> None:
+    """A module input marked optional needs no pipeline wiring; the script sees no entry for it."""
+    _edit_yaml(
+        method_copy / "modules/filter-rows/module.yml",
+        lambda d: d["inputs"].update(reference={"type": "frame", "format": "csv", "optional": True}),
+    )
+    report = lint_path(method_copy)
+    assert report.ok, report.render()
+
+
+def test_pre_script_may_produce_evidence_that_is_not_an_input(method_copy: Path) -> None:
+    """With a pre.* script the judgment may declare evidence tables the script writes (design 3.5
+    step 2), such as a guide table beside the items table."""
+    (method_copy / "modules/label-groups/pre.py").write_text("#!/usr/bin/env python3\n")
+    _edit_yaml(
+        method_copy / "modules/label-groups/module.yml",
+        lambda d: d["judgment"].update(evidence=["summary", "guide"]),
+    )
+    report = lint_path(method_copy)
+    assert report.ok, report.render()
 
 
 def test_lint_single_module_dir(method_copy: Path) -> None:

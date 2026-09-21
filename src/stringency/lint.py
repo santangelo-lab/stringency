@@ -121,7 +121,9 @@ def lint_module(
             if m.judgment.items_from not in m.inputs:
                 report.error(where, f"judgment.items_from {m.judgment.items_from} is not an input")
             for ev in m.judgment.evidence:
-                if ev not in m.inputs:
+                # a pre.* script may produce an evidence table that is not an input (design 3.5
+                # step 2); without a pre-script every evidence name must be an input
+                if ev not in m.inputs and module.entry_script is None:
                     report.error(where, f"judgment.evidence {ev} is not an input")
             if policy is not None:
                 minimum = policy.profile("standard").replicates_min
@@ -226,8 +228,8 @@ def lint_pipeline(
                 report.error(
                     where, f"step {step.id} wires input {name}, which {mod.ref} does not declare"
                 )
-        for name in mod.manifest.inputs:
-            if name not in step.inputs:
+        for name, spec in mod.manifest.inputs.items():
+            if name not in step.inputs and not spec.optional:
                 report.error(where, f"step {step.id} leaves input {name} of {mod.ref} unwired")
         # params: defaults must validate against the module schema
         merged = {k: v.default for k, v in step.params.items()}

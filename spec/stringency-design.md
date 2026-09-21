@@ -270,6 +270,8 @@ resources: {cpus: 2, memory: 8GB, timeout: 30min}
 
 Three properties follow from the manifest.
 
+A module input may carry `optional: true`: a pipeline step may leave it unwired, and the module's script then finds no entry for it in `job.json` inputs (a reference table a study may or may not have). A judgment module with a `pre.*` script may list under `judgment.evidence` tables the script writes that are not inputs (a guide table beside the items table); without a pre-script every evidence name must be an input. Lint enforces both (2026-09-21).
+
 The model sees only `judgment.evidence`. The engine renders the prompt from the template and the declared vars and nothing else reaches the model. "The model sees the table, never the matrix" is enforced by construction rather than by instruction.
 
 Decision points are declared, so the coverage report (12.2) is computed rather than remembered.
