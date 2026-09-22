@@ -3,7 +3,18 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-21, evening)
+## Current state (2026-09-22, afternoon)
+
+- Plan documents refreshed to the Lane C state of 2026-09-17 to 2026-09-21
+  (`notes/2026-09-22-1510-plan-docs-refresh.md`): roadmap Status section and per-lane status,
+  `app1-spatial-qc-plan.md` section 5 (outcome against plan), backlog K1 to K6, the branch's three
+  DECISIONS lines and the board note now on `main`. Nothing ran. Still open: the seven
+  `qc_outliers_all` holds for the owner; the PR for `lane-c-directory-inputs` (eight commits ahead,
+  design 14.4 and the optional and reference input sentences exist only there); Lane A steps 2 to 4
+  and items 5 and 6; Lanes B and E not started. Start the next engine session from the roadmap's
+  Status section and Lane A state paragraph.
+
+## Previous state (2026-09-21, evening)
 
 - Outlier judgment v2: the owner rejected the v1 rule on Lyons CLP; method 0.2.0 (v0.3.3-rc1,
   local tag) has reviewers reason from direction-aware MAD bands, a guide, floors, group and
@@ -61,7 +72,11 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-09-22-1510-plan-docs-refresh.md` — plan documents brought up to date after Lane C: roadmap status, Track 3 outcome, backlog K1 to K6, the spec split between `main` and the engine branch.
 - `2026-09-21-1600-outlier-judgment-v2-engine.md` — optional module inputs, pre-produced evidence tables keyed by their own column, `role: reference` inputs; first three-replicate real judgment on Lyons CLP and what it showed about confidence criteria and the packet renderer.
+- `2026-09-18-2000-lane-c-day2-proseg-summary-judgment.md` — Lane C day 2: Proseg route delivered, cross-region summary, first judgment on real data, board and present in the operator skill.
+- `2026-09-18-1830-board-and-present.md` — `board` and `present`, plugin-free reading verbs; method delivery skills (design 14.4); written on the engine branch, copied to `main` 2026-09-22.
+- `2026-09-17-1900-lane-c-day1-clp-qc.md` — Lane C day 1: Lyons CLP QC on the four vendor-segmented regions, resegmentation started, engine gaps.
 - `2026-09-15-1500-lane-a-step1-flags-and-skill.md` — Lane A step 1: Track 1b engine flags (`operator_line`, `run --responses`, `run --deliver`, titles, `plain`, attest session ref, migration 4, `summary.md`) and the Track 1c operator skill with the hold protocol.
 - `2026-09-15-1400-bulk-depth-replan.md` — the RMLDH7 delivery is shallow (spleen 0.9 M reads); Projects A and B become development projects; Track 3 moves ahead of Track 2 sessions 9 to 12.
 - `2026-09-15-1300-app1-inventory.md` — Track 3 S0: Lyons CLP inventory from the collaborator's plan and TMA maps; slide-to-TMA mapping; layout table filed in the project directory.
@@ -76,5 +91,3 @@ it is the first thing a new session reads.
   mode, machine install, review-surface findings.
 - `2026-09-03-1605-phase-a-m0-m11.md` — first build session: repository created, M0 through M11
   implemented against the design, end-to-end CLI rehearsal of the toy pipeline, singlecell skeleton.
-- 2026-09-18-2000-lane-c-day2-proseg-summary-judgment.md: Lane C day 2, Proseg route, summary, first judgment, board and present.
-- 2026-09-17-1900-lane-c-day1-clp-qc.md: Lane C day 1, Lyons CLP QC on four regions, resegmentation started, engine gaps.

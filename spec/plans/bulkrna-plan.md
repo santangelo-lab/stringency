@@ -229,6 +229,12 @@ PROTSEQ Nextflow install and the `nfcore-rnaseq` module; 12 Project B on the 44 
 Project A' chained, comparison note. Final projects on the re-sequenced delivery when it arrives:
 declare, run, deliver; no new sessions unless the run finds something.
 
+Status 2026-09-22: no session has run. The method repo holds the template seed only (`88bc939`)
+and `stringency-plugins/plugins/` has no `stringency-bulkrna`. E1 and E2 (section 2) are still
+open on the engine (roadmap Lane A step 2). Java 21 and Nextflow 24.10.0 are installed under
+`/lab/env/nextflow` (roadmap Lane D item 6, done 2026-09-17), so session 11 is the module alone;
+the Lane C operator-run lessons for long Nextflow steps apply to it (roadmap Lane B status).
+
 ## 8. Decisions for session 0 (answered by the owner 2026-09-15 unless marked open)
 
 1. DE method: **DESeq2**, not limma-voom; the owner knows it better. Module `de-deseq2`, design

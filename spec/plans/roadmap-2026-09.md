@@ -4,6 +4,23 @@ Working note, not the spec. Approved by the owner on 2026-09-14. Detail per trac
 (Track 1), `spec/plans/bulkrna-plan.md` (Track 2), `spec/plans/app1-spatial-qc-plan.md` (Track 3). Track 0 was done the
 same day; see `notes/2026-09-14-1600-track0-and-roadmap.md`.
 
+## Status (2026-09-22)
+
+Lane C reached its deliverable: `xenium-qc` delivered on all eight Lyons CLP regions
+(2026-09-18), the four Proseg resegmentations as their own projects, the cross-region summary,
+and the first real judgment (the outlier proposal, v2 module), which sits at six item holds and
+one flag hold for the owner in `/lab/projects/Lyons_CLP/qc_outliers_all`. Built along the way and
+not in this plan: `board` and `present` with method delivery skills (design 14.4), optional
+module inputs, `role: reference` inputs, secondary evidence tables, directory inputs and outputs.
+Every engine change from those days is on branch `lane-c-directory-inputs` (eight commits ahead
+of `main`, suite green at 240 tests, no PR opened yet). The spec text for it is split: design 2.3
+(directory inputs), the Lane C plan and the session notes are on `main`; design 14.4 and the
+optional and reference input sentences are on the branch only. The branch's three DECISIONS
+lines were copied to `main` on 2026-09-22. Installed engine on PROTSEQ: `0.1.0+optin3-sc0.1.8`.
+Lanes B and E have not started. Lane A steps 2 to 4 are open and item 5 grew out of the runs.
+Per-lane status is under each lane in the Order section; the Track 3 outcome against its plan is
+`app1-spatial-qc-plan.md` section 5.
+
 ## Context
 
 Phase A is complete on both machines (2026-09-14). Three things now pull on the project at once:
@@ -223,7 +240,9 @@ DARPA data via declare skill, retrospective; 9 judgment module + E2 + controls, 
 10 analysis skill, run by a non-computational member (the acceptance test for Track 1); 11
 PROTSEQ Nextflow install + `nfcore-rnaseq` module; 12 Project B run and A' chained.
 
-## Track 3: spatial (Lyons CLP), QC first
+## Track 3: spatial (Lyons CLP), QC first [S0 to S4 done 2026-09-18]
+
+Outcome against the plan, and what is open for the track: `app1-spatial-qc-plan.md` section 5.
 
 The app-1 plan (`spec/archive/app1-spatial-tma-plan.md`) predates both the dataset and `ROSC_MTA2`; its
 inventory (section 2) is now answerable and its sessions 1 to 3 are reframed around wrapping
@@ -316,6 +335,23 @@ on the eight Lyons CLP regions; two items in Lane D gate it.
    subagent harness parses (fixed on the branch 2026-09-18); invalid replicates must open ONE hold
    for the step, not one `run_disagreement` hold per item (42 on the first real judgment), and a
    rejected judgment hold should open attempt 2 rather than surface the next per-item hold.
+6. From the outlier judgment v2 run (2026-09-21,
+   `notes/2026-09-21-1600-outlier-judgment-v2-engine.md`): the review-packet renderer resolves
+   every evidence citation by the item key, so on a module with secondary evidence tables each
+   citation prints "(no such cell)" although `judg.evidence_exists` passed on the same run
+   (display only; `review.py` and `holds.py` should use the cited table's own key); per-item
+   resolution at a flag hold, so the owner can accept some flagged items and not others (belongs
+   with 5); `any_low` opens a hold for an item every replicate labelled the same, because the
+   confidence criteria forbid any contradicting cell at `high` (tolerate one at `high`, or hold
+   on `any_low` only when labels differ; *design*, the owner's call; `backlog.md` K2).
+
+State 2026-09-22. Branch `lane-c-directory-inputs`, in order: `7671a3c` directory inputs and
+outputs, symlinked binds, per-step tmp, `propose --new`; `ee9cd68` `init.column_missing` skips
+`derived_from`; `ca6402b` and `5465d1b` `board`, `present`, design 14.4; `b808c75` the dispatch
+envelope; `12f2f33` `IOSpec.optional`; `1d58127` secondary evidence keys; `41fc5cc`
+`InputItem.role`. None of J1, J2, `submit --failed`, or the `abandon` step-row fix is on it. The
+next Lane A session opens the PR, brings the branch's design text onto `main` with the design 2.3
+text already there, tags, reinstalls on both machines (step 4), then does step 2 and item 5a.
 
 ### Lane B: bulk (bulkrna plugin and method repos)
 
@@ -324,6 +360,15 @@ wants the owner present. Sessions 1, 2, 4 run on synthetic data and need nothing
 Session 5 needs E1 (Lane A step 2) installed. Session 8 ends with the development Project A and
 its QC report for the re-sequencing decision. Sessions 9 to 12 follow Lane C's S4.
 
+Status 2026-09-22: not started. `~/github/stringency-plasmidsaurusRNAseq-method` holds the
+template seed only (`88bc939`); no `stringency-bulkrna` package exists under
+`stringency-plugins/plugins/`. Lane D item 6 is done, so session 11 is the `nfcore-rnaseq` module
+alone. The operator-run lessons from Lane C apply to sessions 11 and 12: a detached launcher for
+steps longer than a session tool call, `systemd-run --user --scope -p MemoryMax -p
+MemorySwapMax=0` around Nextflow, binds in the Nextflow config because it clears the environment
+before `apptainer exec` (`notes/2026-09-17-1900-lane-c-day1-clp-qc.md`,
+`notes/2026-09-18-2000-lane-c-day2-proseg-summary-judgment.md`).
+
 ### Lane C: spatial (splitter, singlecell plugin, spatial method repos)
 
 S1 splitter determinism (its own repo, tag), S2 plugin object types and design schema, S3 the
@@ -331,11 +376,24 @@ modules `resegment-proseg`, `split-punches`, `qc-cells` with the Python image, S
 region then all eight. S3 needs the image build route (Lane D item 2); S4 needs the punch
 coordinates (Lane D item 1).
 
+Status 2026-09-22: S1 to S4 done 2026-09-17 and 2026-09-18; the outcome against the plan,
+including where the build departed from it (resegmentation as its own project per region, Xenium
+Ranger 4.0.1.4, coordinates as a directory, revised spleen thresholds), is
+`app1-spatial-qc-plan.md` section 5. Beyond S4: `xenium-qc-summary` delivered; the outlier
+judgment (`xenium-qc-outliers-ref`, method `v0.3.3-rc1`, plugin `v0.1.11`, both local tags) at
+its holds. Next in the lane, in order: the owner decides the seven holds in `qc_outliers_all` and
+the run delivers; `qc-cells` learns `segmentation_of` for a Ranger-imported bundle, then the four
+Proseg QC projects and the summary re-run; the Proseg transcript floor and the gut label (owner);
+the pathology pass that replaces `histology_include.csv`; then the remaining Track 3 sessions,
+clustering and annotation as the first judgment module on the QC objects. Data-side list:
+`/lab/projects/Lyons_CLP/PROGRESS.md`, "Open at end of 2026-09-21".
+
 ### Lane D: owner and operations (no agent session needed except item 3)
 
 1. Draw the punch coordinates for the eight regions in Xenium Explorer from
    `/lab/projects/Lyons_CLP/tma_layout.csv`; file them under `/lab/projects/Lyons_CLP/`. Longest
-   lead item; gates S4.
+   lead item; gates S4. Done 2026-09-17: 43 per-punch exports under
+   `/lab/projects/Lyons_CLP/punch_coordinates/`, with `histology_include.csv` beside them.
 2. Create the GitHub repositories (`stringency-plugins`, `stringency-plasmidsaurusRNAseq-method`,
    `stringency-xenium-method`) with Actions enabled and GHCR write permission. Gates S3 and Lane
    B session 4. Done 2026-09-17 except the `stringency` team (owner, web UI): `stringency-plugins`
@@ -359,16 +417,33 @@ coordinates (Lane D item 1).
    method repo only if it grows its own modules and policy. Give every repo the topic `stringency` and
    assign them to a `stringency` team in the org so they list together and share access.
 3. Track 1f: create `/data/lab/env/images/` (`sudo`), then the shared engine install and the
-   onboarding notes (agent-doable after the `sudo` step).
-4. Commit the 51 uncommitted files in `ROSC_MTA2`.
+   onboarding notes (agent-doable after the `sudo` step). Status 2026-09-22: `/data/lab/env/images/`
+   exists with `MANIFEST.md` (seven images, all pinned by sha256); `/data/lab/env/stringency/`
+   exists and is empty, so the shared install, the per-user PATH line and the onboarding notes
+   are still open. Every project so far ran from the per-user install under
+   `~/mytools/stringency/engine`.
+4. Commit the 51 uncommitted files in `ROSC_MTA2`. Owner; not verified from PROTSEQ.
 5. Re-sequencing decision with the session 8 QC report in hand; deposit the new delivery with
    the raw-deposit skill when it arrives.
-6. Java and Nextflow on PROTSEQ, for Track 2 sessions 11 and 12 only.
+6. Java and Nextflow on PROTSEQ, for Track 2 sessions 11 and 12 only. Done 2026-09-17, pulled
+   forward by Lane C: Java 21 and Nextflow 24.10.0 under `/lab/env/nextflow`, `NXF_HOME` on
+   `/lab/scratch`, `NXF_APPTAINER_CACHEDIR=/data/lab/env/images/nxf-cache`.
+7. Owner items left by Lane C (2026-09-22): decide the seven holds in `qc_outliers_all`; merge
+   the splitter `determinism` branch (tag `v0.2.0`) into `master` of `jrose835/Xen_TMA_pipeline`;
+   confirm the gut label (large or small intestine; thresholds identical); decide the Proseg
+   transcript floor for lung and gut; discard the dirty ROSC_MTA splitter working copy on BMESEQ;
+   push method `v0.3.3-rc1` and plugin `v0.1.11` and remove the tags pushed before checks passed
+   (`backlog.md` K6).
 
 ### Lane E: skills and UX (after Lane A step 1)
 
 Track 1d analysis skill template and the toy instance; the two Track 1g session tests on PROTSEQ;
 the measurement rows; Track 2 session 10 with a lab member once Lane B session 8 is done.
+
+Status 2026-09-22: not started. Part of Track 1 section 6 (progress and results for a lay reader)
+arrived from Lane C instead: `board`, `present`, and the method delivery skills of design 14.4
+(`notes/2026-09-18-1830-board-and-present.md`). The analysis skill template (1d), the two session
+tests (1g), and the review page (1e, Lane A step 3) remain.
 
 ### Running it
 
@@ -393,4 +468,5 @@ deliver from the same method tag, in whichever lane is free.
 - Real data: Project A (development) delivered on the vendor counts with `methods.md`,
   `coverage.md`, `summary.md`, its QC report naming every shallow sample; the final bulk
   deliverable waits for the re-sequenced data; `xenium-qc` delivered on one Lyons CLP region with sidecars a downstream project
-  binds through `derived_from`.
+  binds through `derived_from` (done 2026-09-18 on all eight regions; the summary and outlier
+  projects bind those deliveries through `derived_from`).

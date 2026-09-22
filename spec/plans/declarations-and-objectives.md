@@ -226,3 +226,11 @@ session 1. *design* (2.4).
 4. Application 1 as two chained projects under option 1. Write down where it chafes.
 5. Staged mode (options 2 and 3) as one design amendment, then build; option 5 with the
    single-cell design schema; option 4 on its trigger.
+
+Status 2026-09-22: items 1 to 3 done (2026-09-09 and 2026-09-14). Item 4 was exceeded: Lyons CLP
+ran as fourteen projects chained through `derived_from` (resegmentation to QC to cross-region
+summary to outlier judgment), and no objective arrived after a result. Where option 1 chafed was
+not the objective but the project boundary: every chained project restated one design and opened
+its own confirm hold (roadmap Lane A item 5b, inherited confirmation), and `init.column_missing`
+read design columns against chained and reference inputs until it was taught not to (DECISIONS
+2026-09-18 and 2026-09-21). H5 stays open with no trigger yet.
