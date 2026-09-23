@@ -198,13 +198,15 @@ def settle_items(
     return out, holds
 
 
-def consensus_json(items: list[ItemConsensus]) -> str:
-    return (
-        json.dumps(
-            {"consensus": 1, "items": [i.to_json() for i in items]}, indent=2, sort_keys=True
-        )
-        + "\n"
-    )
+def consensus_json(
+    items: list[ItemConsensus], considered_set: Mapping[str, Any] | None = None
+) -> str:
+    """The consensus output. With `considered_set` (a module declaring `considered_set: true`),
+    the denominator record the engine took from the items table rides along (design 3.5, E2)."""
+    doc: dict[str, Any] = {"consensus": 1, "items": [i.to_json() for i in items]}
+    if considered_set is not None:
+        doc["considered_set"] = dict(considered_set)
+    return json.dumps(doc, indent=2, sort_keys=True) + "\n"
 
 
 def consensus_from_store(

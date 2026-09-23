@@ -25,7 +25,7 @@ class Action:
     operation: str
     module: str
     parameters: dict[str, Any]
-    param_source: dict[str, str]  # per parameter: default | agent
+    param_source: dict[str, str]  # per parameter: default | agent | fork (a fork's --set delta)
     inputs: dict[str, str]  # input name -> blake3:<hex>
     input_digest: str
     params_hash: str
@@ -65,11 +65,15 @@ def build_action(
     input_digests: dict[str, str],
     proposed: dict[str, Any] | None = None,
     rationale_ref: str | None = None,
+    source_label: str = "agent",
 ) -> Action:
-    """Merge committed defaults with agent-proposed values (design 3.1, 5).
+    """Merge committed defaults with proposed values (design 3.1, 5).
 
-    Every declared pipeline parameter takes its default unless the agent proposed a value.
-    Undeclared proposals are kept in `parameters` so `param.undeclared` can see them.
+    Every declared pipeline parameter takes its default unless a value was proposed; a proposed
+    value is recorded with its source: `agent` (the operator's proposal, which
+    `param.agent_proposed` puts before a person) or `fork` (a person's `fork --set` delta, made
+    with a reason on the run row). Undeclared proposals are kept in `parameters` so
+    `param.undeclared` can see them.
     """
     proposed = dict(proposed or {})
     params: dict[str, Any] = {}
@@ -77,7 +81,7 @@ def build_action(
     for name, decl in step.params.items():
         if name in proposed:
             params[name] = proposed.pop(name)
-            source[name] = "agent"
+            source[name] = source_label
         else:
             params[name] = decl.default
             source[name] = "default"
@@ -86,13 +90,13 @@ def build_action(
         if name not in params:
             if name in proposed:
                 params[name] = proposed.pop(name)
-                source[name] = "agent"
+                source[name] = source_label
             elif isinstance(schema, dict) and "default" in schema:
                 params[name] = schema["default"]
                 source[name] = "default"
     for name, value in proposed.items():  # undeclared anywhere: recorded, then blocked by gate
         params[name] = value
-        source[name] = "agent"
+        source[name] = source_label
     prefixed = {
         k: hashing.prefixed(hashing.strip_prefix(v)) for k, v in sorted(input_digests.items())
     }
@@ -108,7 +112,7 @@ def build_action(
         inputs=prefixed,
         input_digest=hashing.prefixed(hashing.hash_json(prefixed)),
         params_hash=hashing.prefixed(hashing.hash_json(params)),
-        proposed_by="agent" if any(v == "agent" for v in source.values()) else "pipeline",
+        proposed_by=source_label if any(v != "default" for v in source.values()) else "pipeline",
         rationale_ref=rationale_ref,
     )
 

@@ -103,10 +103,15 @@ def test_summary_names_flags_and_changed_parameters(
     r = cli(
         p, "propose", "01_filter", "--set", "min_value=12", "--reason", "test", "--json", env=env
     )
-    assert r.exit_code == 0, r.output
+    assert r.exit_code == 10, r.output  # the agent's choice waits for a person (5a)
+    flag = queue(p)[0]  # param.agent_proposed: the agent chose min_value
+    assert flag["kind"] == "flag"
+    record_review(p, flag["hold_id"], "accept", reason="12 is this panel's floor")
     cli(p, "run", env=env)
+    item = queue(p)[0]
+    assert item["kind"] == "run_disagreement"
     record_review(
-        p, queue(p)[0]["hold_id"], "override", correction={"label": "uniform"}, reason="sd is small"
+        p, item["hold_id"], "override", correction={"label": "uniform"}, reason="sd is small"
     )
     r = cli(p, "run", "--json", env=env)
     assert r.exit_code == 0, r.output

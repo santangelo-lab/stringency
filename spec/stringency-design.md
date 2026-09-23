@@ -247,7 +247,7 @@ judgment:
   replicates: 3
   abstain: required
   confidence: ordinal
-  considered_set: false           # true for salience-type modules: output must carry the denominator
+  considered_set: false           # true for salience-type modules: the engine writes the items table's name, row count and digest into the consensus output as `considered_set`
 
 prompt:
   template: prompt.md
@@ -504,7 +504,7 @@ profiles:
     relayed_review: false            # 7.5
   standard:
     remap: {}
-    params: ranged                   # agent proposes within declared ranges; out of range blocks
+    params: ranged                   # agent proposes within declared ranges; out of range blocks; each choice is a flag hold (param.agent_proposed)
     replicates_min: 3
     agreement: standard
     qc_ranges: standard
@@ -559,6 +559,7 @@ Domain-free, live in the engine, apply to every plugin.
 | `param.undeclared` | pre | * | the proposal includes a parameter the module's schema does not declare | block, invariant |
 | `param.locked_changed` | pre | * | a parameter with no `range`, or any parameter under `params: locked`, differs from its default | block |
 | `param.out_of_range` | pre | * | a proposed value is outside the declared range or options | block (flag under `params: free`) |
+| `param.agent_proposed` | pre | * | an admitted parameter took a value the agent chose that differs from the committed default; the hold shows parameter, default, proposed; added 2026-09-23 | flag (log under `params: free`) |
 | `exec.plan_drift` | post | operator-run steps | the evidence shows parameters, seed, or container different from the admitted Action | block |
 | `exec.script_drift` | post | * | the module script that ran (hashed by the engine before running it, or at `submit`) differs from the script present when the run opened; added 2026-09-09 | block |
 | `repro.env_unverified` | post | operator-run steps | the reported container or lockfile cannot be matched to the environment manifest | flag |

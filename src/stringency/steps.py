@@ -54,6 +54,8 @@ class StepPlan:
     inputs: dict[str, ResolvedInput]
     output_paths: dict[str, Path]
     step_dir: Path
+    design: dict[str, Any] = field(default_factory=dict)  # the bound design, as the job sees it
+    objective: dict[str, Any] = field(default_factory=dict)  # the bound objective (E1)
 
 
 @dataclass
@@ -142,6 +144,8 @@ def plan_step(rc: RunContext, step_id: str, attempt: int) -> StepPlan:
         inputs=resolve_inputs(rc, step, module),
         output_paths=output_paths,
         step_dir=step_dir,
+        design=rc.project.design.model_dump(),
+        objective=rc.project.objective.model_dump(),
     )
 
 
@@ -153,6 +157,7 @@ def propose(
     step_id: str,
     proposed: dict[str, Any] | None = None,
     rationale: str | None = None,
+    source: str = "agent",
 ) -> Proposal:
     """Construct the Action, write it, run the pre-gate, and settle the step as admissible,
     held, or blocked (design 3.4 step 1, 7.1). For operator-run steps an admissible action
@@ -186,6 +191,7 @@ def propose(
         input_digests={k: v.digest for k, v in plan.inputs.items()},
         proposed=proposed,
         rationale_ref=rationale_ref,
+        source_label=source,
     )
     if plan.runner == "operator":
         action = action.with_ticket(action.action_id)
@@ -332,6 +338,8 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
             "outputs": {k: str(v) for k, v in plan.output_paths.items()},
             "output_dir": str(plan.step_dir),
             "seed": seed,
+            "design": plan.design,
+            "objective": plan.objective,
         },
         timeout=None,
         stdout_path=plan.step_dir / "stdout.txt",

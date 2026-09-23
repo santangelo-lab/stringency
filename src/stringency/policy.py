@@ -114,6 +114,9 @@ class Policy(BaseModel):
         if spec.id == "param.out_of_range" and self.profile(profile).params == "free":
             # design 6.5: out-of-range flags instead of blocking under `params: free`
             d = Disposition.FLAG
+        if spec.id == "param.agent_proposed" and self.profile(profile).params == "free":
+            # design 6.5: under `params: free` an agent's choice is logged, not held
+            d = Disposition.LOG
         remapped = self.profile(profile).remap.get(str(d))
         return Disposition(remapped) if remapped else d
 

@@ -266,7 +266,9 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
             return _done(Next("completed", None, {"until": until}, 0, f"stopped after {until}"))
         st = StepStatus(rc.step_status()[sid])
         if st == StepStatus.PENDING:
-            proposal = propose(rc, sid, rc.delta_for(sid) or None)
+            delta = rc.delta_for(sid)
+            # a fork's --set values are a person's decision, recorded with a reason on the run
+            proposal = propose(rc, sid, delta or None, source="fork" if delta else "agent")
         elif st == StepStatus.ADMISSIBLE:
             proposal = resume_after_hold(rc, sid)
         else:

@@ -51,11 +51,14 @@ equal the version every pipeline step asks for (`name@version`).
 Scripts receive one JSON job on stdin:
 
 ```json
-{"inputs": {"<name>": "<path>"}, "params": {...}, "outputs": {"<name>": "<path>"}, "output_dir": "<dir>", "seed": null}
+{"inputs": {"<name>": "<path>"}, "params": {...}, "outputs": {"<name>": "<path>"}, "output_dir": "<dir>", "seed": null,
+ "design": {...}, "objective": {...}}
 ```
 
-They write each declared output at the given path and exit 0. Stdout is captured (operator runner:
-the agent's log is the evidence). A judgment `pre.*` receives `evidence_dir` and writes
+`design` and `objective` are the project's bound declarations as dictionaries (added 2026-09-23,
+E1), so a module that needs the factors or the contrasts reads them from the job rather than from
+a file it must find. They write each declared output at the given path and exit 0. Stdout is captured (operator runner:
+the agent's log is the evidence). A judgment `pre.*` receives `evidence_dir` (and `design`, `objective`) and writes
 `<evidence_dir>/<name>.tsv` for evidence not already an input. `post.*` receives
 `{"replicates": [{replicate, valid, structured}]}` and prints the same shape.
 

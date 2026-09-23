@@ -59,6 +59,8 @@ def job_spec(
         "params": action.parameters,
         "param_source": action.param_source,
         "seed": seed,
+        "design": plan.design,
+        "objective": plan.objective,
         "env": {"name": m.env, "expected_digest": env_digest},
         "outputs": {
             k: {"type": v.type, "format": v.format, "suggested_path": str(plan.output_paths[k])}

@@ -100,6 +100,11 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         lambda p: make_ctx(p, "01_filter", proposed={"min_value": 40}),
     ),
     (
+        "param.agent_proposed",
+        lambda p: make_ctx(p, "01_filter", proposed={"min_value": 20}),
+        lambda p: make_ctx(p, "01_filter", proposed={"min_value": 10}),  # equals the default
+    ),
+    (
         "out.schema_conformance",
         lambda p: make_ctx(
             p,
