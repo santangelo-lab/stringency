@@ -26,11 +26,12 @@ Per-lane status is under each lane in the Order section; the Track 3 outcome aga
 `app1-spatial-qc-plan.md` section 5.
 
 Engine, end of 2026-09-23: PR #2 merged (`lane-c-directory-inputs`, nine commits, plus the K7
-fix) and tagged `v0.2.0`; installed as the shared `current` on PROTSEQ (`0.2.0-sc0.1.8`). PR #3
-(`lane-a-step2`, merged, `v0.2.1`, installed) carries E1, E2, `param.agent_proposed`, the `fork`
-parameter source and the review page (`review --serve`); Lane A steps 2 to 4, 5a and item 6 are done. Open in Lane A: 5b
-inherited confirmation, 5c batch review, the renderer's citation lookup for secondary evidence
-tables, the `any_low` design question (K2), and the item-5 list of smaller fixes.
+fix) and tagged `v0.2.0`. PR #3 (`lane-a-step2`, `v0.2.1`) carries E1, E2, `param.agent_proposed`,
+the `fork` parameter source and the review page (`review --serve`). PR #4 (`lane-a-5b`, `v0.2.2`)
+carries 5b inherited confirmation, 5c batch review and the renderer's citation lookup. `v0.2.2` is
+the shared `current` on PROTSEQ (`0.2.2-sc0.1.8`). Lane A steps 2 to 4, 5a to 5c and item 6 are
+done. Open in Lane A: the `any_low` design question (K2, owner) and the item-5 list of smaller
+fixes.
 
 Lane decisions, owner, 2026-09-23: **Lane C is closed as completed.** Its successor, the spatial
 method build-out with Lyons CLP as the pilot dataset, is a placeholder lane (Lane F) until it is
@@ -346,8 +347,8 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
 3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`. Done 2026-09-23
    (same branch as step 2): `review --serve --projects <dir>`, token, `via: web`, eight tests.
 4. Re-tag and reinstall on both machines after each step that Lane B or C depends on. PROTSEQ:
-   `v0.2.0` then `v0.2.1` (PR #3 merged) tagged and installed as the shared `current` 2026-09-23
-   (label `0.2.1-sc0.1.8`); BMESEQ not reinstalled (no method runs there).
+   `v0.2.0`, `v0.2.1` (PR #3) and `v0.2.2` (PR #4) tagged and installed as the shared `current`
+   2026-09-23 (label `0.2.2-sc0.1.8`); BMESEQ not reinstalled (no method runs there).
 5. **Holds that ask the right question** (owner, 2026-09-18, after two days of live Lyons CLP
    runs: fourteen chained projects meant fourteen confirm holds restating one design, while every
    agent-chosen parameter was admitted silently). Three engine changes, in this order:
@@ -364,7 +365,9 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    c. Batch review: `review --holds A,B,C` with one echo-back that diffs sibling declarations
       (the eight QC regions differed only in the bundle) so one acceptance covers a set.
    Item 5a done 2026-09-23 (`param.agent_proposed@1`, PR #3; a fork's `--set` is labelled
-   `fork` and not asked again). 5b and 5c open.
+   `fork` and not asked again). 5b done 2026-09-23 (PR #4: `Project.inherited_confirmation`,
+   `via: inherited`, the inherited echo-back; design 2.7). 5c done 2026-09-23 (same PR:
+   `review --holds A,B,C --projects <dir>`, `review_batch.py`, `reason_code: batch`).
    Also from the same days: `submit --failed`; an extractor env per tool or object type; a
    variable-arity input type; lint parses `envs/manifest.yml`; `echo.md` wrapped at 100 columns;
    `abandon` closes the step row; the dispatch suffix must name the `structured` envelope key the
@@ -390,7 +393,9 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    then decide how a completed run repairs its artifact (`backlog.md` K7). Done 2026-09-23 (PR #2,
    `v0.2.0`): the consensus output is rewritten when the last item hold settles, post flags wait
    for the decided consensus, and a completed run is not repaired in place (a new run or a method
-   bump; DECISIONS). The renderer's citation lookup and the `any_low` question stay open.
+   bump; DECISIONS). The renderer's citation lookup fixed 2026-09-23 (PR #4:
+   `review_render.tables_seen` reads the step's `evidence/` tables, secondary ones keyed by their
+   own column). The `any_low` question stays open (K2, owner).
 
 State 2026-09-22. Branch `lane-c-directory-inputs`, in order: `7671a3c` directory inputs and
 outputs, symlinked binds, per-step tmp, `propose --new`; `ee9cd68` `init.column_missing` skips

@@ -157,6 +157,8 @@ Validation: every input hash matches; `design.yml` validates against the plugin 
 
 Compatibility predicates (6.5, the `init.*` set): the declarations are checked against each other and against the bound pipeline. Every contrast names a declared factor and declared levels; the replication unit is a declared unit; every design column exists in the raw input, which the engine learns by running the plugin's extractor once on each object input; the pipeline declares that it answers the objective's question; every deliverable is produced by some step; references named in the inputs match the pipeline's expected build. These are the errors an agent makes when it misreads a prose description, and they are cheapest to catch here.
 
+Inherited confirmation (added 2026-09-23): when every input is `derived_from` a run of a project the same owner confirmed, that project's `design.yml` is byte-identical to this one's, and the method tags share a major version, `init` still opens the confirm hold but resolves it at once by reference to the upstream acceptance (a `reviews` row with `via: inherited` naming the upstream project, hold, review, reviewer and date), and the echo-back shows only what is new: the pipeline, the question and deliverables, and the bound runs. A raw input, a different owner, a changed design, an unconfirmed upstream, or a method major-version change opens an ordinary hold. Fourteen chained Lyons CLP projects restated one design fourteen times before this.
+
 Echo-back: `init` renders the design, objective, and inputs as plain language ("24 cores from 12 blocks on 4 slides; 12 tumor and 12 margin; the biological replicate is the block; the question is tumor versus margin differential expression with at least 3 blocks per group; slide is a batch variable") and opens a project-level hold of kind `confirm` waiting on the owner. `run` refuses to open a run until the owner has accepted it through `review`. This applies in every profile. The echo-back is regenerated and the hold reopened if any of the three files changes, because the accept is bound to their hashes (7.4).
 
 ## 3. Pipeline and modules
@@ -643,6 +645,8 @@ Every hold records the reviewer role it waits on. `status` shows who is waited o
 
 `reason` is free text in v1. Once the override corpus shows recurring categories, `reason_code` becomes an enum in the method repo's vocabulary and the free text moves to `reason_detail`.
 
+Batch review (added 2026-09-23): `review --holds A,B,C --projects <dir>` takes the confirm holds of sibling projects, compares their three declaration files field by field, and shows one echo-back: what every project shares once, what differs in a table by project (the eight Lyons CLP QC regions differed only in the bundle they bound), then the shared echo. `--verdict accept|reject --reason` records one `reviews` row per hold, `reason_code: batch`, so each project's trace stands alone; a project that needs a different answer is reviewed alone. Only project-level confirm holds batch.
+
 ### 7.4 Binding and reuse of verdicts
 
 Every review row stores `bound_module_version`, `bound_input_digest`, `bound_params_hash`, and, for item holds, `bound_item_evidence_digest`. Before creating a hold, the engine looks for a prior `accept` or `override` on the same hold kind, module version, and bindings. If one exists, the new hold is created and immediately resolved by reference (`resolved_by_review = prior id`, `via = rebind`) and the step proceeds.
@@ -1077,7 +1081,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `propose <step>` | `[--set k=v]… [--reason "<txt>"] [--json]` | constructs the Action from defaults plus proposed values; runs the pre-gate; issues a ticket on pass | writes the action and verdicts | none |
 | `submit <ticket>` | `--outputs name=path… [--evidence path]… [--command "<string>"] [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |
 | `status` | `[--run <id>] [--overrides [--module]] [--json]` | reports holds and who they wait on | reads | override rates |
-| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest] [--serve [--port <n>] [--bind <addr>] [--project <path>]... [--projects <dir>]]` | clears holds by recorded verdict; `--serve` reads holds and records verdicts with `via: web` (7.5; built 2026-09-23, `review_serve.py`) | appends reviews | accumulates override corpus |
+| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest] [--serve [--port <n>] [--bind <addr>] [--project <path>]... [--projects <dir>]] [--holds <id,...> --projects <dir> [--verdict accept\|reject --reason "<txt>"]]` | clears holds by recorded verdict; `--serve` reads holds and records verdicts with `via: web` (7.5; built 2026-09-23, `review_serve.py`) | appends reviews | accumulates override corpus |
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
@@ -1215,7 +1219,7 @@ Everything in the eval column is either a control, a rate computed from the trac
 5. Plugins have a predicate half in the engine environment and a tool half executed in module environments. State extraction runs once per step, post-execution, and predicates read the stored summary.
 6. Forward feasibility is `obj.feasibility`, a pre- and post-gate check on declared unit counts per contrast level, rather than a prediction.
 7. Reviews are bound to module version, input digest, and params hash, and prior verdicts auto-resolve identical holds (`rebind`).
-8. Reviewer identity carries `via: tty | relayed | web`; profiles decide whether relayed verdicts are accepted, and treat `web` as `tty`.
+8. Reviewer identity carries `via: tty | relayed | web` (and the engine's own `rebind` and `inherited`, which name a person's earlier verdict); profiles decide whether relayed verdicts are accepted, and treat `web` as `tty`.
 9. Coverage is computed from predicate `covers` declarations and module `decision_points`.
 10. `fork` and `abandon` are in v1; `trace` is a flag on `status`.
 11. Judgment modules declare `batching` and `evidence`; the engine renders prompts from declared variables only.
