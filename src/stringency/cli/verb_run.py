@@ -13,6 +13,7 @@ from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.deliver import deliver as do_deliver
 from stringency.exit_codes import ConfigError
+from stringency.notify import notify_after
 from stringency.project import Project
 from stringency.runloop import Next, file_responses, run_loop
 from stringency.runs import open_or_resume
@@ -69,6 +70,7 @@ def run(
         }
         human += f"\ndelivered run {rc.run_id} to {d.path}\n{len(d.files)} file(s)"
     refresh_if_present(project.root)
+    notify_after(project, run_id=rc.run_id, nx=nx, delivery=payload.get("delivery"))
     emit(payload, as_json, human)
     if nx.exit_code:
         raise typer.Exit(code=nx.exit_code)

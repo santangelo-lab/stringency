@@ -47,6 +47,13 @@ def _plugins() -> None:
     load_plugins(refresh=True)
 
 
+@pytest.fixture(autouse=True)
+def _no_user_notify(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Notifications read `$XDG_CONFIG_HOME/stringency/notify.yml`; point that at an empty
+    directory so no test reads the developer's own file or sends anything."""
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
+
+
 @pytest.fixture
 def method_repo(tmp_path: Path) -> MethodRepo:
     dest = tmp_path / "method-src"

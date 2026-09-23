@@ -9,6 +9,7 @@ import typer
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError
+from stringency.notify import notify_after
 from stringency.operator_exec.submit import submit as do_submit
 from stringency.project import Project
 from stringency.runloop import next_step
@@ -42,6 +43,7 @@ def submit(
         )
         nx = next_step(rc)
         refresh_if_present(project.root)
+        notify_after(project, run_id=rc.run_id, nx=nx)
         emit(
             {
                 "schema": "stringency.submit/1",
@@ -65,6 +67,7 @@ def submit(
     out = do_submit(rc, ticket, outs, list(evidence), command=command)
     nx = next_step(rc)
     refresh_if_present(project.root)
+    notify_after(project, run_id=rc.run_id, nx=nx)
     emit(
         {
             "schema": "stringency.submit/1",
