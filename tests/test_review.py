@@ -274,3 +274,37 @@ def test_confirm_hold_via_review_cli(project: Project) -> None:
     assert r.exit_code == 0, r.output
     assert project.confirm_status() == "accepted"
     _ = Path
+
+
+def test_hold_view_reads_the_evidence_the_reviewers_saw(make_project: InitFn) -> None:
+    """Lane A item 6: the packet resolves citations against the tables under the step's
+    `evidence/` (what a pre-script wrote) when they exist, not only the declared inputs."""
+    p, _ = held_project(make_project)
+    h = queue(p)[0]
+    step_dir = Path(
+        p.store.one("SELECT path FROM artifacts WHERE step_id='03_label' ORDER BY rowid LIMIT 1")[
+            "path"
+        ]
+    ).parent
+    before = show(p, h).text
+    assert "no such cell" not in before and "summary[A].mean_value" in before
+    summary_path = next(
+        Path(r["path"])
+        for r in p.store.all("SELECT path FROM artifacts WHERE step_id='02_summarize'")
+        if r["path"].endswith("table.tsv")
+    )
+    ev = step_dir / "evidence"
+    ev.mkdir(exist_ok=True)
+    rows = summary_path.read_text().splitlines()
+    header = rows[0].split("\t")
+    col = header.index("mean_value")
+    out = [rows[0]]
+    for line in rows[1:]:
+        cells = line.split("\t")
+        if cells[header.index("group")] == "A":
+            cells[col] = "999"
+        out.append("\t".join(cells))
+    (ev / "summary.tsv").write_text("\n".join(out) + "\n")
+    after = show(p, h).text
+    assert "summary[A].mean_value: cited" in after and "stored 999" in after
+    assert "mean_value=999" in after  # the evidence row shown is the one on disk

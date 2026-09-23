@@ -111,6 +111,7 @@ def record_review(
     replicate: int | None = None,
     attest: bool = False,
     via_override: str | None = None,
+    reason_code: str | None = None,
 ) -> ReviewResult:
     """Record one verdict and apply its effect (design 7.3, 7.5). Writes: reviews (with
     `operator_session_ref` and `operator_harness` from the environment), holds, consensus, steps,
@@ -191,7 +192,7 @@ def record_review(
                 "verdict": verdict,
                 "correction_json": correction,
                 "reason": reason,
-                "reason_code": None,
+                "reason_code": reason_code,
                 "bound_module_version": h["bound_module_version"],
                 "bound_input_digest": h["bound_input_digest"],
                 "bound_params_hash": h["bound_params_hash"],

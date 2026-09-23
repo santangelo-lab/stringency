@@ -353,7 +353,9 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    c. Batch review: `review --holds A,B,C` with one echo-back that diffs sibling declarations
       (the eight QC regions differed only in the bundle) so one acceptance covers a set.
    Item 5a done 2026-09-23 (`param.agent_proposed@1`, PR #3; a fork's `--set` is labelled
-   `fork` and not asked again). 5b and 5c open.
+   `fork` and not asked again). 5b done 2026-09-23 (PR #4: `Project.inherited_confirmation`,
+   `via: inherited`, the inherited echo-back; design 2.7). 5c done 2026-09-23 (same PR:
+   `review --holds A,B,C --projects <dir>`, `review_batch.py`, `reason_code: batch`).
    Also from the same days: `submit --failed`; an extractor env per tool or object type; a
    variable-arity input type; lint parses `envs/manifest.yml`; `echo.md` wrapped at 100 columns;
    `abandon` closes the step row; the dispatch suffix must name the `structured` envelope key the
@@ -379,7 +381,9 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    then decide how a completed run repairs its artifact (`backlog.md` K7). Done 2026-09-23 (PR #2,
    `v0.2.0`): the consensus output is rewritten when the last item hold settles, post flags wait
    for the decided consensus, and a completed run is not repaired in place (a new run or a method
-   bump; DECISIONS). The renderer's citation lookup and the `any_low` question stay open.
+   bump; DECISIONS). The renderer's citation lookup fixed 2026-09-23 (PR #4:
+   `review_render.tables_seen` reads the step's `evidence/` tables, secondary ones keyed by their
+   own column). The `any_low` question stays open (K2, owner).
 
 State 2026-09-22. Branch `lane-c-directory-inputs`, in order: `7671a3c` directory inputs and
 outputs, symlinked binds, per-step tmp, `propose --new`; `ee9cd68` `init.column_missing` skips
