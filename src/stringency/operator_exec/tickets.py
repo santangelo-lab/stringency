@@ -53,7 +53,11 @@ def job_spec(
         "script": str(plan.module.entry_script) if plan.module.entry_script else None,
         "script_blob": script_blob(plan.module),
         "inputs": {
-            k: {"path": str(v.path), "blake3": v.digest, "type": v.type}
+            k: (
+                {"paths": [str(p) for p in v.paths], "blake3": list(v.digests), "type": v.type}
+                if v.many
+                else {"path": str(v.path), "blake3": v.digest, "type": v.type}
+            )
             for k, v in plan.inputs.items()
         },
         "params": action.parameters,

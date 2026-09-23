@@ -13,7 +13,9 @@ from stringency.config import Runner, load_yaml
 from stringency.exit_codes import ConfigError
 from stringency.modules import parse_module_ref
 
-REF = re.compile(r"^\$(?P<kind>inputs|steps)\.(?P<a>[A-Za-z0-9_.-]+?)(?:\.(?P<b>[A-Za-z0-9_-]+))?$")
+REF = re.compile(
+    r"^\$(?P<kind>inputs|steps)\.(?P<a>[A-Za-z0-9_.*-]+?)(?:\.(?P<b>[A-Za-z0-9_*-]+))?$"
+)
 
 
 class Ref(BaseModel):
@@ -37,7 +39,15 @@ class Ref(BaseModel):
             return cls(kind="inputs", name=a)
         if b is None:
             raise ConfigError(f"bad reference {text!r}; $steps needs <id>.<output>")
+        if "*" in a or "*" in b:
+            raise ConfigError(f"bad reference {text!r}; a glob binds $inputs only")
         return cls(kind="steps", name=a, output=b)
+
+    @property
+    def pattern(self) -> bool:
+        """`$inputs.<glob>`: every manifest input whose name matches, for an `arity: many`
+        input (3.1, 2026-09-23)."""
+        return self.kind == "inputs" and "*" in self.name
 
     def __str__(self) -> str:
         return f"${self.kind}.{self.name}" + (f".{self.output}" if self.output else "")
@@ -80,7 +90,9 @@ class StepDecl(BaseModel):
     id: str
     module: str
     title: str | None = None  # plain phrase for a lay reader ("Filter low-count genes")
-    inputs: dict[str, str] = Field(default_factory=dict)
+    # one reference, or for an `arity: many` module input a list of references or a
+    # `$inputs.<glob>` (3.1, 2026-09-23)
+    inputs: dict[str, str | list[str]] = Field(default_factory=dict)
     params: dict[str, ParamDecl] = Field(default_factory=dict)
     runner: Runner | None = None
 
@@ -105,14 +117,22 @@ class StepDecl(BaseModel):
     def module_version(self) -> str:
         return parse_module_ref(self.module)[1]
 
-    def refs(self) -> dict[str, Ref]:
-        return {k: Ref.parse(v) for k, v in self.inputs.items()}
+    def refs(self) -> dict[str, list[Ref]]:
+        """Each wired input's references, one for a single binding, several for a list."""
+        return {
+            k: [Ref.parse(x) for x in (v if isinstance(v, list) else [v])]
+            for k, v in self.inputs.items()
+        }
+
+    def is_list(self, name: str) -> bool:
+        return isinstance(self.inputs.get(name), list)
 
     def predecessors(self) -> list[str]:
         seen: list[str] = []
-        for r in self.refs().values():
-            if r.kind == "steps" and r.name not in seen:
-                seen.append(r.name)
+        for rs in self.refs().values():
+            for r in rs:
+                if r.kind == "steps" and r.name not in seen:
+                    seen.append(r.name)
         return seen
 
     def defaults(self) -> dict[str, Any]:

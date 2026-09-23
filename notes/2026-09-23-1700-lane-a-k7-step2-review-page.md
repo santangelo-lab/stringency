@@ -75,8 +75,10 @@ session ran Lane E in a worktree at the same time (its own notes; brief in
    fixed on PR #5 (`lane-a-k2-k8`). The item-5 fixes on PR #6 (`lane-a-item5`, stacked on
    #5): `submit --failed`, `abandoned` steps, withdrawn holds (block, reject, abandon), one hold
    for invalid replicates, lint of `envs/manifest.yml`, extractor env from the consuming step,
-   echo wrapped at 100 columns. Left for the owner: the variable-arity input type (module
-   contract 3.2 is frozen).
+   echo wrapped at 100 columns. PR #5 and #6 merged as `v0.2.3` (installed). The owner approved
+   the module-contract amendment: `arity: many` on PR #8 (`lane-a-many`): a list of references or
+   `$inputs.<glob>`, list of paths in the job, one digest per input (hash of the parts'). Lane A
+   is complete once #8 merges; the cross-region summary as one glob input is Lane F's.
 3. Lane F (data side): repair `qc_outliers_all` by the owner's chosen route; the module-version
    question above.
 4. BMESEQ has no 0.2.0 install; reinstall when a method runs there.

@@ -8,6 +8,7 @@ state, snapshot, write the execution row, run the post-gate, and settle the step
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import shlex
 from dataclasses import dataclass, field
@@ -39,10 +40,30 @@ EXT = {"csv": "csv", "tsv": "tsv", "json": "json", "jsonl": "jsonl", "md": "md",
 
 @dataclass(frozen=True)
 class ResolvedInput:
+    """A step input as bound: one path, or for an `arity: many` module input several
+    (3.1, 2026-09-23). `digest` is bare hex: the file's for one, the hash of the parts' digests
+    in order for many, so the action's input digest changes when any part or the order does."""
+
     name: str
-    path: Path
-    digest: str  # bare hex
+    paths: tuple[Path, ...]
+    digests: tuple[str, ...]  # bare hex, one per path
     type: str
+    many: bool = False
+
+    @property
+    def path(self) -> Path:
+        if self.many:
+            raise ConfigError(f"input {self.name} has arity many; it has {len(self.paths)} paths")
+        return self.paths[0]
+
+    @property
+    def digest(self) -> str:
+        if self.many:
+            return hashing.hash_json(list(self.digests))
+        return self.digests[0]
+
+    def job_value(self) -> str | list[str]:
+        return [str(p) for p in self.paths] if self.many else str(self.paths[0])
 
 
 @dataclass(frozen=True)
@@ -107,24 +128,66 @@ def runner_for(rc: RunContext, step: StepDecl, module: Module) -> str:
 
 
 def resolve_inputs(rc: RunContext, step: StepDecl, module: Module) -> dict[str, ResolvedInput]:
-    """`$inputs.<name>` from the manifest; `$steps.<id>.<out>` from that step's produced artifacts."""
+    """`$inputs.<name>` from the manifest; `$steps.<id>.<out>` from that step's produced
+    artifacts. An `arity: many` input takes a list of references or a `$inputs.<glob>`, which
+    expands to every manifest input whose name matches and whose type is the input's, in name
+    order; it must resolve to at least one part unless the input is optional."""
     out: dict[str, ResolvedInput] = {}
     inputs_by_name = rc.project.inputs.by_name()
-    for name, ref in step.refs().items():
+    for name, refs in step.refs().items():
         spec = module.manifest.inputs.get(name)
-        if ref.kind == "inputs":
-            item = inputs_by_name.get(ref.name)
-            if item is None:
-                raise ConfigError(f"step {step.id}: no input named {ref.name} in inputs.yml")
-            out[name] = ResolvedInput(name, Path(item.path), item.blake3, item.type)
-        else:
-            produced = step_outputs(rc.store, rc.run_id, ref.name)
-            row = produced.get(ref.output or "")
-            if row is None:
-                raise ConfigError(f"step {step.id}: {ref} has not been produced in run {rc.run_id}")
-            out[name] = ResolvedInput(
-                name, Path(row["path"]), row["hash"], spec.type if spec else row["kind"]
+        many = spec is not None and spec.arity == "many"
+        if not many and (len(refs) != 1 or refs[0].pattern):
+            raise ConfigError(
+                f"step {step.id}: input {name} takes one reference; a list or a glob needs "
+                f"`arity: many` on the module input"
             )
+        paths: list[Path] = []
+        digests: list[str] = []
+        types: list[str] = []
+        for ref in refs:
+            if ref.kind == "inputs":
+                if ref.pattern:
+                    matches = [
+                        i
+                        for n, i in sorted(inputs_by_name.items())
+                        if fnmatch.fnmatchcase(n, ref.name)
+                        and (spec is None or i.type == spec.type)
+                    ]
+                else:
+                    item = inputs_by_name.get(ref.name)
+                    if item is None:
+                        raise ConfigError(
+                            f"step {step.id}: no input named {ref.name} in inputs.yml"
+                        )
+                    matches = [item]
+                for item in matches:
+                    paths.append(Path(item.path))
+                    digests.append(item.blake3)
+                    types.append(item.type)
+            else:
+                produced = step_outputs(rc.store, rc.run_id, ref.name)
+                row = produced.get(ref.output or "")
+                if row is None:
+                    raise ConfigError(
+                        f"step {step.id}: {ref} has not been produced in run {rc.run_id}"
+                    )
+                paths.append(Path(row["path"]))
+                digests.append(str(row["hash"]))
+                types.append(spec.type if spec else str(row["kind"]))
+        if not paths:
+            if spec is not None and spec.optional:
+                continue
+            raise ConfigError(
+                f"step {step.id}: input {name} resolved to nothing ({', '.join(map(str, refs))})"
+            )
+        out[name] = ResolvedInput(
+            name,
+            tuple(paths),
+            tuple(digests),
+            spec.type if spec else types[0],
+            many=many,
+        )
     return out
 
 
@@ -331,9 +394,9 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
         command=interpreter_for(script),
         env_name=m.env,
         cwd=plan.step_dir,
-        bind_paths=[p.path.parent for p in plan.inputs.values()] + [plan.step_dir],
+        bind_paths=[p.parent for ri in plan.inputs.values() for p in ri.paths] + [plan.step_dir],
         stdin_json={
-            "inputs": {k: str(v.path) for k, v in plan.inputs.items()},
+            "inputs": {k: v.job_value() for k, v in plan.inputs.items()},
             "params": action.parameters,
             "outputs": {k: str(v) for k, v in plan.output_paths.items()},
             "output_dir": str(plan.step_dir),
@@ -517,7 +580,7 @@ def evidence_tables_for(plan: StepPlan) -> dict[str, EvidenceTable]:
     out: dict[str, EvidenceTable] = {}
     for n in names:
         ri = plan.inputs.get(n)
-        if ri is not None and ri.type == "table":
+        if ri is not None and ri.type == "table" and not ri.many:
             out[n] = load_table(ri.path, n, key)
     return out
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import fnmatch
+
 from stringency.predicates.context import Disposition, GateContext, Verdict
 from stringency.predicates.registry import predicate
 
@@ -70,11 +72,15 @@ def input_digest_mismatch(ctx: GateContext) -> Verdict:
     recorded = {i.name: i.blake3 for i in ctx.project.inputs.items}
     now = ctx.project.input_digests_now
     if ctx.phase == "pre" and ctx.project.pipeline.has_step(ctx.action.step_id):
-        wanted = {
-            r.name
-            for r in ctx.project.pipeline.step(ctx.action.step_id).refs().values()
-            if r.kind == "inputs"
-        }
+        wanted = set()
+        for rs in ctx.project.pipeline.step(ctx.action.step_id).refs().values():
+            for r in rs:
+                if r.kind != "inputs":
+                    continue
+                if r.pattern:
+                    wanted |= {n for n in recorded if fnmatch.fnmatchcase(n, r.name)}
+                else:
+                    wanted.add(r.name)
     else:
         wanted = set(recorded)
     bad = {
