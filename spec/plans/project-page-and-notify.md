@@ -136,20 +136,37 @@ terminal) drives the run, and that is who should hear from it:
 ```yaml
 notify: 1
 events: [hold_opened, run_completed, delivered, run_failed]   # default: all four
-page_url: https://127.0.0.1:8765/?t=...                        # optional; the standing page or your tunnel
+page_url: http://127.0.0.1:8765/?t=...                         # optional; the standing page or your tunnel
 channels:
-  - kind: slack_webhook
-    url: https://hooks.slack.com/services/...
+  - kind: email
+    to: [me@emory.edu]
+    smtp: {host: smtp.service.emory.edu, port: 25}             # or smtp.office365.com:587 with starttls and a credential file
+    from: me@emory.edu
+  - kind: teams_webhook
+    url: https://prod-00.westus.logic.azure.com/workflows/...  # a Power Automate "Workflows" webhook posting to a Teams channel
   - kind: command
-    argv: [/home/me/bin/notify.sh]          # receives the message on stdin; for anything else
+    argv: [/home/me/bin/notify.sh]                             # receives the message on stdin; for anything else
 ```
 
-`slack_webhook` posts one JSON message with stdlib `urllib`, 5 second timeout. `command` runs the
-argv as the user with the message on stdin, for email through a personal relay, a desktop
-notification over SSH, or anything the person already has. No local mail agent exists on PROTSEQ
-and outbound HTTPS works (checked 2026-09-23), so Slack is the first channel; an `email` kind via
-SMTP is added when a relay is known. `STRINGENCY_NOTIFY=0` silences everything (tests, batch
-work). A missing file means no notifications and no message about it.
+The lab uses email and Microsoft Teams, not Slack (owner, 2026-09-23), so the two built-in kinds
+are:
+
+- `email`: stdlib `smtplib`, one plain-text message per event, subject "{project}: {event in
+  words}". Two relays were reachable from PROTSEQ on 2026-09-23: `smtp.service.emory.edu:25`
+  (the campus relay; whether it accepts unauthenticated mail from this host is confirmed by one
+  test send in the build session) and `smtp.office365.com:587` (STARTTLS with a credential the
+  person keeps in a mode 600 file named by `credentials`; Emory's tenant may require an app
+  password or refuse basic authentication, to be checked). The campus relay is the default when
+  it works. No local mail agent exists on PROTSEQ, so `sendmail` is not an option.
+- `teams_webhook`: the person creates a Workflow in Teams ("Post to a channel when a webhook
+  request is received") on the channel they want, which gives a URL on `logic.azure.com`; the
+  engine posts one Adaptive Card with the message text and the link, stdlib `urllib`, 5 second
+  timeout. The older Office 365 connector webhooks are being retired by Microsoft, so the plan
+  names Workflows only. Outbound HTTPS to that host works from PROTSEQ (checked 2026-09-23).
+
+`command` runs the argv as the user with the message on stdin, for anything else. All sends have
+a 5 second timeout. `STRINGENCY_NOTIFY=0` silences everything (tests, batch work). A missing file
+means no notifications and no message about it.
 
 ### 4.3 Where it lives and what it records
 
@@ -173,14 +190,16 @@ channel whose command exits 1 leaves the verb's exit code unchanged and logs the
    for the read-only page with `review --serve` kept for the form (14.1 change, one row).
 2. A standing read-only instance on PROTSEQ: yes or no; if yes, loopback plus tunnel only, or a
    fixed lab-network port.
-3. First channel: Slack webhook into which workspace and channel, or wait for an email relay.
+3. First channel: email through the campus relay (one test send confirms it), and whether a Teams
+   channel for the lab's runs should exist beside the personal email.
 4. Who is notified in v1: the user running the engine only (this proposal), or the project's
    `roles` looked up in a per-user registry. Roles need a registry that does not exist; v1 keeps
    the running user.
 
 ## 6. Order and measurement
 
-1. Notify (half a day, engine): `notify.py`, the five call sites, config, tests, `STRINGENCY_NOTIFY`.
+1. Notify (half a day, engine): `notify.py`, the five call sites, config, the `email` and
+   `teams_webhook` kinds, tests, `STRINGENCY_NOTIFY`; one test send through the campus relay.
 2. Project page (a day, engine): `present_rows`, the five routes, `--read-only`, `--token-file`,
    the redirect routes, tests.
 3. Skill and host text (Lane E, half a day): operator skill 7, the analysis template, onboarding,

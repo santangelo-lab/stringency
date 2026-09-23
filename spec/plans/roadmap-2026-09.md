@@ -195,8 +195,8 @@ After the first measured run: the chat path is near its floor (7 turns, 15 minut
 cost to the person is presence and finding results later. `review --serve` grows into the project
 page (board, per-project progress, per-run results with downloads, holds with the method's
 tables; `--read-only` and `--token-file` for a standing instance); the engine sends one message on
-hold opened, run completed, delivered, run failed, through a per-user `notify.yml` (Slack webhook
-or a command). Engine steps go to Lane A's queue; skill and host text to Lane E; the measured run
+hold opened, run completed, delivered, run failed, through a per-user `notify.yml` (email via the
+campus relay, a Teams webhook, or a command). Engine steps go to Lane A's queue; skill and host text to Lane E; the measured run
 adds "time from hold opened to verdict recorded". Owner decisions in the plan's section 5.
 
 ## Track 2: bulk RNA-seq plugin and method (first real plugin) [dormant since 2026-09-23, kept as written]
