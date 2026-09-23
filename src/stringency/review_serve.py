@@ -38,7 +38,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from jinja2 import Environment, StrictUndefined
 from markupsafe import Markup
 
-from stringency.board import COLUMNS, project_entry, refresh_if_present, row, sentence
+from stringency.board import COLUMNS, SKIP_DIRS, project_entry, refresh_if_present, row, sentence
 from stringency.exit_codes import ConfigError, RefusedError
 from stringency.present import Site, present_hold, present_run, render_html
 from stringency.project import Project
@@ -55,21 +55,29 @@ READ_ONLY_MESSAGE = (
 )
 
 
+def _candidates(d: Path) -> list[Path]:
+    """Subdirectories the board would scan: not `superseded/`, `declarations/` or dot-dirs."""
+    return sorted(
+        c
+        for c in d.iterdir()
+        if c.is_dir() and c.name not in SKIP_DIRS and not c.name.startswith(".")
+    )
+
+
 def discover(projects: list[Path], projects_dir: Path | None) -> list[Path]:
     """Project roots: the ones named, plus every child of `projects_dir` to depth two that holds
-    a `stringency.yml`. Ordered as given, then by path."""
+    a `stringency.yml`, skipping the directories the board skips (`superseded/`, `declarations/`,
+    dot-dirs) at both levels. Ordered as given, then by path."""
     roots: list[Path] = [p.resolve() for p in projects]
     if projects_dir is not None:
         base = projects_dir.resolve()
         found: list[Path] = []
-        for child in sorted(base.iterdir()) if base.is_dir() else []:
-            if not child.is_dir():
-                continue
+        for child in _candidates(base) if base.is_dir() else []:
             if (child / "stringency.yml").exists():
                 found.append(child)
                 continue
-            for grand in sorted(child.iterdir()):
-                if grand.is_dir() and (grand / "stringency.yml").exists():
+            for grand in _candidates(child):
+                if (grand / "stringency.yml").exists():
                     found.append(grand)
         roots += [f for f in found if f not in roots]
     for r in roots:

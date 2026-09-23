@@ -202,9 +202,17 @@ def test_discover_walks_two_levels(tmp_path: Path, held: tuple[Project, dict[str
     (area / "shallow").mkdir()
     (area / "shallow" / "stringency.yml").write_text("x: 1\n")
     (area / "noise").mkdir()
+    # what the board skips, the page skips: superseded and declarations at either level, dot-dirs
+    for skip in ("superseded/old", "declarations/decl", ".hidden/h", "deep/superseded", "deep/.x"):
+        (area / skip).mkdir(parents=True)
+        (area / skip / "stringency.yml").write_text("x: 1\n")
     roots = discover([p.root], area)
     assert roots[0] == p.root.resolve()
     assert {r.name for r in roots[1:]} == {"inner", "shallow"}
+    # a superseded project named explicitly is still served
+    assert discover([area / "superseded" / "old"], None) == [
+        (area / "superseded" / "old").resolve()
+    ]
     with pytest.raises(Exception, match="not a stringency project"):
         discover([tmp_path / "nowhere"], None)
 
