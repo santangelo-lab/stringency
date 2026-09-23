@@ -529,7 +529,7 @@ confidence_criteria:                 # 8.2
   medium: {min_supporting: 2, max_contradicting: 1}
   low:    {min_supporting: 1}
 agreement:                           # 8.4
-  standard: {hold_on: [label_disagreement, any_abstain, any_low, any_invalid]}
+  standard: {hold_on: [label_disagreement, any_abstain, any_low, any_invalid]}   # any_low: logged in the consensus notes, not a hold (8.4, 2026-09-23)
   relaxed:  {hold_on: [label_disagreement, all_abstain, any_invalid]}
 ```
 
@@ -724,7 +724,7 @@ Per item, across the valid replicate outputs:
 | labels differ | hold `run_disagreement` | hold `run_disagreement` |
 | some abstain, the rest agree | hold `self_uncertain` | agreed; abstention logged |
 | all abstain | hold `self_uncertain` | hold `self_uncertain` |
-| any low confidence | hold `self_uncertain` | logged |
+| any low confidence, labels agree | logged in the consensus notes (changed 2026-09-23: a hold opened for items every replicate labelled the same, because the confidence criteria push an honest reviewer that lists contradicting cells to `low`; a split is `run_disagreement` regardless) | logged |
 | any invalid replicate | hold `run_disagreement` | hold `run_disagreement` |
 
 There is no majority vote in either setting. Two of three with one dissenter is a hold under `standard`, because the dissent is the information.
