@@ -67,9 +67,9 @@ def review(
         if not roots and projects_dir is None:
             roots = [Project.find().root]
         members = locate_holds(ids, roots, projects_dir)
-        view = batch_view(members)
+        batch = batch_view(members)
         if verdict is None:
-            emit(view.to_json(), as_json, view.text)
+            emit(batch.to_json(), as_json, batch.text)
             return
         results = record_batch(members, verdict, reason=reason, attest=attest)
         for m in members:
