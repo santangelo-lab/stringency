@@ -70,10 +70,10 @@ recovery was to finish by hand with `--no-sources`, then set `current`:
     ln -sfn versions/0.1.0+optin3-sc0.1.8 /data/lab/env/stringency/current
 
 The plugin therefore records the local path (`0b22769`, the `v0.1.11` checkout) rather than the
-tag. Two follow-ups for the engine repo: `install.sh` should pass `--no-sources` (or accept a
-flag for it), and it should set `current` only after the install succeeded (a pipe through
-`tail` masked the failure once). Once the engine ref is the GitHub one the workspace pins, the
-conflict does not arise.
+tag. `install.sh` now passes `--no-sources` itself (same day), so a later run of step 2 as
+written succeeds. The script's `set -e` already stops it before `current` moves when the install
+fails; the `current` link that briefly pointed at the empty venv on 2026-09-23 came from the
+hand-run recovery, whose pipe through `tail` masked the exit code, and was removed and re-set.
 
 ## 3. Verify the install
 

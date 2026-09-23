@@ -156,6 +156,36 @@ def test_apptainer_binds_script_inputs_and_cwd(tmp_path: Path) -> None:
     res = ApptainerExecutor(tmp_path / "envs", binary="definitely-not-apptainer").run(job)
     for b in binds:
         assert f"--bind {b}" in res.command
+    # a per-step directory replaces the container's 64 MB tmpfs at /tmp
+    assert f"--bind {work / 'tmp'}:/tmp" in res.command and (work / "tmp").is_dir()
+
+
+def test_apptainer_binds_symlinked_names_as_aliases(tmp_path: Path) -> None:
+    """An input named through a symlink (`/lab/...` for `/data/lab/...`) is bound at its
+    resolved location and again at the name the job used, so the argument the module receives
+    exists under `--containall`. Aliases nested consistently under a kept alias are dropped."""
+    from stringency.executor.apptainer import bind_set
+
+    real = tmp_path / "data" / "lab"
+    (real / "raw" / "bundle").mkdir(parents=True)
+    (real / "raw" / "bundle" / "cells.parquet").write_text("")
+    (real / "scratch" / "work").mkdir(parents=True)
+    link = tmp_path / "lab"
+    link.symlink_to(real, target_is_directory=True)
+    bundle = link / "raw" / "bundle"
+    work = link / "scratch" / "work"
+    job = Job(
+        command=["python3", "/nonexistent/x.py", str(bundle)],
+        env_name="e1",
+        cwd=work,
+        stdin_json={"inputs": {"b": str(bundle), "c": str(bundle / "cells.parquet")}},
+    )
+    binds = bind_set(job)
+    assert str(real / "raw" / "bundle") in binds
+    assert f"{real / 'raw' / 'bundle'}:{bundle}" in binds
+    assert str(real / "scratch" / "work") in binds
+    assert f"{real / 'scratch' / 'work'}:{work}" in binds
+    assert len(binds) == 4  # the nested cells.parquet parent adds nothing
 
 
 def test_apptainer_binary_discovery(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

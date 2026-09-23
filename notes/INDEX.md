@@ -92,3 +92,4 @@ it is the first thing a new session reads.
   mode, machine install, review-surface findings.
 - `2026-09-03-1605-phase-a-m0-m11.md` — first build session: repository created, M0 through M11
   implemented against the design, end-to-end CLI rehearsal of the toy pipeline, singlecell skeleton.
+- 2026-09-18-1830-board-and-present.md: `board` and `present` reading verbs; delivery skill schema (design 14.4); operator skill section 7.

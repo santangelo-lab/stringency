@@ -169,9 +169,9 @@ def resolve_fixture(project: Project, fx: FixtureInput) -> Path:
         project.method_root / "controls" / "fixtures",
     ):
         if d.exists():
-            candidates += sorted(p for p in d.iterdir() if p.is_file())
+            candidates += sorted(d.iterdir())
     for c in candidates:
-        if c.exists() and c.is_file() and hashing.hash_file(c) == fx.blake3:
+        if c.exists() and hashing.hash_path(c) == fx.blake3:
             return c
     raise ConfigError(f"no fixture with blake3 {fx.blake3[:12]} found (hint {fx.path})")
 
@@ -374,7 +374,7 @@ def run_control(
     input_path = (
         run_generator(project, spec, fixture, ctrl_dir / "generated") if spec.generator else fixture
     )
-    input_digest = hashing.hash_file(input_path)
+    input_digest = hashing.hash_path(input_path)
     refuse_holdout(project, input_digest, f"control {spec.name} generated input")
     pipeline, step_id, replaced = synthetic_pipeline(project, module, spec.fixture.input.type)
     items = [

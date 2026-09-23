@@ -65,7 +65,10 @@ fi
 venv=$prefix/versions/$label
 mkdir -p "$prefix/versions" "$prefix/envs"
 uv venv --quiet --python "$python" "$venv"
-uv pip install --quiet --python "$venv/bin/python" "$source" "${plugins[@]}"
+# --no-sources: a plugin checked out from the stringency-plugins workspace carries a
+# tool.uv.sources pin of the engine to its GitHub URL, which conflicts with any other --source
+# (a branch, a tag, a local checkout); the engine installed here is the one named on the line.
+uv pip install --quiet --no-sources --python "$venv/bin/python" "$source" "${plugins[@]}"
 ln -sfn "versions/$label" "$prefix/current"
 
 if [ -z "$link_bin" ] && [ -w /usr/local/bin ]; then link_bin=/usr/local/bin; fi

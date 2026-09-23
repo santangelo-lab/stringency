@@ -68,10 +68,20 @@ def replication_unit_undeclared(ctx: GateContext) -> Verdict:
     id="init.column_missing", version=1, scope=SCOPE, phase="init", default=Disposition.BLOCK
 )
 def column_missing(ctx: GateContext) -> Verdict:
-    """Every design column exists in every raw object input, per the extractor pass."""
+    """Every design column exists in every raw object input, per the extractor pass. An input
+    bound through `derived_from` is a delivered artifact of an earlier run, not a raw input:
+    its columns are whatever the upstream module produced, so it is skipped here. So is an input
+    declared with `role: reference`: it describes other studies' observations, not this design's."""
     want = ctx.design.columns()
+    derived = {
+        i.name
+        for i in ctx.project.inputs.items
+        if i.derived_from is not None or getattr(i, "role", "observation") == "reference"
+    }
     missing: dict[str, list[str]] = {}
     for name, obj in ctx.state.objects.items():
+        if name in derived:
+            continue
         cols = obj.fields.get("columns")
         if cols is None:
             continue

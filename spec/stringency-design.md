@@ -100,7 +100,7 @@ items:
 
 `init` computes and verifies every hash and refuses on mismatch. `run` re-verifies at open (`repro.input_digest_mismatch`, 6.5). The `type` field decides which state extractor applies.
 
-An item may carry `derived_from: {run_id, step_id, output, project}` when the file is a delivered artifact of an earlier stringency run (chained projects; added 2026-09-09). `init` reads the sidecar beside the file and refuses unless it names that run, step, and output with the same hash. Run open captures the upstream run ids and the methods paragraph names them.
+An item may carry `role: reference` when it describes other studies' observations rather than this design's (a table of earlier punches, an atlas); `init.column_missing` does not require the design columns in it (2026-09-21). An item may carry `derived_from: {run_id, step_id, output, project}` when the file is a delivered artifact of an earlier stringency run (chained projects; added 2026-09-09). `init` reads the sidecar beside the file and refuses unless it names that run, step, and output with the same hash. Run open captures the upstream run ids and the methods paragraph names them.
 
 ### 2.4 Design declaration
 
@@ -269,6 +269,8 @@ resources: {cpus: 2, memory: 8GB, timeout: 30min}
 ```
 
 Three properties follow from the manifest.
+
+A module input may carry `optional: true`: a pipeline step may leave it unwired, and the module's script then finds no entry for it in `job.json` inputs (a reference table a study may or may not have). A judgment module with a `pre.*` script may list under `judgment.evidence` tables the script writes that are not inputs (a guide table beside the items table); without a pre-script every evidence name must be an input. Lint enforces both (2026-09-21).
 
 The model sees only `judgment.evidence`. The engine renders the prompt from the template and the declared vars and nothing else reaches the model. "The model sees the table, never the matrix" is enforced by construction rather than by instruction.
 
@@ -608,6 +610,7 @@ Predicates do not read the agent's rationale as evidence for admissibility. The 
 | produced | post-gate `flag`, or any item hold | held |
 | produced | post-gate `block` | rejected |
 | held | every hold reviewed `accept` or `override` | admissible (pre-phase hold) or completed (post-phase hold) |
+| held | the last item hold of a judgment step reviewed `accept` or `override` | the consensus output is rewritten from the decided consensus and the post-phase gate is evaluated on it: nothing fires, completed; a flag fires, held (the flag holds open now); a block fires, rejected |
 | held | any hold reviewed `reject` | blocked (pre) or rejected (post); attempt closed |
 | blocked, rejected, failed | new attempt after a commit or a fork | proposed |
 
@@ -736,6 +739,8 @@ The consensus record per item:
 ```
 
 `source` is one of `agreed`, `accepted`, `override`, `unresolved`. Downstream modules consume consensus, never individual replicates. An `unresolved` item cannot exist in a completed step, because a step with open holds cannot complete.
+
+The consensus output file is written at judgment time, so a held item is filed in it as `unresolved`. When the last item hold of the step is accepted or overridden, the engine rewrites the file from the `consensus` table, records it as a new artifact and marks the judgment-time one `superseded`, so the file a downstream step binds is the decided consensus (added 2026-09-23). Post-phase predicates run at judgment time on the pre-review consensus; a `flag` verdict raised while item holds are open does not open a hold then. Once the item holds settle the post-phase gate is evaluated again on the decided consensus, and the flags that fire open their holds at that point, with the evidence the reviewer decided. A `block` takes effect at either evaluation.
 
 ## 9. Trace
 
@@ -1075,6 +1080,8 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
+| `board <root>` | `[--write] [--json]` | none | reads every project under `<root>` (one level; skips `superseded/`, `declarations/`): plan status, latest run and step, open holds and who they wait on, latest delivery's files; `--write` rewrites `<root>/STATUS.md`, which `init`, `run`, `propose`, `submit`, `review`, `deliver` and `abandon` refresh when it exists | none |
+| `present` | `[--run <id>] [--hold <id>] [--skills-dir <dir>] [--json]` | none | reads the run's delivery or the hold and renders what the method's delivery skill (14.4) says a person should see; the engine default is the progress sentence and the deliverables | none |
 | `lint` | `<path>` or `<repo-or-url>@<tag>` | static checks on a module directory or a method repo; a tagged spec is cloned into a temporary directory first | none | none |
 | `controls run` | `[--module <name>]` | real gates on a single module | writes controls_runs | metrics and regression diff |
 | `policy show` | `[--profile]` | prints resolved dispositions | none | none |
@@ -1103,6 +1110,41 @@ The hold message is terse by design: what is held, who it waits on, the one comm
 ### 14.3 Output modes
 
 Human-readable by default; `--json` on every verb emits a stable, versioned schema for the skill wrappers. Every write verb prints the run ID.
+
+### 14.4 Delivery skill and the two reading verbs (added 2026-09-18)
+
+A method may state what a person should see: `skills/<pipeline>.yml` in the method repository,
+read by `stringency present` and by the operator skill. It never changes what runs.
+
+```yaml
+skill: 1
+pipeline: <name>
+after_delivery:            # rendered by `present --run`, in order
+  - title: "..."
+    source: <path relative to deliver/<run>/, falling back to runs/<run>/>
+    kind: table | json_table | jsonl | text | file
+    columns: [...]         # optional subset and order (table, json_table, jsonl)
+    format: {col: percent | int | "<n>f"}   # optional per-column formatting
+    path: <key of the list of row dicts>    # json_table only; dotted keys allowed; a dict renders as one row
+never_show: [run ids, hashes, ...]          # echoed as a footer, a rule for the operator
+hold_view:                 # rendered by `present --hold` for the predicate that opened the hold
+  - predicate: <predicate id>
+    source: <path relative to runs/<run>/>
+    kind: table | json_table | jsonl
+    columns: [...]
+```
+
+`table` reads CSV or TSV; `jsonl` reads one JSON object per line (the judgment log
+`judgments.jsonl` is one); a cell that is a dict renders compactly as `k=v; k=v`, a list as
+`a, b`. `kind: file` is not printed but listed under "Files to send" with its absolute path. A
+missing or malformed skill file, or a missing source, degrades to the engine default with a note
+saying so; nothing here can fail a run. `present` and `board` read `stringency.yml`, the trace and
+the pipeline file directly and load no plugin, so they work from any engine install.
+
+`board` is the progress view a person keeps open: one row per project under a directory, in
+sentences, ids only where a command needs them. The verbs that change a project's state rewrite
+`STATUS.md` beside the projects when one exists, so the board is current without the operator
+remembering.
 
 ## 15. Plugins
 

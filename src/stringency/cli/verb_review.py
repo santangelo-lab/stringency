@@ -6,6 +6,7 @@ import json
 
 import typer
 
+from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError
 from stringency.project import Project
@@ -60,6 +61,7 @@ def review(
     result = record_review(
         project, hold, verdict, reason=reason, correction=corr, replicate=replicate, attest=attest
     )
+    refresh_if_present(project.root)
     emit(
         result.to_json(),
         as_json,

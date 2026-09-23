@@ -1,0 +1,17 @@
+# split.yml plus a confidence the evidence does not support: replicate 3 calls A `uniform` at
+# `high` with two supporting cells (the toy policy wants three), so judg.confidence_consistent
+# fires a flag in the same post gate that opens the run_disagreement hold on A. The flag must be
+# deferred until the item hold settles (design 7.1, 8.4; backlog K7).
+mock: 1
+model: mock-model-1
+rules:
+  - item: A
+    replicate: [1, 2]
+    judgment: {label: abundant, confidence: high, rationale: "mean {mean_value}"}
+  - item: A
+    replicate: 3
+    judgment: {label: uniform, confidence: high, supporting: [mean_value, sd_value], rationale: "sd {sd_value} is small enough"}
+  - item: B
+    judgment: {label: sparse, confidence: high, rationale: "mean {mean_value}"}
+  - item: C
+    judgment: {label: variable, confidence: high, rationale: "sd {sd_value}"}

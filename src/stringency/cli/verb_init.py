@@ -6,6 +6,7 @@ from pathlib import Path
 
 import typer
 
+from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import Exit
 from stringency.project import InitRequest, init_project
@@ -77,6 +78,7 @@ def init(
             f"\nheld: hold {hold['hold_id']} (confirm); waits on owner {project.config.roles.owner}; "
             f"run `stringency review --hold {hold['hold_id']}` in {project.root}"
         )
+    refresh_if_present(project.root)
     emit(payload, as_json, human)
     if hold is not None and hold["resolved_by_review"] is None:
         # init leaves a hold open: exit 10 like every other verb that stops on a hold (design 14.2)

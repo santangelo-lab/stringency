@@ -6,6 +6,7 @@ from pathlib import Path
 
 import typer
 
+from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError
 from stringency.operator_exec.submit import submit as do_submit
@@ -34,6 +35,7 @@ def submit(
         outs[k] = Path(v)
     out = do_submit(rc, ticket, outs, list(evidence), command=command)
     nx = next_step(rc)
+    refresh_if_present(project.root)
     emit(
         {
             "schema": "stringency.submit/1",

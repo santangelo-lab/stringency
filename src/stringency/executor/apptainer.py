@@ -44,22 +44,75 @@ def _paths_in(value: object) -> list[Path]:
     return found
 
 
+# Host system directories are never bound: the image supplies its own. Binding them shadows the
+# container's binaries (`/bin/echo` in a command used to bind the host's `/usr/bin` over the
+# image's). The engine venv may live under `/usr/local` or `/opt`, so only these exact trees.
+_SYSTEM_DIRS = tuple(
+    Path(p)
+    for p in (
+        "/bin",
+        "/sbin",
+        "/lib",
+        "/lib32",
+        "/lib64",
+        "/libx32",
+        "/usr/bin",
+        "/usr/sbin",
+        "/usr/lib",
+        "/usr/lib32",
+        "/usr/lib64",
+        "/usr/libexec",
+        "/usr/share",
+        "/usr/include",
+        "/etc",
+        "/dev",
+        "/proc",
+        "/sys",
+        "/run",
+        "/boot",
+    )
+)
+
+
+def _is_system(path: Path) -> bool:
+    return path == Path("/") or any(path == d or d in path.parents for d in _SYSTEM_DIRS)
+
+
 def bind_set(job: Job) -> list[str]:
     """The host directories a job needs visible inside the container, deduplicated and with
-    any directory nested under another dropped."""
-    dirs: set[Path] = {Path(p).resolve() for p in job.bind_paths} | {job.cwd.resolve()}
+    any directory nested under another dropped.
+
+    A path is bound at its resolved location, and, when the job named it through a symlink
+    (`/lab/...` for `/data/lab/...` on PROTSEQ), also at the name the job used, as
+    `<resolved>:<as named>`, so the unresolved argument the module receives exists under
+    `--containall`."""
+    named: set[Path] = {Path(p) for p in job.bind_paths} | {job.cwd}
     for arg in job.command:
         for p in _paths_in(str(arg)):
-            dirs.add((p if p.is_dir() else p.parent).resolve())
+            named.add(p if p.is_dir() else p.parent)
     if job.stdin_json is not None:
         for p in _paths_in(dict(job.stdin_json)):
-            dirs.add((p if p.is_dir() else p.parent).resolve())
-    ordered = sorted(dirs, key=lambda d: (len(d.parts), str(d)))
-    kept: list[Path] = []
-    for d in ordered:
-        if not any(d == k or k in d.parents for k in kept):
-            kept.append(d)
-    return sorted(str(d) for d in kept)
+            named.add(p if p.is_dir() else p.parent)
+    # container path -> host path; the identity mapping plus one alias per symlinked name
+    mappings: dict[Path, Path] = {}
+    for d in named:
+        host = d.resolve()
+        if _is_system(host):
+            continue
+        mappings[host] = host
+        if d.is_absolute() and d != host:
+            mappings[d] = host
+    ordered = sorted(mappings, key=lambda c: (len(c.parts), str(c)))
+    kept: dict[Path, Path] = {}
+    for c in ordered:
+        host = mappings[c]
+        redundant = any(
+            (c == kc or kc in c.parents) and kh / c.relative_to(kc) == host
+            for kc, kh in kept.items()
+        )
+        if not redundant:
+            kept[c] = host
+    return sorted(str(h) if c == h else f"{h}:{c}" for c, h in kept.items())
 
 
 def sha256_file(path: Path) -> str:
@@ -126,11 +179,16 @@ class ApptainerExecutor:
         cmd: list[str] = [self.binary, "exec", "--containall", "--pwd", str(job.cwd)]
         for b in bind_set(job):
             cmd += ["--bind", b]
+        # `--containall` gives the container a 64 MB tmpfs at /tmp; module code that uses
+        # tempfile (the splitter stages a whole punch there) fills it. Bind a per-step directory
+        # on the data array instead, so temporary files land beside the step's outputs.
+        cmd += ["--bind", f"{job.cwd / 'tmp'}:/tmp"]
         cmd += [str(image) if image else "<no image>", *[str(c) for c in job.command]]
         return cmd
 
     def run(self, job: Job) -> ExecResult:
         job.cwd.mkdir(parents=True, exist_ok=True)
+        (job.cwd / "tmp").mkdir(exist_ok=True)
         out = job.stdout_path or job.cwd / "stdout.txt"
         err = job.stderr_path or job.cwd / "stderr.txt"
         image = self.image_for(job.env_name)
