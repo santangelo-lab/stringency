@@ -1,0 +1,34 @@
+# Source of the analysis skill for one pipeline (design 10.4). Rendered by the engine repository's
+# integrations/claude-science/render_skill.py to stringency-analyze-<name>/SKILL.md. Field notes in
+# README.md beside this file. Every value here is method text: it names what the person is asked
+# and what they receive; it never changes what runs.
+pipeline: example-pipeline
+name: example
+method: https://github.com/<org>/<method-repo>@v0.1.0
+plugin: stringency-example
+question: example_question
+title: Run the example analysis on a table of measurements
+summary: Runs the example pipeline on a table of measurements and compares two groups
+phrasings:
+  positive:
+    - wants to compare two groups of measurements in a table
+    - mentions the example data, a groups table, or which group is higher
+    - asks what changed between two conditions in a plain table
+  negative:
+    - single-cell, spatial, or sequencing data
+    - a question about how a finished analysis was done, or a request to fix a project by hand
+    - a question about the engine itself rather than an analysis to run
+steps:
+  01_import: Read the table
+  02_compare: Compare the groups
+  03_report: Write the report
+deliverables:
+  comparison_table: one row per pair of groups with the difference and its adjusted p-value
+  report: a one-page report naming the comparison in words, every number a table cell
+asks:
+  - Which file holds the measurements, one row per observation?
+  - Which column names the group, and which column names the replicate unit?
+  - Which two groups do you want compared?
+  - Do you want the report as well as the comparison table?
+defaults_to_say:
+  min_n_per_group: the smallest number of replicate units a group needs for the comparison
