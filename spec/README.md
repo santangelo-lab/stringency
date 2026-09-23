@@ -29,6 +29,7 @@ design section, the text is marked as an amendment awaiting approval.
 |---|---|
 | `roadmap-2026-09.md` | the plan approved on 2026-09-14 after the Phase A exit: Track 0 cleanup (done), Track 1 two-audience UX, Track 2 bulk RNA-seq plugin, Track 3 Lyons CLP spatial QC (done to S4); its Status section and the per-lane status lines under Order say where each lane stands |
 | `ux-two-audiences.md` | Track 1 in detail; section 8 holds the amendment texts for design 7.5, 10.4, 12.1, 14.1, 17 |
+| `project-page-and-notify.md` | Track 1h: the project page (board, progress, results and holds served by `review --serve`, read-only standing instance) and notify on hold (engine-sent messages on hold, completion, delivery); section 5 holds the owner's decisions |
 | `bulkrna-plan.md` | Track 2 in detail; section 8 holds the session-0 decisions for the owner |
 | `app1-spatial-qc-plan.md` | Track 3 in detail; section 4 holds the owner's decisions; section 5 the outcome against the plan and what is open for the track |
 | `lane-c-day1-2026-09-17.md` | the running tooling log of Lane C on 2026-09-17 and 2026-09-18 (hold ids, run ids, decisions, engine gaps); closed, kept because the notes and the trace cite it |

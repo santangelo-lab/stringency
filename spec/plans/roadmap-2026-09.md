@@ -189,6 +189,16 @@ commands/JSON/ids shown, holds and `via`, operator misreports vs trace. Two sess
 PROTSEQ first: do delegate downloads under a data root raise cards; do standing grants cover
 `call_command`. Target for an all-engine five-step run with one dispatch: 26 -> 8 or 9 cards.
 
+### 1h. Project page and notify on hold [proposed 2026-09-23, `spec/plans/project-page-and-notify.md`]
+
+After the first measured run: the chat path is near its floor (7 turns, 15 minutes), so the next
+cost to the person is presence and finding results later. `review --serve` grows into the project
+page (board, per-project progress, per-run results with downloads, holds with the method's
+tables; `--read-only` and `--token-file` for a standing instance); the engine sends one message on
+hold opened, run completed, delivered, run failed, through a per-user `notify.yml` (Slack webhook
+or a command). Engine steps go to Lane A's queue; skill and host text to Lane E; the measured run
+adds "time from hold opened to verdict recorded". Owner decisions in the plan's section 5.
+
 ## Track 2: bulk RNA-seq plugin and method (first real plugin) [dormant since 2026-09-23, kept as written]
 
 One new package and one new repo: the plugin `stringency-bulkrna` lives at
@@ -527,6 +537,8 @@ real instance will be a spatial pipeline once Lane F has one. Left: three templa
 run and a toy re-tag; the toy run by someone other than the owner, which needs K8 tagged and
 installed and a method location the tester can read (the toy method is under `/home/jrrose5`,
 remote BMESEQ); then close the lane, with skills a step of every method build.
+Next, from the 2026-09-23 brainstorm: Track 1h (`spec/plans/project-page-and-notify.md`), the
+project page and notify on hold; its engine steps need a session that owns `src/stringency/`.
 
 ### Running it
 
