@@ -25,6 +25,13 @@ and `run --deliver` completed the run, but the delivered proposal is stale: item
 Per-lane status is under each lane in the Order section; the Track 3 outcome against its plan is
 `app1-spatial-qc-plan.md` section 5.
 
+Engine, end of 2026-09-23: PR #2 merged (`lane-c-directory-inputs`, nine commits, plus the K7
+fix) and tagged `v0.2.0`; installed as the shared `current` on PROTSEQ (`0.2.0-sc0.1.8`). PR #3
+(`lane-a-step2`) carries E1, E2, `param.agent_proposed`, the `fork` parameter source and the review
+page (`review --serve`); Lane A steps 2 to 4, 5a and item 6 are done there. Open in Lane A: 5b
+inherited confirmation, 5c batch review, the renderer's citation lookup for secondary evidence
+tables, the `any_low` design question (K2), and the item-5 list of smaller fixes.
+
 Lane decisions, owner, 2026-09-23: **Lane C is closed as completed.** Its successor, the spatial
 method build-out with Lyons CLP as the pilot dataset, is a placeholder lane (Lane F) until it is
 planned. **Track 2 and Lane B are dormant**, kept as written. **Lane D is closed**: item 3 (the
@@ -323,9 +330,13 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    (`notes/2026-09-15-1500-lane-a-step1-flags-and-skill.md`); `declare --check --print-hashes`
    left to the backlog.
 2. E1 and E2 (`bulkrna-plan.md` section 2): `design` and `objective` in the job JSON;
-   `considered_set` filled. Small; early because Lane B session 5 needs E1.
-3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`.
-4. Re-tag and reinstall on both machines after each step that Lane B or C depends on.
+   `considered_set` filled. Done 2026-09-23 (PR #3, with item 5a): the job carries both; the
+   engine writes `{items_from, n_items, digest}` as the considered set.
+3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`. Done 2026-09-23
+   (same branch as step 2): `review --serve --projects <dir>`, token, `via: web`, eight tests.
+4. Re-tag and reinstall on both machines after each step that Lane B or C depends on. PROTSEQ:
+   `v0.2.0` tagged and installed as the shared `current` 2026-09-23 (label `0.2.0-sc0.1.8`);
+   BMESEQ not reinstalled (no method runs there).
 5. **Holds that ask the right question** (owner, 2026-09-18, after two days of live Lyons CLP
    runs: fourteen chained projects meant fourteen confirm holds restating one design, while every
    agent-chosen parameter was admitted silently). Three engine changes, in this order:
@@ -341,6 +352,8 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
       method major-version change still opens a hold.
    c. Batch review: `review --holds A,B,C` with one echo-back that diffs sibling declarations
       (the eight QC regions differed only in the bundle) so one acceptance covers a set.
+   Item 5a done 2026-09-23 (`param.agent_proposed@1`, PR #3; a fork's `--set` is labelled
+   `fork` and not asked again). 5b and 5c open.
    Also from the same days: `submit --failed`; an extractor env per tool or object type; a
    variable-arity input type; lint parses `envs/manifest.yml`; `echo.md` wrapped at 100 columns;
    `abandon` closes the step row; the dispatch suffix must name the `structured` envelope key the
@@ -363,8 +376,10 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    `sc.exclusion_proposed` had counted two proposed punches where the decided consensus has six.
    Fix: rewrite the consensus output from the store when the step completes (re-recording its
    hash), and evaluate post-phase predicates that read the consensus after the item holds settle;
-   then decide how a completed run repairs its artifact (`backlog.md` K7). This is the first Lane A
-   item to do, before the PR: every judgment step with an item hold delivers wrong output today.
+   then decide how a completed run repairs its artifact (`backlog.md` K7). Done 2026-09-23 (PR #2,
+   `v0.2.0`): the consensus output is rewritten when the last item hold settles, post flags wait
+   for the decided consensus, and a completed run is not repaired in place (a new run or a method
+   bump; DECISIONS). The renderer's citation lookup and the `any_low` question stay open.
 
 State 2026-09-22. Branch `lane-c-directory-inputs`, in order: `7671a3c` directory inputs and
 outputs, symlinked binds, per-step tmp, `propose --new`; `ee9cd68` `init.column_missing` skips
