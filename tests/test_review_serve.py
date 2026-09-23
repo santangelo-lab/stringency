@@ -3,6 +3,7 @@ server records verdicts by the same rules as the terminal, behind a per-start to
 
 from __future__ import annotations
 
+import html
 import threading
 import urllib.error
 import urllib.parse
@@ -201,8 +202,229 @@ def test_discover_walks_two_levels(tmp_path: Path, held: tuple[Project, dict[str
     (area / "shallow").mkdir()
     (area / "shallow" / "stringency.yml").write_text("x: 1\n")
     (area / "noise").mkdir()
+    # what the board skips, the page skips: superseded and declarations at either level, dot-dirs
+    for skip in ("superseded/old", "declarations/decl", ".hidden/h", "deep/superseded", "deep/.x"):
+        (area / skip).mkdir(parents=True)
+        (area / skip / "stringency.yml").write_text("x: 1\n")
     roots = discover([p.root], area)
     assert roots[0] == p.root.resolve()
     assert {r.name for r in roots[1:]} == {"inner", "shallow"}
+    # a superseded project named explicitly is still served
+    assert discover([area / "superseded" / "old"], None) == [
+        (area / "superseded" / "old").resolve()
+    ]
     with pytest.raises(Exception, match="not a stringency project"):
         discover([tmp_path / "nowhere"], None)
+
+
+# -- the project page (Track 1h, plan section 3.4) ------------------------------------------------
+
+
+def _no_follow(url: str) -> tuple[int, str]:
+    """Status and Location without following the redirect."""
+    import http.client
+
+    u = urllib.parse.urlsplit(url)
+    conn = http.client.HTTPConnection(u.hostname or "", u.port, timeout=10)
+    conn.request("GET", f"{u.path}?{u.query}" if u.query else u.path)
+    r = conn.getresponse()
+    loc = r.getheader("Location") or ""
+    conn.close()
+    return r.status, loc
+
+
+def _tables(html: str) -> list[list[list[str]]]:
+    """Every <table> as rows of cell texts (th and td alike)."""
+    from html.parser import HTMLParser
+
+    class P(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.tables: list[list[list[str]]] = []
+            self.row: list[str] | None = None
+            self.cell: list[str] | None = None
+
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            if tag == "table":
+                self.tables.append([])
+            elif tag == "tr":
+                self.row = []
+            elif tag in ("td", "th"):
+                self.cell = []
+
+        def handle_endtag(self, tag: str) -> None:
+            if tag in ("td", "th") and self.cell is not None and self.row is not None:
+                self.row.append("".join(self.cell))
+                self.cell = None
+            elif tag == "tr" and self.row is not None:
+                self.tables[-1].append(self.row)
+                self.row = None
+
+        def handle_data(self, data: str) -> None:
+            if self.cell is not None:
+                self.cell.append(data)
+
+    p = P()
+    p.feed(html)
+    return p.tables
+
+
+def _serve(p: Project, **kw: object) -> Iterator[str]:
+    srv = make_server([p.root], port=0, token=TOKEN, **kw)  # type: ignore[arg-type]
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        yield f"http://127.0.0.1:{srv.server_address[1]}"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_landing_has_needs_you_then_the_board_with_sentences(server: tuple[str, Project]) -> None:
+    from stringency.board import project_entry, sentence
+
+    base, p = server
+    status, body = get(f"{base}/?t={TOKEN}")
+    assert status == 200 and "<script" not in body
+    assert body.index("Needs you") < body.index("Board") < body.index("In words")
+    assert sentence(project_entry(p.root)) in html.unescape(body)  # the board's sentence, verbatim
+    assert f'href="/p/0?t={TOKEN}"' in body and 'content="60"' in body
+    tables = _tables(body)
+    assert tables[0][0] == ["project", "step", "kind", "item", "waits on", "open for"]
+    assert tables[0][1][:4] == [p.root.name, "Label the groups", "run_disagreement", "A"]
+    assert tables[1][0][:4] == ["project", "pipeline", "method", "plan"]
+
+
+def test_project_page_names_every_step_by_title_with_status(server: tuple[str, Project]) -> None:
+    base, p = server
+    status, body = get(f"{base}/p/0?t={TOKEN}")
+    assert status == 200 and "<script" not in body and 'content="60"' in body
+    steps = _tables(body)[0][1:]
+    assert [s[0] for s in steps] == [p.pipeline.title(s) for s in p.pipeline.order()]
+    by = dict(steps)
+    assert by["Label the groups"] == "held" and by["Filter low-value rows"] == "completed"
+    assert "Nothing delivered yet." in body and "Label the groups" in body
+    assert get(f"{base}/p/7?t={TOKEN}")[0] == 404
+
+
+def test_run_page_tables_equal_present_rows_and_files_download(make_project: InitFn) -> None:
+    from stringency.present import Site, present_rows
+    from tests.test_board_present import _delivered, _skill
+
+    p, run_id, d = _delivered(make_project)
+    table = next(f["file"] for f in d.files if f["file"].endswith(".tsv"))
+    _skill(p, [{"title": "The table", "source": table, "kind": "table"}])
+    for base in _serve(p):
+        status, body = get(f"{base}/p/0/run/{run_id}?t={TOKEN}")
+        assert status == 200 and "<script" not in body
+        site = Site.load(p.root)
+        rows = present_rows(site, run_id)
+        site.store.close()
+        assert rows and rows[0]["title"] == "The table"
+        html_tables = _tables(body)
+        assert html_tables[0] == [rows[0]["columns"], *rows[0]["rows"]]
+        assert "Not shown, by the method's rule: run ids, hashes." in body
+        assert "## " in body or "Summary" in body  # summary.md body is on the page
+        # the project page lists the delivery and links to this run
+        status, proj = get(f"{base}/p/0?t={TOKEN}")
+        assert f'href="/p/0/run/{run_id}?t={TOKEN}"' in proj and table in proj
+        # files: a listed file with its recorded type, a report, and nothing else
+        status, text = get(f"{base}/p/0/file/{run_id}/{table}?t={TOKEN}")
+        assert status == 200 and text == (Path(d.path) / table).read_text()
+        with urllib.request.urlopen(f"{base}/p/0/file/{run_id}/{table}?t={TOKEN}") as r:
+            assert r.headers["Content-Type"].startswith("text/tab-separated-values")
+            assert r.headers["Content-Disposition"] == f'attachment; filename="{table}"'
+        with urllib.request.urlopen(f"{base}/p/0/file/{run_id}/summary.md?t={TOKEN}") as r:
+            assert r.headers["Content-Type"].startswith("text/markdown")
+        assert get(f"{base}/p/0/file/{run_id}/stringency.yml?t={TOKEN}")[0] == 404
+        assert get(f"{base}/p/0/file/{run_id}/index.json?t={TOKEN}")[0] == 404
+        assert get(f"{base}/p/0/file/{run_id}/..%2Fstringency.yml?t={TOKEN}")[0] == 404
+        assert get(f"{base}/p/0/file/{run_id}/..%5Cstringency.yml?t={TOKEN}")[0] == 404
+        assert get(f"{base}/p/0/file/{run_id}/.hidden?t={TOKEN}")[0] == 404
+        assert get(f"{base}/p/0/file/NOTARUN/{table}?t={TOKEN}")[0] == 404
+        assert get(f"{base}/p/0/run/NOTARUN?t={TOKEN}")[0] == 404
+        # the redirect routes a notification links to
+        status, loc = _no_follow(f"{base}/run/{run_id}?t={TOKEN}")
+        assert (status, loc) == (302, f"/p/0/run/{run_id}?t={TOKEN}")
+        assert _no_follow(f"{base}/run/NOTARUN?t={TOKEN}")[0] == 404
+
+
+def test_hold_page_shows_hold_view_tables_and_redirect(make_project: InitFn) -> None:
+    import json
+
+    from tests.test_board_present import _delivered, _skill
+
+    p, run_id, _ = _delivered(make_project)
+    (p.root / "runs" / run_id / "proposal.csv").write_text("item,verdict\ng1,exclude\n")
+    _skill(
+        p, [], hold_view=[{"predicate": "toy.flagged", "source": "proposal.csv", "kind": "table"}]
+    )
+    hid = p.store.create_hold(
+        {
+            "run_id": run_id,
+            "step_id": "04_compare",
+            "kind": "flag",
+            "reason": "toy.flagged: something looked off",
+            "waits_on_role": "reviewer",
+            "context_json": json.dumps({"predicate": "toy.flagged@1", "evidence": {"n": 1}}),
+        }
+    )
+    for base in _serve(p):
+        status, body = get(f"{base}/p/0/hold/{hid}?t={TOKEN}")
+        assert status == 200 and "<script" not in body
+        assert _tables(body)[0] == [["item", "verdict"], ["g1", "exclude"]]
+        assert body.index("<table") < body.index("<pre>")  # the method's table above the packet
+        assert "<form" in body
+        status, loc = _no_follow(f"{base}/hold/{hid}?t={TOKEN}")
+        assert (status, loc) == (302, f"/p/0/hold/{hid}?t={TOKEN}")
+        assert _no_follow(f"{base}/hold/NOPE?t={TOKEN}")[0] == 404
+
+
+def test_read_only_refuses_post_and_hides_the_form(held: tuple[Project, dict[str, str]]) -> None:
+    from stringency.review_serve import READ_ONLY_MESSAGE
+
+    p, _ = held
+    h = queue(p)[0]
+    for base in _serve(p, read_only=True):
+        status, body = get(f"{base}/?t={TOKEN}")
+        assert status == 200 and "read-only" in body
+        status, body = get(f"{base}/p/0/hold/{h['hold_id']}?t={TOKEN}")
+        assert status == 200 and "<form" not in body and "scripts/review-page.sh" in body
+        assert "stringency review --hold" in body
+        status, body = post(
+            f"{base}/p/0/hold/{h['hold_id']}", t=TOKEN, verdict="accept", replicate="1"
+        )
+        assert status == 405 and READ_ONLY_MESSAGE in html.unescape(body)
+        assert p.store.scalar("SELECT COUNT(*) FROM reviews WHERE hold_id=?", (h["hold_id"],)) == 0
+        assert queue(p) != []
+        # without the token a POST is still 403, not 405
+        status, _ = post(f"{base}/p/0/hold/{h['hold_id']}", verdict="accept", replicate="1")
+        assert status == 403
+
+
+def test_token_file_is_created_once_and_honoured(
+    tmp_path: Path, held: tuple[Project, dict[str, str]]
+) -> None:
+    import stat
+
+    from stringency.review_serve import read_token_file
+
+    p, _ = held
+    f = tmp_path / "cfg" / "page-token"
+    token = read_token_file(f)
+    assert len(token) >= 24 and f.read_text().strip() == token
+    assert stat.S_IMODE(f.stat().st_mode) == 0o600
+    assert read_token_file(f) == token
+    srv = make_server([p.root], port=0, token=read_token_file(f), read_only=True)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        base = f"http://127.0.0.1:{srv.server_address[1]}"
+        assert get(f"{base}/?t={token}")[0] == 200
+        assert get(f"{base}/?t={TOKEN}")[0] == 403
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    f.write_text("\n")
+    with pytest.raises(Exception, match="empty"):
+        read_token_file(f)

@@ -202,8 +202,10 @@ adds "time from hold opened to verdict recorded". Owner decisions in the plan's 
 Status 2026-09-23 (Track 1h session, `notes/2026-09-23-1442-track1h-start.md`): the owner's
 answers to section 5: the page stays on `review --serve`; a standing read-only instance on
 loopback 8766 reached by tunnel; the running user only is notified; email only for now.
-Notify built (`src/stringency/notify.py`, six call sites, `tests/test_notify.py`); the campus
-relay accepted one test send. Page, reinstall, skill text and the measurement checklist follow.
+Notify built (`src/stringency/notify.py`, six call sites, `tests/test_notify.py`; PR #11); the
+campus relay accepted one test send. The page built (`review_serve.py` routes, `present_rows`
+and `render_html`, `board.row`, `--read-only`, `--token-file`, `scripts/stringency-page.service`;
+stacked PR). Reinstall, skill text and the measurement checklist follow.
 
 ## Track 2: bulk RNA-seq plugin and method (first real plugin) [dormant since 2026-09-23, kept as written]
 
