@@ -88,3 +88,48 @@ def out_of_range(ctx: GateContext) -> Verdict:
             severity="free" if ctx.policy.profile(ctx.project.profile).params == "free" else None,
         )
     return Verdict(False)
+
+
+@predicate(
+    id="param.agent_proposed",
+    version=1,
+    scope=["*"],
+    phase="pre",
+    default=Disposition.FLAG,
+)
+def agent_proposed(ctx: GateContext) -> Verdict:
+    """The agent proposes, the person approves (owner decision 2026-09-18; roadmap Lane A 5a):
+    an admitted parameter whose value the agent chose, and which differs from the committed
+    default, opens a flag hold under `standard`. The hold's evidence is the table the reviewer
+    needs: parameter, default, proposed. `log` under `params: free` (policy), moot under
+    `params: locked` where `param.locked_changed` blocks the change first."""
+    m = ctx.project.module_for(ctx.action.module)
+    step = (
+        ctx.project.pipeline.step(ctx.action.step_id)
+        if ctx.project.pipeline.has_step(ctx.action.step_id)
+        else None
+    )
+    proposed: dict[str, dict[str, object]] = {}
+    for name, source in ctx.action.param_source.items():
+        if source != "agent":
+            continue
+        value = ctx.action.parameters.get(name)
+        default: object = None
+        declared = False
+        if step is not None and name in step.params:
+            default, declared = step.params[name].default, True
+        elif m is not None and name in m.declared_params:
+            schema = m.declared_params[name]
+            default = schema.get("default") if isinstance(schema, dict) else None
+            declared = True
+        if not declared or value == default:
+            continue  # undeclared: `param.undeclared` blocks; equal to the default: no choice made
+        proposed[name] = {"default": default, "proposed": value}
+    if proposed:
+        names = ", ".join(sorted(proposed))
+        return Verdict(
+            True,
+            f"the agent chose {names}; a person approves the choice",
+            {"proposed": proposed, "rationale_ref": ctx.action.rationale_ref},
+        )
+    return Verdict(False)

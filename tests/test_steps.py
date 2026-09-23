@@ -17,7 +17,7 @@ from stringency.operator_exec.tickets import job_spec, render_job_spec
 from stringency.project import Project
 from stringency.runs import RunContext, open_or_resume
 from stringency.steps import execute_engine, propose
-from tests.conftest import InitFn, MethodRepo, accept_hold
+from tests.conftest import InitFn, MethodRepo, accept_hold, admit
 
 EVIDENCE = Path(__file__).parent / "fixtures" / "evidence"
 
@@ -112,7 +112,7 @@ def test_engine_runner_env_unpinned_blocks(engine_project: Project) -> None:
 
 
 def test_engine_runner_feasibility_rejects_post(erc: RunContext) -> None:
-    prop = propose(erc, "01_filter", {"min_value": 35})
+    prop = admit(erc, propose(erc, "01_filter", {"min_value": 35}))
     assert prop.status == StepStatus.ADMISSIBLE, [r.line() for r in prop.gate.blocked]
     out = execute_engine(erc, prop)
     assert out.status == StepStatus.REJECTED
@@ -142,7 +142,9 @@ def test_engine_runner_script_failure(erc: RunContext) -> None:
 
 
 def test_propose_issues_ticket_and_job_spec(rc: RunContext) -> None:
-    prop = propose(rc, "01_filter", {"min_value": 30}, rationale="values below 30 are noise here")
+    prop = admit(
+        rc, propose(rc, "01_filter", {"min_value": 30}, rationale="values below 30 are noise here")
+    )
     assert prop.status == StepStatus.AWAITING_EXECUTION
     assert prop.ticket == prop.action.action_id
     spec = job_spec(prop, rc.env_digests["toy-py"])
@@ -163,7 +165,7 @@ def test_propose_issues_ticket_and_job_spec(rc: RunContext) -> None:
 
 
 def test_submit_completes_with_engine_extraction(rc: RunContext) -> None:
-    prop = propose(rc, "01_filter", {"min_value": 12})
+    prop = admit(rc, propose(rc, "01_filter", {"min_value": 12}))
     spec = job_spec(prop, None)
     outputs, log = play_agent(spec)
     out = submit(rc, prop.ticket or "", outputs, [log])
@@ -188,7 +190,7 @@ def test_submit_completes_with_engine_extraction(rc: RunContext) -> None:
 
 
 def test_submit_plan_drift_rejects(rc: RunContext) -> None:
-    prop = propose(rc, "01_filter", {"min_value": 12})
+    prop = admit(rc, propose(rc, "01_filter", {"min_value": 12}))
     outputs, log = play_agent(job_spec(prop, None), override_min=40)
     out = submit(rc, prop.ticket or "", outputs, [log])
     assert out.status == StepStatus.REJECTED
@@ -306,7 +308,7 @@ def test_ticket_writes_job_json_and_prints_exec_and_submit(rc: RunContext) -> No
     the exact exec line and the submit line (with --command) for `next --json` and `propose`."""
     from stringency.steps import job_for
 
-    prop = propose(rc, "01_filter", {"min_value": 30})
+    prop = admit(rc, propose(rc, "01_filter", {"min_value": 30}))
     assert prop.status == StepStatus.AWAITING_EXECUTION
     step_dir = prop.plan.step_dir
     job_json = step_dir / "job.json"
@@ -339,7 +341,7 @@ def test_operator_can_run_the_printed_lines(rc: RunContext) -> None:
     """The exec line from the ticket, run as printed, produces outputs `submit` accepts."""
     import subprocess
 
-    prop = propose(rc, "01_filter", {"min_value": 12})
+    prop = admit(rc, propose(rc, "01_filter", {"min_value": 12}))
     spec = job_spec(prop, None, rc.executor)
     assert spec["exec"] is not None
     subprocess.run(spec["exec"], shell=True, check=True, executable="/bin/bash")
@@ -378,7 +380,7 @@ def test_apptainer_ticket_exec_line(tmp_path: Path) -> None:
 def test_execution_digest_columns(rc: RunContext, erc: RunContext) -> None:
     """C1: operator rows keep the expected digest apart and leave env_digest null; engine rows
     that verified the environment carry both."""
-    prop = propose(rc, "01_filter", {"min_value": 12})
+    prop = admit(rc, propose(rc, "01_filter", {"min_value": 12}))
     outputs, log = play_agent(job_spec(prop, None))
     submit(rc, prop.ticket or "", outputs, [log])
     ex = rc.store.one("SELECT * FROM executions WHERE action_id=?", (prop.action.action_id,))
@@ -559,7 +561,7 @@ def test_operator_step_with_edited_script_is_rejected(rc: RunContext) -> None:
     exec.script_drift blocks. The executions row keeps the hash of what ran."""
     from stringency import hashing
 
-    prop = propose(rc, "01_filter", {"min_value": 12})
+    prop = admit(rc, propose(rc, "01_filter", {"min_value": 12}))
     spec = job_spec(prop, None, rc.executor)
     script = prop.plan.module.entry_script
     assert script is not None
@@ -615,3 +617,16 @@ def test_unedited_scripts_pass_and_dirty_run_measures_from_open(make_project: In
         "compare-groups@0.1.0",
         "toy-report@0.1.1",
     }  # label-groups is a judgment module with no script: nothing to hash, nothing to drift
+
+
+def test_job_carries_design_and_objective(rc: RunContext) -> None:
+    """E1: a module script learns the bound design and objective from the job it is fed."""
+    from stringency.steps import job_for
+
+    prop = propose(rc, "01_filter")
+    script = prop.plan.module.entry_script
+    assert script is not None
+    job = job_for(prop.action, prop.plan, script).stdin_json or {}
+    assert job["design"] == rc.project.design.model_dump()
+    assert job["objective"] == rc.project.objective.model_dump()
+    assert set(job) >= {"inputs", "params", "outputs", "output_dir", "seed", "design", "objective"}

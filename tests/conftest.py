@@ -7,6 +7,7 @@ import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -177,3 +178,25 @@ def confirmed_project(project: Project) -> Project:
     assert h is not None
     accept_hold(project.store, h["hold_id"])
     return project
+
+
+def admit(rc: Any, prop: Any) -> Any:
+    """Under `standard`, an agent-chosen parameter opens a `param.agent_proposed` flag hold
+    (Lane A 5a). Accept every open flag on the step as the test reviewer and rebuild the
+    proposal, which is then admissible (or awaiting execution for an operator step)."""
+    from stringency.machine import StepStatus
+    from stringency.steps import resume_after_hold
+
+    if prop.status != StepStatus.HELD:
+        return prop
+    for h in rc.store.all(
+        "SELECT hold_id FROM holds WHERE run_id=? AND step_id=? AND kind='flag' "
+        "AND resolved_by_review IS NULL",
+        (rc.run_id, prop.action.step_id),
+    ):
+        accept_hold(rc.store, h["hold_id"], reason="test: the agent's choice is fine")
+    from stringency.machine import step_status, transition
+
+    if step_status(rc.store, rc.run_id, prop.action.step_id) == StepStatus.HELD:
+        transition(rc.store, rc.run_id, prop.action.step_id, StepStatus.ADMISSIBLE)
+    return resume_after_hold(rc, prop.action.step_id)

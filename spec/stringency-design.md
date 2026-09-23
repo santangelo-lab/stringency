@@ -247,7 +247,7 @@ judgment:
   replicates: 3
   abstain: required
   confidence: ordinal
-  considered_set: false           # true for salience-type modules: output must carry the denominator
+  considered_set: false           # true for salience-type modules: the engine writes the items table's name, row count and digest into the consensus output as `considered_set`
 
 prompt:
   template: prompt.md
@@ -504,7 +504,7 @@ profiles:
     relayed_review: false            # 7.5
   standard:
     remap: {}
-    params: ranged                   # agent proposes within declared ranges; out of range blocks
+    params: ranged                   # agent proposes within declared ranges; out of range blocks; each choice is a flag hold (param.agent_proposed)
     replicates_min: 3
     agreement: standard
     qc_ranges: standard
@@ -559,6 +559,7 @@ Domain-free, live in the engine, apply to every plugin.
 | `param.undeclared` | pre | * | the proposal includes a parameter the module's schema does not declare | block, invariant |
 | `param.locked_changed` | pre | * | a parameter with no `range`, or any parameter under `params: locked`, differs from its default | block |
 | `param.out_of_range` | pre | * | a proposed value is outside the declared range or options | block (flag under `params: free`) |
+| `param.agent_proposed` | pre | * | an admitted parameter took a value the agent chose that differs from the committed default; the hold shows parameter, default, proposed; added 2026-09-23 | flag (log under `params: free`) |
 | `exec.plan_drift` | post | operator-run steps | the evidence shows parameters, seed, or container different from the admitted Action | block |
 | `exec.script_drift` | post | * | the module script that ran (hashed by the engine before running it, or at `submit`) differs from the script present when the run opened; added 2026-09-09 | block |
 | `repro.env_unverified` | post | operator-run steps | the reported container or lockfile cannot be matched to the environment manifest | flag |
@@ -1076,7 +1077,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `propose <step>` | `[--set k=v]… [--reason "<txt>"] [--json]` | constructs the Action from defaults plus proposed values; runs the pre-gate; issues a ticket on pass | writes the action and verdicts | none |
 | `submit <ticket>` | `--outputs name=path… [--evidence path]… [--command "<string>"] [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |
 | `status` | `[--run <id>] [--overrides [--module]] [--json]` | reports holds and who they wait on | reads | override rates |
-| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest] [--serve [--port <n>] [--bind <addr>] [--project <path>]... [--projects <dir>]]` | clears holds by recorded verdict; `--serve` reads holds and records verdicts with `via: web` (7.5) | appends reviews | accumulates override corpus |
+| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest] [--serve [--port <n>] [--bind <addr>] [--project <path>]... [--projects <dir>]]` | clears holds by recorded verdict; `--serve` reads holds and records verdicts with `via: web` (7.5; built 2026-09-23, `review_serve.py`) | appends reviews | accumulates override corpus |
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
@@ -1204,7 +1205,6 @@ Everything in the eval column is either a control, a rate computed from the trac
 | `reason_code` enum | `reason_code NULL` column | roughly fifty reviews |
 | inspector agent | trace completeness | Phase F |
 | `confirm` hold kind | kind enum | application 2's samplesheet echo-back |
-| review page: `review --serve`, a localhost form for verdicts, run by the reviewer, recorded as a third `via` value that profiles treat like `tty` | `via` column, review rows | a reviewer who does not use a terminal (7.5); the relayed path stays the only non-terminal route until then |
 
 ## 18. Deltas from the implementation plan
 

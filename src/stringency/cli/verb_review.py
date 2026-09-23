@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import typer
 
@@ -37,7 +38,28 @@ def review(
         False, "--attest", help="relayed: the person confirmed in the conversation"
     ),
     as_json: bool = typer.Option(False, "--json"),
+    serve: bool = typer.Option(
+        False,
+        "--serve",
+        help="serve a localhost form for verdicts (via: web); the reviewer starts it under their own account",
+    ),
+    port: int = typer.Option(8765, "--port", help="--serve: TCP port"),
+    bind: str = typer.Option("127.0.0.1", "--bind", help="--serve: address to bind"),
+    project_paths: list[Path] | None = typer.Option(
+        None, "--project", help="--serve: a project to list (repeatable)"
+    ),
+    projects_dir: Path | None = typer.Option(
+        None, "--projects", help="--serve: list every project to depth two under this directory"
+    ),
 ) -> None:
+    if serve:
+        from stringency.review_serve import serve as serve_page
+
+        roots = list(project_paths or [])
+        if not roots and projects_dir is None:
+            roots = [Project.find().root]
+        serve_page(roots, projects_dir, bind=bind, port=port)
+        return
     project = Project.find()
     if verdict is None and hold is not None:
         view = show(project, get_hold(project, hold))

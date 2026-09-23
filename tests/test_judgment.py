@@ -274,3 +274,26 @@ def test_secondary_evidence_table_is_keyed_by_its_first_column(tmp_path: Path) -
     assert t.key_column == "metric" and set(t.rows) == {"num_cells", "fail_fraction"}
     ok, cell = t.cell("fail_fraction", "concern_direction")
     assert ok and cell == "high"
+
+
+def test_considered_set_is_written_by_the_engine(
+    engine_rc: RunContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """E2: a module declaring considered_set: true gets the items table's denominator in its
+    consensus output, taken from the evidence by the engine."""
+    run_to_label(engine_rc)
+    monkeypatch.setenv("STRINGENCY_MOCK_FIXTURE", str(HARNESS / "unanimous.yml"))
+    monkeypatch.setenv("STRINGENCY_MOCK_FAMILY", "direct")
+    prop = propose(engine_rc, "03_label")
+    m = prop.plan.module.manifest
+    assert m.judgment is not None
+    patched = m.model_copy(
+        update={"judgment": m.judgment.model_copy(update={"considered_set": True})}
+    )
+    object.__setattr__(prop.plan.module, "manifest", patched)
+    out = execute_judgment(engine_rc, prop)
+    assert out.status == StepStatus.COMPLETED, out.message
+    doc = json.loads(prop.plan.output_paths["consensus"].read_text())
+    assert doc["considered_set"]["items_from"] == "summary"
+    assert doc["considered_set"]["n_items"] == 3
+    assert doc["considered_set"]["digest"].startswith("blake3:")

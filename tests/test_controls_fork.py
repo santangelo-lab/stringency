@@ -188,7 +188,7 @@ def test_fork_reruns_from_step_and_leaves_parent_untouched(cproject: Project) ->
             "SELECT param_source_json FROM actions WHERE run_id=? AND step_id='04_compare'",
             (child,),
         )
-        == '{"correction":"agent","replicate_unit":"default"}'
+        == '{"correction":"fork","replicate_unit":"default"}'
     )
     # the parent is unchanged
     assert _rows_digest(cproject, parent) == before

@@ -23,9 +23,11 @@ sets them up. Design: `spec/plans/ux-two-audiences.md` section 7. Host detail:
    - data root `/data/lab/projects`;
    - the skill publish cell (`publish-skills.md`): the operator skill, the declare skill, and each
      method's analysis skill when one exists.
-5. **Optional, a review page.** When Lane A step 3 has shipped `scripts/review-page.sh`, the
-   member can start it on their laptop to resolve holds in a browser instead of the chat. Until
-   then, every hold is answered in the chat and recorded as `via: relayed`.
+5. **Optional, a review page.** `scripts/review-page.sh protseq` (engine repo) on the member's
+   laptop opens an SSH tunnel and starts `stringency review --serve` on PROTSEQ as them; the URL
+   it prints, with its one-time token, lists their open holds and records verdicts as `via: web`.
+   Started by the member, never by an agent and never by someone else on their behalf. Holds
+   answered in the chat are recorded as `via: relayed`; both appear in the trace.
 
 ## Once, for the setter-up
 
