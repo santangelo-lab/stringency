@@ -22,33 +22,33 @@ the session ends the reasoning ends with it, and the spreadsheet left on your de
 
 So the route goes up before the climb, and the rope stays on:
 
-**The route is bolted in advance.** The pipeline topology, the modules, their parameters and
+- **The route is bolted in advance.** The pipeline topology, the modules, their parameters and
 thresholds, the prompts, the gate implementations and the controlled vocabularies all live in a git
 repository, pinned to a tag, committed before anything runs. The agent routes within that topology.
 It does not invent an analysis plan when it meets new data. A dirty working tree is not a valid run.
 
-**You check the knots before anyone leaves the ground.** `init` binds a project to one pipeline,
+- **You check the knots before anyone leaves the ground.** `init` binds a project to one pipeline,
 one objective, one design and one set of hashed inputs, then echoes back its own reading of those
 declarations. Nothing runs until the owner accepts the echo-back. If the engine has misread what
 your experiment is, you find out then rather than four hours in.
 
-**The belay device is passive.** Gates are pure functions over a declared state: no I/O, no clock,
+- **The belay device is passive.** Gates are pure functions over a declared state: no I/O, no clock,
 no randomness. The agent's reasoning is not one of their inputs, so they cannot be talked around. A
 gate fires or it does not, and one that fires with `block` stops the step. It does not warn and
 continue, and the message it prints never suggests a way around itself.
 
-**Judgment is replicated, not trusted once.** Where a call genuinely needs a model, such as
+- **Judgment is replicated, not trusted once.** Where a call genuinely needs a model, such as
 labelling a cluster or reading a QC plot, it is made several times independently, the replicates are
 compared, and disagreement or low confidence becomes a hold rather than a majority vote. Abstaining
 is always an allowed answer. Arithmetic is never a judgment call: anything that can be code is code,
 and a model that proposes a statistical test has its assumptions checked against the data before
 that test is allowed to run.
 
-**Someone is on the other end of the rope.** A hold names a person and waits. Their verdict, the
+- **Someone is on the other end of the rope.** A hold names a person and waits. Their verdict, the
 hashes it was made against, the timestamp and the reason all go into the record beside the model's
 output, with the same rigor applied to the human call as to the model's.
 
-**Every move is logged.** The trace is an append-only SQLite database, enforced at the trigger
+- **Every move is logged.** The trace is an append-only SQLite database, enforced at the trigger
 level: every action proposed, every gate verdict and the evidence it inspected, every model
 invocation with its cost, every human review, every output with its hash. The trace is the product;
 the code exists to fill it correctly.
@@ -77,13 +77,9 @@ made where the design is silent are in `spec/DECISIONS.md`; contract deviations,
 
 ## Status
 
-Early. Phase A is complete: milestones M0 through M11 with their acceptance tests, plus exit runs on
-two lab workstations, the second as two chained projects driven from agent-drafted declarations,
-tagged `v0.1.0`. The backlog those runs produced is closed (`spec/archive/improvements.md`); open
-items are in `spec/plans/backlog.md`. `integrations/claude-science/` holds the operator and declare
-skills, the brief renderer, host notes, and two worked examples.
+Early. Initial build out for the engine is done, but I'm still actively working on plugins, and methods for real data analysis pipelines. 
 
-The API is not stable and the only published plugin is the toy one.
+At the moment the API is not stable and the only published plugin is the toy one.
 
 ## Quickstart
 
