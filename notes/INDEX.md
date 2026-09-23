@@ -3,7 +3,18 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-22, afternoon)
+## Current state (2026-09-23, evening)
+
+- Lane A (`notes/2026-09-23-1700-lane-a-k7-step2-review-page.md`): K7 fixed and merged with the
+  Lane C branch as `v0.2.0` (PR #2), installed as the shared engine on PROTSEQ
+  (`/data/lab/env/stringency/current`, `0.2.0-sc0.1.8`). PR #3 (`lane-a-step2`) holds E1, E2,
+  `param.agent_proposed`, the `fork` parameter source and the review page (`review --serve`);
+  waits on the owner's merge, then a tag and reinstall. Open in Lane A: 5b, 5c, the renderer's
+  citation lookup, `any_low` (K2), the item-5 fixes. Lane C closed, Lane F placeholder, Lane D
+  closed (shared engine done), Lane B dormant; Lane E ran in parallel (its notes on `lane-e`).
+  Start the next engine session from the roadmap's Status section and Lane A.
+
+## Previous state (2026-09-22, afternoon)
 
 - Plan documents refreshed to the Lane C state of 2026-09-17 to 2026-09-21
   (`notes/2026-09-22-1510-plan-docs-refresh.md`): roadmap Status section and per-lane status,
@@ -72,6 +83,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-09-23-1700-lane-a-k7-step2-review-page.md` — Lane A: K7 resettle fix merged as 0.2.0 and installed; E1, E2, `param.agent_proposed`, `fork` source and the review page on PR #3.
 - `2026-09-23-1100-outlier-holds-stale-consensus.md` — the owner's seven verdicts relayed and the run delivered; item verdicts reach the `consensus` table but never the `consensus.json` the next step binds, so the proposal is stale (backlog K7).
 - `2026-09-22-1510-plan-docs-refresh.md` — plan documents brought up to date after Lane C: roadmap status, Track 3 outcome, backlog K1 to K6, the spec split between `main` and the engine branch.
 - `2026-09-21-1600-outlier-judgment-v2-engine.md` — optional module inputs, pre-produced evidence tables keyed by their own column, `role: reference` inputs; first three-replicate real judgment on Lyons CLP and what it showed about confidence criteria and the packet renderer.
