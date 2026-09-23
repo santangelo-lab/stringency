@@ -5,11 +5,6 @@
        alt="Cartoon of a climber in a stringency harness belaying a robot up a rock face. The robot ascends a route marked 'data analysis path', clipped through anchors labelled gates checked, declaration binding, and replicated judgment.">
 </p>
 
-Engineering controls for agent-assisted data analysis. The analysis path is declared and committed
-before the run, gates check every step against that declaration, model judgment is replicated and
-routed to a person when it disagrees with itself, and everything that happened lands in an
-append-only trace that `deliver` turns into a coverage report and a methods paragraph.
-
 ## What this is
 
 Ever been rock climbing? Stringency is the belay system for an agent doing your data analysis.
