@@ -8,8 +8,8 @@ it is the first thing a new session reads.
 - Track 1h built (`notes/2026-09-23-1442-track1h-start.md`): notify on hold (`notify.py`, per-user
   `notify.yml`, four events, campus relay confirmed) and the project page on `review --serve`
   (board, project, run, file and redirect routes, `--read-only`, `--token-file`,
-  `scripts/stringency-page.service`); `v0.2.5` installed as the shared `current`
-  (`0.2.5-sc0.1.8`); skill and host text updated, toy method `v0.1.5`; PRs #11, #12, #13 open for
+  `scripts/stringency-page.service`); `v0.2.6` installed as the shared `current`
+  (`0.2.6-sc0.1.8`); skill and host text updated, toy method `v0.1.5`; PRs #11, #12, #13 open for
   the owner. Next: the owner starts the standing page, writes `notify.yml`, runs section F of
   `hosts/protseq-session-tests.md`.
 - Lane A complete (`notes/2026-09-23-1700-lane-a-k7-step2-review-page.md`, the day's record):

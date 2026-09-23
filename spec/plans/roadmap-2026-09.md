@@ -205,8 +205,8 @@ loopback 8766 reached by tunnel; the running user only is notified; email only f
 Notify built (`src/stringency/notify.py`, six call sites, `tests/test_notify.py`; PR #11); the
 campus relay accepted one test send. The page built (`review_serve.py` routes, `present_rows`
 and `render_html`, `board.row`, `--read-only`, `--token-file`, `scripts/stringency-page.service`;
-stacked PR #12). Version `0.2.5` tagged and installed as the shared `current`
-(`0.2.5-sc0.1.8`). Skill and host text (operator skill 6 and 7, the analysis template, onboarding
+stacked PR #12). Versions `0.2.5` and `0.2.6` (page discovery skips `superseded/` like the
+board) tagged; `0.2.6` installed as the shared `current` (`0.2.6-sc0.1.8`). Skill and host text (operator skill 6 and 7, the analysis template, onboarding
 steps 5 and 6, `protseq-lab.md`), toy method `v0.1.5` re-rendered and on BMESEQ, the checklist
 for the run with the person away from the chat (`hosts/protseq-session-tests.md` section F) and
 the new Measurements column (PR #13). Left for the owner: install and start

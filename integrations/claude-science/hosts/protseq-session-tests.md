@@ -195,7 +195,7 @@ until a lab member is available.
 
 | item | where |
 |---|---|
-| engine | shared, `/data/lab/env/stringency/current` (`0.2.5-sc0.1.8` or later) |
+| engine | shared, `/data/lab/env/stringency/current` (`0.2.6-sc0.1.8` or later) |
 | method | `stringency-toy-method@v0.1.5` (the skill names the page and the notifications) |
 | notifications | `~/.config/stringency/notify.yml` on PROTSEQ for the account that runs the engine: `channels: [{kind: email, to: [<you>@emory.edu], from: <you>@emory.edu, smtp: {host: smtp.service.emory.edu, port: 25}}]` and `page_url` set to the page below |
 | page | either the standing read-only page (`scripts/stringency-page.service`, tunnel `8766`) or your own `scripts/review-page.sh protseq` left running on the laptop; the URL with its token is `page_url` |
