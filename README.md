@@ -124,8 +124,10 @@ cannot start containers, so the engine runs on the workstation that holds the da
 container runtime, and the session reaches it as an SSH compute provider. The full checklist is
 `integrations/claude-science/new-project.md`; in outline:
 
-1. On the workstation, once: `scripts/install.sh` puts the engine at
-   `/usr/local/lib/stringency/current/bin`. Container images live where the method manifest says.
+1. On the workstation, once: `scripts/install.sh --prefix <shared dir>` puts a versioned engine
+   under `<shared dir>/current/bin` (on PROTSEQ, `/data/lab/env/stringency`; see
+   `integrations/claude-science/hosts/protseq-lab.md`). Container images live where the method
+   manifest says.
 2. In Claude Science, once per instance: add the workstation as an SSH compute provider, set the
    project area as a data root, publish the `stringency-operator` skill
    (`integrations/claude-science/stringency-operator/SKILL.md`).

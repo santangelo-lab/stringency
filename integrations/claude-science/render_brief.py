@@ -25,7 +25,7 @@ import jinja2
 import yaml
 
 HERE = Path(__file__).parent
-ENGINE_BIN = "/usr/local/lib/stringency/current/bin"
+ENGINE_BIN = "/data/lab/env/stringency/current/bin"
 
 
 def load(args: argparse.Namespace) -> dict:
