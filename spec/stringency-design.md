@@ -645,6 +645,8 @@ Every hold records the reviewer role it waits on. `status` shows who is waited o
 
 `reason` is free text in v1. Once the override corpus shows recurring categories, `reason_code` becomes an enum in the method repo's vocabulary and the free text moves to `reason_detail`.
 
+Batch review (added 2026-09-23): `review --holds A,B,C --projects <dir>` takes the confirm holds of sibling projects, compares their three declaration files field by field, and shows one echo-back: what every project shares once, what differs in a table by project (the eight Lyons CLP QC regions differed only in the bundle they bound), then the shared echo. `--verdict accept|reject --reason` records one `reviews` row per hold, `reason_code: batch`, so each project's trace stands alone; a project that needs a different answer is reviewed alone. Only project-level confirm holds batch.
+
 ### 7.4 Binding and reuse of verdicts
 
 Every review row stores `bound_module_version`, `bound_input_digest`, `bound_params_hash`, and, for item holds, `bound_item_evidence_digest`. Before creating a hold, the engine looks for a prior `accept` or `override` on the same hold kind, module version, and bindings. If one exists, the new hold is created and immediately resolved by reference (`resolved_by_review = prior id`, `via = rebind`) and the step proceeds.
@@ -1079,7 +1081,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `propose <step>` | `[--set k=v]… [--reason "<txt>"] [--json]` | constructs the Action from defaults plus proposed values; runs the pre-gate; issues a ticket on pass | writes the action and verdicts | none |
 | `submit <ticket>` | `--outputs name=path… [--evidence path]… [--command "<string>"] [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |
 | `status` | `[--run <id>] [--overrides [--module]] [--json]` | reports holds and who they wait on | reads | override rates |
-| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest] [--serve [--port <n>] [--bind <addr>] [--project <path>]... [--projects <dir>]]` | clears holds by recorded verdict; `--serve` reads holds and records verdicts with `via: web` (7.5; built 2026-09-23, `review_serve.py`) | appends reviews | accumulates override corpus |
+| `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest] [--serve [--port <n>] [--bind <addr>] [--project <path>]... [--projects <dir>]] [--holds <id,...> --projects <dir> [--verdict accept\|reject --reason "<txt>"]]` | clears holds by recorded verdict; `--serve` reads holds and records verdicts with `via: web` (7.5; built 2026-09-23, `review_serve.py`) | appends reviews | accumulates override corpus |
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |

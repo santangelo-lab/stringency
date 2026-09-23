@@ -354,7 +354,8 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
       (the eight QC regions differed only in the bundle) so one acceptance covers a set.
    Item 5a done 2026-09-23 (`param.agent_proposed@1`, PR #3; a fork's `--set` is labelled
    `fork` and not asked again). 5b done 2026-09-23 (PR #4: `Project.inherited_confirmation`,
-   `via: inherited`, the inherited echo-back; design 2.7). 5c open.
+   `via: inherited`, the inherited echo-back; design 2.7). 5c done 2026-09-23 (same PR:
+   `review --holds A,B,C --projects <dir>`, `review_batch.py`, `reason_code: batch`).
    Also from the same days: `submit --failed`; an extractor env per tool or object type; a
    variable-arity input type; lint parses `envs/manifest.yml`; `echo.md` wrapped at 100 columns;
    `abandon` closes the step row; the dispatch suffix must name the `structured` envelope key the

@@ -49,9 +49,39 @@ def review(
         None, "--project", help="--serve: a project to list (repeatable)"
     ),
     projects_dir: Path | None = typer.Option(
-        None, "--projects", help="--serve: list every project to depth two under this directory"
+        None,
+        "--projects",
+        help="--serve, --holds: every project to depth two under this directory",
+    ),
+    batch_holds: str | None = typer.Option(
+        None,
+        "--holds",
+        help="batch: comma-separated confirm hold ids across sibling projects; one echo-back, one verdict",
     ),
 ) -> None:
+    if batch_holds:
+        from stringency.review_batch import batch_view, locate_holds, record_batch
+
+        ids = [h.strip() for h in batch_holds.split(",") if h.strip()]
+        roots = list(project_paths or [])
+        if not roots and projects_dir is None:
+            roots = [Project.find().root]
+        members = locate_holds(ids, roots, projects_dir)
+        view = batch_view(members)
+        if verdict is None:
+            emit(view.to_json(), as_json, view.text)
+            return
+        results = record_batch(members, verdict, reason=reason, attest=attest)
+        for m in members:
+            refresh_if_present(m.project.root)
+        emit(
+            {"schema": "stringency.review_batch/1", "reviews": [r.to_json() for r in results]},
+            as_json,
+            "\n".join(
+                f"review {r.review_id}: {verdict} on hold {r.hold_id} via {r.via}" for r in results
+            ),
+        )
+        return
     if serve:
         from stringency.review_serve import serve as serve_page
 
