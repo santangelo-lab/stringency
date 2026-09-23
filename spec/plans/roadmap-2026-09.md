@@ -425,8 +425,10 @@ Carried over from Lane C and from Lane D item 7, to do before or alongside the p
 - Owner: the Proseg transcript floor for lung and gut; the gut label (large or small intestine;
   thresholds identical).
 - The pathology pass that replaces `histology_include.csv`.
-- Push method `v0.3.3-rc1` and plugin `v0.1.11`, remove the tags pushed before checks passed
-  (`backlog.md` K6); merge the splitter `determinism` branch (tag `v0.2.0`) into `master` of
+- Method `v0.3.3-rc1` and plugin `v0.1.11` pushed 2026-09-23, with the engine branch's last
+  three commits and the toy method `v0.1.3`; `qc_outliers_all/stringency.yml` can now record the
+  GitHub URL. Still owner: remove the tags pushed before checks passed (`backlog.md` K6); merge
+  the splitter `determinism` branch (tag `v0.2.0`, pushed) into `master` of
   `jrose835/Xen_TMA_pipeline`.
 
 ### Lane D: owner and operations [closed 2026-09-23]
