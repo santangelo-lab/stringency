@@ -125,7 +125,11 @@ Pick-up point for the next Lane E session, in order:
    root for `protseq` was set when the download card named the app's scratch directory.
 4. The thirty-phrasing routing set, run by hand; low value until a second analysis skill exists.
 5. `publish-skills.md`: the toy skill's publish date is recorded; add each person's as they publish.
-6. Then close the lane in the roadmap as Lanes C and D were closed: skills become a step of every
+6. Track 1h, `spec/plans/project-page-and-notify.md` (written at the end of this session from
+   the owner's brainstorm): notify on hold and the project page. Section 5 lists the owner's
+   decisions; steps 1 and 2 are engine work for a session that owns `src/stringency/`, step 3 is
+   Lane E's skill and host text, step 4 the measured run with a person away from the chat.
+7. Then close the lane in the roadmap as Lanes C and D were closed: skills become a step of every
    method build (the xenium `.analyze.yml` files are Lane F's; bulk and NanoString follow their
    plugins), not a lane of their own.
 
