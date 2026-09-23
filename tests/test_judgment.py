@@ -297,3 +297,19 @@ def test_considered_set_is_written_by_the_engine(
     assert doc["considered_set"]["items_from"] == "summary"
     assert doc["considered_set"]["n_items"] == 3
     assert doc["considered_set"]["digest"].startswith("blake3:")
+
+
+def test_low_confidence_on_agreed_label_is_logged_not_held(
+    engine_rc: RunContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """K2, option B (owner, 2026-09-23): unanimity with one low call completes under standard,
+    with the low call recorded in the consensus notes."""
+    run_to_label(engine_rc)
+    prop, out = label(engine_rc, "unanimous_low.yml", monkeypatch)
+    assert out.status == StepStatus.COMPLETED, out.message
+    assert engine_rc.store.all("SELECT * FROM holds WHERE step_id='03_label'") == []
+    c = engine_rc.store.one("SELECT * FROM consensus WHERE item_id='A'")
+    assert c["source"] == "agreed" and c["label"] == "abundant"
+    doc = json.loads(prop.plan.output_paths["consensus"].read_text())
+    a = next(i for i in doc["items"] if i["item_id"] == "A")
+    assert any("low-confidence" in n and "not held" in n for n in a["notes"])

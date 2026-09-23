@@ -43,6 +43,7 @@ def tables_seen(plan: StepPlan) -> dict[str, EvidenceTable]:
             pass
     return evidence_tables_for(plan)
 
+
 INDENT = "  "
 
 

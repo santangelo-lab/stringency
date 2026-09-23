@@ -630,3 +630,10 @@ def test_job_carries_design_and_objective(rc: RunContext) -> None:
     assert job["design"] == rc.project.design.model_dump()
     assert job["objective"] == rc.project.objective.model_dump()
     assert set(job) >= {"inputs", "params", "outputs", "output_dir", "seed", "design", "objective"}
+
+
+def test_ticket_step_dir_holds_tmp(rc: RunContext) -> None:
+    """K8: the printed apptainer line binds <step dir>/tmp; the ticket creates it."""
+    prop = propose(rc, "01_filter")
+    assert prop.status == StepStatus.AWAITING_EXECUTION
+    assert (prop.plan.step_dir / "tmp").is_dir()

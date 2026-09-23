@@ -88,22 +88,23 @@ def decide(item_id: str, replicates: list[Replicate], rule: AgreementRule) -> It
         ic.hold_kind, ic.hold_reason = "self_uncertain", f"{len(abstained)} replicate(s) abstained"
         return ic
     lows = [j for j in called if j.get("confidence") == "low"]
-    if lows and "any_low" in hold_on:
-        ic.hold_kind, ic.hold_reason = (
-            "self_uncertain",
-            f"{len(lows)} replicate(s) reported low confidence",
-        )
-        return ic
     if not called:
         ic.hold_kind, ic.hold_reason = "self_uncertain", "no valid call"
         return ic
+    # Low confidence on an agreed label is recorded, not held (owner decision 2026-09-23, K2):
+    # every label here is the same, so a low call is information for the rationale, and a split
+    # already returned `run_disagreement` above. `any_low` in `hold_on` keeps its place in the
+    # policy vocabulary and names this logging.
     ic.source = "agreed"
     ic.label = called[0].get("label")
     ic.ontology_id = called[0].get("ontology_id")
     if abstained:
         ic.notes.append(f"{len(abstained)} abstention(s) logged under relaxed agreement")
     if lows:
-        ic.notes.append(f"{len(lows)} low-confidence call(s) logged under relaxed agreement")
+        where = "logged" if "any_low" in hold_on else "logged under relaxed agreement"
+        ic.notes.append(
+            f"{len(lows)} low-confidence call(s) on the agreed label; {where}, not held"
+        )
     return ic
 
 
