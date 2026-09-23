@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -99,6 +100,8 @@ def prepare_evidence(rc: RunContext, plan: StepPlan) -> Evidence:
                 "params": {},
                 "evidence_dir": str(ev_dir),
                 "outputs": {n: str(ev_dir / f"{n}.tsv") for n in m.judgment.evidence},
+                "design": plan.design,
+                "objective": plan.objective,
             },
             stdout_path=plan.step_dir / "pre.stdout",
             stderr_path=plan.step_dir / "pre.stderr",
@@ -297,13 +300,14 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
         rule=rule,
         tables=ev.tables,
     )
+    considered = considered_set_record(m.judgment, ev.items, ev.digests)
     produced: dict[str, Path] = {}
     for name, spec in m.outputs.items():
         p = plan.output_paths[name]
         if spec.type == "judgments":
             p.write_text(judgments_jsonl(replicates))
         elif spec.type == "consensus":
-            p.write_text(consensus_json(items))
+            p.write_text(consensus_json(items, considered))
         else:
             continue
         produced[name] = p
@@ -324,6 +328,7 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
         "items": tuple(ev.items),
         "consensus": tuple(i.to_json() for i in items),
         "evidence_tables": ev.tables,
+        "considered_set": considered,
     }
     return finish(
         rc, action, plan, produced, info, bundle_extra=bundle_extra, extra_holds=item_holds
@@ -365,16 +370,36 @@ def run_post(rc: RunContext, plan: StepPlan, replicates: list[Replicate]) -> lis
 __all__ = ["DISPATCH_SUFFIX", "execute_judgment", "harness_for"]
 
 
+def considered_set_record(
+    judgment: Any, items: list[str], digests: Mapping[str, str]
+) -> dict[str, Any] | None:
+    """The denominator a salience-type module's output must carry (design 3.5, `considered_set:
+    true`; E2): the items table the reviewers judged, its row count and its digest, taken by the
+    engine from the evidence rather than asked of the model. None when the module does not
+    declare it."""
+    if not judgment.considered_set:
+        return None
+    return {
+        "items_from": judgment.items_from,
+        "n_items": len(items),
+        "digest": digests.get(judgment.items_from),
+    }
+
+
 # -- after the item holds settle -----------------------------------------------------------
 
 
-def evidence_tables_from_disk(plan: StepPlan) -> dict[str, EvidenceTable]:
-    """The evidence tables as the reviewers saw them: what `pre.*` wrote under the step's
-    `evidence/` when the module has a pre-script, else the declared inputs. Runs nothing."""
+def evidence_tables_from_disk(
+    plan: StepPlan,
+) -> tuple[dict[str, EvidenceTable], dict[str, str]]:
+    """The evidence tables as the reviewers saw them, with their digests: what `pre.*` wrote
+    under the step's `evidence/` when the module has a pre-script, else the declared inputs.
+    Runs nothing."""
     m = plan.module.manifest
     assert m.judgment is not None
     ev_dir = plan.step_dir / "evidence"
     out: dict[str, EvidenceTable] = {}
+    digests: dict[str, str] = {}
     for n in m.judgment.evidence:
         spec = m.inputs.get(n)
         if spec is not None and spec.type == "json":
@@ -385,7 +410,8 @@ def evidence_tables_from_disk(plan: StepPlan) -> dict[str, EvidenceTable]:
         if p is None:
             raise ConfigError(f"evidence {n} is neither an input nor under {ev_dir}")
         out[n] = load_table(p, n, m.judgment.item_key if n == m.judgment.items_from else None)
-    return out
+        digests[n] = hashing.prefixed(hashing.hash_file(p))
+    return out, digests
 
 
 def replicates_from_trace(
@@ -447,11 +473,12 @@ def resettle_after_item_holds(rc: RunContext, step_id: str) -> StepOutcome:
     m = plan.module.manifest
     if m.judgment is None:
         raise ConfigError(f"module {plan.module.ref} is not a judgment module")
-    tables = evidence_tables_from_disk(plan)
+    tables, digests = evidence_tables_from_disk(plan)
     items_table = tables.get(m.judgment.items_from)
     items = list(items_table.rows) if items_table is not None else []
     replicates = replicates_from_trace(store, rc.run_id, step_id, plan, action.attempt)
     decided = consensus_from_store(store, rc.run_id, step_id, items)
+    considered = considered_set_record(m.judgment, items, digests)
 
     previous = step_outputs(store, rc.run_id, step_id)
     outputs: dict[str, OutputInfo] = {}
@@ -461,7 +488,7 @@ def resettle_after_item_holds(rc: RunContext, step_id: str) -> StepOutcome:
         path = plan.output_paths[name]
         old = previous.get(name)
         if spec.type == "consensus":
-            path.write_text(consensus_json(decided))
+            path.write_text(consensus_json(decided, considered))
             digest = hashing.hash_path(path)
             if old is not None and old["hash"] == digest:
                 aid = str(old["artifact_id"])
@@ -497,6 +524,7 @@ def resettle_after_item_holds(rc: RunContext, step_id: str) -> StepOutcome:
         consensus=tuple(i.to_json() for i in decided),
         evidence_tables=tables,
         items=tuple(items),
+        considered_set=considered,
         observed={
             "replicates": len(replicates),
             "valid": sum(1 for r in replicates if r.valid),
