@@ -6,6 +6,7 @@ The text is bound to the hashes of the three files, and the init `confirm` hold 
 
 from __future__ import annotations
 
+import textwrap
 from collections.abc import Mapping
 from typing import Any
 
@@ -48,6 +49,23 @@ def generic_echo(
     return "\n".join(lines)
 
 
+WIDTH = 100
+
+
+def wrap_text(text: str, width: int = WIDTH) -> str:
+    """Wrap each paragraph line at `width` columns; lines that are already short, blank, or
+    indented (the bound digests) are left as they are (Lane A item 5, 2026-09-23)."""
+    out: list[str] = []
+    for line in text.splitlines():
+        if len(line) <= width or not line.strip() or line.startswith((" ", "\t", "#")):
+            out.append(line)
+        else:
+            out.extend(
+                textwrap.wrap(line, width=width, break_long_words=False, break_on_hyphens=False)
+            )
+    return "\n".join(out)
+
+
 def render_echo(
     plugin: Plugin,
     design: Design,
@@ -60,12 +78,11 @@ def render_echo(
     body = generic_echo(design, objective, inputs, counts)
     text = domain + "\n\n" + body if domain else body
     bound = "\n".join(f"  {k}: {v}" for k, v in sorted(hashes.items()))
-    return (
-        "# Echo-back\n\n"
+    head = (
         "This is the engine's reading of the declarations. Accept it with `stringency review`"
-        " only if it matches the experiment.\n\n"
-        f"{text}\n\nBound to:\n{bound}\n"
+        " only if it matches the experiment."
     )
+    return f"# Echo-back\n\n{wrap_text(head)}\n\n{wrap_text(text)}\n\nBound to:\n{bound}\n"
 
 
 def render_inherited_echo(
@@ -100,5 +117,14 @@ def render_inherited_echo(
         "# Echo-back (confirmation inherited)\n\n"
         "Every input is a delivered artifact of a project this owner already confirmed, with the "
         "same design and the same method major version, so no new acceptance is asked. This is "
-        "what is new here.\n\n" + "\n".join(lines) + f"\n\nBound to:\n{bound}\n"
+        "what is new here.\n\n" + wrap_text("\n".join(lines)) + f"\n\nBound to:\n{bound}\n"
+    ).replace(
+        "Every input is a delivered artifact of a project this owner already confirmed, with the "
+        "same design and the same method major version, so no new acceptance is asked. This is "
+        "what is new here.",
+        wrap_text(
+            "Every input is a delivered artifact of a project this owner already confirmed, with "
+            "the same design and the same method major version, so no new acceptance is asked. "
+            "This is what is new here."
+        ),
     )

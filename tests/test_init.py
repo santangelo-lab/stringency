@@ -37,7 +37,7 @@ def test_init_layout_and_records(project: Project) -> None:
     echo = (root / "echo.md").read_text()
     assert "50 rows in 9 units across 3 groups" in echo
     assert "the replicate is the unit" in echo
-    assert "A versus B" in echo
+    assert "A versus B" in " ".join(echo.split())  # the echo wraps at 100 columns
 
 
 def test_init_records_method_sha_matching_tag(project: Project, method_repo: MethodRepo) -> None:

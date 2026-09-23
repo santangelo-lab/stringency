@@ -162,6 +162,19 @@ class Project:
             raise ConfigError(f"unknown executor {k}")
         return ex
 
+    def env_for_input(self, name: str) -> str:
+        """The environment the init extractor runs in for input `name` (Lane A item 5,
+        2026-09-23): the env of the first pipeline step that binds `$inputs.<name>`, since that
+        module's image is the one that can read the object; else the first env in the pipeline."""
+        for step in self.pipeline.steps:
+            for ref in step.inputs.values():
+                if ref == f"$inputs.{name}":
+                    m = self.modules.get(step.module)
+                    if m is not None:
+                        return m.manifest.env
+        names = self.env_names()
+        return names[0] if names else "default"
+
     def env_names(self) -> list[str]:
         names: list[str] = []
         for step in self.pipeline.steps:
@@ -230,7 +243,6 @@ class Project:
     def extract_inputs(self, executor: Executor, workdir: Path) -> dict[str, ObjectState]:
         """One extractor pass per object input (design 2.7). Returns states by input name."""
         objects: dict[str, ObjectState] = {}
-        env = self.env_names()[0] if self.env_names() else "default"
         for item in self.inputs.items:
             if item.type not in self.plugin.object_types:
                 continue
@@ -240,7 +252,7 @@ class Project:
                 object_type=item.type,
                 object_path=Path(item.path),
                 design=self.design.model_dump(),
-                env_name=env,
+                env_name=self.env_for_input(item.name),
                 workdir=workdir / item.name,
             )
             objects[item.name] = ObjectState(

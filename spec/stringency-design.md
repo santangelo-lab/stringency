@@ -529,7 +529,7 @@ confidence_criteria:                 # 8.2
   medium: {min_supporting: 2, max_contradicting: 1}
   low:    {min_supporting: 1}
 agreement:                           # 8.4
-  standard: {hold_on: [label_disagreement, any_abstain, any_low, any_invalid]}
+  standard: {hold_on: [label_disagreement, any_abstain, any_low, any_invalid]}   # any_low: logged in the consensus notes, not a hold (8.4, 2026-09-23)
   relaxed:  {hold_on: [label_disagreement, all_abstain, any_invalid]}
 ```
 
@@ -616,6 +616,8 @@ Predicates do not read the agent's rationale as evidence for admissibility. The 
 | held | the last item hold of a judgment step reviewed `accept` or `override` | the consensus output is rewritten from the decided consensus and the post-phase gate is evaluated on it: nothing fires, completed; a flag fires, held (the flag holds open now); a block fires, rejected |
 | held | any hold reviewed `reject` | blocked (pre) or rejected (post); attempt closed |
 | blocked, rejected, failed | new attempt after a commit or a fork | proposed |
+| proposed, admissible, held, running, awaiting_execution, dispatching, produced | the run is abandoned | abandoned (the step closes with the run; its open holds are withdrawn; added 2026-09-23) |
+| awaiting_execution | `submit <ticket> --failed --reason` (the operator reports the external run failed) | running, then failed; the executions row carries the reported exit code (added 2026-09-23) |
 
 Run status is derived: `held` if any step is held; `blocked` or `failed` if the frontier is; `completed` when every step is completed; otherwise `running`.
 
@@ -631,6 +633,10 @@ Run status is derived: `held` if any step is held; `blocked` or `failed` if the 
 | `confirm` | the init echo-back (2.7), in every profile; also any module that declares `confirm: true` | project or step | accept or reject; a `run` cannot open while the init confirm is unresolved |
 
 Every hold records the reviewer role it waits on. `status` shows who is waited on. `run` cannot clear any hold.
+
+A hold whose attempt closes before anyone reviews it (a post-phase block or a reject on a sibling hold of the same step, an abandoned run) is withdrawn by the engine: `resolved_via = withdrawn`, `resolved_by_review` stays null, and a `hold_withdrawn` event names the reason. Withdrawn holds leave the queue and cannot be reviewed; the next attempt opens its own (added 2026-09-23).
+
+Invalid replicates open one hold for the step (kind `run_disagreement`, no item), not one per item; the items are decided from the valid replicates and note the invalid ones, and `judg.replicates_below_min` blocks when too few remain. The first real judgment opened forty-two item holds for one bad replicate (2026-09-18; changed 2026-09-23).
 
 ### 7.3 Review verdicts
 
@@ -724,8 +730,8 @@ Per item, across the valid replicate outputs:
 | labels differ | hold `run_disagreement` | hold `run_disagreement` |
 | some abstain, the rest agree | hold `self_uncertain` | agreed; abstention logged |
 | all abstain | hold `self_uncertain` | hold `self_uncertain` |
-| any low confidence | hold `self_uncertain` | logged |
-| any invalid replicate | hold `run_disagreement` | hold `run_disagreement` |
+| any low confidence, labels agree | logged in the consensus notes (changed 2026-09-23: a hold opened for items every replicate labelled the same, because the confidence criteria push an honest reviewer that lists contradicting cells to `low`; a split is `run_disagreement` regardless) | logged |
+| any invalid replicate | one hold `run_disagreement` for the step; items decided from the valid replicates | the same |
 
 There is no majority vote in either setting. Two of three with one dissenter is a hold under `standard`, because the dissent is the information.
 

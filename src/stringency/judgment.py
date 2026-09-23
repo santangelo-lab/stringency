@@ -287,7 +287,37 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
 
     rule = rc.project.policy.agreement_rule(rc.project.config.profile)
     from stringency.consensus import consensus_json, settle_items
+    from stringency.holds import HoldOutcome, HoldRequest, open_hold
 
+    # invalid replicates open ONE hold for the step, not one per item (42 on the first real
+    # judgment, 2026-09-18); the items note them and are decided from the valid replicates
+    invalid = [r.index for r in replicates if not r.valid]
+    step_holds: list[HoldOutcome] = []
+    if invalid and "any_invalid" in set(rule.hold_on):
+        step_holds.append(
+            open_hold(
+                store,
+                HoldRequest(
+                    run_id=rc.run_id,
+                    step_id=action.step_id,
+                    kind="run_disagreement",
+                    reason=f"{len(invalid)} invalid replicate(s): {invalid}",
+                    waits_on_role="reviewer",
+                    bound_module_version=plan.module.ref,
+                    bound_input_digest=action.input_digest,
+                    bound_params_hash=action.params_hash,
+                    context={
+                        "phase": "post",
+                        "invalid_replicates": invalid,
+                        "errors": {
+                            str(r.index): (r.invocations[-1].error if r.invocations else None)
+                            for r in replicates
+                            if not r.valid
+                        },
+                    },
+                ),
+            )
+        )
     items, item_holds = settle_items(
         store,
         run_id=rc.run_id,
@@ -299,7 +329,9 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
         replicates=replicates,
         rule=rule,
         tables=ev.tables,
+        invalid_held=bool(step_holds),
     )
+    item_holds = step_holds + item_holds
     considered = considered_set_record(m.judgment, ev.items, ev.digests)
     produced: dict[str, Path] = {}
     for name, spec in m.outputs.items():

@@ -44,11 +44,11 @@ def queue(project: Project, run_id: str | None = None) -> list[Any]:
     """Unresolved holds oldest first; the project-level confirm hold comes first when open."""
     if run_id:
         return project.store.all(
-            "SELECT * FROM holds WHERE resolved_by_review IS NULL AND (run_id = ? OR run_id IS NULL) ORDER BY run_id IS NOT NULL, created, rowid",
+            "SELECT * FROM holds WHERE resolved_by_review IS NULL AND resolved_via IS NULL AND (run_id = ? OR run_id IS NULL) ORDER BY run_id IS NOT NULL, created, rowid",
             (run_id,),
         )
     return project.store.all(
-        "SELECT * FROM holds WHERE resolved_by_review IS NULL ORDER BY run_id IS NOT NULL, created, rowid"
+        "SELECT * FROM holds WHERE resolved_by_review IS NULL AND resolved_via IS NULL ORDER BY run_id IS NOT NULL, created, rowid"
     )
 
 
@@ -121,6 +121,8 @@ def record_review(
     h = get_hold(project, hold_id)
     if h["resolved_by_review"] is not None:
         raise RefusedError(f"hold {hold_id} is already resolved")
+    if h["resolved_via"] is not None:
+        raise RefusedError(f"hold {hold_id} was withdrawn when its attempt closed")
     profile = project.policy.profile(project.config.profile)
     via = via_override or ("relayed" if attest else detect_via())
     if via is None:
@@ -306,6 +308,16 @@ def _settle_step(rc: RunContext, h: Any, verdict: str) -> StepStatus:
     if current != StepStatus.HELD:
         return current
     if verdict == "reject":
+        siblings = [
+            r["hold_id"]
+            for r in store.all(
+                "SELECT hold_id FROM holds WHERE run_id=? AND step_id=? AND resolved_by_review IS NULL "
+                "AND resolved_via IS NULL",
+                (rc.run_id, step_id),
+            )
+        ]
+        if siblings:
+            store.withdraw_holds(siblings, f"attempt closed by reject on hold {h['hold_id']}")
         if phase == "pre":
             transition(
                 store,
@@ -326,7 +338,7 @@ def _settle_step(rc: RunContext, h: Any, verdict: str) -> StepStatus:
         )
         return StepStatus.REJECTED
     remaining = store.scalar(
-        "SELECT COUNT(*) FROM holds WHERE run_id=? AND step_id=? AND resolved_by_review IS NULL",
+        "SELECT COUNT(*) FROM holds WHERE run_id=? AND step_id=? AND resolved_by_review IS NULL AND resolved_via IS NULL",
         (rc.run_id, step_id),
     )
     if remaining:

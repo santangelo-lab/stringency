@@ -387,6 +387,9 @@ def write_job_file(action: Action, plan: StepPlan) -> Path | None:
         return None
     job = job_for(action, plan, script)
     plan.step_dir.mkdir(parents=True, exist_ok=True)
+    # the apptainer line binds <step dir>/tmp:/tmp; the engine's own run() creates it, an
+    # operator running the printed line does not (K8, 2026-09-23)
+    (plan.step_dir / "tmp").mkdir(exist_ok=True)
     path = plan.step_dir / JOB_FILE
     path.write_text(json.dumps(dict(job.stdin_json or {}), indent=2, sort_keys=True) + "\n")
     return path
@@ -655,6 +658,9 @@ def settle_post(
     if gate.blocked:
         for aid in artifact_ids:
             store.set_artifact_flag(aid, "status", "rejected")
+        pending_now = [h.hold_id for h in extra_holds if not h.rebound]
+        if pending_now:
+            store.withdraw_holds(pending_now, "post-phase block closed the attempt")
         transition(
             store,
             rc.run_id,

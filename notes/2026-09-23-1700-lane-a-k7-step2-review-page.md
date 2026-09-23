@@ -71,9 +71,12 @@ session ran Lane E in a worktree at the same time (its own notes; brief in
 ## Open
 
 1. PR #4 merged, `v0.2.2` tagged and installed as the shared `current` (`0.2.2-sc0.1.8`).
-2. Lane A: the `any_low` design question (K2, owner); the item-5 list
-   (`submit --failed`, extractor env per tool, variable-arity inputs, lint parses the env
-   manifest, `abandon` closes the step row, one hold for invalid replicates).
+2. `any_low` decided (owner's option B) and K8 (ticket creates `<step dir>/tmp`, found by Lane E)
+   fixed on PR #5 (`lane-a-k2-k8`). The item-5 fixes on PR #6 (`lane-a-item5`, stacked on
+   #5): `submit --failed`, `abandoned` steps, withdrawn holds (block, reject, abandon), one hold
+   for invalid replicates, lint of `envs/manifest.yml`, extractor env from the consuming step,
+   echo wrapped at 100 columns. Left for the owner: the variable-arity input type (module
+   contract 3.2 is frozen).
 3. Lane F (data side): repair `qc_outliers_all` by the owner's chosen route; the module-version
    question above.
 4. BMESEQ has no 0.2.0 install; reinstall when a method runs there.

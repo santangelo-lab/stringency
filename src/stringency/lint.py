@@ -288,6 +288,7 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
     except ConfigError as e:
         report.errors.append(str(e))
         return report
+    _lint_env_manifest(path, modules, report)
     for module in modules.all():
         lint_module(
             module, report, plugin=plugins.get(module.manifest.domain), policy=policy, design=design
@@ -305,3 +306,46 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
                 pipeline, modules, report, plugin=plugins.get(pipeline.domain), method_root=path
             )
     return report
+
+
+def _lint_env_manifest(path: Path, modules: ModuleIndex, report: LintReport) -> None:
+    """`envs/manifest.yml` (design 10.3; Lane A item 5, 2026-09-23): parses; every module env is
+    an entry; an entry has a `lock` or an `image`; a `sha256` is 64 hex characters; an image
+    path that does not exist on this machine is a warning (it may live on the workstation)."""
+    import re
+
+    import yaml
+
+    mf = path / "envs" / "manifest.yml"
+    envs_used = {m.manifest.env for m in modules.all()}
+    if not mf.exists():
+        if envs_used:
+            report.warn(
+                str(mf), "no environment manifest; module envs " + ", ".join(sorted(envs_used))
+            )
+        return
+    try:
+        doc = yaml.safe_load(mf.read_text()) or {}
+    except yaml.YAMLError as e:
+        report.error(str(mf), f"not valid YAML: {e}")
+        return
+    entries = doc.get("environments") if isinstance(doc, dict) else None
+    if not isinstance(entries, dict):
+        report.error(str(mf), "expected a top-level `environments:` mapping")
+        return
+    for name, spec in entries.items():
+        where = f"{mf}: environments.{name}"
+        if not isinstance(spec, dict):
+            report.error(where, "expected a mapping with lock and/or image")
+            continue
+        if not spec.get("lock") and not spec.get("image"):
+            report.error(where, "needs `lock` (local executor) or `image` (apptainer)")
+        sha = spec.get("sha256")
+        if sha is not None and not re.fullmatch(r"[0-9a-f]{64}", str(sha)):
+            report.error(where, "sha256 must be 64 lowercase hex characters")
+        image = spec.get("image")
+        if image and not Path(str(image)).exists():
+            report.warn(where, f"image {image} is not on this machine")
+    for env in sorted(envs_used):
+        if env not in entries:
+            report.error(str(mf), f"module env {env} has no entry in environments")

@@ -1,0 +1,13 @@
+# Three identical labels, one at low confidence: since 2026-09-23 (K2, option B) this agrees and
+# the low call is a consensus note, not a self_uncertain hold.
+mock: 1
+rules:
+  - item: A
+    replicate: 2
+    judgment: {label: abundant, confidence: low, supporting: [mean_value], rationale: "mean {mean_value}"}
+  - item: A
+    judgment: {label: abundant, confidence: high, rationale: "mean {mean_value}"}
+  - item: B
+    judgment: {label: sparse, confidence: high, rationale: "mean {mean_value}"}
+  - item: C
+    judgment: {label: variable, confidence: high, rationale: "sd {sd_value}"}

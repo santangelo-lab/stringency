@@ -43,6 +43,7 @@ def tables_seen(plan: StepPlan) -> dict[str, EvidenceTable]:
             pass
     return evidence_tables_for(plan)
 
+
 INDENT = "  "
 
 
@@ -301,9 +302,14 @@ def _verdict_lines(verdicts: list[dict[str, str]]) -> list[str]:
     return lines
 
 
-def verdicts_for(kind: str, hold_id: str, phase: str | None) -> list[dict[str, str]]:
-    """The verdicts a hold kind admits and what each does (design 7.2, 7.3)."""
+def verdicts_for(
+    kind: str, hold_id: str, phase: str | None, *, item_level: bool = True
+) -> list[dict[str, str]]:
+    """The verdicts a hold kind admits and what each does (design 7.2, 7.3). A step-level
+    `run_disagreement` (invalid replicates) takes the flag's verdicts."""
     base = f"stringency review --verdict {{verdict}} --hold {hold_id}"
+    if kind == "run_disagreement" and not item_level:
+        kind, phase = "flag", phase or "post"
     if kind == "confirm":
         return [
             {
@@ -548,6 +554,32 @@ def render_item(
     return view
 
 
+def render_step_invalid(
+    project: Project, rc: RunContext, h: Any, action: Any, plan: StepPlan | None
+) -> HoldView:
+    """The one hold a judgment step opens for its invalid replicates (2026-09-23): which
+    replicates failed and why, and the verdicts of a step-level hold. Reads: holds.context_json,
+    invocations."""
+    ctx = json.loads(h["context_json"] or "{}")
+    module_ref = plan.module.ref if plan else (action.module if action else None)
+    lines = _header(project, h, action, module_ref)
+    lines += [
+        "",
+        "question: proceed with the valid replicates, or close the attempt",
+        f"reason: {h['reason']}",
+        "",
+        "invalid replicates:",
+    ]
+    errors = ctx.get("errors") or {}
+    for idx in ctx.get("invalid_replicates", []):
+        lines.append(f"{INDENT}replicate {idx}: {errors.get(str(idx)) or 'invalid response'}")
+    view = HoldView(h, "", module_ref=module_ref)
+    view.verdicts = verdicts_for("run_disagreement", h["hold_id"], "post", item_level=False)
+    lines += ["", *_verdict_lines(view.verdicts), *_resolution_lines(h)]
+    view.text = "\n".join(lines)
+    return view
+
+
 def render(project: Project, h: Any) -> HoldView:
     """Render one hold for the reviewer (design 7.3). Reads: see the module docstring."""
     if h["kind"] == "confirm":
@@ -555,11 +587,12 @@ def render(project: Project, h: Any) -> HoldView:
     rc = load_run(project, h["run_id"])
     action = _latest_action(rc, h["step_id"])
     plan = plan_step(rc, h["step_id"], action.attempt) if action else None
-    view = (
-        render_item(project, rc, h, action, plan)
-        if h["item_id"] is not None
-        else render_flag(project, rc, h, action, plan)
-    )
+    if h["item_id"] is not None:
+        view = render_item(project, rc, h, action, plan)
+    elif h["kind"] == "run_disagreement":
+        view = render_step_invalid(project, rc, h, action, plan)
+    else:
+        view = render_flag(project, rc, h, action, plan)
     paths = packet_paths(project, h)
     if paths is not None and paths[0].exists():
         view.packet = paths[0]
