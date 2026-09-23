@@ -9,9 +9,9 @@ it is the first thing a new session reads.
   Lane C branch as `v0.2.0` (PR #2), installed as the shared engine on PROTSEQ
   (`/data/lab/env/stringency/current`, `0.2.0-sc0.1.8`). PR #3 (`lane-a-step2`) holds E1, E2,
   `param.agent_proposed`, the `fork` parameter source and the review page (`review --serve`);
-  merged as `v0.2.1` and installed. PR #4 (`lane-a-5b`) holds 5b inherited confirmation and
-  5c batch review; waits on the owner's merge, then `v0.2.2`. Open in Lane A: the renderer's
-  citation lookup, `any_low` (K2), the item-5 fixes. Lane C closed, Lane F placeholder, Lane D
+  merged as `v0.2.1`; PR #4 (`lane-a-5b`: 5b inherited confirmation, 5c batch review, the
+  renderer's citation lookup) merged as `v0.2.2` and installed. Open in Lane A: `any_low` (K2,
+  owner), the item-5 fixes. Lane C closed, Lane F placeholder, Lane D
   closed (shared engine done), Lane B dormant; Lane E ran in parallel (its notes on `lane-e`).
   Start the next engine session from the roadmap's Status section and Lane A.
 

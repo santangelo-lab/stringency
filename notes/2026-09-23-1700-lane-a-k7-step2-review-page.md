@@ -70,8 +70,7 @@ session ran Lane E in a worktree at the same time (its own notes; brief in
 
 ## Open
 
-1. Owner: merge PR #4 (5b, 5c); then tag `v0.2.2` and reinstall the shared engine. (PR #3
-   merged, `v0.2.1` installed.)
+1. PR #4 merged, `v0.2.2` tagged and installed as the shared `current` (`0.2.2-sc0.1.8`).
 2. Lane A: the `any_low` design question (K2, owner); the item-5 list
    (`submit --failed`, extractor env per tool, variable-arity inputs, lint parses the env
    manifest, `abandon` closes the step row, one hold for invalid replicates).
