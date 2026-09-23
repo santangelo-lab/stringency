@@ -141,7 +141,7 @@ Built as `render_skill.py` with source `skills/<pipeline>.analyze.yml` (the deli
 design 14.4 already holds `skills/<pipeline>.yml`); an optional `name` gives the skill slug when it
 differs from the pipeline (`stringency-analyze-toy-compare` on `toy-engine`). First instance in
 `stringency-toy-method` `v0.1.4`; phrasings set written, not yet run
-(`notes/2026-09-23-1150-lane-e-start.md`).
+(`notes/2026-09-23-1355-lane-e-skills-and-first-run.md`).
 
 - `integrations/claude-science/templates/analyze-skill.md.j2` (domain-agnostic person-facing
   script + compact mechanics appendix that defers to the operator skill on conflict) and
@@ -519,20 +519,21 @@ scratched. The layout decisions under item 2 stay because they are decisions, no
 Track 1d analysis skill template and the toy instance; the two Track 1g session tests on PROTSEQ;
 the measurement rows; Track 2 session 10 with a lab member once Lane B session 8 is done.
 
-Status 2026-09-23: opened (branch `lane-e`, `notes/2026-09-23-1150-lane-e-start.md`). Part of
-Track 1 section 6 (progress and results for a lay reader) arrived from Lane C earlier: `board`,
-`present`, and the method delivery skills of design 14.4
-(`notes/2026-09-18-1830-board-and-present.md`). Done this session: 1d template, renderer and
-test; the toy instance `stringency-analyze-toy-compare` in `stringency-toy-method` `v0.1.4`
-(delivery skill, analyze source, rendered skill, phrasings set); the 1g checklist
-(`integrations/claude-science/hosts/protseq-session-tests.md`) and the prepared project
-directory. Waiting on the owner: the two session tests and the measured run in the app; the
-measurement row follows. The acceptance test's original target (Track 2 session 10, a lab member
+Status 2026-09-23, end of day (`notes/2026-09-23-1355-lane-e-skills-and-first-run.md`; PR #1
+and PR #7 merged). Part of Track 1 section 6 (progress and results for a lay reader) arrived from
+Lane C earlier: `board`, `present`, and the method delivery skills of design 14.4. Done: 1d
+template, renderer, test and `spec/method-skills.md`; the toy instance
+`stringency-analyze-toy-compare` in `stringency-toy-method` `v0.1.4`; the 1g session tests
+answered by the owner in the app (the `call_command` card offers a project-scoped grant, the
+download card a conversation-scoped grant per directory); the first measured run through an
+analysis skill (owner, 7 turns, 14 min 39 s to the first delivered file, 0 misreports against the
+trace, confirm relayed; row in `backlog.md`, cards to fill), which found engine defect K8 (fixed
+by Lane A the same day). The acceptance test's original target (Track 2 session 10, a lab member
 on bulk RNA-seq) is gone with Lane B dormant; the template is proved on the toy, and the first
-real instance will be a spatial pipeline once Lane F has one. Still open: publishing the toy
-skill on an instance (owner, per person); a group-readable method location for a tester other
-than the owner (the toy method's path is under `/home/jrrose5`, mode 700; its remote is BMESEQ,
-not GitHub); the review page (1e, Lane A step 3).
+real instance will be a spatial pipeline once Lane F has one. Left: three template fixes from the
+run and a toy re-tag; the toy run by someone other than the owner, which needs K8 tagged and
+installed and a method location the tester can read (the toy method is under `/home/jrrose5`,
+remote BMESEQ); then close the lane, with skills a step of every method build.
 
 ### Running it
 

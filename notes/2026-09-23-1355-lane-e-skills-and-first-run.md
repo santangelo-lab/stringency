@@ -1,6 +1,6 @@
-# Lane E start: analysis skill template, toy instance, session tests
+# Lane E: analysis skill template, toy instance, session tests, first measured run
 
-Session opened 2026-09-23 11:50 on PROTSEQ, branch `lane-e` (worktree
+Session 2026-09-23 11:50 to 13:55 on PROTSEQ, branch `lane-e` (worktree
 `~/mytools/stringency/stringency-lane-e` from `origin/main` at `5fbcc65`), in parallel with a
 Lane A session on `lane-c-directory-inputs`. Brief: `~/mytools/stringency/brief-lane-e.md`.
 
@@ -79,6 +79,14 @@ under `src/stringency/` changes.
   `.analyze.yml`; 14.4 gains one paragraph pointing at the page; `spec/README.md` row; the
   method-repo template's layout block lists `skills/`.
 
+- Merged to `main` by the owner: PR #1 (`8fa805e`, everything above) and PR #7 (`a2c592a`, the
+  spec page). Each merge was preceded by merging `main` into `lane-e`; conflicts were only the
+  appended DECISIONS lines and the index, kept in full. The CI failure on `8fa805e` was one blank
+  line in `src/stringency/review_render.py` from Lane A's item 6 commit, fixed by their PR #5.
+- K8 was fixed by Lane A the same afternoon (PR #5, `write_job_file` creates `<step dir>/tmp` at
+  ticket time, with a test); the row in the backlog is marked done. Not yet tagged and
+  reinstalled at the time of writing.
+
 ## Learned
 
 - The toy method's `v0.1.3` had already been pushed to BMESEQ before this session, contrary to
@@ -101,26 +109,25 @@ under `src/stringency/` changes.
 
 ## Open
 
-0. **Engine request for Lane A (K8).** `runner: operator` tickets need `step_dir/tmp` created when
-   the ticket is issued; `executor/apptainer.py` `command_line` binds it and only `run()` makes
-   it. Blocks the toy run at `02_summarize` and every operator-run step (Nextflow included). Lane
-   E does not touch `src/stringency/`.
+Pick-up point for the next Lane E session, in order:
 
-1. Owner: the approval-card count for the 2026-09-23 skill row (by kind), and whether a data
-   root for `protseq` was set when the download card named the scratch directory.
-1b. Template fixes from the run (`analyze-skill.md.j2`, then re-render the toy skill and tag):
-   quote the echo-back without its "Bound to" block, or ask Lane A to split the engine's echo;
-   name the delivery by its files, never by path; keep asks one at a time. Then the run by
-   someone other than the owner, which also needs item 2.
-2. A method location a tester other than the owner can read: the toy method's `method` path is
-   under `/home/jrrose5` (mode 700) and its remote is BMESEQ. Options for the owner: a GitHub
-   remote, or a clone under `/data/lab/env/` (which would need the owner's yes for a path there).
-3. The first real analysis skill: a spatial pipeline in `stringency-xenium-method` once Lane F is
-   planned; that repo's `skills/` already has the delivery skills, so only the `.analyze.yml`
-   files and a render are needed.
-4. `publish-skills.md`: date the toy skill's first publish when the owner does it.
-5. Open the PR `lane-e` to `main` after the push (done at the end of this session; merging is
-   the owner's or Lane A's call, since Lane A merges its branch the same day).
+1. Template fixes from the run (`integrations/claude-science/templates/analyze-skill.md.j2`):
+   quote the echo-back without its "Bound to" block (or ask Lane A to split the engine's echo into
+   the person-facing text and the binding record); name the delivery by its files, never by its
+   path; keep the asks one at a time. Re-render the toy skill (`render_skill.py --write`), tag the
+   toy method `v0.1.5`, republish per person.
+2. The acceptance test: the toy run by someone other than the owner, once K8 is tagged and
+   installed and the method is at a location the tester can read. The toy method's path is under
+   `/home/jrrose5` (mode 700) and its remote is BMESEQ; the owner chooses a GitHub remote or a
+   clone under `/data/lab/env/`. The reference declarations and first message are under
+   `lane-e/reference/`, out of the parent the agent reads.
+3. From the owner: the approval-card count for the 2026-09-23 row, by kind, and whether a data
+   root for `protseq` was set when the download card named the app's scratch directory.
+4. The thirty-phrasing routing set, run by hand; low value until a second analysis skill exists.
+5. `publish-skills.md`: the toy skill's publish date is recorded; add each person's as they publish.
+6. Then close the lane in the roadmap as Lanes C and D were closed: skills become a step of every
+   method build (the xenium `.analyze.yml` files are Lane F's; bulk and NanoString follow their
+   plugins), not a lane of their own.
 
 ## Verify
 
