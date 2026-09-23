@@ -61,16 +61,24 @@ def item_judgments(
     return out
 
 
-def decide(item_id: str, replicates: list[Replicate], rule: AgreementRule) -> ItemConsensus:
+def decide(
+    item_id: str, replicates: list[Replicate], rule: AgreementRule, *, invalid_held: bool = False
+) -> ItemConsensus:
+    """One item's consensus. `invalid_held`: the step already holds once for its invalid
+    replicates (judgment.execute_judgment, 2026-09-23), so the item notes them and is decided
+    from the valid ones instead of opening its own hold; `judg.replicates_below_min` still
+    blocks when too few remain."""
     js = item_judgments(replicates, item_id)
     labels = [j.get("label") if j else None for _, j in js]
     confs = [j.get("confidence") if j else None for _, j in js]
     ic = ItemConsensus(item_id, None, None, "unresolved", labels, confs)
     hold_on = set(rule.hold_on)
     invalid = [i for i, j in js if j is None]
-    if invalid and "any_invalid" in hold_on:
+    if invalid and "any_invalid" in hold_on and not invalid_held:
         ic.hold_kind, ic.hold_reason = "run_disagreement", f"invalid replicate(s) {invalid}"
         return ic
+    if invalid:
+        ic.notes.append(f"invalid replicate(s) {invalid}; held once for the step")
     valid = [j for _, j in js if j is not None]
     abstained = [j for j in valid if j.get("abstain")]
     called = [j for j in valid if not j.get("abstain")]
@@ -150,13 +158,14 @@ def settle_items(
     replicates: list[Replicate],
     rule: AgreementRule,
     tables: Mapping[str, EvidenceTable],
+    invalid_held: bool = False,
 ) -> tuple[list[ItemConsensus], list[HoldOutcome]]:
-    """Consensus per item; a hold per disagreeing, abstaining, or low-confidence item, with
-    rebind of prior verdicts. Writes: consensus, holds."""
+    """Consensus per item; a hold per disagreeing or abstaining item, with rebind of prior
+    verdicts. Writes: consensus, holds."""
     out: list[ItemConsensus] = []
     holds: list[HoldOutcome] = []
     for item in items:
-        ic = decide(item, replicates, rule)
+        ic = decide(item, replicates, rule, invalid_held=invalid_held)
         if ic.hold_kind is not None:
             h = open_hold(
                 store,

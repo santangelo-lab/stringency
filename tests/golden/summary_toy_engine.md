@@ -4,7 +4,8 @@ Project <ULID>; pipeline toy-engine 0.1.2; profile standard.
 
 ## What was analyzed
 
-50 rows in 9 units across 3 groups (input groups); the replicate is the unit; the question is A versus B.
+50 rows in 9 units across 3 groups (input groups); the replicate is the unit; the question is A
+versus B.
 
 Inputs: groups (frame).
 Units: the observation is row; the sample is unit.

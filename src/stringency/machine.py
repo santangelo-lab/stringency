@@ -26,6 +26,7 @@ class StepStatus(StrEnum):
     COMPLETED = "completed"
     REJECTED = "rejected"
     FAILED = "failed"
+    ABANDONED = "abandoned"  # the run was abandoned while the step was open (added 2026-09-23)
 
 
 S = StepStatus
@@ -54,10 +55,21 @@ EDGES: frozenset[tuple[StepStatus, StepStatus]] = frozenset(
         (S.BLOCKED, S.PROPOSED),
         (S.REJECTED, S.PROPOSED),
         (S.FAILED, S.PROPOSED),
+        # `abandon` closes every open step with the run (7.1, added 2026-09-23)
+        (S.PROPOSED, S.ABANDONED),
+        (S.ADMISSIBLE, S.ABANDONED),
+        (S.HELD, S.ABANDONED),
+        (S.RUNNING, S.ABANDONED),
+        (S.AWAITING_EXECUTION, S.ABANDONED),
+        (S.DISPATCHING, S.ABANDONED),
+        (S.PRODUCED, S.ABANDONED),
     }
 )
 
 TERMINAL_FOR_ATTEMPT = frozenset({S.BLOCKED, S.REJECTED, S.FAILED})
+OPEN_STEP = frozenset(
+    {S.PROPOSED, S.ADMISSIBLE, S.HELD, S.RUNNING, S.AWAITING_EXECUTION, S.DISPATCHING, S.PRODUCED}
+)
 RETRYABLE = TERMINAL_FOR_ATTEMPT | {S.PENDING}
 
 
@@ -99,7 +111,7 @@ def transition(
         dict(payload or {}),
         attempt=attempt,
         started=to in {S.RUNNING, S.AWAITING_EXECUTION, S.DISPATCHING},
-        ended=to in {S.COMPLETED, S.REJECTED, S.FAILED, S.BLOCKED},
+        ended=to in {S.COMPLETED, S.REJECTED, S.FAILED, S.BLOCKED, S.ABANDONED},
     )
 
 

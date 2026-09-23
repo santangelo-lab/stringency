@@ -368,6 +368,32 @@ class Store:
                 (review_id, via, hold_id),
             )
 
+    def withdraw_holds(self, hold_ids: list[str], reason: str) -> int:
+        """The engine withdraws open holds whose attempt closed (a block or a reject on the same
+        step, an abandoned run): `resolved_via = 'withdrawn'`, `resolved_by_review` stays NULL,
+        since no person reviewed them. Writes: holds, step_events or run_events (`hold_withdrawn`).
+        Returns how many were withdrawn."""
+        n = 0
+        with self.transaction():
+            for hid in hold_ids:
+                h = self.one(
+                    "SELECT * FROM holds WHERE hold_id = ? AND resolved_by_review IS NULL "
+                    "AND resolved_via IS NULL",
+                    (hid,),
+                )
+                if h is None:
+                    continue
+                ev = {"hold_id": hid, "reason": reason}
+                if h["run_id"] and h["step_id"]:
+                    self.step_event(h["run_id"], h["step_id"], "hold_withdrawn", ev)
+                elif h["run_id"]:
+                    self.run_event(h["run_id"], "hold_withdrawn", ev)
+                self.conn.execute(
+                    "UPDATE holds SET resolved_via = 'withdrawn' WHERE hold_id = ?", (hid,)
+                )
+                n += 1
+        return n
+
     # -- consensus and artifacts ---------------------------------------------------
 
     def set_consensus(self, row: Mapping[str, Any]) -> None:

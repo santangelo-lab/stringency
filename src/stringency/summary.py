@@ -32,11 +32,19 @@ def echo_body(text: str) -> str:
     """The echo-back without its heading, its acceptance instruction, and the hash block; the
     hashes are in the trace and `index.json`."""
     out: list[str] = []
+    skipping_note = False  # the acceptance instruction may wrap over several lines
     for line in text.splitlines():
         if line.startswith("Bound to:"):
             break
-        if line.startswith("# ") or line.startswith("This is the engine's reading"):
+        if line.startswith("# "):
             continue
+        if line.startswith(("This is the engine's reading", "Every input is a delivered artifact")):
+            skipping_note = True
+            continue
+        if skipping_note:
+            if line.strip():
+                continue
+            skipping_note = False
         out.append(line)
     return "\n".join(out).strip()
 
