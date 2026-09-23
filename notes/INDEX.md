@@ -3,7 +3,18 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-22, afternoon)
+## Current state (2026-09-23, midday)
+
+- Lane E opened on branch `lane-e` (`notes/2026-09-23-1150-lane-e-start.md`): Track 1d built
+  (`render_skill.py`, `analyze-skill.md.j2`, method-repo `skills/` template, test); toy method
+  `v0.1.4` carries the first analysis skill `stringency-analyze-toy-compare` with its delivery
+  skill and phrasings set; the 1g session tests and the measured run are a checklist for the owner
+  (`integrations/claude-science/hosts/protseq-session-tests.md`) with the project directory
+  prepared under `/data/lab/projects/2026-09_stringency-drive2_jrrose5/lane-e/`. Waiting on the
+  owner in the app; the next Lane E session writes the Measurements row. Lane A's state is in the
+  roadmap Status section (branch `lane-c-directory-inputs`, K7 first).
+
+## Previous state (2026-09-22, afternoon)
 
 - Plan documents refreshed to the Lane C state of 2026-09-17 to 2026-09-21
   (`notes/2026-09-22-1510-plan-docs-refresh.md`): roadmap Status section and per-lane status,
@@ -72,6 +83,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-09-23-1150-lane-e-start.md` — Lane E start: analysis skill template and `render_skill.py` (Track 1d), toy method `v0.1.4` with `stringency-analyze-toy-compare`, the 1g session-test checklist and the prepared toy run directory.
 - `2026-09-23-1100-outlier-holds-stale-consensus.md` — the owner's seven verdicts relayed and the run delivered; item verdicts reach the `consensus` table but never the `consensus.json` the next step binds, so the proposal is stale (backlog K7).
 - `2026-09-22-1510-plan-docs-refresh.md` — plan documents brought up to date after Lane C: roadmap status, Track 3 outcome, backlog K1 to K6, the spec split between `main` and the engine branch.
 - `2026-09-21-1600-outlier-judgment-v2-engine.md` — optional module inputs, pre-produced evidence tables keyed by their own column, `role: reference` inputs; first three-replicate real judgment on Lyons CLP and what it showed about confidence criteria and the packet renderer.

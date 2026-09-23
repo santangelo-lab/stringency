@@ -25,6 +25,9 @@ not in a roadmap lane (the engine gaps that are, sit under roadmap Lane A items 
 ## Measurements
 
 One row per toy run, before and after each Track 1 step. Baseline from the PROTSEQ chained run.
+Next row: the toy run through `stringency-analyze-toy-compare` (checklist
+`integrations/claude-science/hosts/protseq-session-tests.md` section D), which also answers the two
+3.4 session tests; prepared 2026-09-23, not yet run.
 
 | date | pipeline | approval cards | person turns to result | time to first delivered file | unrequested commands, JSON, ids shown | holds and `via` | operator misreports vs trace |
 |---|---|---|---|---|---|---|---|

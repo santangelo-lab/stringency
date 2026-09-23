@@ -7,7 +7,8 @@ when a skill changes. Three kinds:
 |---|---|---|
 | `stringency-operator` | `integrations/claude-science/stringency-operator/SKILL.md` (engine repo) | the session, to drive a project |
 | `stringency-declare` | `integrations/claude-science/stringency-declare/SKILL.md` (engine repo) | the session, to draft declarations from a brief |
-| `stringency-analyze-<pipeline>` | `skills/stringency-analyze-<pipeline>/SKILL.md` in the method repo, rendered from `skills/<pipeline>.yml` (Track 1d, not yet built) | a lab member, as the entry point for one analysis |
+| `stringency-analyze-<name>` | `skills/stringency-analyze-<name>/SKILL.md` in the method repo, rendered by `integrations/claude-science/render_skill.py` from `skills/<pipeline>.analyze.yml` (Track 1d, built 2026-09-23) | a lab member, as the entry point for one analysis |
+| `stringency-analyze-toy-compare` | `skills/stringency-analyze-toy-compare/SKILL.md` in `stringency-toy-method` at `v0.1.4` (on PROTSEQ: `~/mytools/stringency/stringency-toy-method`) | the first instance, on the toy `toy-engine` pipeline; the Track 1 acceptance test runs through it |
 
 ## The cell
 
@@ -37,7 +38,10 @@ engine version; if the copy and the repository disagree, the repository wins.
   (last revision 2026-09-15, Track 1c; the outlier judgment of 2026-09-21 changed the dispatch
   brief so that the operator passes only the request file path).
 - The declare skill: when the declaration grammar or the echo-back changes.
-- An analysis skill: on every tag of its method repository.
+- An analysis skill: on every tag of its method repository. The rendered file is committed there;
+  render it again with `render_skill.py <method repo> --pipeline <name> --write` before tagging
+  when the `.analyze.yml`, the pipeline titles, or the engine template changed.
+  `stringency-analyze-toy-compare`: not yet published on any instance (2026-09-23).
 
 A publish is recorded nowhere by the engine; the session's transcript is the only record. Note
 the date in this file's table when a republish is done on the lab's instances.

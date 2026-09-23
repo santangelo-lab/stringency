@@ -126,7 +126,13 @@ Files: `src/stringency/runloop.py`, `cli/verb_run.py`, `cli/verb_status.py`,
   report the engine's reply; on exit 16 name the two engine-allowed routes.
 - `templates/brief.md.j2`, `agent-context.md.j2`, `README.md`, `new-project.md` updated to match.
 
-### 1d. Analysis skills as entry points
+### 1d. Analysis skills as entry points [template and toy instance built 2026-09-23, Lane E]
+
+Built as `render_skill.py` with source `skills/<pipeline>.analyze.yml` (the delivery skill of
+design 14.4 already holds `skills/<pipeline>.yml`); an optional `name` gives the skill slug when it
+differs from the pipeline (`stringency-analyze-toy-compare` on `toy-engine`). First instance in
+`stringency-toy-method` `v0.1.4`; phrasings set written, not yet run
+(`notes/2026-09-23-1150-lane-e-start.md`).
 
 - `integrations/claude-science/templates/analyze-skill.md.j2` (domain-agnostic person-facing
   script + compact mechanics appendix that defers to the operator skill on conflict) and
@@ -163,7 +169,12 @@ one Claude Science instance per person (identity per AD user, so roles and `via`
 engine change); `hosts/protseq-lab.md`, `onboarding.md`, `publish-skills.md`. Method manifests
 name the shared image path; BMESEQ gets the same path by symlink.
 
-### 1g. Measurements (before/after, into `spec/plans/backlog.md` (measurements))
+### 1g. Measurements (before/after, into `spec/plans/backlog.md` (measurements)) [checklist written 2026-09-23; runs pending the owner]
+
+The two session tests and the measured run through the analysis skill are
+`integrations/claude-science/hosts/protseq-session-tests.md`; the project directory is prepared
+at `/data/lab/projects/2026-09_stringency-drive2_jrrose5/lane-e/`. Cards are visible only in
+the app, so the owner runs it; the next Lane E session writes the row.
 
 Cards per project, person turns to result, time to first delivered file, count of unrequested
 commands/JSON/ids shown, holds and `via`, operator misreports vs trace. Two session tests on
@@ -485,10 +496,20 @@ scratched. The layout decisions under item 2 stay because they are decisions, no
 Track 1d analysis skill template and the toy instance; the two Track 1g session tests on PROTSEQ;
 the measurement rows; Track 2 session 10 with a lab member once Lane B session 8 is done.
 
-Status 2026-09-22: not started. Part of Track 1 section 6 (progress and results for a lay reader)
-arrived from Lane C instead: `board`, `present`, and the method delivery skills of design 14.4
-(`notes/2026-09-18-1830-board-and-present.md`). The analysis skill template (1d), the two session
-tests (1g), and the review page (1e, Lane A step 3) remain.
+Status 2026-09-23: opened (branch `lane-e`, `notes/2026-09-23-1150-lane-e-start.md`). Part of
+Track 1 section 6 (progress and results for a lay reader) arrived from Lane C earlier: `board`,
+`present`, and the method delivery skills of design 14.4
+(`notes/2026-09-18-1830-board-and-present.md`). Done this session: 1d template, renderer and
+test; the toy instance `stringency-analyze-toy-compare` in `stringency-toy-method` `v0.1.4`
+(delivery skill, analyze source, rendered skill, phrasings set); the 1g checklist
+(`integrations/claude-science/hosts/protseq-session-tests.md`) and the prepared project
+directory. Waiting on the owner: the two session tests and the measured run in the app; the
+measurement row follows. The acceptance test's original target (Track 2 session 10, a lab member
+on bulk RNA-seq) is gone with Lane B dormant; the template is proved on the toy, and the first
+real instance will be a spatial pipeline once Lane F has one. Still open: publishing the toy
+skill on an instance (owner, per person); a group-readable method location for a tester other
+than the owner (the toy method's path is under `/home/jrrose5`, mode 700; its remote is BMESEQ,
+not GitHub); the review page (1e, Lane A step 3).
 
 ### Running it
 

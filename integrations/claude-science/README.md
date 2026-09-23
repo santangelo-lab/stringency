@@ -13,6 +13,8 @@ project needs; `examples/toy-cs/` shows a completed run.
 | `stringency-operator/SKILL.md` | the skill: find the engine, the rules, the run loop, in two modes |
 | `agent-context.md` | generic agent context; prefer the rendered one |
 | `stringency-declare/SKILL.md` | drafts the three declaration files from a brief and a sample manifest, checks them with `declare --check`, runs `init --drafted-by agent` |
+| `render_skill.py`, `templates/analyze-skill.md.j2` | render a method repository's `skills/<pipeline>.analyze.yml` to its analysis skill `skills/stringency-analyze-<name>/SKILL.md` (design 10.4); `--check` validates against the pipeline and modules |
+| `hosts/protseq-session-tests.md` | the two Claude Science session tests (UX note 3.4) and the measured toy run through the analysis skill, as a checklist for the owner |
 | `examples/toy-cs/` | the 2026-09-08 exit run: brief, context, agent reports, deliverables |
 
 ## Machine install
@@ -72,7 +74,9 @@ a file only when none exists), then `publish(name, overwrite=True)`. The same st
 Session test 3.4 of `spec/plans/ux-two-audiences.md`, measured 2026-09-15 on PROTSEQ: delegate
 downloads of request files and the operator's downloads of delivered files raise one card each
 even inside a configured data root (7 of 17 cards on the toy-engine drive). Whether the
-`call_command` card offers a standing grant is still unrecorded.
+`call_command` card offers a standing grant is still unrecorded; the checklist that answers both
+questions under the lab data root `/data/lab/projects`, and drives the measured toy run through the
+analysis skill, is `hosts/protseq-session-tests.md` (2026-09-23).
 
 ## Rendering the brief and context
 
