@@ -31,7 +31,7 @@ the `fork` parameter source and the review page (`review --serve`). PR #4 (`lane
 carries 5b inherited confirmation, 5c batch review and the renderer's citation lookup. `v0.2.2` is
 the shared `current` on PROTSEQ (`0.2.2-sc0.1.8`). Lane A steps 2 to 4, 5a to 5c and item 6 are
 done; `any_low` decided (option B, K2) and K8 fixed on PR #5; the item-5 fixes on PR #6
-(`v0.2.3`, installed); `arity: many` on PR #7. Lane A is complete once #7 merges; the method
+(`v0.2.3`, installed); `arity: many` on PR #8. Lane A is complete once #8 merges; the method
 side (the cross-region summary as one glob input) is Lane F's.
 
 Lane decisions, owner, 2026-09-23: **Lane C is closed as completed.** Its successor, the spatial
@@ -375,7 +375,7 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    replicates open ONE hold for the step; a reject on one hold withdraws its siblings so the next
    `review` shows attempt 2's holds, not attempt 1's. The dispatch suffix naming the `structured`
    envelope key was fixed 2026-09-18. The variable-arity input type (`arity: many`, module
-   contract amendment approved by the owner 2026-09-23) is on PR #7. Lane A is complete.
+   contract amendment approved by the owner 2026-09-23) is on PR #8. Lane A is complete.
 6. From the outlier judgment v2 run (2026-09-21,
    `notes/2026-09-21-1600-outlier-judgment-v2-engine.md`): the review-packet renderer resolves
    every evidence citation by the item key, so on a module with secondary evidence tables each

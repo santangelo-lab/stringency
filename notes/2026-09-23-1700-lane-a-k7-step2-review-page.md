@@ -76,7 +76,7 @@ session ran Lane E in a worktree at the same time (its own notes; brief in
    #5): `submit --failed`, `abandoned` steps, withdrawn holds (block, reject, abandon), one hold
    for invalid replicates, lint of `envs/manifest.yml`, extractor env from the consuming step,
    echo wrapped at 100 columns. PR #5 and #6 merged as `v0.2.3` (installed). The owner approved
-   the module-contract amendment: `arity: many` on PR #7 (`lane-a-many`): a list of references or
+   the module-contract amendment: `arity: many` on PR #8 (`lane-a-many`): a list of references or
    `$inputs.<glob>`, list of paths in the job, one digest per input (hash of the parts'). Lane A
    is complete once #7 merges; the cross-region summary as one glob input is Lane F's.
 3. Lane F (data side): repair `qc_outliers_all` by the owner's chosen route; the module-version
