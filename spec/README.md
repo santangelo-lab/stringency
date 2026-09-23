@@ -11,6 +11,7 @@ What each file is, and how much weight it carries.
 | `module-contract.md` | frozen at the Phase A exit: what a method repo and a `module.yml` declare, what a module script receives and writes | the owner, via `DEVIATIONS.md` |
 | `predicate-contract.md` | frozen: the predicate signature, phases, scopes, dispositions | the owner, via `DEVIATIONS.md` |
 | `trace-schema.md` | frozen: the tables and columns of `prov/run.db`; additive columns are DECISIONS-level | the owner for anything not additive |
+| `method-skills.md` | the two skill files a method repository carries per pipeline (delivery skill, design 14.4; analysis skill source, design 10.4): fields, checks, render, publish, routing test | a DECISIONS line; the schemas themselves are the design's |
 
 ## The ledgers
 

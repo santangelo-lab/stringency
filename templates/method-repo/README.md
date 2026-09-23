@@ -11,6 +11,8 @@ policy.yml                  dispositions per profile, ranges, criteria (design 6
 envs/manifest.yml           environment names -> lockfile or SIF image and sha256 (design 10.3)
 envs/<name>/uv.lock         lockfile for the local executor
 controls/fixtures/          fixtures identified by hash (design 11)
+skills/<pipeline>.yml       what a person sees after delivery and at a hold (design 14.4)
+skills/<pipeline>.analyze.yml  source of the analysis skill, rendered to skills/stringency-analyze-<name>/SKILL.md (spec/method-skills.md)
 notes/YYYY-MM-DD-hhmm-<slug>.md   one small file per session (Commandment 2)
 ```
 

@@ -958,7 +958,7 @@ The engine assumes the following about Claude Science, taken from implementation
 
 Skill wrappers set the `STRINGENCY_OPERATOR*` variables so the trace can cross-link. `deliver`'s write-back and the skill's artifact-save step are what keep a durable copy on the array. Nothing else in the engine depends on Claude Science.
 
-Skills are of two kinds. The two engine skills, `stringency-declare` and `stringency-operator`, are the operator's reference and live in the engine repository. One analysis skill per pipeline, rendered from the engine's template and the method repository's `skills/<pipeline>.yml`, lives in the method repository and is what a person loads by describing their experiment; it presents intent, progress, results, and holds in sentences and shows the CLI only on request. Both kinds set the `STRINGENCY_OPERATOR*` variables and neither resolves a hold. (Amendment approved 2026-09-15.)
+Skills are of two kinds. The two engine skills, `stringency-declare` and `stringency-operator`, are the operator's reference and live in the engine repository. One analysis skill per pipeline, rendered from the engine's template and the method repository's `skills/<pipeline>.analyze.yml` (beside the delivery skill `skills/<pipeline>.yml` of 14.4; `spec/method-skills.md` has the fields and the procedure), lives in the method repository and is what a person loads by describing their experiment; it presents intent, progress, results, and holds in sentences and shows the CLI only on request. Both kinds set the `STRINGENCY_OPERATOR*` variables and neither resolves a hold. (Amendment approved 2026-09-15.)
 
 ## 11. Controls
 
@@ -1156,6 +1156,10 @@ the pipeline file directly and load no plugin, so they work from any engine inst
 sentences, ids only where a command needs them. The verbs that change a project's state rewrite
 `STATUS.md` beside the projects when one exists, so the board is current without the operator
 remembering.
+
+A second file beside the delivery skill, `skills/<pipeline>.analyze.yml`, is the source of the
+pipeline's analysis skill (10.4); it is read by the engine repository's renderer, never by the
+engine. `spec/method-skills.md` describes both files together.
 
 ## 15. Plugins
 
