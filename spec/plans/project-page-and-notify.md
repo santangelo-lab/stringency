@@ -190,8 +190,8 @@ channel whose command exits 1 leaves the verb's exit code unchanged and logs the
    for the read-only page with `review --serve` kept for the form (14.1 change, one row).
 2. A standing read-only instance on PROTSEQ: yes or no; if yes, loopback plus tunnel only, or a
    fixed lab-network port.
-3. First channel: email through the campus relay (one test send confirms it), and whether a Teams
-   channel for the lab's runs should exist beside the personal email.
+3. Decided 2026-09-23: email only for now, to the person who runs the engine; no shared Teams
+   channel. The `teams_webhook` kind is built so it exists, and configured by nobody until asked.
 4. Who is notified in v1: the user running the engine only (this proposal), or the project's
    `roles` looked up in a per-user registry. Roles need a registry that does not exist; v1 keeps
    the running user.
