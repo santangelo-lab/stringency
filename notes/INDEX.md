@@ -20,8 +20,10 @@ it is the first thing a new session reads.
   `v0.1.4` carries the first analysis skill `stringency-analyze-toy-compare` with its delivery
   skill and phrasings set; the 1g session tests and the measured run are a checklist for the owner
   (`integrations/claude-science/hosts/protseq-session-tests.md`) with the project directory
-  prepared under `/data/lab/projects/2026-09_stringency-drive2_jrrose5/lane-e/`. Waiting on the
-  owner in the app; the next Lane E session writes the Measurements row. Lane A's state is in the
+  prepared under `/data/lab/projects/2026-09_stringency-drive2_jrrose5/lane-e/`. The owner ran
+  both session tests and the toy through the skill the same day: row in `backlog.md` (cards to
+  fill), findings in `hosts/protseq-session-tests.md`, engine defect K8 (operator tickets bind an
+  uncreated step `tmp`) for Lane A. Lane A's state is in the
   roadmap Status section (branch `lane-c-directory-inputs`, K7 first).
 
 ## Previous state (2026-09-22, afternoon)

@@ -101,8 +101,8 @@ reference to compare them against):
 |---|---|
 | parent directory | `/data/lab/projects/2026-09_stringency-drive2_jrrose5/lane-e/` |
 | data | `../data/groups.csv` (50 rows, 9 units, 3 groups) and `../data/samples.csv` (the manifest) |
-| reference declarations | `lane-e/declarations/{inputs,design,objective}.yml`; `declare --check` exit 0 against `toy-engine@v0.1.4` on 2026-09-23 |
-| first message | `lane-e/START.md` |
+| reference declarations | `lane-e/reference/declarations/{inputs,design,objective}.yml`; `declare --check` exit 0 against `toy-engine@v0.1.4` on 2026-09-23 (moved out of the parent after the first run: the agent read them there) |
+| first message | `lane-e/reference/START.md` |
 | method | `/home/jrrose5/mytools/stringency/stringency-toy-method@v0.1.4` |
 | engine | shared, `/data/lab/env/stringency/current` |
 
@@ -147,6 +147,44 @@ Record, for the row in `backlog.md` (Measurements):
 
 Send the agent's transcript (or the report) and the `deliver/` directory path to the next Lane
 E session; it writes the row and the note.
+
+## Results of D (owner, 2026-09-23, 12:48 to 13:03; project `lane-e/group-a-vs-b`; row in `backlog.md`)
+
+What the skill did, against its own sections: loaded from the phrasing without being named
+(three skills loaded: analyze, operator, declare); saved the brief verbatim; took the file, the
+group column and the contrast from the message and said so; asked the replicate unit and the
+deliverables (asks 2 and 3 merged into one confirmation turn, not one at a time); said the
+plugin default aloud with the engine's value; showed the echo-back in full with a source table and
+the exact closing sentence; drafted declarations identical to the reference except `id` and the
+two `source` sentences; presented the confirm hold by the protocol (where and what, the record,
+the two verdicts with the engine's effects, the ask); relayed `plain` after each stop; dispatched
+three isolated delegates and filed them with one `run --responses`; relayed `present` whole, then
+the three-part report from `summary.md`, then offered `methods.md` and the coverage report by
+name. Person turns: 7. First message to first delivered file: 14 min 39 s. Misreports against the
+trace: 0.
+
+Engine defect found: K8. Both operator tickets (`02_summarize`, `05_report`) bind
+`<step>/tmp:/tmp` and nothing creates the directory; the container fails to start (exit 255). The
+agent ran the printed line six times, diagnosed it, and asked rather than creating the directory;
+the owner instructed it to create the empty directory and run the line unchanged, and said so in
+the transcript. The run then completed. About four minutes of the wall-clock and one person turn
+belong to this stop.
+
+Skill-text findings, for the template:
+
+1. The echo-back's "Bound to" block carries three hashes, and the skill says to show the echo-back
+   in full, so rule 1 and rule 4 collide. Either the template says to quote the echo-back without
+   its "Bound to" block, or the engine's echo separates the person-facing text from the binding
+   record. Also `type frame` and `type csv` in the source table, and the delivery path with the
+   run id in the final report; the last is a plain rule 1 miss.
+2. The agent read `START.md` and the reference `declarations/` in the parent directory before
+   asking its questions. It still asked, and did not copy the reference `id`, but the next tester's
+   run must not have the answers in the parent; they are now under `lane-e/reference/`.
+3. The "ok" refusal was not exercised; the owner gave a verdict word and reason directly.
+4. The trace's `stringency_version` reads `0.1.0.dev0` on the `0.2.0-sc0.1.8` install (the
+   install predates the version bump); for Lane A.
+
+Cards: the owner's count is still to be filled into the row.
 
 ## E. Rollback and clean-up
 
