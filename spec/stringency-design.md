@@ -198,6 +198,8 @@ steps:
 
 Steps form a DAG through `$steps.<id>.<output>` references; file order is the tie-break for `next`.
 
+An input reference is `$inputs.<name>` or `$steps.<id>.<output>`. A module input declared `arity: many` is bound to a list of references, or to `$inputs.<glob>` which expands to every manifest input whose name matches and whose type is the input's, in name order; the script receives a list of paths and the action records one digest for the input, the hash of the parts' digests. Eight Xenium regions become one `metrics: $inputs.metrics_*` (added 2026-09-23, module contract amendment approved by the owner).
+
 Parameters are declared with a `default` and, where the agent may choose, a `range` (numeric bounds, or an `options` list for categorical parameters). Under the `standard` profile the agent proposes a value inside the range; under `strict` parameters are locked to their defaults; under `exploratory` an out-of-range proposal flags instead of blocking (6.4). A parameter with no `range` is fixed. The ranges are in git, so widening one is a diff with an author and a reason, and the agent's chosen value is in the Action record, so the choice is in the trace. This keeps Commandment 1 (the plan is pre-specified) while letting the agent do the tuning a person would do by eye.
 
 `runner` selects who executes the step: `operator` (the agent runs the code and submits evidence, 3.4) or `engine` (the engine runs the module script). It defaults to the project's `execution` setting. A step that references a module absent from the method repo, or a module whose `modes` excludes the project's mode, fails `lint` and fails `init`.

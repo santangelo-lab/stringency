@@ -11,8 +11,9 @@ it is the first thing a new session reads.
   `param.agent_proposed`, the `fork` parameter source and the review page (`review --serve`);
   merged as `v0.2.1`; PR #4 (`lane-a-5b`: 5b inherited confirmation, 5c batch review, the
   renderer's citation lookup) merged as `v0.2.2` and installed. PR #5 (`lane-a-k2-k8`): `any_low` option B,
-  K8 tmp fix; PR #6 (`lane-a-item5`): the item-5 fixes. Open in Lane A: only the variable-arity
-  input type (owner; frozen contract). Lane C closed, Lane F placeholder, Lane D
+  K8 tmp fix; PR #6 (`lane-a-item5`): the item-5 fixes; both merged as `v0.2.3`, installed. PR #7
+  (`lane-a-many`): `arity: many` inputs (contract amendment approved by the owner). Lane A is
+  complete once #7 merges. Lane C closed, Lane F placeholder, Lane D
   closed (shared engine done), Lane B dormant; Lane E ran in parallel (its notes on `lane-e`).
   Start the next engine session from the roadmap's Status section and Lane A.
 ## Lane E state (2026-09-23, midday; see also the Lane E note)

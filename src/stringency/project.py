@@ -7,6 +7,7 @@ project-level `confirm` hold bound to the declaration hashes. `Project.load` rea
 
 from __future__ import annotations
 
+import fnmatch
 import getpass
 import json
 import os
@@ -167,11 +168,15 @@ class Project:
         2026-09-23): the env of the first pipeline step that binds `$inputs.<name>`, since that
         module's image is the one that can read the object; else the first env in the pipeline."""
         for step in self.pipeline.steps:
-            for ref in step.inputs.values():
-                if ref == f"$inputs.{name}":
-                    m = self.modules.get(step.module)
-                    if m is not None:
-                        return m.manifest.env
+            for rs in step.refs().values():
+                for r in rs:
+                    if r.kind != "inputs":
+                        continue
+                    hit = fnmatch.fnmatchcase(name, r.name) if r.pattern else r.name == name
+                    if hit:
+                        m = self.modules.get(step.module)
+                        if m is not None:
+                            return m.manifest.env
         names = self.env_names()
         return names[0] if names else "default"
 

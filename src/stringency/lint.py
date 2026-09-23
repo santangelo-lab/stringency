@@ -228,6 +228,25 @@ def lint_pipeline(
                 report.error(
                     where, f"step {step.id} wires input {name}, which {mod.ref} does not declare"
                 )
+                continue
+            spec = mod.manifest.inputs[name]
+            try:
+                refs = step.refs()[name]
+            except ConfigError as e:
+                report.error(where, f"step {step.id} input {name}: {e}")
+                continue
+            if spec.arity != "many" and (step.is_list(name) or any(r.pattern for r in refs)):
+                report.error(
+                    where,
+                    f"step {step.id} binds input {name} of {mod.ref} to a list or a glob, but the "
+                    "input is not `arity: many`",
+                )
+            if (
+                mod.manifest.judgment
+                and name in mod.manifest.judgment.evidence
+                and spec.arity == "many"
+            ):
+                report.error(where, f"{mod.ref}: judgment evidence {name} cannot have arity many")
         for name, spec in mod.manifest.inputs.items():
             if name not in step.inputs and not spec.optional:
                 report.error(where, f"step {step.id} leaves input {name} of {mod.ref} unwired")
@@ -243,18 +262,19 @@ def lint_pipeline(
                 report.error(where, f"step {step.id} declares parameter {k}, unknown to {mod.ref}")
         if mod.manifest.kind == "report":
             for other in pipeline.steps:
-                for ref in other.refs().values():
+                for ref in (r for rs in other.refs().values() for r in rs):
                     if ref.kind == "steps" and ref.name == step.id:
                         report.error(
                             where,
                             f"step {other.id} consumes report step {step.id}; report outputs cannot be inputs",
                         )
     for step in pipeline.steps:
-        for name, ref in step.refs().items():
-            if ref.kind == "steps" and ref.output not in outputs.get(ref.name, set()):
-                report.error(
-                    where, f"step {step.id} input {name} references {ref}, which does not exist"
-                )
+        for name, refs in step.refs().items():
+            for ref in refs:
+                if ref.kind == "steps" and ref.output not in outputs.get(ref.name, set()):
+                    report.error(
+                        where, f"step {step.id} input {name} references {ref}, which does not exist"
+                    )
 
 
 def lint_path(path: Path, *, design: Design | None = None) -> LintReport:

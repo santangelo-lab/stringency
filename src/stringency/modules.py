@@ -28,6 +28,10 @@ class IOSpec(Frozen):
     # An optional input may be left unwired by a pipeline step; the module's script then sees no
     # entry for it in job.json inputs and does without (a reference table, for example).
     optional: bool = False
+    # `many`: the pipeline binds a list of references (or a `$inputs.<glob>` over the manifest)
+    # and the script receives a list of paths; the action's digest for the input is the hash of
+    # the parts' digests in order (module contract amendment, owner, 2026-09-23).
+    arity: Literal["one", "many"] = "one"
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 

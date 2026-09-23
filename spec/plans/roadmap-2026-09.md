@@ -30,9 +30,9 @@ fix) and tagged `v0.2.0`. PR #3 (`lane-a-step2`, `v0.2.1`) carries E1, E2, `para
 the `fork` parameter source and the review page (`review --serve`). PR #4 (`lane-a-5b`, `v0.2.2`)
 carries 5b inherited confirmation, 5c batch review and the renderer's citation lookup. `v0.2.2` is
 the shared `current` on PROTSEQ (`0.2.2-sc0.1.8`). Lane A steps 2 to 4, 5a to 5c and item 6 are
-done; `any_low` decided (option B, K2) and K8 fixed on PR #5; the item-5 fixes on PR #6. Open in
-Lane A: only the variable-arity input type, which changes the frozen module contract and needs
-the owner.
+done; `any_low` decided (option B, K2) and K8 fixed on PR #5; the item-5 fixes on PR #6
+(`v0.2.3`, installed); `arity: many` on PR #7. Lane A is complete once #7 merges; the method
+side (the cross-region summary as one glob input) is Lane F's.
 
 Lane decisions, owner, 2026-09-23: **Lane C is closed as completed.** Its successor, the spatial
 method build-out with Lyons CLP as the pilot dataset, is a placeholder lane (Lane F) until it is
@@ -374,8 +374,8 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    columns; `abandon` closes the step rows (`abandoned`) and withdraws the run's holds; invalid
    replicates open ONE hold for the step; a reject on one hold withdraws its siblings so the next
    `review` shows attempt 2's holds, not attempt 1's. The dispatch suffix naming the `structured`
-   envelope key was fixed 2026-09-18. Still open, needs the owner (module contract 3.2 is frozen):
-   a variable-arity input type for the cross-region summary.
+   envelope key was fixed 2026-09-18. The variable-arity input type (`arity: many`, module
+   contract amendment approved by the owner 2026-09-23) is on PR #7. Lane A is complete.
 6. From the outlier judgment v2 run (2026-09-21,
    `notes/2026-09-21-1600-outlier-judgment-v2-engine.md`): the review-packet renderer resolves
    every evidence citation by the item key, so on a module with secondary evidence tables each

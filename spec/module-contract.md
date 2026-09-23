@@ -32,7 +32,7 @@ equal the version every pipeline step asks for (`name@version`).
 | `env` | environment name resolved through `envs/manifest.yml` |
 | `runner` | `operator` or `engine`; default from the project; judgment modules are always engine-run |
 | `entry`, `post` | script names when they are not `pre.*` and `post.*` |
-| `inputs` | `{name: {type, format, hash, schema}}`; every input must be wired by the pipeline |
+| `inputs` | `{name: {type, format, hash, schema, optional, arity}}`; every input must be wired by the pipeline unless `optional`; `arity: one` (default) takes one reference, `arity: many` a list of references or a `$inputs.<glob>` over the manifest, and the script receives a list of paths (amendment approved by the owner 2026-09-23) |
 | `outputs` | `{name: {type, format, schema, item_key}}`; judgment modules declare `judgments` and `consensus` |
 | `decision_points` | parameters that are analysis choices; coverage is computed over them |
 | `stochastic`, `seed_param` | `stochastic: true` needs `seed_param`, present in the params schema |
@@ -57,7 +57,9 @@ Scripts receive one JSON job on stdin:
 
 `design` and `objective` are the project's bound declarations as dictionaries (added 2026-09-23,
 E1), so a module that needs the factors or the contrasts reads them from the job rather than from
-a file it must find. They write each declared output at the given path and exit 0. Stdout is captured (operator runner:
+a file it must find. An `arity: many` input appears as a list of paths, in the order the pipeline
+bound them (a glob expands in manifest name order); the action records one digest for the input,
+the hash of the parts' digests in that order. They write each declared output at the given path and exit 0. Stdout is captured (operator runner:
 the agent's log is the evidence). A judgment `pre.*` receives `evidence_dir` (and `design`, `objective`) and writes
 `<evidence_dir>/<name>.tsv` for evidence not already an input. `post.*` receives
 `{"replicates": [{replicate, valid, structured}]}` and prints the same shape.

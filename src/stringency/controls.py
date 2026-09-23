@@ -235,12 +235,14 @@ def synthetic_pipeline(
             continue
         inputs = dict(s.inputs)
         for k in list(inputs):
-            ref = s.refs()[k]
-            if ref.kind == "inputs":
+            for ref in s.refs()[k]:
+                if ref.kind != "inputs" or ref.pattern:
+                    continue
                 item = project.inputs.by_name().get(ref.name)
                 if item is not None and item.type == fixture_type:
                     inputs[k] = "$inputs.control_input"
                     replaced = ref.name
+                    break
         steps.append(s.model_copy(update={"inputs": inputs, "runner": "engine"}))
     if replaced is None:
         raise ConfigError(

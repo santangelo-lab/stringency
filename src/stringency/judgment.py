@@ -86,7 +86,7 @@ def prepare_evidence(rc: RunContext, plan: StepPlan) -> Evidence:
     engine-side when the module has one (design 3.5 step 2)."""
     m = plan.module.manifest
     assert m.judgment is not None
-    paths: dict[str, Path] = {k: v.path for k, v in plan.inputs.items()}
+    paths: dict[str, Path] = {k: v.path for k, v in plan.inputs.items() if not v.many}
     script = plan.module.entry_script
     if script is not None:
         ev_dir = plan.step_dir / "evidence"
@@ -438,7 +438,7 @@ def evidence_tables_from_disk(
             continue
         cand = ev_dir / f"{n}.tsv"
         ri = plan.inputs.get(n)
-        p = cand if cand.exists() else (ri.path if ri is not None else None)
+        p = cand if cand.exists() else (ri.path if ri is not None and not ri.many else None)
         if p is None:
             raise ConfigError(f"evidence {n} is neither an input nor under {ev_dir}")
         out[n] = load_table(p, n, m.judgment.item_key if n == m.judgment.items_from else None)

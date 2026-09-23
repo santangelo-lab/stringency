@@ -94,7 +94,10 @@ def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
         "kind": m.kind,
         "operation": m.operation,
         "runner": step.runner or m.runner or rc.project.config.execution,
-        "inputs": {k: str(v) for k, v in step.refs().items()},
+        "inputs": {
+            k: ([str(r) for r in v] if step.is_list(k) else str(v[0]))
+            for k, v in step.refs().items()
+        },
         "parameters": params,
         "vocabulary": vocab,
         "outputs": {k: {"type": v.type, "format": v.format} for k, v in m.outputs.items()},
