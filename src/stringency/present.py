@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from jinja2 import Environment, StrictUndefined
 
 from stringency.config import StringencyConfig, load_model
 from stringency.db.store import Store
@@ -324,6 +325,46 @@ def present_hold(
         ns = skill.get("never_show")
         payload["never_show"] = [str(x) for x in ns] if isinstance(ns, list) else []
     return payload
+
+
+def present_rows(
+    project: Site, run_id: str | None, skills_dir: Path | None = None
+) -> list[dict[str, Any]]:
+    """The sections of `present --run` before any rendering: what the markdown and the HTML
+    renderers both consume (Track 1h), so the terminal and the page cannot disagree."""
+    return list(present_run(project, run_id, skills_dir)["sections"])
+
+
+_HTML_ENV = Environment(undefined=StrictUndefined, autoescape=True)
+
+SECTIONS_HTML = _HTML_ENV.from_string(
+    """{% for s in sections %}
+<h2>{{ s.title }}</h2>
+{% if s.get("error") %}<p class="note">(not shown: {{ s.error }})</p>
+{% elif s.kind == "file" %}<p>file to send: <code>{{ s.path }}</code></p>
+{% elif s.kind == "text" %}<pre>{{ s.text.rstrip() }}</pre>
+{% elif not s.get("columns") %}<p class="note">(empty table)</p>
+{% else %}<table>
+<tr>{% for c in s.columns %}<th>{{ c }}</th>{% endfor %}</tr>
+{% for r in s.rows %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>
+{% endfor %}</table>
+{% endif %}{% endfor %}
+{% if files %}<h2>Files to send</h2><ul>{% for f in files %}<li><code>{{ f }}</code></li>{% endfor %}</ul>{% endif %}
+{% if never_show %}<p class="note">Not shown, by the method's rule: {{ never_show | join(", ") }}.</p>{% endif %}
+<p class="note">({{ skill }})</p>
+"""
+)
+
+
+def render_html(payload: dict[str, Any]) -> str:
+    """The same sections as `render_markdown`, as an HTML fragment (escaped; no script). The
+    page that embeds it adds the heading, the links and the form."""
+    return SECTIONS_HTML.render(
+        sections=payload["sections"],
+        files=payload["files"],
+        never_show=payload["never_show"],
+        skill=payload["skill"],
+    )
 
 
 def render_markdown(payload: dict[str, Any]) -> str:
