@@ -189,7 +189,7 @@ commands/JSON/ids shown, holds and `via`, operator misreports vs trace. Two sess
 PROTSEQ first: do delegate downloads under a data root raise cards; do standing grants cover
 `call_command`. Target for an all-engine five-step run with one dispatch: 26 -> 8 or 9 cards.
 
-### 1h. Project page and notify on hold [proposed 2026-09-23, `spec/plans/project-page-and-notify.md`]
+### 1h. Project page and notify on hold [in progress 2026-09-23, `spec/plans/project-page-and-notify.md`]
 
 After the first measured run: the chat path is near its floor (7 turns, 15 minutes), so the next
 cost to the person is presence and finding results later. `review --serve` grows into the project
@@ -198,6 +198,12 @@ tables; `--read-only` and `--token-file` for a standing instance); the engine se
 hold opened, run completed, delivered, run failed, through a per-user `notify.yml` (email via the
 campus relay, a Teams webhook, or a command). Engine steps go to Lane A's queue; skill and host text to Lane E; the measured run
 adds "time from hold opened to verdict recorded". Owner decisions in the plan's section 5.
+
+Status 2026-09-23 (Track 1h session, `notes/2026-09-23-1442-track1h-start.md`): the owner's
+answers to section 5: the page stays on `review --serve`; a standing read-only instance on
+loopback 8766 reached by tunnel; the running user only is notified; email only for now.
+Notify built (`src/stringency/notify.py`, six call sites, `tests/test_notify.py`); the campus
+relay accepted one test send. Page, reinstall, skill text and the measurement checklist follow.
 
 ## Track 2: bulk RNA-seq plugin and method (first real plugin) [dormant since 2026-09-23, kept as written]
 

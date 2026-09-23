@@ -10,6 +10,7 @@ import typer
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError
+from stringency.notify import notify_after
 from stringency.project import Project
 from stringency.review import get_hold, queue, record_review, show
 
@@ -74,6 +75,7 @@ def review(
         results = record_batch(members, verdict, reason=reason, attest=attest)
         for m in members:
             refresh_if_present(m.project.root)
+            notify_after(m.project)
         emit(
             {"schema": "stringency.review_batch/1", "reviews": [r.to_json() for r in results]},
             as_json,
@@ -114,6 +116,7 @@ def review(
         project, hold, verdict, reason=reason, correction=corr, replicate=replicate, attest=attest
     )
     refresh_if_present(project.root)
+    notify_after(project)
     emit(
         result.to_json(),
         as_json,
