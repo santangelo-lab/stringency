@@ -1,6 +1,7 @@
 # skills/: what a person sees, and how a person starts
 
 Two files per pipeline, both committed and versioned with the method. Neither changes what runs.
+The engine repository's `spec/method-skills.md` is the full page; this file is the short form.
 
 | file | read by | what it states |
 |---|---|---|
