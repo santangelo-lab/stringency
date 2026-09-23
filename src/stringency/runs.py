@@ -383,9 +383,29 @@ def close_run(rc: RunContext, status: str, reason: str | None = None) -> None:
 
 
 def abandon(project: Project, run_id: str, reason: str) -> None:
+    """Close the run and every open step and hold with it (design 7.1, 2026-09-23): open steps
+    become `abandoned`, open holds are withdrawn (`resolved_via: withdrawn`, no review). Writes:
+    steps, step_events, holds, run_events, runs."""
+    from stringency.machine import OPEN_STEP, StepStatus, step_status, transition
+
     rc = load_run(project, run_id)
     if rc.run["status"] in CLOSED_STATUSES:
         raise RefusedError(f"run {run_id} is already {rc.run['status']}")
+    store = rc.store
+    for sid in rc.project.pipeline.order():
+        st = step_status(store, run_id, sid)
+        if st in OPEN_STEP:
+            transition(store, run_id, sid, StepStatus.ABANDONED, payload={"reason": reason})
+    open_ids = [
+        r["hold_id"]
+        for r in store.all(
+            "SELECT hold_id FROM holds WHERE run_id = ? AND resolved_by_review IS NULL "
+            "AND resolved_via IS NULL",
+            (run_id,),
+        )
+    ]
+    if open_ids:
+        store.withdraw_holds(open_ids, f"run abandoned: {reason}")
     close_run(rc, "abandoned", reason)
 
 

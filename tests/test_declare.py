@@ -45,7 +45,7 @@ def test_declare_check_prints_echo_and_creates_nothing(
     before = sorted(p.name for p in decl_dir.iterdir())
     r = runner.invoke(app, _declare_args(decl_dir, method_repo))
     assert r.exit_code == 0, r.output
-    assert "# Echo-back" in r.output and "A versus B" in r.output
+    assert "# Echo-back" in r.output and "A versus B" in " ".join(r.output.split())
     assert "declarations check out" in r.output and "Nothing was created" in r.output
     assert sorted(p.name for p in decl_dir.iterdir()) == before  # no project, no scratch
     r = runner.invoke(app, [*_declare_args(decl_dir, method_repo), "--json"])

@@ -658,6 +658,9 @@ def settle_post(
     if gate.blocked:
         for aid in artifact_ids:
             store.set_artifact_flag(aid, "status", "rejected")
+        pending_now = [h.hold_id for h in extra_holds if not h.rebound]
+        if pending_now:
+            store.withdraw_holds(pending_now, "post-phase block closed the attempt")
         transition(
             store,
             rc.run_id,

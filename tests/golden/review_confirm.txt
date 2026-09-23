@@ -5,9 +5,11 @@ question: does the engine's reading of the declarations match the experiment
 
 # Echo-back
 
-This is the engine's reading of the declarations. Accept it with `stringency review` only if it matches the experiment.
+This is the engine's reading of the declarations. Accept it with `stringency review` only if it
+matches the experiment.
 
-50 rows in 9 units across 3 groups (input groups); the replicate is the unit; the question is A versus B.
+50 rows in 9 units across 3 groups (input groups); the replicate is the unit; the question is A
+versus B.
 
 Inputs: groups (frame).
 Units: the observation is row; the sample is unit.

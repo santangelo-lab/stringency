@@ -86,11 +86,11 @@ def open_holds(store: Store, run_id: str, step_id: str | None = None) -> list[An
     """Reads: holds with no resolving review."""
     if step_id is None:
         return store.all(
-            "SELECT * FROM holds WHERE run_id = ? AND resolved_by_review IS NULL ORDER BY created, rowid",
+            "SELECT * FROM holds WHERE run_id = ? AND resolved_by_review IS NULL AND resolved_via IS NULL ORDER BY created, rowid",
             (run_id,),
         )
     return store.all(
-        "SELECT * FROM holds WHERE run_id = ? AND step_id = ? AND resolved_by_review IS NULL "
+        "SELECT * FROM holds WHERE run_id = ? AND step_id = ? AND resolved_by_review IS NULL AND resolved_via IS NULL "
         "ORDER BY created, rowid",
         (run_id, step_id),
     )

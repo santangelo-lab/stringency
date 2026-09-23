@@ -32,5 +32,7 @@ def present(
 
 
 def _has_open_hold(project: Site) -> bool:
-    n = project.store.scalar("SELECT COUNT(*) FROM holds WHERE resolved_by_review IS NULL")
+    n = project.store.scalar(
+        "SELECT COUNT(*) FROM holds WHERE resolved_by_review IS NULL AND resolved_via IS NULL"
+    )
     return bool(n)

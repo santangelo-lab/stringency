@@ -269,7 +269,7 @@ def present_hold(
     that opened it."""
     if hold_id is None:
         h = project.store.one(
-            "SELECT * FROM holds WHERE resolved_by_review IS NULL ORDER BY created DESC, rowid DESC LIMIT 1"
+            "SELECT * FROM holds WHERE resolved_by_review IS NULL AND resolved_via IS NULL ORDER BY created DESC, rowid DESC LIMIT 1"
         )
         if h is None:
             raise ConfigError("no open hold to present")
