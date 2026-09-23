@@ -441,29 +441,22 @@ eight regions with the summary and the review proposal chained through `derived_
 lane left open moves to Lane F; the engine defect it exposed (the stale consensus artifact,
 `backlog.md` K7) is Lane A item 6.
 
-### Lane F: spatial method build-out, Lyons CLP as pilot (placeholder, to be planned)
+### Lane F: the spatial method after QC, Lyons CLP as the pilot (planned 2026-09-23)
 
-Successor to Lane C, opened 2026-09-23 with no plan yet. Scope in one line: the remaining Track 3
-sessions of the app-1 plan (clustering, annotation as a judgment module with the
-`/single-cell-annotation` skill's rules, niches, DE), each wrapped from `ROSC_MTA2` as a
-parameterised module in `stringency-xenium-method`, run on the Lyons CLP QC objects as the pilot.
-Plan document to write: `spec/plans/spatial-method-plan.md`, sessions and gates in the style of
-Track 3, before the lane opens.
+Successor to Lane C. Plan: `spec/plans/spatial-method-plan.md` (drafted 2026-09-23 from the
+ROSC_MTA2 archive survey; awaits the owner's approval and the eleven decisions in its section 8).
+In one line: phase 0 re-runs the QC chain on `v0.2.4` with the method fixes it exposed (batch
+review over the eight QC holds, inherited confirmation on the summary, `arity: many`, a clean
+second outlier judgment, the owner's exclusion file); then clustering, annotation (the first
+downstream judgment, with controls first), niches, descriptive composition and neighbourhoods,
+pseudobulk DE at the animal, reports and skills, one project per organ chained through
+`derived_from`, one Python image; CellQuant, CellChat and cargo stay out of the pilot. Twelve
+half-day sessions F0 to F12.
 
-Carried over from Lane C and from Lane D item 7, to do before or alongside the planning:
-
-- Repair or re-run `qc_outliers_all` once Lane A item 6 (K7) lands; then the owner's exclusion
-  decision and the project-level exclusion file beside the review table.
-- `qc-cells` learns `segmentation_of` for a Ranger-imported bundle; re-run the four Proseg QC
-  projects and the summary.
-- Owner: the Proseg transcript floor for lung and gut; the gut label (large or small intestine;
-  thresholds identical).
-- The pathology pass that replaces `histology_include.csv`.
-- Method `v0.3.3-rc1` and plugin `v0.1.11` pushed 2026-09-23, with the engine branch's last
-  three commits and the toy method `v0.1.3`; `qc_outliers_all/stringency.yml` can now record the
-  GitHub URL. Still owner: remove the tags pushed before checks passed (`backlog.md` K6); merge
-  the splitter `determinism` branch (tag `v0.2.0`, pushed) into `master` of
-  `jrose835/Xen_TMA_pipeline`.
+Carried over from Lane C and Lane D item 7 (all inside the plan's phase 0 and section 8):
+`qc_outliers_all` repair by a module bump and a new run; `qc-cells` `segmentation_of`; the
+Proseg transcript floor and the gut label (owner); the pathology pass; the splitter merge and
+the tag cleanup (owner housekeeping, `backlog.md` K6).
 
 ### Lane D: owner and operations [closed 2026-09-23]
 
