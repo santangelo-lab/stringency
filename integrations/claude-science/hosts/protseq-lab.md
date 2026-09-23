@@ -57,7 +57,24 @@ follows `current` with no change on their side.
 - Per instance, once: compute provider `protseq` (SSH), data root `/data/lab/projects`, and the
   skill publish cell (`publish-skills.md`).
 - Ports: this machine's Claude Science uses 8000 and 8001 (previews). BMESEQ uses 8010 and 8011.
-  Keep them as they are so both can be tunnelled at once.
+  Keep them as they are so both can be tunnelled at once. 8765 is the personal project page
+  (`scripts/review-page.sh`); 8766 is the standing read-only page (below).
+
+## The project page
+
+- Personal, with the verdict form: `scripts/review-page.sh protseq` from a laptop runs
+  `stringency review --serve --projects /data/lab/projects` on PROTSEQ as that person and tunnels
+  port 8765; the URL with its token is printed once. Never started by an agent, never for others.
+- Standing, read-only: `scripts/stringency-page.service`, a `systemd --user` unit under the
+  owner's account, loopback `127.0.0.1:8766`, `--read-only --token-file
+  ~/.config/stringency/page-token`, projects two levels under `/data/lab/projects` (add
+  `--project <path>` lines for deeper ones). Reached by `ssh -N -L 8766:127.0.0.1:8766 protseq`;
+  the URL with its token is stable across restarts and is what a member puts in `page_url` of
+  their `notify.yml`. Install and linger commands are in the unit's header; it records no verdict.
+- Notifications: per user, `~/.config/stringency/notify.yml`; email through the campus relay
+  `smtp.service.emory.edu:25` (accepts unauthenticated mail from this host, checked 2026-09-23),
+  `smtp.office365.com:587` with a mode-600 credential file as the fallback. The engine writes
+  `<project>/.stringency/notify.log`; `STRINGENCY_NOTIFY=0` silences it (batch work, tests).
 - Resource caps apply to every pipeline run: default `--max_cpus 24 --max_memory 200.GB` for
   nf-core, `systemd-run --user --scope -p MemoryMax=140G -p MemorySwapMax=0` around Nextflow
   launches (`/lab/projects/Lyons_CLP/run_ticket.sh` is the working example).

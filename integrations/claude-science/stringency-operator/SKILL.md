@@ -182,10 +182,11 @@ passes the person's label through unchanged.
 Then one command: `stringency review --verdict {v} --hold {id} --reason "{their words}"
 [--replicate n | --correction '{"label": ...}'] --attest`, with `STRINGENCY_SESSION_REF` set.
 Report the engine's reply in one sentence. On exit 16 (strict profile refuses relayed review),
-name the two routes the engine allows: the review page, or `stringency review --hold {id}` at a
-terminal in the project directory. Call `run` again only after a verdict was recorded. The operator
-never runs `review` without a verdict word and a reason from the conversation, and never starts
-`review --serve`.
+name the two routes the engine allows: the person's own project page (started from their laptop
+with `scripts/review-page.sh <ssh-alias>`, which serves the hold with its form as them), or
+`stringency review --hold {id}` at a terminal in the project directory. Call `run` again only
+after a verdict was recorded. The operator never runs `review` without a verdict word and a
+reason from the conversation, and never starts `review --serve`.
 
 The person may instead resolve the hold themselves at a terminal or on the review page. If they
 say so, wait; call `run --json` again when they say it is done.
@@ -203,9 +204,14 @@ mean in `skills/<pipeline>.yml`; the engine renders it. The operator relays, nev
   the review (section 6): the hold's kind and reason, the tables the method attached to that
   predicate (for a judgment, the per-item verdicts with their cited evidence), and the two review
   commands. Then follow section 6 for the verdict.
-- Between events: do not report "still running". Point at `STATUS.md` beside the projects
-  (`stringency board <dir> --write` creates it once; the verbs keep it current), or run
-  `stringency board <dir>` and relay its "In words" lines when asked.
+- Between events: do not report "still running". When a project page is available on the host
+  (a standing read-only instance, or the person's own `scripts/review-page.sh`), point the person
+  at their project's page for progress and results: it shows the board's sentence, the steps by
+  title, open holds, and every delivery with its tables and files, and reloads itself. Otherwise
+  point at `STATUS.md` beside the projects (`stringency board <dir> --write` creates it once; the
+  verbs keep it current), or run `stringency board <dir>` and relay its "In words" lines when
+  asked. The engine also notifies the person by their own `~/.config/stringency/notify.yml`
+  when a hold opens or a run completes, delivers or fails; you send nothing yourself.
 - If `present` says it is showing the engine default, say so in one line: the method has not stated
   its delivery view, and the person sees the progress sentence and the deliverables only.
 

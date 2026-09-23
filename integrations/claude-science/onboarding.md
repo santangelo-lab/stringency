@@ -23,11 +23,23 @@ sets them up. Design: `spec/plans/ux-two-audiences.md` section 7. Host detail:
    - data root `/data/lab/projects`;
    - the skill publish cell (`publish-skills.md`): the operator skill, the declare skill, and each
      method's analysis skill when one exists.
-5. **Optional, a review page.** `scripts/review-page.sh protseq` (engine repo) on the member's
-   laptop opens an SSH tunnel and starts `stringency review --serve` on PROTSEQ as them; the URL
-   it prints, with its one-time token, lists their open holds and records verdicts as `via: web`.
-   Started by the member, never by an agent and never by someone else on their behalf. Holds
-   answered in the chat are recorded as `via: relayed`; both appear in the trace.
+5. **The project page.** Two ways to see progress, results and holds outside the chat:
+   - *Their own page, with the verdict form.* `scripts/review-page.sh protseq` (engine repo) on
+     the member's laptop opens an SSH tunnel and starts `stringency review --serve` on PROTSEQ as
+     them; the URL it prints, with its one-time token, shows every project's board row, each
+     project's steps and deliveries with downloads, and each open hold with its form, recording
+     verdicts as `via: web`. Started by the member, never by an agent and never by someone else
+     on their behalf. Holds answered in the chat are recorded as `via: relayed`; both appear in
+     the trace.
+   - *The standing board, read-only.* When the owner runs `scripts/stringency-page.service` on
+     PROTSEQ (loopback port 8766), `ssh -N -L 8766:127.0.0.1:8766 protseq` and the URL the owner
+     gives out opens the same pages for reading; it records no verdict and says which two routes
+     do.
+6. **Notifications, optional.** `~/.config/stringency/notify.yml` on PROTSEQ (schema in
+   `spec/plans/project-page-and-notify.md` 4.2): an `email` channel through
+   `smtp.service.emory.edu:25` to their own address, and `page_url` set to the page they use, so
+   a message arrives when a run pauses for them, completes, delivers or fails, with a link to the
+   hold or the results. Only the person running the engine is notified.
 
 ## Once, for the setter-up
 

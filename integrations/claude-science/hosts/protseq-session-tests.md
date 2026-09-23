@@ -186,6 +186,57 @@ Skill-text findings, for the template:
 
 Cards: the owner's count is still to be filled into the row.
 
+## F. The toy run with the person away from the chat (Track 1h, plan section 6 step 4)
+
+The measurement Track 1h exists for: a run that moves while nobody watches it, and results a
+person finds a week later without the transcript. Same run as D, with the person leaving the
+chat after the echo-back and returning on the notification. The run is the owner's, in the app,
+until a lab member is available.
+
+| item | where |
+|---|---|
+| engine | shared, `/data/lab/env/stringency/current` (`0.2.6-sc0.1.8` or later) |
+| method | `stringency-toy-method@v0.1.5` (the skill names the page and the notifications) |
+| notifications | `~/.config/stringency/notify.yml` on PROTSEQ for the account that runs the engine: `channels: [{kind: email, to: [<you>@emory.edu], from: <you>@emory.edu, smtp: {host: smtp.service.emory.edu, port: 25}}]` and `page_url` set to the page below |
+| page | either the standing read-only page (`scripts/stringency-page.service`, tunnel `8766`) or your own `scripts/review-page.sh protseq` left running on the laptop; the URL with its token is `page_url` |
+| parent directory | `/data/lab/projects/2026-09_stringency-drive2_jrrose5/lane-e/` (a project two levels under `/data/lab/projects` is on the standing page by itself; deeper ones need a `--project` line in the unit) |
+
+Steps:
+
+1. Before the session: write `notify.yml`; open the page URL in a browser and see the board;
+   `STRINGENCY_NOTIFY` must not be `0` in the shell the app uses.
+2. New Claude Science project. First message and the asks as in D, through the echo-back and
+   your yes. When the skill runs `init` and the confirm hold is presented, do not answer it:
+   close the app or leave. Note the time.
+3. Wait for the email "<project>: the analysis paused". Note when it arrived. Open its link:
+   on your own page it is the hold with its form, on the standing page the hold read-only with
+   the two routes named. Record the verdict there (`via: web`) or with
+   `stringency review --hold <id>` at a terminal in the project directory (`via: tty`), with your
+   reason. Not in the chat.
+4. Return to the chat and say the hold is resolved (the protocol waits for that and calls `run`
+   again). Leave again.
+5. Wait for "<project>: run completed" and "<project>: results delivered". Open the results
+   link and, without the transcript, find the three items (the comparison table, the group
+   labels, the report) and download one file. If a flag or item hold opens instead, step 3
+   again.
+6. Afterwards, from the project directory, the trace and the log:
+
+        python3 -c "import sqlite3; c=sqlite3.connect('prov/run.db'); print(*c.execute('select h.hold_id, h.kind, h.created, r.ts, r.via, r.reason from holds h join reviews r on r.hold_id=h.hold_id order by h.created'), sep='\n')"
+        cat .stringency/notify.log
+
+Record, for the row in `backlog.md` (Measurements), besides the D items:
+
+- [ ] time from hold opened to verdict recorded: `reviews.ts` minus `holds.created` for the
+      confirm hold (and any flag), from the query above;
+- [ ] for each of the three messages: whether it arrived, and `notify.log`'s time against
+      `holds.created`, the run's `ended`, and the delivery's `ts`;
+- [ ] whether the link opened the right hold and the right results without the transcript, and
+      on which page (own or standing); whether the file download worked;
+- [ ] the verdict's `via`;
+- [ ] anything the message text got wrong: a number the engine did not print, a wrong step title,
+      a missing link, a message on a ticket or a dispatch (there must be none);
+- [ ] whether the agent, on your return, said anything beyond the protocol's wait.
+
 ## E. Rollback and clean-up
 
 Nothing here changes the engine or the method. A test project under `lane-e/` that should not
