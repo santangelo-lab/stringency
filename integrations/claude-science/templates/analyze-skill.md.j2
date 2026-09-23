@@ -141,16 +141,20 @@ passes the person's label through unchanged.
 Then one command: `stringency review --verdict {v} --hold {id} --reason "{their words}"
 [--replicate n | --correction '{"label": ...}'] --attest`, with `STRINGENCY_SESSION_REF` set.
 Report the engine's reply in one sentence. On exit 16 (strict profile refuses relayed review),
-name the two routes the engine allows: the review page, or `stringency review --hold {id}` at a
-terminal in the project directory. Call `run` again only after a verdict was recorded. The operator
-never runs `review` without a verdict word and a reason from the conversation, and never starts
-`review --serve`.
+name the two routes the engine allows: the person's own project page (started from their laptop
+with `scripts/review-page.sh <ssh-alias>`, which serves the hold with its form as them), or
+`stringency review --hold {id}` at a terminal in the project directory. Call `run` again only
+after a verdict was recorded. The operator never runs `review` without a verdict word and a
+reason from the conversation, and never starts `review --serve`.
 
 This protocol is the text of section 6 of the `stringency-operator` skill; the two must not
 drift. Before the ask, when the method attaches tables to the predicate that fired, run
-`stringency present --hold <id>` and relay it, as the operator skill's section 7 says. The review
-page is a route only when it is available on this host; until then every hold is answered here
-and recorded as relayed.
+`stringency present --hold <id>` and relay it, as the operator skill's section 7 says. The
+project page is a route only when it is available on this host (`scripts/review-page.sh` from
+the person's laptop, or a standing read-only instance for reading); until then every hold is
+answered here and recorded as relayed. When a page is available, point the person at their
+project's page for progress and results rather than relaying `STATUS.md`; the engine notifies
+them by their own `notify.yml` when a hold opens or a run completes, delivers or fails.
 
 ## 6. Deliver and report
 

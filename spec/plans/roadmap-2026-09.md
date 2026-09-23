@@ -189,7 +189,7 @@ commands/JSON/ids shown, holds and `via`, operator misreports vs trace. Two sess
 PROTSEQ first: do delegate downloads under a data root raise cards; do standing grants cover
 `call_command`. Target for an all-engine five-step run with one dispatch: 26 -> 8 or 9 cards.
 
-### 1h. Project page and notify on hold [in progress 2026-09-23, `spec/plans/project-page-and-notify.md`]
+### 1h. Project page and notify on hold [built 2026-09-23, `spec/plans/project-page-and-notify.md`; the measured run is the owner's]
 
 After the first measured run: the chat path is near its floor (7 turns, 15 minutes), so the next
 cost to the person is presence and finding results later. `review --serve` grows into the project
@@ -205,7 +205,13 @@ loopback 8766 reached by tunnel; the running user only is notified; email only f
 Notify built (`src/stringency/notify.py`, six call sites, `tests/test_notify.py`; PR #11); the
 campus relay accepted one test send. The page built (`review_serve.py` routes, `present_rows`
 and `render_html`, `board.row`, `--read-only`, `--token-file`, `scripts/stringency-page.service`;
-stacked PR). Reinstall, skill text and the measurement checklist follow.
+stacked PR #12). Version `0.2.5` tagged and installed as the shared `current`
+(`0.2.5-sc0.1.8`). Skill and host text (operator skill 6 and 7, the analysis template, onboarding
+steps 5 and 6, `protseq-lab.md`), toy method `v0.1.5` re-rendered and on BMESEQ, the checklist
+for the run with the person away from the chat (`hosts/protseq-session-tests.md` section F) and
+the new Measurements column (PR #13). Left for the owner: install and start
+`scripts/stringency-page.service` (loopback 8766, `loginctl enable-linger` once), write their
+`notify.yml`, and run section F; then the row.
 
 ## Track 2: bulk RNA-seq plugin and method (first real plugin) [dormant since 2026-09-23, kept as written]
 
@@ -545,8 +551,11 @@ real instance will be a spatial pipeline once Lane F has one. Left: three templa
 run and a toy re-tag; the toy run by someone other than the owner, which needs K8 tagged and
 installed and a method location the tester can read (the toy method is under `/home/jrrose5`,
 remote BMESEQ); then close the lane, with skills a step of every method build.
-Next, from the 2026-09-23 brainstorm: Track 1h (`spec/plans/project-page-and-notify.md`), the
-project page and notify on hold; its engine steps need a session that owns `src/stringency/`.
+Track 1h (`spec/plans/project-page-and-notify.md`) was built the same evening by a session that
+owned `src/stringency/` (notify, the project page, `0.2.5`); its Lane E share (the skill and host
+text, toy `v0.1.5`, the section F checklist) is done in the same session. The acceptance run now
+has two forms: D (the person in the chat) and F (the person away from it, back on the
+notification); both are the owner's until a lab member is available.
 
 ### Running it
 
