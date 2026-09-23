@@ -610,6 +610,7 @@ Predicates do not read the agent's rationale as evidence for admissibility. The 
 | produced | post-gate `flag`, or any item hold | held |
 | produced | post-gate `block` | rejected |
 | held | every hold reviewed `accept` or `override` | admissible (pre-phase hold) or completed (post-phase hold) |
+| held | the last item hold of a judgment step reviewed `accept` or `override` | the consensus output is rewritten from the decided consensus and the post-phase gate is evaluated on it: nothing fires, completed; a flag fires, held (the flag holds open now); a block fires, rejected |
 | held | any hold reviewed `reject` | blocked (pre) or rejected (post); attempt closed |
 | blocked, rejected, failed | new attempt after a commit or a fork | proposed |
 
@@ -738,6 +739,8 @@ The consensus record per item:
 ```
 
 `source` is one of `agreed`, `accepted`, `override`, `unresolved`. Downstream modules consume consensus, never individual replicates. An `unresolved` item cannot exist in a completed step, because a step with open holds cannot complete.
+
+The consensus output file is written at judgment time, so a held item is filed in it as `unresolved`. When the last item hold of the step is accepted or overridden, the engine rewrites the file from the `consensus` table, records it as a new artifact and marks the judgment-time one `superseded`, so the file a downstream step binds is the decided consensus (added 2026-09-23). Post-phase predicates run at judgment time on the pre-review consensus; a `flag` verdict raised while item holds are open does not open a hold then. Once the item holds settle the post-phase gate is evaluated again on the decided consensus, and the flags that fire open their holds at that point, with the evidence the reviewer decided. A `block` takes effect at either evaluation.
 
 ## 9. Trace
 

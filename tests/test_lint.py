@@ -245,7 +245,9 @@ def test_optional_input_may_stay_unwired(method_copy: Path) -> None:
     """A module input marked optional needs no pipeline wiring; the script sees no entry for it."""
     _edit_yaml(
         method_copy / "modules/filter-rows/module.yml",
-        lambda d: d["inputs"].update(reference={"type": "frame", "format": "csv", "optional": True}),
+        lambda d: d["inputs"].update(
+            reference={"type": "frame", "format": "csv", "optional": True}
+        ),
     )
     report = lint_path(method_copy)
     assert report.ok, report.render()

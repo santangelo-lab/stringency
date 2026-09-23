@@ -66,10 +66,17 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
         "SELECT step_id, status FROM steps WHERE run_id=? ORDER BY rowid", (rc.run_id,)
     )
     status_counts = Counter(s["status"] for s in steps)
-    results = store.all(
-        "SELECT pr.*, a.step_id FROM predicate_results pr JOIN actions a ON a.action_id = pr.action_id WHERE a.run_id=?",
+    rows = store.all(
+        "SELECT pr.*, a.step_id FROM predicate_results pr JOIN actions a ON a.action_id = pr.action_id "
+        "WHERE a.run_id=? ORDER BY pr.rowid",
         (rc.run_id,),
     )
+    # a predicate evaluated twice for one action and phase (a judgment step's post gate runs
+    # again on the decided consensus once its item holds settle) counts once, by its last verdict
+    latest: dict[tuple[str, str, str], Any] = {}
+    for r in rows:
+        latest[(r["action_id"], r["phase"], r["predicate_id"])] = r
+    results = list(latest.values())
     fired = Counter(r["effective_disposition"] for r in results if r["fired"])
     evaluated_ids = {r["predicate_id"] for r in results}
     flags = []

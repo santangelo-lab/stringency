@@ -22,7 +22,7 @@ that write the matching event row in the same transaction.
 | `messages` | yes | content-addressed text: prompts, responses, rationales, evidence tables as shown, review reasons |
 | `judgments` | yes | one per item per replicate; `item_id = '*'` with `schema_valid = 0` for an invalid replicate |
 | `consensus` | row replaceable | per item: `label`, `ontology_id`, `source` (`agreed`/`accepted`/`override`/`unresolved`), replicate labels and confidences, `review_id` |
-| `artifacts` | flags mutable | every engine-written file: `path`, `hash`, `size`, `kind`, `name`, `is_final`, `provisional`, `sidecar_path`, `status` (`produced`/`rejected`), operator cross-links |
+| `artifacts` | flags mutable | every engine-written file: `path`, `hash`, `size`, `kind`, `name`, `is_final`, `provisional`, `sidecar_path`, `status` (`produced`/`rejected`/`superseded`: a consensus output rewritten after its item holds settled), operator cross-links |
 | `controls_runs` | yes | per control execution: module and version, control, kind, run, `passed`, `metrics_json` |
 | `deliveries` | yes | per `deliver`: path and hashes of coverage, methods, index |
 | `policy_snapshots` | yes | every distinct policy digest with its content and predicate set |

@@ -205,3 +205,43 @@ def consensus_json(items: list[ItemConsensus]) -> str:
         )
         + "\n"
     )
+
+
+def consensus_from_store(
+    store: Store, run_id: str, step_id: str, items: list[str]
+) -> list[ItemConsensus]:
+    """The decided consensus of a step, one record per item in the judgment's item order (items
+    the table no longer lists come last). Reads: consensus, holds. This is what the consensus
+    output is rewritten from when the last item hold settles (design 8.4): the store's rows,
+    never a replicate."""
+    rows = {
+        str(r["item_id"]): r
+        for r in store.all(
+            "SELECT * FROM consensus WHERE run_id = ? AND step_id = ?", (run_id, step_id)
+        )
+    }
+    order = [str(i) for i in items] + [i for i in rows if i not in {str(x) for x in items}]
+    out: list[ItemConsensus] = []
+    for item in order:
+        r = rows.get(item)
+        if r is None:
+            continue
+        hold = store.one(
+            "SELECT hold_id FROM holds WHERE run_id = ? AND step_id = ? AND item_id = ? "
+            "ORDER BY rowid DESC LIMIT 1",
+            (run_id, step_id, item),
+        )
+        ic = ItemConsensus(
+            item_id=item,
+            label=r["label"],
+            ontology_id=r["ontology_id"],
+            source=r["source"],
+            replicate_labels=json.loads(r["replicate_labels_json"]),
+            replicate_confidence=json.loads(r["replicate_confidence_json"]),
+            review_id=r["review_id"],
+            hold_id=hold["hold_id"] if hold is not None else None,
+        )
+        if r["source"] in ("accepted", "override") and r["review_id"]:
+            ic.notes.append(f"{r['source']} by review {r['review_id']}")
+        out.append(ic)
+    return out
