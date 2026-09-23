@@ -75,6 +75,6 @@ session ran Lane E in a worktree at the same time (its own notes; brief in
 
 ## Verify
 
-`uv run pytest` (0 tests collected, one skipped), `uv run ruff check . && uv run ruff format
+`uv run pytest` (264 tests collected, one skipped), `uv run ruff check . && uv run ruff format
 --check . && uv run mypy`, `scripts/check_no_biology.sh` green on `lane-a-step2` at `45bc0b1`.
 `/data/lab/env/stringency/current/bin/stringency --version` prints 0.2.0.
