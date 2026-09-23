@@ -25,14 +25,13 @@ and `run --deliver` completed the run, but the delivered proposal is stale: item
 Per-lane status is under each lane in the Order section; the Track 3 outcome against its plan is
 `app1-spatial-qc-plan.md` section 5.
 
-Engine, end of 2026-09-23: PR #2 merged (`lane-c-directory-inputs`, nine commits, plus the K7
-fix) and tagged `v0.2.0`. PR #3 (`lane-a-step2`, `v0.2.1`) carries E1, E2, `param.agent_proposed`,
-the `fork` parameter source and the review page (`review --serve`). PR #4 (`lane-a-5b`, `v0.2.2`)
-carries 5b inherited confirmation, 5c batch review and the renderer's citation lookup. `v0.2.2` is
-the shared `current` on PROTSEQ (`0.2.2-sc0.1.8`). Lane A steps 2 to 4, 5a to 5c and item 6 are
-done; `any_low` decided (option B, K2) and K8 fixed on PR #5; the item-5 fixes on PR #6
-(`v0.2.3`, installed); `arity: many` on PR #8. Lane A is complete once #8 merges; the method
-side (the cross-region summary as one glob input) is Lane F's.
+Engine, end of 2026-09-23: Lane A is complete. PRs #2 to #6 and #8 merged (Lane C branch and K7,
+`v0.2.0`; E1, E2, `param.agent_proposed`, `fork`, the review page, `v0.2.1`; inherited
+confirmation, batch review, the renderer's citation lookup, `v0.2.2`; `any_low` option B, K8, the
+item-5 fixes, `v0.2.3`; `arity: many`, `v0.2.4`). `v0.2.4` is the shared `current` on PROTSEQ
+(`0.2.4-sc0.1.8`). The method side of `arity: many` (the cross-region summary as one glob input)
+and the Lyons outlier repair are Lane F's. Day record:
+`notes/2026-09-23-1700-lane-a-k7-step2-review-page.md`.
 
 Lane decisions, owner, 2026-09-23: **Lane C is closed as completed.** Its successor, the spatial
 method build-out with Lyons CLP as the pilot dataset, is a placeholder lane (Lane F) until it is
@@ -348,8 +347,8 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
 3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`. Done 2026-09-23
    (same branch as step 2): `review --serve --projects <dir>`, token, `via: web`, eight tests.
 4. Re-tag and reinstall on both machines after each step that Lane B or C depends on. PROTSEQ:
-   `v0.2.0`, `v0.2.1` (PR #3) and `v0.2.2` (PR #4) tagged and installed as the shared `current`
-   2026-09-23 (label `0.2.2-sc0.1.8`); BMESEQ not reinstalled (no method runs there).
+   `v0.2.0` to `v0.2.4` (PRs #2 to #6, #8) tagged and installed as the shared `current`
+   2026-09-23 (label `0.2.4-sc0.1.8`); BMESEQ not reinstalled (no method runs there).
 5. **Holds that ask the right question** (owner, 2026-09-18, after two days of live Lyons CLP
    runs: fourteen chained projects meant fourteen confirm holds restating one design, while every
    agent-chosen parameter was admitted silently). Three engine changes, in this order:
@@ -375,7 +374,8 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    replicates open ONE hold for the step; a reject on one hold withdraws its siblings so the next
    `review` shows attempt 2's holds, not attempt 1's. The dispatch suffix naming the `structured`
    envelope key was fixed 2026-09-18. The variable-arity input type (`arity: many`, module
-   contract amendment approved by the owner 2026-09-23) is on PR #8. Lane A is complete.
+   contract amendment approved by the owner 2026-09-23) merged as PR #8, `v0.2.4`. Lane A is
+   complete.
 6. From the outlier judgment v2 run (2026-09-21,
    `notes/2026-09-21-1600-outlier-judgment-v2-engine.md`): the review-packet renderer resolves
    every evidence citation by the item key, so on a module with secondary evidence tables each

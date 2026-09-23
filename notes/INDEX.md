@@ -3,19 +3,20 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-23, evening)
+## Current state (2026-09-23, night)
 
-- Lane A (`notes/2026-09-23-1700-lane-a-k7-step2-review-page.md`): K7 fixed and merged with the
-  Lane C branch as `v0.2.0` (PR #2), installed as the shared engine on PROTSEQ
-  (`/data/lab/env/stringency/current`, `0.2.0-sc0.1.8`). PR #3 (`lane-a-step2`) holds E1, E2,
-  `param.agent_proposed`, the `fork` parameter source and the review page (`review --serve`);
-  merged as `v0.2.1`; PR #4 (`lane-a-5b`: 5b inherited confirmation, 5c batch review, the
-  renderer's citation lookup) merged as `v0.2.2` and installed. PR #5 (`lane-a-k2-k8`): `any_low` option B,
-  K8 tmp fix; PR #6 (`lane-a-item5`): the item-5 fixes; both merged as `v0.2.3`, installed. PR #8
-  (`lane-a-many`): `arity: many` inputs (contract amendment approved by the owner). Lane A is
-  complete once #8 merges. Lane C closed, Lane F placeholder, Lane D
-  closed (shared engine done), Lane B dormant; Lane E ran in parallel (its notes on `lane-e`).
-  Start the next engine session from the roadmap's Status section and Lane A.
+- Lane A complete (`notes/2026-09-23-1700-lane-a-k7-step2-review-page.md`, the day's record):
+  PRs #2 to #6 and #8 merged, tags `v0.2.0` to `v0.2.4`, `v0.2.4` installed as the shared
+  engine on PROTSEQ (`/data/lab/env/stringency/current`, `0.2.4-sc0.1.8`). In it: the K7 consensus
+  rewrite, E1 and E2, `param.agent_proposed` and `fork`, the review page, inherited confirmation,
+  batch review, the renderer's citation lookup, `any_low` option B, K8, `submit --failed`,
+  `abandoned` steps, withdrawn holds, one hold for invalid replicates, env-manifest lint, extractor
+  env per input, echo width, and `arity: many` (contract amendment). Lane C closed, Lane F
+  placeholder (plan document to write; the method side of `arity: many` and the Lyons outlier
+  repair go there), Lane D closed, Lane B dormant. Start the next engine session from the roadmap's
+  Status section; the next data-side session from `/lab/projects/Lyons_CLP/PROGRESS.md` and the
+  method's `PLAN.md`.
+
 ## Lane E state (2026-09-23, afternoon)
 
 - Lane E (`notes/2026-09-23-1355-lane-e-skills-and-first-run.md`), all merged to `main` (PR #1,
@@ -98,7 +99,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
-- `2026-09-23-1700-lane-a-k7-step2-review-page.md` — Lane A: K7 resettle fix merged as 0.2.0; E1, E2, `param.agent_proposed`, `fork` source, review page merged as 0.2.1 and installed; 5b inherited confirmation and 5c batch review on PR #4.
+- `2026-09-23-1700-lane-a-k7-step2-review-page.md` — Lane A, the whole day: K7, Lane C branch merged, E1/E2, `param.agent_proposed`, review page, inherited confirmation, batch review, renderer fix, `any_low` B, K8, item-5 fixes, `arity: many`; tags 0.2.0 to 0.2.4; Lane A complete.
 - `2026-09-23-1355-lane-e-skills-and-first-run.md` — Lane E: analysis skill template and `render_skill.py` (Track 1d), `spec/method-skills.md`, toy method `v0.1.4` with `stringency-analyze-toy-compare`, the UX 3.4 session-test answers, the first measured run through an analysis skill (7 turns, 0 misreports), K8 found.
 - `2026-09-23-1100-outlier-holds-stale-consensus.md` — the owner's seven verdicts relayed and the run delivered; item verdicts reach the `consensus` table but never the `consensus.json` the next step binds, so the proposal is stale (backlog K7).
 - `2026-09-22-1510-plan-docs-refresh.md` — plan documents brought up to date after Lane C: roadmap status, Track 3 outcome, backlog K1 to K6, the spec split between `main` and the engine branch.
