@@ -290,6 +290,12 @@ contains no interpretation."
 
 ## 9. Order and measurement
 
+Status 2026-09-23: 1 done (2026-09-15); 2 done (Lane A step 1, 2026-09-15); 3 written as a checklist
+for the owner (`integrations/claude-science/hosts/protseq-session-tests.md`), not yet run; 4 done
+(Lane E, `render_skill.py`, `analyze-skill.md.j2`, toy method `v0.1.4`); 5 `summary.md` done
+2026-09-15, the review page open (Lane A step 3); 6 done 2026-09-23 (Lane D item 3); 7 prepared
+(`/data/lab/projects/2026-09_stringency-drive2_jrrose5/lane-e/`), waiting on a person in the app.
+
 1. This note and the amendment texts for approval. 2. Engine flags (3.2) and the skill text that
 uses them (3.3, 5.1) in one session; 3. the two session tests (3.4) on PROTSEQ; 4. the analysis
 skill template and the toy instance; 5. `summary.md` and the review page after approval, in

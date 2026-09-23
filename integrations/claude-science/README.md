@@ -13,6 +13,8 @@ project needs; `examples/toy-cs/` shows a completed run.
 | `stringency-operator/SKILL.md` | the skill: find the engine, the rules, the run loop, in two modes |
 | `agent-context.md` | generic agent context; prefer the rendered one |
 | `stringency-declare/SKILL.md` | drafts the three declaration files from a brief and a sample manifest, checks them with `declare --check`, runs `init --drafted-by agent` |
+| `render_skill.py`, `templates/analyze-skill.md.j2` | render a method repository's `skills/<pipeline>.analyze.yml` to its analysis skill `skills/stringency-analyze-<name>/SKILL.md` (design 10.4); `--check` validates against the pipeline and modules |
+| `hosts/protseq-session-tests.md` | the two Claude Science session tests (UX note 3.4) and the measured toy run through the analysis skill, as a checklist for the owner |
 | `examples/toy-cs/` | the 2026-09-08 exit run: brief, context, agent reports, deliverables |
 
 ## Machine install
@@ -71,8 +73,13 @@ a file only when none exists), then `publish(name, overwrite=True)`. The same st
 
 Session test 3.4 of `spec/plans/ux-two-audiences.md`, measured 2026-09-15 on PROTSEQ: delegate
 downloads of request files and the operator's downloads of delivered files raise one card each
-even inside a configured data root (7 of 17 cards on the toy-engine drive). Whether the
-`call_command` card offers a standing grant is still unrecorded.
+even inside a configured data root (7 of 17 cards on the toy-engine drive). Answered
+2026-09-23 by the owner in the app (`hosts/protseq-session-tests.md`, "Results of B and C"): the
+`download` card offers "allow for this conversation" scoped to the file's parent directory on the
+host, and names the app's scratch directory as the only path it reads without asking; the
+`call_command` card offers once, this conversation, this project, or global, and a project-scoped
+grant covered every later `stringency` command without a card. The measured toy run through the
+analysis skill (section D of the same checklist) gives the count under those grants.
 
 ## Rendering the brief and context
 
