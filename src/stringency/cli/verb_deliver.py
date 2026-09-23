@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typer
 
+from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.deliver import deliver as do_deliver
 from stringency.exit_codes import RefusedError
@@ -25,6 +26,7 @@ def deliver(
         run_id = row["run_id"]
     rc = load_run(project, run_id)
     d = do_deliver(rc, list(include))
+    refresh_if_present(project.root)
     emit(
         {
             "schema": "stringency.deliver/1",

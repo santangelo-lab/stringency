@@ -663,7 +663,15 @@ def settle_post(
             message="rejected: " + "; ".join(r.line() for r in gate.blocked),
         )
     holds = list(extra_holds)
+    # A flag that fires while item holds are open is deferred: the post-phase predicates are
+    # evaluated again on the decided consensus when the last item hold settles
+    # (`judgment.resettle_after_item_holds`), and the flag holds open then (design 7.1, 8.4).
+    item_pending = [h for h in holds if not h.rebound]
+    deferred: list[str] = []
     for r in gate.flagged:
+        if item_pending:
+            deferred.append(r.spec.ref)
+            continue
         holds.append(
             open_hold(
                 store,
@@ -686,23 +694,20 @@ def settle_post(
         )
     pending = [h for h in holds if not h.rebound]
     if pending:
-        transition(
-            store,
-            rc.run_id,
-            step_id,
-            StepStatus.HELD,
-            payload={"holds": [h.hold_id for h in pending]},
-        )
+        payload: dict[str, Any] = {"holds": [h.hold_id for h in pending]}
+        if deferred:
+            payload["deferred_flags"] = deferred
+        if step_status(store, rc.run_id, step_id) == StepStatus.HELD:
+            # re-evaluated after the item holds settled: the step stays held on the new holds
+            store.step_event(rc.run_id, step_id, "holds", payload)
+        else:
+            transition(store, rc.run_id, step_id, StepStatus.HELD, payload=payload)
         rc.refresh_status()
         _write_packets(rc, step_id)
-        return StepOutcome(
-            step_id,
-            StepStatus.HELD,
-            action,
-            gate,
-            holds,
-            message=f"held: {len(pending)} hold(s) on {step_id}",
-        )
+        message = f"held: {len(pending)} hold(s) on {step_id}"
+        if deferred:
+            message += f"; {len(deferred)} flag(s) deferred until the item holds settle"
+        return StepOutcome(step_id, StepStatus.HELD, action, gate, holds, message=message)
     transition(store, rc.run_id, step_id, StepStatus.COMPLETED)
     rc.refresh_status()
     return StepOutcome(

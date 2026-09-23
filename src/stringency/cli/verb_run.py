@@ -9,6 +9,7 @@ from typing import Any
 
 import typer
 
+from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.deliver import deliver as do_deliver
 from stringency.exit_codes import ConfigError
@@ -67,6 +68,7 @@ def run(
             "files": d.files,
         }
         human += f"\ndelivered run {rc.run_id} to {d.path}\n{len(d.files)} file(s)"
+    refresh_if_present(project.root)
     emit(payload, as_json, human)
     if nx.exit_code:
         raise typer.Exit(code=nx.exit_code)

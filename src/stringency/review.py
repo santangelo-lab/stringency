@@ -293,7 +293,10 @@ def _apply_item_verdict(
 
 def _settle_step(rc: RunContext, h: Any, verdict: str) -> StepStatus:
     """A hold's effect on its step (design 7.1): every hold accepted or overridden moves a
-    pre-phase hold to admissible and a post-phase hold to completed; a reject closes the attempt."""
+    pre-phase hold to admissible and a post-phase hold to completed; a reject closes the attempt.
+    When the hold was the last item hold of a judgment step, the consensus output is rewritten
+    from the decided consensus and the post-phase gates are evaluated on it
+    (`judgment.resettle_after_item_holds`, design 8.4); the step completes only if nothing flags."""
     store = rc.store
     step_id = h["step_id"]
     ctx = json.loads(h["context_json"] or "{}")
@@ -330,5 +333,9 @@ def _settle_step(rc: RunContext, h: Any, verdict: str) -> StepStatus:
     if phase == "pre":
         transition(store, rc.run_id, step_id, StepStatus.ADMISSIBLE)
         return StepStatus.ADMISSIBLE
+    if h["item_id"] is not None:
+        from stringency.judgment import resettle_after_item_holds
+
+        return resettle_after_item_holds(rc, step_id).status
     transition(store, rc.run_id, step_id, StepStatus.COMPLETED)
     return StepStatus.COMPLETED

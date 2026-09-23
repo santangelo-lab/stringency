@@ -41,10 +41,11 @@ def evidence_suffix(criteria: Mapping[str, Any]) -> str:
 
 DISPATCH_SUFFIX = (
     "\n\n---\n"
-    "Return only JSON matching the schema you were given. Include the nonce {nonce} verbatim in "
-    "the `nonce` field of your response. In the `reported` object state the model you are, the "
-    "agent or harness running you, the tools available to you, and whether you saw any "
-    "conversation beyond this request (`saw_conversation`).\n"
+    "Return only one JSON object with exactly three top-level keys: `nonce`, `reported`, and "
+    "`structured`. Put your answer, the JSON matching the schema you were given, under "
+    "`structured`. Include the nonce {nonce} verbatim in the `nonce` field. In the `reported` "
+    "object state the model you are, the agent or harness running you, the tools available to "
+    "you, and whether you saw any conversation beyond this request (`saw_conversation`).\n"
 )
 
 

@@ -114,7 +114,10 @@ def deliver(rc: RunContext, include: list[str] | None = None) -> Delivery:
     for a in finals:
         src = Path(a["path"])
         target = dest / f"{a['step_id']}.{src.name}"
-        shutil.copyfile(src, target)
+        if src.is_dir():
+            shutil.copytree(src, target, dirs_exist_ok=True)
+        else:
+            shutil.copyfile(src, target)
         shutil.copyfile(sidecar_path(src), sidecar_path(target))
         store.set_artifact_flag(a["artifact_id"], "is_final", True)
         files.append(

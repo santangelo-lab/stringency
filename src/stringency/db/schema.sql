@@ -283,7 +283,7 @@ CREATE TABLE IF NOT EXISTS artifacts (
     operator_session_ref   TEXT,
     operator_artifact_ref  TEXT,
     name                   TEXT,
-    status                 TEXT NOT NULL DEFAULT 'produced'   -- produced | rejected
+    status                 TEXT NOT NULL DEFAULT 'produced'   -- produced | rejected | superseded
 );
 CREATE INDEX IF NOT EXISTS artifacts_step ON artifacts(run_id, step_id);
 

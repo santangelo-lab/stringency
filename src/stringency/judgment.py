@@ -16,15 +16,19 @@ from pathlib import Path
 from typing import Any
 
 from stringency import git, hashing
+from stringency.artifacts import record_output, step_outputs
+from stringency.db.store import Store
 from stringency.executor.base import Job
 from stringency.executor.local import interpreter_for
 from stringency.exit_codes import ConfigError, RefusedError
+from stringency.gate import evaluate
 from stringency.harness.api import ApiHarness
 from stringency.harness.base import Harness, Request, Sampling
 from stringency.harness.mock import MockHarness, fixture_path
 from stringency.harness.subagent import SubagentHarness, request_path, write_requests
 from stringency.machine import StepStatus, step_status, transition
-from stringency.predicates.context import EvidenceTable
+from stringency.predicates import registry
+from stringency.predicates.context import EvidenceTable, OutputBundle, OutputInfo
 from stringency.prompting import (
     DISPATCH_SUFFIX,
     evidence_suffix,
@@ -41,7 +45,18 @@ from stringency.repeat import (
     wrap_schema,
 )
 from stringency.runs import RunContext
-from stringency.steps import ExecInfo, Proposal, StepOutcome, StepPlan, finish
+from stringency.state import latest_state
+from stringency.steps import (
+    ExecInfo,
+    Proposal,
+    StepOutcome,
+    StepPlan,
+    action_from_row,
+    finish,
+    plan_step,
+    settle_post,
+    validate_output,
+)
 from stringency.tables import load_table
 
 
@@ -109,7 +124,11 @@ def prepare_evidence(rc: RunContext, plan: StepPlan) -> Evidence:
         if spec is not None and spec.type == "json":
             context[n] = json.loads(p.read_text())
         else:
-            tables[n] = load_table(p, n, m.judgment.item_key)
+            # the items table is keyed by item_key; any other evidence table (a guide, a reference
+            # summary) by its first column, which need not be the item key
+            tables[n] = load_table(
+                p, n, m.judgment.item_key if n == m.judgment.items_from else None
+            )
             texts[n] = p.read_text()
         digests[n] = hashing.prefixed(hashing.hash_file(p))
     items_table = tables.get(m.judgment.items_from)
@@ -344,3 +363,155 @@ def run_post(rc: RunContext, plan: StepPlan, replicates: list[Replicate]) -> lis
 
 
 __all__ = ["DISPATCH_SUFFIX", "execute_judgment", "harness_for"]
+
+
+# -- after the item holds settle -----------------------------------------------------------
+
+
+def evidence_tables_from_disk(plan: StepPlan) -> dict[str, EvidenceTable]:
+    """The evidence tables as the reviewers saw them: what `pre.*` wrote under the step's
+    `evidence/` when the module has a pre-script, else the declared inputs. Runs nothing."""
+    m = plan.module.manifest
+    assert m.judgment is not None
+    ev_dir = plan.step_dir / "evidence"
+    out: dict[str, EvidenceTable] = {}
+    for n in m.judgment.evidence:
+        spec = m.inputs.get(n)
+        if spec is not None and spec.type == "json":
+            continue
+        cand = ev_dir / f"{n}.tsv"
+        ri = plan.inputs.get(n)
+        p = cand if cand.exists() else (ri.path if ri is not None else None)
+        if p is None:
+            raise ConfigError(f"evidence {n} is neither an input nor under {ev_dir}")
+        out[n] = load_table(p, n, m.judgment.item_key if n == m.judgment.items_from else None)
+    return out
+
+
+def replicates_from_trace(
+    store: Store, run_id: str, step_id: str, plan: StepPlan, attempt: int
+) -> list[Replicate]:
+    """Rebuild the replicates of an attempt from the step's `judgments` output (every item with
+    its rationale, as written at judgment time) and the judgments table (which replicates were
+    invalid). Reads: judgments. The invocations are not rebuilt; nothing here is re-recorded."""
+    m = plan.module.manifest
+    assert m.judgment is not None
+    by_rep: dict[int, list[dict[str, Any]]] = {}
+    jpath = next(
+        (plan.output_paths[n] for n, s in m.outputs.items() if s.type == "judgments"), None
+    )
+    if jpath is not None and jpath.exists():
+        for line in jpath.read_text().splitlines():
+            if line.strip():
+                d = json.loads(line)
+                idx = int(d.pop("replicate"))
+                by_rep.setdefault(idx, []).append(d)
+    invalid = {
+        int(r["replicate"])
+        for r in store.all(
+            "SELECT replicate FROM judgments WHERE run_id = ? AND step_id = ? AND attempt = ? "
+            "AND schema_valid = 0",
+            (run_id, step_id, attempt),
+        )
+    }
+    indices = sorted(set(by_rep) | invalid) or list(range(1, m.judgment.replicates + 1))
+    out: list[Replicate] = []
+    for idx in indices:
+        items = by_rep.get(idx, [])
+        if idx in invalid or not items:
+            out.append(Replicate(idx, None, False, []))
+            continue
+        structured = items[0] if m.judgment.batching == "per_item" else {"items": items}
+        out.append(Replicate(idx, structured, True, []))
+    return out
+
+
+def resettle_after_item_holds(rc: RunContext, step_id: str) -> StepOutcome:
+    """The last item hold of a held judgment step was accepted or overridden (design 7.1, 8.4).
+    Rewrite the consensus output from the decided consensus in the store and record it as a new
+    artifact (the judgment-time file becomes `superseded`), then evaluate the post-phase gates
+    against the decided consensus, opening the flag holds that were deferred while the item
+    holds were open. Reads: actions, judgments, consensus, holds, artifacts, state_snapshots.
+    Writes: artifacts, step_events, predicate_results, holds, steps."""
+    from stringency.consensus import consensus_from_store, consensus_json
+
+    store = rc.store
+    row = store.one(
+        "SELECT * FROM actions WHERE run_id = ? AND step_id = ? ORDER BY attempt DESC, rowid DESC LIMIT 1",
+        (rc.run_id, step_id),
+    )
+    if row is None:
+        raise ConfigError(f"no action for {step_id}")
+    action = action_from_row(row)
+    plan = plan_step(rc, step_id, action.attempt)
+    m = plan.module.manifest
+    if m.judgment is None:
+        raise ConfigError(f"module {plan.module.ref} is not a judgment module")
+    tables = evidence_tables_from_disk(plan)
+    items_table = tables.get(m.judgment.items_from)
+    items = list(items_table.rows) if items_table is not None else []
+    replicates = replicates_from_trace(store, rc.run_id, step_id, plan, action.attempt)
+    decided = consensus_from_store(store, rc.run_id, step_id, items)
+
+    previous = step_outputs(store, rc.run_id, step_id)
+    outputs: dict[str, OutputInfo] = {}
+    schema_errors: dict[str, str] = {}
+    artifact_ids: list[str] = []
+    for name, spec in m.outputs.items():
+        path = plan.output_paths[name]
+        old = previous.get(name)
+        if spec.type == "consensus":
+            path.write_text(consensus_json(decided))
+            digest = hashing.hash_path(path)
+            if old is not None and old["hash"] == digest:
+                aid = str(old["artifact_id"])
+            else:
+                aid, digest = record_output(
+                    store,
+                    run_id=rc.run_id,
+                    step_id=step_id,
+                    action_id=action.action_id,
+                    name=name,
+                    path=path,
+                    kind=spec.type,
+                )
+                if old is not None:
+                    store.set_artifact_flag(old["artifact_id"], "status", "superseded")
+        elif old is not None:
+            aid, digest = str(old["artifact_id"]), str(old["hash"])
+        else:
+            continue
+        artifact_ids.append(aid)
+        err = validate_output(plan, name, path) if path.exists() else None
+        if err:
+            schema_errors[name] = err
+        outputs[name] = OutputInfo(
+            name, spec.type, str(path), hashing.prefixed(digest), None if err is None else False
+        )
+
+    state = latest_state(store, rc.run_id, step_id) or rc.current_state()
+    bundle = OutputBundle(
+        outputs=outputs,
+        replicates=tuple(r.structured or {} for r in replicates),
+        replicate_valid=tuple(r.valid for r in replicates),
+        consensus=tuple(i.to_json() for i in decided),
+        evidence_tables=tables,
+        items=tuple(items),
+        observed={
+            "replicates": len(replicates),
+            "valid": sum(1 for r in replicates if r.valid),
+            "resettled_after_item_holds": True,
+        },
+        env_status="verified" if rc.env_digests.get(m.env) else "as_reported",
+        schema_errors=schema_errors,
+    )
+    ctx = rc.gate_context("post", action, state, bundle)
+    gate = evaluate(
+        ctx,
+        registry=registry,
+        store=store,
+        policy_digest=rc.policy_digest,
+        module=m,
+        runner="engine",
+    )
+    return settle_post(rc, action, plan, gate, artifact_ids, extra_holds=[])

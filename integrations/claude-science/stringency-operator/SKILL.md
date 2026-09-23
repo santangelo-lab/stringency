@@ -190,7 +190,26 @@ never runs `review` without a verdict word and a reason from the conversation, a
 The person may instead resolve the hold themselves at a terminal or on the review page. If they
 say so, wait; call `run --json` again when they say it is done.
 
-## 7. Changing a parameter
+## 7. What to show the person
+
+The person driving the session reads results, not tool output. The method states what its results
+mean in `skills/<pipeline>.yml`; the engine renders it. The operator relays, never composes.
+
+- After every `deliver`: run `stringency present` in the project directory and relay it whole: the
+  titled tables as tables, then the "Files to send" list (send each file). Do not add a narration
+  of what the tools printed, and do not quote run ids, hashes, checksums, or command lines; the
+  footer names what the method asked not to show.
+- When a run stops at a hold: run `stringency present --hold <id>` and relay it before asking for
+  the review (section 6): the hold's kind and reason, the tables the method attached to that
+  predicate (for a judgment, the per-item verdicts with their cited evidence), and the two review
+  commands. Then follow section 6 for the verdict.
+- Between events: do not report "still running". Point at `STATUS.md` beside the projects
+  (`stringency board <dir> --write` creates it once; the verbs keep it current), or run
+  `stringency board <dir>` and relay its "In words" lines when asked.
+- If `present` says it is showing the engine default, say so in one line: the method has not stated
+  its delivery view, and the person sees the progress sentence and the deliverables only.
+
+## 8. Changing a parameter
 
 Only when the user asks. Before the step's ticket exists, `stringency propose <step> --set k=v
 --reason "<why>"`; the pre-gate runs and a ticket is issued or the proposal is blocked with the

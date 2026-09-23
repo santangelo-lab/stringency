@@ -7,6 +7,7 @@ import typer
 from stringency import __version__
 from stringency.cli import (
     verb_abandon,
+    verb_board,
     verb_controls,
     verb_declare,
     verb_deliver,
@@ -16,6 +17,7 @@ from stringency.cli import (
     verb_next,
     verb_plugins,
     verb_policy,
+    verb_present,
     verb_propose,
     verb_review,
     verb_run,
@@ -38,6 +40,8 @@ app.command("next")(verb_next.next_)
 app.command("propose")(verb_propose.propose)
 app.command("submit")(verb_submit.submit)
 app.command("status")(verb_status.status)
+app.command("board")(verb_board.board_)
+app.command("present")(verb_present.present)
 app.command("review")(verb_review.review)
 app.command("deliver")(verb_deliver.deliver)
 app.command("fork")(verb_fork.fork)

@@ -25,6 +25,9 @@ class IOSpec(Frozen):
     hash: bool = True
     schema_: str | None = Field(default=None, alias="schema")
     item_key: str | None = None
+    # An optional input may be left unwired by a pipeline step; the module's script then sees no
+    # entry for it in job.json inputs and does without (a reference table, for example).
+    optional: bool = False
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 

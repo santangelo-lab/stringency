@@ -83,6 +83,41 @@ def test_wrong_input_hash_refused(tmp_path: Path, toy_data: Path, make_project: 
     assert not (tmp_path / "proj1").exists() or not any((tmp_path / "proj1").iterdir())
 
 
+def test_directory_input_hashed_as_tree(
+    tmp_path: Path, toy_data: Path, make_project: InitFn
+) -> None:
+    """A directory is a valid declared input (design 2.3; a Xenium bundle is one input); its hash
+    is the tree hash and a mismatch is refused like a file's."""
+    from stringency import hashing
+
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / "cells.csv").write_text("cell_id,area\n1,10\n")
+    (bundle / "sub").mkdir()
+    (bundle / "sub" / "meta.txt").write_text("k=v\n")
+    good = hashing.hash_path(bundle)
+    decl = write_declarations(
+        tmp_path / "dir_ok",
+        toy_data,
+        inputs={
+            "inputs": 1,
+            "items": [
+                {
+                    "name": "groups",
+                    "path": str(toy_data),
+                    "type": "frame",
+                    "blake3": hashing.hash_file(toy_data),
+                },
+                {"name": "bundle", "path": str(bundle), "type": "text", "blake3": good},
+            ],
+        },
+    )
+    project = make_project(inputs=decl["inputs.yml"])
+    assert project.input_digests_now()["bundle"] == good
+    (bundle / "sub" / "meta.txt").write_text("k=changed\n")
+    assert project.verify_inputs() == ["bundle"]
+
+
 def test_open_strict_refused(make_project: InitFn) -> None:
     with pytest.raises(ConfigError, match="open with profile strict"):
         make_project(mode="open", profile="strict")
@@ -249,3 +284,48 @@ def test_cli_init(tmp_path: Path, method_repo: MethodRepo, declarations: dict[st
         ],
     )
     assert r2.exit_code == 15
+
+
+def test_column_missing_skips_derived_inputs(project: Project) -> None:
+    """A `derived_from` input is a delivered artifact, not a raw input: its columns are the
+    upstream module's output, so `init.column_missing` does not read the design against it."""
+    import dataclasses
+
+    from stringency.config import DerivedFrom
+    from stringency.predicates.engine.init_ import column_missing
+    from stringency.state import ObjectState
+    from tests.helpers import make_ctx
+
+    step = project.pipeline.order()[0]
+    summary = {"n_obs": 3, "fields": {"columns": ["value"]}}  # lacks the design column `group`
+    obj = ObjectState(type="frame", digest="blake3:" + "00" * 32, summary=summary)
+    ctx = make_ctx(project, step, phase="init", objects={"groups": obj})
+    assert column_missing(ctx).fired, "a raw input missing a design column fires"
+
+    items = [
+        i.model_copy(update={"derived_from": DerivedFrom(run_id="01UPSTREAM")})
+        for i in project.inputs.items
+    ]
+    derived = ctx.project.inputs.model_copy(update={"items": items})
+    ctx2 = dataclasses.replace(ctx, project=dataclasses.replace(ctx.project, inputs=derived))
+    assert not column_missing(ctx2).fired, "the same object bound through derived_from is skipped"
+
+
+def test_column_missing_skips_reference_inputs(project: Project) -> None:
+    """An input declared `role: reference` describes other studies' observations (earlier punches,
+    an atlas), so the design columns are not required in it."""
+    import dataclasses
+
+    from stringency.predicates.engine.init_ import column_missing
+    from stringency.state import ObjectState
+    from tests.helpers import make_ctx
+
+    step = project.pipeline.order()[0]
+    summary = {"n_obs": 3, "fields": {"columns": ["value"]}}
+    obj = ObjectState(type="frame", digest="blake3:" + "00" * 32, summary=summary)
+    ctx = make_ctx(project, step, phase="init", objects={"groups": obj})
+    assert column_missing(ctx).fired
+    items = [i.model_copy(update={"role": "reference"}) for i in project.inputs.items]
+    ref = ctx.project.inputs.model_copy(update={"items": items})
+    ctx2 = dataclasses.replace(ctx, project=dataclasses.replace(ctx.project, inputs=ref))
+    assert not column_missing(ctx2).fired, "a reference input is not read against the design"

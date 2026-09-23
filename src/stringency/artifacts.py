@@ -39,7 +39,7 @@ def write_sidecar(
                 "name": name,
                 "kind": kind,
                 "blake3": digest,
-                "size": path.stat().st_size,
+                "size": hashing.path_size(path),
                 "engine_version": __version__,
             },
             indent=2,
@@ -69,9 +69,9 @@ def record_output(
     kind: str,
     is_final: bool = False,
 ) -> tuple[str, str]:
-    """Hash `path`, write its sidecar, and record it. Writes: artifacts, step_events.
-    Returns (artifact_id, blake3 hex)."""
-    digest = hashing.hash_file(path)
+    """Hash `path` (a file, or a directory output as a tree hash), write its sidecar, and record
+    it. Writes: artifacts, step_events. Returns (artifact_id, blake3 hex)."""
+    digest = hashing.hash_path(path)
     sc = write_sidecar(
         path,
         run_id=run_id,
@@ -88,7 +88,7 @@ def record_output(
             "action_id": action_id,
             "path": str(path),
             "hash": digest,
-            "size": path.stat().st_size,
+            "size": hashing.path_size(path),
             "kind": kind,
             "is_final": is_final,
             "provisional": False,
