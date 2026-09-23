@@ -27,8 +27,8 @@ Per-lane status is under each lane in the Order section; the Track 3 outcome aga
 
 Engine, end of 2026-09-23: PR #2 merged (`lane-c-directory-inputs`, nine commits, plus the K7
 fix) and tagged `v0.2.0`; installed as the shared `current` on PROTSEQ (`0.2.0-sc0.1.8`). PR #3
-(`lane-a-step2`) carries E1, E2, `param.agent_proposed`, the `fork` parameter source and the review
-page (`review --serve`); Lane A steps 2 to 4, 5a and item 6 are done there. Open in Lane A: 5b
+(`lane-a-step2`, merged, `v0.2.1`, installed) carries E1, E2, `param.agent_proposed`, the `fork`
+parameter source and the review page (`review --serve`); Lane A steps 2 to 4, 5a and item 6 are done. Open in Lane A: 5b
 inherited confirmation, 5c batch review, the renderer's citation lookup for secondary evidence
 tables, the `any_low` design question (K2), and the item-5 list of smaller fixes.
 
@@ -335,8 +335,8 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
 3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`. Done 2026-09-23
    (same branch as step 2): `review --serve --projects <dir>`, token, `via: web`, eight tests.
 4. Re-tag and reinstall on both machines after each step that Lane B or C depends on. PROTSEQ:
-   `v0.2.0` tagged and installed as the shared `current` 2026-09-23 (label `0.2.0-sc0.1.8`);
-   BMESEQ not reinstalled (no method runs there).
+   `v0.2.0` then `v0.2.1` (PR #3 merged) tagged and installed as the shared `current` 2026-09-23
+   (label `0.2.1-sc0.1.8`); BMESEQ not reinstalled (no method runs there).
 5. **Holds that ask the right question** (owner, 2026-09-18, after two days of live Lyons CLP
    runs: fourteen chained projects meant fourteen confirm holds restating one design, while every
    agent-chosen parameter was admitted silently). Three engine changes, in this order:
