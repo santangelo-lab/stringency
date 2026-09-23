@@ -4,7 +4,7 @@ How a method repository states what a person should see (the delivery skill) and
 starts and follows a run (the analysis skill), and how the two files are written, checked,
 rendered, and published. Design 10.4 and 14.4 are the authority; this page gathers what they say
 with the working detail a method author needs. Approved by the owner 2026-09-23 after the first
-instance ran (`notes/2026-09-23-1150-lane-e-start.md`).
+instance ran (`notes/2026-09-23-1355-lane-e-skills-and-first-run.md`).
 
 ## 1. Two files per pipeline
 

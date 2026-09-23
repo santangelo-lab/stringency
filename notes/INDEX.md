@@ -16,18 +16,18 @@ it is the first thing a new session reads.
   complete once #8 merges. Lane C closed, Lane F placeholder, Lane D
   closed (shared engine done), Lane B dormant; Lane E ran in parallel (its notes on `lane-e`).
   Start the next engine session from the roadmap's Status section and Lane A.
-## Lane E state (2026-09-23, midday; see also the Lane E note)
+## Lane E state (2026-09-23, afternoon)
 
-- Lane E opened on branch `lane-e` (`notes/2026-09-23-1150-lane-e-start.md`): Track 1d built
-  (`render_skill.py`, `analyze-skill.md.j2`, method-repo `skills/` template, test); toy method
-  `v0.1.4` carries the first analysis skill `stringency-analyze-toy-compare` with its delivery
-  skill and phrasings set; the 1g session tests and the measured run are a checklist for the owner
-  (`integrations/claude-science/hosts/protseq-session-tests.md`) with the project directory
-  prepared under `/data/lab/projects/2026-09_stringency-drive2_jrrose5/lane-e/`. The owner ran
-  both session tests and the toy through the skill the same day: row in `backlog.md` (cards to
-  fill), findings in `hosts/protseq-session-tests.md`, engine defect K8 (operator tickets bind an
-  uncreated step `tmp`) for Lane A. Lane A's state is in the
-  roadmap Status section (branch `lane-c-directory-inputs`, K7 first).
+- Lane E (`notes/2026-09-23-1355-lane-e-skills-and-first-run.md`), all merged to `main` (PR #1,
+  PR #7): Track 1d built (`render_skill.py`, `analyze-skill.md.j2`, method-repo `skills/`
+  template, `tests/test_render_skill.py`); `spec/method-skills.md` is the page for the two skill
+  files per pipeline; toy method `v0.1.4` carries the first analysis skill
+  `stringency-analyze-toy-compare`. The owner ran both UX 3.4 session tests (download card is
+  conversation-scoped per directory; `call_command` offers a project-scoped grant that covered
+  every later command) and the toy through the skill: 7 turns, 14 min 39 s to the first delivered
+  file, 0 misreports, confirm relayed; row in `backlog.md` (cards to fill); findings and the
+  engine defect K8 (fixed by Lane A the same day) in `hosts/protseq-session-tests.md`. Open:
+  three template fixes and a re-tag, the run by someone other than the owner, then close the lane.
 
 ## Previous state (2026-09-22, afternoon)
 
@@ -99,7 +99,7 @@ it is the first thing a new session reads.
 ## Notes
 
 - `2026-09-23-1700-lane-a-k7-step2-review-page.md` — Lane A: K7 resettle fix merged as 0.2.0; E1, E2, `param.agent_proposed`, `fork` source, review page merged as 0.2.1 and installed; 5b inherited confirmation and 5c batch review on PR #4.
-- `2026-09-23-1150-lane-e-start.md` — Lane E start: analysis skill template and `render_skill.py` (Track 1d), toy method `v0.1.4` with `stringency-analyze-toy-compare`, the 1g session-test checklist and the prepared toy run directory.
+- `2026-09-23-1355-lane-e-skills-and-first-run.md` — Lane E: analysis skill template and `render_skill.py` (Track 1d), `spec/method-skills.md`, toy method `v0.1.4` with `stringency-analyze-toy-compare`, the UX 3.4 session-test answers, the first measured run through an analysis skill (7 turns, 0 misreports), K8 found.
 - `2026-09-23-1100-outlier-holds-stale-consensus.md` — the owner's seven verdicts relayed and the run delivered; item verdicts reach the `consensus` table but never the `consensus.json` the next step binds, so the proposal is stale (backlog K7).
 - `2026-09-22-1510-plan-docs-refresh.md` — plan documents brought up to date after Lane C: roadmap status, Track 3 outcome, backlog K1 to K6, the spec split between `main` and the engine branch.
 - `2026-09-21-1600-outlier-judgment-v2-engine.md` — optional module inputs, pre-produced evidence tables keyed by their own column, `role: reference` inputs; first three-replicate real judgment on Lyons CLP and what it showed about confidence criteria and the packet renderer.
