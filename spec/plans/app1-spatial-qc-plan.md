@@ -136,7 +136,7 @@ Running tooling log: `spec/plans/lane-c-day1-2026-09-17.md` (closed 2026-09-18).
 | S1 splitter determinism | `jrose835/Xen_TMA_pipeline` branch `determinism`, tag `v0.2.0`: hash-order fix, output verification, density units, polygon guard, 13 tests. Defects 1 and 3 fixed, 2 guarded, 4 to 8 in the splitter's own backlog. XOA 6.1 boundaries exceed the 25-vertex cap, so the zarr output is skipped. Not merged to `master` (owner). |
 | S2 plugin pieces | `stringency-singlecell` 0.1.1 (six object types, typed operations, `processed_object`, the design schema, four predicates including `sc.area_join_unverified`), then 0.1.4 to 0.1.8 for the judgment: `qc_metrics_table` type, `qc_summary` question, `punch` as an observation unit, vocabulary `punch_qc_verdict@2` (keep, review, already_excluded; reviewers never exclude). Latest tag `v0.1.11` is local; pushed tags end at `v0.1.9`. |
 | S3 method repo: three modules, one pipeline, one image | `stringency-xenium-method`: modules `split-punches`, `qc-cells` (visual QC report, `qc_metrics.csv`), `resegment-nextflow` (wraps `jrose835/Xen_Segmentation_NextFlow` with host Nextflow and a Xenium Ranger 4.0.1.4 import), `qc-report-all`, `flag-outlier-punches` (judgment, 0.2.0), `exclusion-proposal`. Pipelines `xenium-qc`, `xenium-resegment`, `xenium-qc-summary`, `xenium-qc-outliers`, `xenium-qc-outliers-ref`; `xenium-qc-proseg` superseded. Delivery skills `skills/<pipeline>.yml` (design 14.4). Seven images in `/data/lab/env/images/MANIFEST.md`. Latest tag `v0.3.3-rc1` is local; the QC projects pin `v0.1.3` (liver, spleen) and `v0.3.0-rc6` (lung, gut). |
-| S4 one region, then eight | eight `qc_<slide>_<Region>` projects delivered 2026-09-17 and 2026-09-18; four `reseg_<slide>_<Region>` projects delivered; `qc_summary_all` delivered; `qc_outliers_all` (v2 module, run `01M32Q6MK30YFWZVGJRYT66BF1`) held at six item holds and the flag for the owner since 2026-09-21. |
+| S4 one region, then eight | eight `qc_<slide>_<Region>` projects delivered 2026-09-17 and 2026-09-18; four `reseg_<slide>_<Region>` projects delivered; `qc_summary_all` delivered; `qc_outliers_all` (v2 module, run `01M32Q6MK30YFWZVGJRYT66BF1`) held at six item holds and the flag for the owner since 2026-09-21; decided and completed 2026-09-23 with a stale proposal (K7). |
 
 Where the build departed from section 3:
 
@@ -161,7 +161,10 @@ Where the build departed from section 3:
   v2 has reviewers reason from direction-aware MAD bands with a guide table and an optional
   reference input, and proposes `review`, never `exclude`.
 
-Open for Track 3, in order: the seven holds and delivery of `qc_outliers_all`; `qc-cells` learns
+Open for Track 3, in order: the seven holds of `qc_outliers_all` were decided 2026-09-23 and the run
+completed, but its delivered proposal carries the pre-review consensus (six punches `unresolved`,
+`backlog.md` K7), so first the engine fix and a repaired or new run, then the owner's exclusion
+decision against `superseded/qc_outliers_all.v0.3.2-rc1`; `qc-cells` learns
 `segmentation_of` for a Ranger-imported bundle, then the four Proseg QC projects and the summary
 re-run; the Proseg transcript floor and the gut label (owner); the pathology pass; push method
 `v0.3.3-rc1` and plugin `v0.1.11` so `qc_outliers_all/stringency.yml` records a URL instead of a

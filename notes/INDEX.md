@@ -72,6 +72,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-09-23-1100-outlier-holds-stale-consensus.md` — the owner's seven verdicts relayed and the run delivered; item verdicts reach the `consensus` table but never the `consensus.json` the next step binds, so the proposal is stale (backlog K7).
 - `2026-09-22-1510-plan-docs-refresh.md` — plan documents brought up to date after Lane C: roadmap status, Track 3 outcome, backlog K1 to K6, the spec split between `main` and the engine branch.
 - `2026-09-21-1600-outlier-judgment-v2-engine.md` — optional module inputs, pre-produced evidence tables keyed by their own column, `role: reference` inputs; first three-replicate real judgment on Lyons CLP and what it showed about confidence criteria and the packet renderer.
 - `2026-09-18-2000-lane-c-day2-proseg-summary-judgment.md` — Lane C day 2: Proseg route delivered, cross-region summary, first judgment on real data, board and present in the operator skill.
