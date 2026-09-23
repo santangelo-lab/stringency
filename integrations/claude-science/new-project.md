@@ -6,8 +6,8 @@ runs in the Claude Science sandbox, so no directory grants are needed.
 ## On the workstation, once
 
 1. Engine installed: `scripts/install.sh` from a checkout (see the integration README). Check
-   with `/usr/local/lib/stringency/current/bin/stringency plugins list`. On PROTSEQ the install
-   is per user under `~/mytools/stringency/engine` (`hosts/protseq-setup.md`).
+   with `stringency plugins list`. On PROTSEQ the install is shared at
+   `/data/lab/env/stringency/current/bin` (`hosts/protseq-lab.md`, `hosts/protseq-shared-install.md`).
 2. Container runtime present (`apptainer` or `singularity`) and the method's images at the paths
    its `envs/manifest.yml` names.
 3. The method repository reachable by git URL from the workstation, tagged.

@@ -301,3 +301,11 @@ approval cards; the person's turns from first message to delivered result; wall-
 delivered file; unrequested commands, JSON, exit codes, or ids shown (target zero); holds and how
 each was resolved; operator misreports against the trace (target zero). Baseline: 26 cards,
 PROTSEQ, 2026-09-14.
+
+Status 2026-09-22: steps 1 and 2 done 2026-09-15 (17 cards on the toy, `backlog.md`
+measurements); step 5 half done (`summary.md` built, the review page open as roadmap Lane A step
+3); step 6 begun by Lane C (`/data/lab/env/images/` and its manifest exist; the shared engine
+install does not); steps 3, 4 and 7 not started (roadmap Lane E). Section 6 gained a surface this
+note did not plan: `board` and `present` with method delivery skills, design 14.4
+(`notes/2026-09-18-1830-board-and-present.md`), built because the owner wanted progress and
+results in the session rather than narrated from tool output.

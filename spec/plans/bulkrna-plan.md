@@ -1,7 +1,7 @@
 # Bulk RNA-seq: plugin and method plan
 
 Working note, not the spec. Roadmap Track 2 (`spec/plans/roadmap-2026-09.md`). Two new repositories:
-`stringency-bulkrna` (the plugin) and `stringency-bulkrna-method` (the method). Decided by the
+`stringency-bulkrna` (the plugin) and `stringency-plasmidsaurusRNAseq-method` (the method). Decided by the
 owner on 2026-09-14: counts first, alignment second; this is the first real plugin; it must be
 runnable by a non-computational lab member through an analysis skill.
 
@@ -66,7 +66,10 @@ Gaps, each an engine item (DECISIONS unless noted):
 
 ## 3. Plugin `stringency-bulkrna`
 
-Layout mirrors `stringency-singlecell`: `pyproject.toml` (entry point `bulkrna =
+Lives at `plugins/stringency-bulkrna` in the shared `stringency-plugins` repository, next to
+`stringency-singlecell`, not in a repo of its own (decided 2026-09-17; roadmap Lane D item 2).
+It is installed with `--plugin <url>@<tag>#subdirectory=plugins/stringency-bulkrna` and tested
+from the workspace root. Layout mirrors `stringency-singlecell`: `pyproject.toml` (entry point `bulkrna =
 "stringency_bulkrna:PLUGIN"`), `src/stringency_bulkrna/{__init__,schemas,defaults,predicates,
 phrasing}.py`, `vocabularies/gene_categories.yml`, `tools/` (stdlib-only Python so extractors run
 in the engine venv for tests and inside the R image in production), `tests/` with an in-memory
@@ -115,7 +118,7 @@ animals each; the biological replicate is the animal; no batch variable is decla
 are the vendor matrix: 32 samples, N genes, library sizes A to B million. The question is
 differential expression for 6 contrasts, ..., with at least 3 animals per condition."
 
-## 4. Method `stringency-bulkrna-method`, pipeline `bulk-de`
+## 4. Method `stringency-plasmidsaurusRNAseq-method`, pipeline `bulk-de`
 
 All steps `kind: deterministic`, `runner: engine`, `env: bulkrna-r`, one R script each reading
 the job JSON with jsonlite.
@@ -225,6 +228,12 @@ the analysis skill `stringency-analyze-bulk-rnaseq`, a run by a non-computationa
 PROTSEQ Nextflow install and the `nfcore-rnaseq` module; 12 Project B on the 44 fastq (the spleen files, 24 to 71 MB each, are the smoke-test subset),
 Project A' chained, comparison note. Final projects on the re-sequenced delivery when it arrives:
 declare, run, deliver; no new sessions unless the run finds something.
+
+Status 2026-09-22: no session has run. The method repo holds the template seed only (`88bc939`)
+and `stringency-plugins/plugins/` has no `stringency-bulkrna`. E1 and E2 (section 2) are still
+open on the engine (roadmap Lane A step 2). Java 21 and Nextflow 24.10.0 are installed under
+`/lab/env/nextflow` (roadmap Lane D item 6, done 2026-09-17), so session 11 is the module alone;
+the Lane C operator-run lessons for long Nextflow steps apply to it (roadmap Lane B status).
 
 ## 8. Decisions for session 0 (answered by the owner 2026-09-15 unless marked open)
 

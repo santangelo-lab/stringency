@@ -61,7 +61,8 @@ controls, existing code (section 2), environments (`setup/envs/` locks to become
 tag. Without this the split module cannot satisfy the engine's reproducibility predicates and a
 re-split can never be compared to a previous one.
 
-**S2, plugin pieces** (`~/github/stringency-singlecell`): object types `xenium_bundle`
+**S2, plugin pieces** (`stringency-plugins/plugins/stringency-singlecell`, formerly
+`~/github/stringency-singlecell`; roadmap Lane D item 2): object types `xenium_bundle`
 (`sc.xenium_bundle@1`: region id, slide, tissue, cell count, median transcripts and genes per
 cell, panel ids, from `metrics_summary.csv`, `experiment.xenium`, `gene_panel.json`, and
 `cells.parquet` summaries) and `punch_coordinates` (the hand-drawn file, hashed, `source: manual
@@ -72,7 +73,7 @@ timepoint_h (6, 24, 48), condition fixed CLP; batch slide; replication unit anim
 layout table supplies punch, animal, and time point after the split). Extractors stdlib or pyarrow
 inside the Python image (E6 in `spec/plans/bulkrna-plan.md` applies).
 
-**S3, method repo `stringency-spatial-method`**: module `resegment-proseg` (wraps the ROSC
+**S3, method repo `stringency-xenium-method`**: module `resegment-proseg` (wraps the ROSC
 Nextflow Proseg run with its Docker image converted to a SIF; inputs a region bundle; output a
 resegmented bundle; applied to lung and gut, skipped for liver and spleen, so `xenium-qc` runs on
 either bundle kind; about one extra session), module `split-punches` (wraps the fixed splitter;
@@ -97,6 +98,8 @@ a per-tissue copy.
 
 ## 4. Decisions for the owner (answered 2026-09-15 unless marked open)
 
+Section 5 records what the build changed against these answers.
+
 1. Replication unit and design for Lyons CLP (answered 2026-09-15 from the collaborator's plan,
    TMA maps, and email, filed at `/lab/projects/Lyons_CLP/`): six wild-type CLP animals, two per
    time point (6, 24, 48 h), no sham; four organs; gut, spleen, lung two punches per animal (a, b),
@@ -119,3 +122,51 @@ a per-tissue copy.
 5. Image location and build route: **as the bulk plan** (`bulkrna-plan.md` section 8 item 10):
    Dockerfile, GitHub Actions to GHCR, pulled by digest into `/data/lab/env/images/`.
 
+## 5. Outcome against the plan (2026-09-17 to 2026-09-21)
+
+Running tooling log: `spec/plans/lane-c-day1-2026-09-17.md` (closed 2026-09-18). Session notes:
+`notes/2026-09-17-1900-lane-c-day1-clp-qc.md`,
+`notes/2026-09-18-2000-lane-c-day2-proseg-summary-judgment.md`,
+`notes/2026-09-21-1600-outlier-judgment-v2-engine.md`. Data side:
+`/lab/projects/Lyons_CLP/PROGRESS.md` and the board `STATUS.md` beside it.
+
+| planned | built |
+|---|---|
+| S0 inventory | done 2026-09-15 (`notes/2026-09-15-1300-app1-inventory.md`) |
+| S1 splitter determinism | `jrose835/Xen_TMA_pipeline` branch `determinism`, tag `v0.2.0`: hash-order fix, output verification, density units, polygon guard, 13 tests. Defects 1 and 3 fixed, 2 guarded, 4 to 8 in the splitter's own backlog. XOA 6.1 boundaries exceed the 25-vertex cap, so the zarr output is skipped. Not merged to `master` (owner). |
+| S2 plugin pieces | `stringency-singlecell` 0.1.1 (six object types, typed operations, `processed_object`, the design schema, four predicates including `sc.area_join_unverified`), then 0.1.4 to 0.1.8 for the judgment: `qc_metrics_table` type, `qc_summary` question, `punch` as an observation unit, vocabulary `punch_qc_verdict@2` (keep, review, already_excluded; reviewers never exclude). Latest tag `v0.1.11` is local; pushed tags end at `v0.1.9`. |
+| S3 method repo: three modules, one pipeline, one image | `stringency-xenium-method`: modules `split-punches`, `qc-cells` (visual QC report, `qc_metrics.csv`), `resegment-nextflow` (wraps `jrose835/Xen_Segmentation_NextFlow` with host Nextflow and a Xenium Ranger 4.0.1.4 import), `qc-report-all`, `flag-outlier-punches` (judgment, 0.2.0), `exclusion-proposal`. Pipelines `xenium-qc`, `xenium-resegment`, `xenium-qc-summary`, `xenium-qc-outliers`, `xenium-qc-outliers-ref`; `xenium-qc-proseg` superseded. Delivery skills `skills/<pipeline>.yml` (design 14.4). Seven images in `/data/lab/env/images/MANIFEST.md`. Latest tag `v0.3.3-rc1` is local; the QC projects pin `v0.1.3` (liver, spleen) and `v0.3.0-rc6` (lung, gut). |
+| S4 one region, then eight | eight `qc_<slide>_<Region>` projects delivered 2026-09-17 and 2026-09-18; four `reseg_<slide>_<Region>` projects delivered; `qc_summary_all` delivered; `qc_outliers_all` (v2 module, run `01M32Q6MK30YFWZVGJRYT66BF1`) held at six item holds and the flag for the owner since 2026-09-21; decided and completed 2026-09-23 with a stale proposal (K7). |
+
+Where the build departed from section 3:
+
+- Resegmentation is not a module inside `xenium-qc`. It is its own project per region on pipeline
+  `xenium-resegment`, and the region's QC project binds the delivered bundle through
+  `derived_from` (owner, 2026-09-17 evening). Proseg runs on the whole region before the split, as
+  planned, under `systemd-run --user --scope -p MemoryMax -p MemorySwapMax=0`; at 16 threads the
+  lungs took 4.5 h at 42 to 53 GB and the guts 6 to 7.5 h at 87 to 97 GB.
+- Xenium Ranger 4.0.1 build 4.0.1.4 is needed to import Proseg output into an XOA 6.1 bundle; the
+  BMESEQ 4.0.1.1 image could not. The rootless image recipe is in the method repo.
+- The coordinates input is a directory of per-punch Xenium Explorer exports (43 files under
+  `/lab/projects/Lyons_CLP/punch_coordinates/`), not one file. The histology include file is
+  `/lab/projects/Lyons_CLP/histology_include.csv` (one punch excluded, 24-2-Gut-A); a pathology
+  pass will replace it and re-open the runs on the new hash.
+- Thresholds: the split's own pre-filter is proposed off on every run and the QC step owns all
+  cell filtering. Spleen thresholds were revised to 20 / 15 / 10 / 300 for this panel, the ROSC
+  values kept as `Spleen_ROSC`. Lung and gut lose 10 to 23 percent of Proseg cells to the
+  20-transcript floor; that floor is the owner's open decision.
+- Two pipelines the plan did not name. The cross-region summary takes eight named table inputs
+  because the engine has no variable-arity input type. The outlier judgment's v1 rule was
+  rejected by the owner (three replicates agreeing three times meant the task held no judgment);
+  v2 has reviewers reason from direction-aware MAD bands with a guide table and an optional
+  reference input, and proposes `review`, never `exclude`.
+
+Open for Track 3, in order: the seven holds of `qc_outliers_all` were decided 2026-09-23 and the run
+completed, but its delivered proposal carries the pre-review consensus (six punches `unresolved`,
+`backlog.md` K7), so first the engine fix and a repaired or new run, then the owner's exclusion
+decision against `superseded/qc_outliers_all.v0.3.2-rc1`; `qc-cells` learns
+`segmentation_of` for a Ranger-imported bundle, then the four Proseg QC projects and the summary
+re-run; the Proseg transcript floor and the gut label (owner); the pathology pass; push method
+`v0.3.3-rc1` and plugin `v0.1.11` so `qc_outliers_all/stringency.yml` records a URL instead of a
+local path; then clustering and annotation on the QC objects, wrapped from `ROSC_MTA2` as section
+3 S4 says. The engine side of these days is roadmap Lane A items 5 and 6.

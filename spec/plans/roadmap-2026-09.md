@@ -4,6 +4,34 @@ Working note, not the spec. Approved by the owner on 2026-09-14. Detail per trac
 (Track 1), `spec/plans/bulkrna-plan.md` (Track 2), `spec/plans/app1-spatial-qc-plan.md` (Track 3). Track 0 was done the
 same day; see `notes/2026-09-14-1600-track0-and-roadmap.md`.
 
+## Status (2026-09-23)
+
+Lane C reached its deliverable: `xenium-qc` delivered on all eight Lyons CLP regions
+(2026-09-18), the four Proseg resegmentations as their own projects, the cross-region summary,
+and the first real judgment (the outlier proposal, v2 module), which sits at six item holds and
+one flag hold for the owner in `/lab/projects/Lyons_CLP/qc_outliers_all`. Built along the way and
+not in this plan: `board` and `present` with method delivery skills (design 14.4), optional
+module inputs, `role: reference` inputs, secondary evidence tables, directory inputs and outputs.
+Every engine change from those days is on branch `lane-c-directory-inputs` (eight commits ahead
+of `main`, suite green at 240 tests, no PR opened yet). The spec text for it is split: design 2.3
+(directory inputs), the Lane C plan and the session notes are on `main`; design 14.4 and the
+optional and reference input sentences are on the branch only. The branch's three DECISIONS
+lines were copied to `main` on 2026-09-22. Installed engine on PROTSEQ: `0.1.0+optin3-sc0.1.8`.
+Lanes B and E have not started. Lane A steps 2 to 4 are open and item 5 grew out of the runs.
+Update 2026-09-23: the owner decided all seven holds (six accepts of replicate 1, flag accepted)
+and `run --deliver` completed the run, but the delivered proposal is stale: item verdicts reach the
+`consensus` table and never the `consensus.json` artifact the next step binds (Lane A item 6,
+`backlog.md` K7). The proposal must not be used as the review list until the run is repaired.
+Per-lane status is under each lane in the Order section; the Track 3 outcome against its plan is
+`app1-spatial-qc-plan.md` section 5.
+
+Lane decisions, owner, 2026-09-23: **Lane C is closed as completed.** Its successor, the spatial
+method build-out with Lyons CLP as the pilot dataset, is a placeholder lane (Lane F) until it is
+planned. **Track 2 and Lane B are dormant**, kept as written. **Lane D is closed**: item 3 (the
+shared engine install and onboarding notes) was run the same day
+(`integrations/claude-science/hosts/protseq-shared-install.md`); every other item is done or
+scratched. Active lanes: A and E now, F once planned.
+
 ## Context
 
 Phase A is complete on both machines (2026-09-14). Three things now pull on the project at once:
@@ -49,7 +77,8 @@ dispatch), not from the gates. Two holds needed a person; the other 24 were mech
 - Skill text I1 to I5 in `integrations/claude-science/stringency-declare/SKILL.md`.
 - I3 engine: `Plugin` gains optional `defaults`, surfaced by `plugins list --json`.
 - Tag `v0.1.0`, make the repo public, reinstall from the tag on BMESEQ (stale) and PROTSEQ,
-  push `~/github/stringency-singlecell`, give `stringency-toy-method` a remote.
+  fold `~/github/stringency-singlecell` (BMESEQ) into the `stringency-plugins` repo as
+  `plugins/stringency-singlecell` (Lane D item 2), give `stringency-toy-method` a remote.
 - Commit the 51 uncommitted files in `ROSC_MTA2` (owner) before any wrapping work touches it.
 
 ## Track 1: UX, two audiences (runs alongside Track 2)
@@ -141,10 +170,12 @@ commands/JSON/ids shown, holds and `via`, operator misreports vs trace. Two sess
 PROTSEQ first: do delegate downloads under a data root raise cards; do standing grants cover
 `call_command`. Target for an all-engine five-step run with one dispatch: 26 -> 8 or 9 cards.
 
-## Track 2: bulk RNA-seq plugin and method (first real plugin)
+## Track 2: bulk RNA-seq plugin and method (first real plugin) [dormant since 2026-09-23, kept as written]
 
-Two new repos: `~/github/stringency-bulkrna` (plugin, modelled on `stringency-singlecell` and
-`plugins/stringency-toy`) and `~/github/stringency-bulkrna-method` (from `templates/method-repo/`).
+One new package and one new repo: the plugin `stringency-bulkrna` lives at
+`plugins/stringency-bulkrna` in the shared `stringency-plugins` repository (modelled on
+`stringency-singlecell` and `plugins/stringency-toy`; repository layout decided 2026-09-17, Lane D
+item 2), and `~/github/stringency-plasmidsaurusRNAseq-method` (from `templates/method-repo/`) is its own repo.
 
 ### Engine prerequisites found by reading the code
 
@@ -220,7 +251,9 @@ DARPA data via declare skill, retrospective; 9 judgment module + E2 + controls, 
 10 analysis skill, run by a non-computational member (the acceptance test for Track 1); 11
 PROTSEQ Nextflow install + `nfcore-rnaseq` module; 12 Project B run and A' chained.
 
-## Track 3: spatial (Lyons CLP), QC first
+## Track 3: spatial (Lyons CLP), QC first [S0 to S4 done 2026-09-18; Lane C closed 2026-09-23, successor Lane F]
+
+Outcome against the plan, and what is open for the track: `app1-spatial-qc-plan.md` section 5.
 
 The app-1 plan (`spec/archive/app1-spatial-tma-plan.md`) predates both the dataset and `ROSC_MTA2`; its
 inventory (section 2) is now answerable and its sessions 1 to 3 are reframed around wrapping
@@ -234,14 +267,14 @@ existing steps rather than inventing them.
 - **Session S1, splitter determinism.** Fix `PYTHONHASHSEED`-dependent barcode order in
   `jrose835/Xen_TMA_pipeline` per `setup/Claude/HANDOFF_XeniumSplitter.md`; add a determinism
   test; tag. Without this the split module cannot pass the engine's reproducibility checks.
-- **Session S2, singlecell plugin first real pieces** (`~/github/stringency-singlecell`): object
+- **Session S2, singlecell plugin first real pieces** (`stringency-plugins/plugins/stringency-singlecell`): object
   type `xenium_bundle` (`sc.xenium_bundle@1`: regions, cells, transcripts, panel, metrics from
   `metrics_summary.csv` and `cells.parquet` summaries) and `punch_coordinates` (the hand-drawn
   file, hashed, `source: manual annotation in Xenium Explorer`); operations `split_punches`,
   `qc_cells`; questions `processed_object` (option 1 of the objectives note) alongside the three
   already declared; design schema per app-1 session 1 (slide, tissue, animal, punch; replication
   unit).
-- **Session S3, method repo `stringency-spatial-method`**: module `resegment-proseg` (wraps the
+- **Session S3, method repo `stringency-xenium-method`**: module `resegment-proseg` (wraps the
   ROSC Nextflow Proseg run as a SIF; lung and gut only, following the ROSC manifest where liver,
   spleen and FRT keep the vendor segmentation; decided 2026-09-15), module `split-punches` (wraps the fixed
   splitter; params `min_transcripts, min_area, qv_threshold`) and module `qc-cells` (the
@@ -278,8 +311,9 @@ of `app1-spatial-qc-plan.md`.
 
 Work runs in lanes. A lane is a chain of half-day sessions that touches its own repositories, so
 lanes run as separate sessions at the same time. The engine is one lane so that nothing races on
-`src/stringency/`. Lane C is the critical path to the first scientific deliverable, `xenium-qc`
-on the eight Lyons CLP regions; two items in Lane D gate it.
+`src/stringency/`. Lane C was the critical path to the first scientific deliverable, `xenium-qc`
+on the eight Lyons CLP regions, delivered 2026-09-18; two items in Lane D gated it. Lanes were
+revised 2026-09-23 (Status section); each lane's heading carries its state.
 
 ### Lane A: engine (serial, engine repo)
 
@@ -292,55 +326,185 @@ on the eight Lyons CLP regions; two items in Lane D gate it.
    `considered_set` filled. Small; early because Lane B session 5 needs E1.
 3. Track 1e review page: `review_serve.py`, tests, `scripts/review-page.sh`.
 4. Re-tag and reinstall on both machines after each step that Lane B or C depends on.
+5. **Holds that ask the right question** (owner, 2026-09-18, after two days of live Lyons CLP
+   runs: fourteen chained projects meant fourteen confirm holds restating one design, while every
+   agent-chosen parameter was admitted silently). Three engine changes, in this order:
+   a. `param.agent_proposed`: a flag predicate (standard profile) whenever an admitted parameter
+      has `param_source: agent`; its hold view is the table parameter / default / proposed /
+      reason. `exec.plan_drift` already covers deviations; judgment holds already exist. This turns
+      standard from "the agent may choose within range" into "the agent proposes, the person
+      approves".
+   b. Inherited confirmation: a project whose every input is `derived_from` a run of a project the
+      same owner confirmed, with a byte-identical design, records its confirmation as inherited
+      (upstream hold id and acceptance in the trace) and opens no hold; its echo-back shows only
+      what is new (pipeline, deliverables, the bound runs). A raw input, a changed design, or a
+      method major-version change still opens a hold.
+   c. Batch review: `review --holds A,B,C` with one echo-back that diffs sibling declarations
+      (the eight QC regions differed only in the bundle) so one acceptance covers a set.
+   Also from the same days: `submit --failed`; an extractor env per tool or object type; a
+   variable-arity input type; lint parses `envs/manifest.yml`; `echo.md` wrapped at 100 columns;
+   `abandon` closes the step row; the dispatch suffix must name the `structured` envelope key the
+   subagent harness parses (fixed on the branch 2026-09-18); invalid replicates must open ONE hold
+   for the step, not one `run_disagreement` hold per item (42 on the first real judgment), and a
+   rejected judgment hold should open attempt 2 rather than surface the next per-item hold.
+6. From the outlier judgment v2 run (2026-09-21,
+   `notes/2026-09-21-1600-outlier-judgment-v2-engine.md`): the review-packet renderer resolves
+   every evidence citation by the item key, so on a module with secondary evidence tables each
+   citation prints "(no such cell)" although `judg.evidence_exists` passed on the same run
+   (display only; `review.py` and `holds.py` should use the cited table's own key); per-item
+   resolution at a flag hold, so the owner can accept some flagged items and not others (belongs
+   with 5); `any_low` opens a hold for an item every replicate labelled the same, because the
+   confidence criteria forbid any contradicting cell at `high` (tolerate one at `high`, or hold
+   on `any_low` only when labels differ; *design*, the owner's call; `backlog.md` K2).
+   Found 2026-09-23 when the seven holds were decided
+   (`notes/2026-09-23-1100-outlier-holds-stale-consensus.md`): a review's verdict updates the
+   `consensus` table but the `consensus.json` output written at judgment time is never rewritten,
+   so `02_proposal` read six `unresolved` items with no label after the step completed, and
+   `sc.exclusion_proposed` had counted two proposed punches where the decided consensus has six.
+   Fix: rewrite the consensus output from the store when the step completes (re-recording its
+   hash), and evaluate post-phase predicates that read the consensus after the item holds settle;
+   then decide how a completed run repairs its artifact (`backlog.md` K7). This is the first Lane A
+   item to do, before the PR: every judgment step with an item hold delivers wrong output today.
 
-### Lane B: bulk (bulkrna plugin and method repos)
+State 2026-09-22. Branch `lane-c-directory-inputs`, in order: `7671a3c` directory inputs and
+outputs, symlinked binds, per-step tmp, `propose --new`; `ee9cd68` `init.column_missing` skips
+`derived_from`; `ca6402b` and `5465d1b` `board`, `present`, design 14.4; `b808c75` the dispatch
+envelope; `12f2f33` `IOSpec.optional`; `1d58127` secondary evidence keys; `41fc5cc`
+`InputItem.role`. None of J1, J2, `submit --failed`, or the `abandon` step-row fix is on it. The
+next Lane A session opens the PR, brings the branch's design text onto `main` with the design 2.3
+text already there, tags, reinstalls on both machines (step 4), then does step 2 and item 5a.
+
+### Lane B: bulk (bulkrna plugin and method repos) [dormant since 2026-09-23]
 
 Sessions 0 to 8 of Track 2 in order. Session 0 (DESeq2 parameter list, `spec/bulkrna-design.md`)
 wants the owner present. Sessions 1, 2, 4 run on synthetic data and need nothing from Lane A.
 Session 5 needs E1 (Lane A step 2) installed. Session 8 ends with the development Project A and
 its QC report for the re-sequencing decision. Sessions 9 to 12 follow Lane C's S4.
 
-### Lane C: spatial (splitter, singlecell plugin, spatial method repos)
+Status 2026-09-23: dormant by owner decision, not started; this text is kept as written for
+when it wakes. `~/github/stringency-plasmidsaurusRNAseq-method` holds the
+template seed only (`88bc939`); no `stringency-bulkrna` package exists under
+`stringency-plugins/plugins/`. Lane D item 6 is done, so session 11 is the `nfcore-rnaseq` module
+alone. The operator-run lessons from Lane C apply to sessions 11 and 12: a detached launcher for
+steps longer than a session tool call, `systemd-run --user --scope -p MemoryMax -p
+MemorySwapMax=0` around Nextflow, binds in the Nextflow config because it clears the environment
+before `apptainer exec` (`notes/2026-09-17-1900-lane-c-day1-clp-qc.md`,
+`notes/2026-09-18-2000-lane-c-day2-proseg-summary-judgment.md`).
+
+### Lane C: spatial (splitter, singlecell plugin, spatial method repos) [completed 2026-09-23]
 
 S1 splitter determinism (its own repo, tag), S2 plugin object types and design schema, S3 the
 modules `resegment-proseg`, `split-punches`, `qc-cells` with the Python image, S4 runs on one
-region then all eight. S3 needs the image build route (Lane D item 2); S4 needs the punch
-coordinates (Lane D item 1).
+region then all eight: done 2026-09-17 and 2026-09-18. Beyond S4: `xenium-qc-summary` delivered;
+the outlier judgment (`xenium-qc-outliers-ref`, method `v0.3.3-rc1`, plugin `v0.1.11`, both local
+tags) run, its seven holds decided and the run delivered 2026-09-23. The outcome against the plan,
+including where the build departed from it (resegmentation as its own project per region, Xenium
+Ranger 4.0.1.4, coordinates as a directory, revised spleen thresholds), is
+`app1-spatial-qc-plan.md` section 5; the data-side record is `/lab/projects/Lyons_CLP/PROGRESS.md`.
 
-### Lane D: owner and operations (no agent session needed except item 3)
+Closed by the owner 2026-09-23: the first scientific deliverable is in hand, `xenium-qc` on all
+eight regions with the summary and the review proposal chained through `derived_from`. What the
+lane left open moves to Lane F; the engine defect it exposed (the stale consensus artifact,
+`backlog.md` K7) is Lane A item 6.
 
-1. Draw the punch coordinates for the eight regions in Xenium Explorer from
-   `/lab/projects/Lyons_CLP/tma_layout.csv`; file them under `/lab/projects/Lyons_CLP/`. Longest
-   lead item; gates S4.
-2. Create the GitHub repositories (`stringency-bulkrna`, `stringency-bulkrna-method`,
-   `stringency-spatial-method`) with Actions enabled and GHCR write permission. Gates S3 and Lane
-   B session 4.
-3. Track 1f: create `/data/lab/env/images/` (`sudo`), then the shared engine install and the
-   onboarding notes (agent-doable after the `sudo` step).
-4. Commit the 51 uncommitted files in `ROSC_MTA2`.
-5. Re-sequencing decision with the session 8 QC report in hand; deposit the new delivery with
-   the raw-deposit skill when it arrives.
-6. Java and Nextflow on PROTSEQ, for Track 2 sessions 11 and 12 only.
+### Lane F: spatial method build-out, Lyons CLP as pilot (placeholder, to be planned)
+
+Successor to Lane C, opened 2026-09-23 with no plan yet. Scope in one line: the remaining Track 3
+sessions of the app-1 plan (clustering, annotation as a judgment module with the
+`/single-cell-annotation` skill's rules, niches, DE), each wrapped from `ROSC_MTA2` as a
+parameterised module in `stringency-xenium-method`, run on the Lyons CLP QC objects as the pilot.
+Plan document to write: `spec/plans/spatial-method-plan.md`, sessions and gates in the style of
+Track 3, before the lane opens.
+
+Carried over from Lane C and from Lane D item 7, to do before or alongside the planning:
+
+- Repair or re-run `qc_outliers_all` once Lane A item 6 (K7) lands; then the owner's exclusion
+  decision and the project-level exclusion file beside the review table.
+- `qc-cells` learns `segmentation_of` for a Ranger-imported bundle; re-run the four Proseg QC
+  projects and the summary.
+- Owner: the Proseg transcript floor for lung and gut; the gut label (large or small intestine;
+  thresholds identical).
+- The pathology pass that replaces `histology_include.csv`.
+- Method `v0.3.3-rc1` and plugin `v0.1.11` pushed 2026-09-23, with the engine branch's last
+  three commits and the toy method `v0.1.3`; `qc_outliers_all/stringency.yml` can now record the
+  GitHub URL. Still owner: remove the tags pushed before checks passed (`backlog.md` K6); merge
+  the splitter `determinism` branch (tag `v0.2.0`, pushed) into `master` of
+  `jrose835/Xen_TMA_pipeline`.
+
+### Lane D: owner and operations [closed 2026-09-23]
+
+Closed by the owner 2026-09-23. Item 3 was run the same day; every other item is done or
+scratched. The layout decisions under item 2 stay because they are decisions, not tasks.
+
+1. Punch coordinates for the eight regions. Done 2026-09-17: 43 per-punch exports under
+   `/lab/projects/Lyons_CLP/punch_coordinates/`, with `histology_include.csv` beside them.
+2. GitHub repositories (`stringency-plugins`, `stringency-plasmidsaurusRNAseq-method`,
+   `stringency-xenium-method`) with Actions and GHCR write. Done 2026-09-17 except the
+   `stringency` team (owner, web UI). The org's workflow-token default is read-only, so each image
+   workflow declares `permissions: {contents: read, packages: write}`.
+   Repository layout (decided 2026-09-17, to limit clutter in the lab org): **all plugins share
+   one repo**, `stringency-plugins`, one package per subdirectory under `plugins/` in a single uv
+   workspace, installed with `scripts/install.sh --plugin <url>@<tag>#subdirectory=plugins/<name>`
+   (the syntax the toy plugin already uses). The existing `santangelo-lab/stringency-singlecell`
+   repo becomes it: rename it to `stringency-plugins` on GitHub (the old URL redirects), move its
+   contents to `plugins/stringency-singlecell/`, add `plugins/stringency-bulkrna/` in Lane B
+   session 1. **Method repos stay one per method**, because the engine clones a method repo at a
+   tag and records remote, tag, and SHA in provenance; sharing a repo would couple the version
+   numbers and `policy.yml` of unrelated methods. Method repos are named for the assay and
+   delivery they analyse, never for a collaborator project (`stringency-xenium-method`,
+   `stringency-plasmidsaurusRNAseq-method`; decided 2026-09-17): the project identity lives in the
+   project directory and in provenance, and one method serves every project on that assay. A
+   project-specific analysis becomes a pipeline in the assay's method repo first, and its own
+   method repo only if it grows its own modules and policy. Give every repo the topic `stringency` and
+   assign them to a `stringency` team in the org so they list together and share access.
+3. Track 1f, shared engine install and onboarding notes. Done 2026-09-23: engine
+   `0.1.0+optin3-sc0.1.8` (branch `lane-c-directory-inputs` at `41fc5cc`, plugin
+   `stringency-singlecell` 0.1.8 from the local checkout at `v0.1.11`, toy 0.1.2) at
+   `/data/lab/env/stringency/current`, group-readable throughout, smoke-tested read-only on the
+   Lyons CLP projects; owner's PATH line and `~/.local/bin/stringency` switched to it;
+   `render_brief.py --engine-bin` default, `new-project.md` and the README updated; notes written:
+   `hosts/protseq-shared-install.md` (how, and the `--no-sources` recovery the plugins workspace
+   pin forces), `hosts/protseq-lab.md`, `onboarding.md`, `publish-skills.md`. Left: the BMESEQ
+   image-path symlink (until a method runs there) and retiring the per-user install after the
+   next shared version lands.
+4. Commit the 51 uncommitted files in `ROSC_MTA2`. Scratched 2026-09-23 (owner's BMESEQ
+   housekeeping, not a roadmap item).
+5. Re-sequencing decision and the new bulk delivery. Scratched 2026-09-23; returns with Track 2
+   if Lane B wakes.
+6. Java and Nextflow on PROTSEQ. Done 2026-09-17: Java 21 and Nextflow 24.10.0 under
+   `/lab/env/nextflow`, `NXF_HOME` on `/lab/scratch`,
+   `NXF_APPTAINER_CACHEDIR=/data/lab/env/images/nxf-cache`.
+7. Owner items left by Lane C. Scratched here 2026-09-23. The seven holds in `qc_outliers_all`
+   were decided that morning (six accepts of replicate 1: review for 48-1-Liver, 48-2-Liver,
+   6-1-Lung-B, 24-1-Spleen-A; keep for 24-1-Liver, 24-1-Spleen-B; flag accepted); the delivered
+   proposal is stale (`backlog.md` K7). The decisions that survive (transcript floor, gut label,
+   exclusion decision, pushes and tag cleanup, splitter merge) are listed under Lane F.
 
 ### Lane E: skills and UX (after Lane A step 1)
 
 Track 1d analysis skill template and the toy instance; the two Track 1g session tests on PROTSEQ;
 the measurement rows; Track 2 session 10 with a lab member once Lane B session 8 is done.
 
+Status 2026-09-22: not started. Part of Track 1 section 6 (progress and results for a lay reader)
+arrived from Lane C instead: `board`, `present`, and the method delivery skills of design 14.4
+(`notes/2026-09-18-1830-board-and-present.md`). The analysis skill template (1d), the two session
+tests (1g), and the review page (1e, Lane A step 3) remain.
+
 ### Running it
 
-Three agent sessions at once: Lanes A, B, C, each in its own terminal and repository. Lane E
-opens when Lane A step 1 lands. Lane B session 0 fits a session the owner attends; Lanes A and C
-run with less attention. Final bulk projects on the re-sequenced delivery are a declare, run,
-deliver from the same method tag, in whichever lane is free.
+Revised 2026-09-23. Two agent lanes at once: Lane A (engine) and Lane E (skills and UX), each in
+its own terminal and repository. Lane F opens once its plan is written and Lane A item 6 has
+landed, since the pilot data's review proposal depends on that repair. Lane B stays dormant with
+Track 2 as written; when it wakes, its sessions run as planned there.
 
 ## Verification
 
 - Engine: `uv run pytest && uv run ruff check . && uv run ruff format --check . && uv run mypy &&
   scripts/check_no_biology.sh` green after every engine session; goldens for `plain`, `summary.md`,
   review page; every new predicate in `CASES`.
-- Plugins: `uv run pytest` in each plugin repo (no network, no R); `stringency plugins list` shows
-  the plugin; `stringency lint .` clean in each method repo.
+- Plugins: `uv run pytest` at the root of `stringency-plugins` (one workspace, every plugin; no
+  network, no R); `stringency plugins list` shows each plugin; `stringency lint .` clean in each
+  method repo.
 - Method repos: synthetic end-to-end `stringency run` under apptainer on BMESEQ and PROTSEQ with
   planted DE genes recovered; coverage report with no uncovered decision points except those named.
 - UX: the toy re-run through `stringency-analyze-toy-compare` by someone other than the owner,
@@ -349,4 +513,5 @@ deliver from the same method tag, in whichever lane is free.
 - Real data: Project A (development) delivered on the vendor counts with `methods.md`,
   `coverage.md`, `summary.md`, its QC report naming every shallow sample; the final bulk
   deliverable waits for the re-sequenced data; `xenium-qc` delivered on one Lyons CLP region with sidecars a downstream project
-  binds through `derived_from`.
+  binds through `derived_from` (done 2026-09-18 on all eight regions; the summary and outlier
+  projects bind those deliveries through `derived_from`).
