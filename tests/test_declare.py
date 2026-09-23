@@ -281,7 +281,16 @@ def test_chained_projects_through_derived_from(
     )
     assert down.inputs.items[0].derived_from is not None
     assert down.inputs.items[0].derived_from.run_id == run_id
-    accept_hold(down.store, down.confirm_hold()["hold_id"])
+    # 5b: same owner, same design, same method major: the confirmation is inherited
+    assert down.confirm_status() == "accepted"
+    inh = down.store.one("SELECT * FROM reviews WHERE hold_id=?", (down.confirm_hold()["hold_id"],))
+    assert (
+        inh["via"] == "inherited" and inh["reviewer"] == "tester" and str(up.root) in inh["reason"]
+    )
+    assert down.confirm_hold()["resolved_via"] == "inherited"
+    echo = down.echo_path().read_text()
+    assert "confirmation inherited" in echo and f"run {run_id}" in echo and str(up.root) in echo
+    assert "Factor group" not in echo  # only what is new is shown
     r = cli(down, "run", "--json", env=MOCK)
     assert r.exit_code == 0, r.output
     down_run = json.loads(r.output)["run_id"]
@@ -346,3 +355,91 @@ def test_plugins_list_json_exposes_what_the_declare_skill_needs() -> None:
     assert "abundant" in toy["vocabulary_terms"]["group_labels@1"]
     assert toy["object_types"] == ["frame"]
     assert toy["defaults"] == {"min_n_per_group": 2}
+
+
+def test_confirmation_is_not_inherited_when_design_or_owner_differs(
+    tmp_path: Path, toy_data: Path, make_project: InitFn
+) -> None:
+    """A changed design, a different owner, or an unconfirmed upstream opens an ordinary hold."""
+    up_files = write_declarations(tmp_path / "up2", toy_data, objective=PROCESS_OBJECTIVE)
+    up = make_project(
+        pipeline="toy-process",
+        execution="engine",
+        objective=up_files["objective.yml"],
+        design=up_files["design.yml"],
+        inputs=up_files["inputs.yml"],
+    )
+    accept_hold(up.store, up.confirm_hold()["hold_id"])
+    r = cli(up, "run", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    run_id = json.loads(r.output)["run_id"]
+    d = deliver(load_run(up, run_id))
+    delivered = d.path / "01_filter.object.csv"
+    items = {
+        "inputs": 1,
+        "items": [
+            {
+                "name": "groups",
+                "path": str(delivered),
+                "type": "frame",
+                "blake3": hashing.hash_file(delivered),
+                "derived_from": {
+                    "run_id": run_id,
+                    "step_id": "01_filter",
+                    "output": "object",
+                    "project": str(up.root),
+                },
+            }
+        ],
+    }
+    # a changed design (batch declared) is a new declaration: hold pending
+    changed = {
+        "design": 1,
+        "units": {"observation": "row", "sample": "unit"},
+        "factors": {"group": {"column": "group", "levels": ["A", "B", "C"]}},
+        "batch": ["unit"],
+        "replication_unit": "unit",
+        "holdout": [],
+    }
+    f1 = write_declarations(tmp_path / "d1", toy_data, inputs=items, design=changed)
+    p1 = make_project(
+        pipeline="toy-engine",
+        execution="engine",
+        objective=f1["objective.yml"],
+        design=f1["design.yml"],
+        inputs=f1["inputs.yml"],
+    )
+    assert p1.confirm_status() == "pending" and "Factor group" in p1.echo_path().read_text()
+    # a different owner: pending
+    f2 = write_declarations(tmp_path / "d2", toy_data, inputs=items)
+    p2 = make_project(
+        pipeline="toy-engine",
+        execution="engine",
+        owner="someone-else",
+        reviewer="someone-else",
+        objective=f2["objective.yml"],
+        design=f2["design.yml"],
+        inputs=f2["inputs.yml"],
+    )
+    assert p2.confirm_status() == "pending"
+    # an unconfirmed upstream: pending
+    up3_files = write_declarations(tmp_path / "up3", toy_data, objective=PROCESS_OBJECTIVE)
+    up3 = make_project(
+        pipeline="toy-process",
+        execution="engine",
+        objective=up3_files["objective.yml"],
+        design=up3_files["design.yml"],
+        inputs=up3_files["inputs.yml"],
+    )
+    assert up3.confirm_status() == "pending"
+    items3 = json.loads(json.dumps(items))
+    items3["items"][0]["derived_from"]["project"] = str(up3.root)
+    f3 = write_declarations(tmp_path / "d3", toy_data, inputs=items3)
+    p3 = make_project(
+        pipeline="toy-engine",
+        execution="engine",
+        objective=f3["objective.yml"],
+        design=f3["design.yml"],
+        inputs=f3["inputs.yml"],
+    )
+    assert p3.confirm_status() == "pending"

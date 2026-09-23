@@ -353,7 +353,8 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    c. Batch review: `review --holds A,B,C` with one echo-back that diffs sibling declarations
       (the eight QC regions differed only in the bundle) so one acceptance covers a set.
    Item 5a done 2026-09-23 (`param.agent_proposed@1`, PR #3; a fork's `--set` is labelled
-   `fork` and not asked again). 5b and 5c open.
+   `fork` and not asked again). 5b done 2026-09-23 (PR #4: `Project.inherited_confirmation`,
+   `via: inherited`, the inherited echo-back; design 2.7). 5c open.
    Also from the same days: `submit --failed`; an extractor env per tool or object type; a
    variable-arity input type; lint parses `envs/manifest.yml`; `echo.md` wrapped at 100 columns;
    `abandon` closes the step row; the dispatch suffix must name the `structured` envelope key the

@@ -10,7 +10,9 @@ from __future__ import annotations
 import getpass
 import json
 import os
+import re
 import shutil
+import socket
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -32,7 +34,7 @@ from stringency.config import (
     load_yaml,
 )
 from stringency.db.store import Store
-from stringency.echo import render_echo
+from stringency.echo import render_echo, render_inherited_echo
 from stringency.executor.base import Executor
 from stringency.executor.local import LocalExecutor
 from stringency.exit_codes import ConfigError
@@ -288,6 +290,15 @@ class Project:
         return self.root / "echo.md"
 
     def render_echo(self, objects: dict[str, ObjectState] | None = None) -> str:
+        inherited = self.inherited_confirmation()
+        if inherited is not None:
+            return render_inherited_echo(
+                self.objective,
+                self.inputs,
+                self.declaration_hashes(),
+                inherited,
+                f"{self.pipeline.name} {self.pipeline.version}",
+            )
         counts = {k: v.summary for k, v in (objects or {}).items()}
         if not counts:
             cached = self.scratch / "init-extract.json"
@@ -296,6 +307,72 @@ class Project:
         return render_echo(
             self.plugin, self.design, self.objective, self.inputs, counts, self.declaration_hashes()
         )
+
+    @staticmethod
+    def _major(tag: str) -> str | None:
+        m = re.match(r"v?(\d+)\.", tag)
+        return m.group(1) if m else None
+
+    def inherited_confirmation(self) -> dict[str, Any] | None:
+        """Design 2.7 (added 2026-09-23): when every input is `derived_from` a run of a project
+        this owner confirmed, whose `design.yml` is byte-identical and whose method has the same
+        major version, the confirmation is inherited. Returns the upstream holds and acceptances
+        (`upstreams`: project, run_id, hold_id, review_id, reviewer, ts), or None when any input
+        is raw, any upstream is unconfirmed, differently owned, differently designed, or on
+        another method major version. Reads, read-only: each upstream's `stringency.yml`,
+        `design.yml` and `prov/run.db` (runs, holds, reviews)."""
+        if not self.inputs.items:
+            return None
+        my_design = hashing.hash_file(self.root / "design.yml")
+        my_major = self._major(self.config.method.tag)
+        upstreams: list[dict[str, Any]] = []
+        seen: dict[str, dict[str, Any]] = {}
+        for item in self.inputs.items:
+            d = item.derived_from
+            if d is None or not d.project:
+                return None
+            root = Path(d.project)
+            if d.project in seen:
+                continue
+            cfg_path, design_path, db_path = (
+                root / "stringency.yml",
+                root / "design.yml",
+                root / "prov" / "run.db",
+            )
+            if not (cfg_path.exists() and design_path.exists() and db_path.exists()):
+                return None
+            try:
+                cfg = load_model(StringencyConfig, cfg_path)
+            except Exception:  # noqa: BLE001  (an unreadable upstream is simply not inheritable)
+                return None
+            if cfg.roles.owner != self.config.roles.owner:
+                return None
+            if hashing.hash_file(design_path) != my_design:
+                return None
+            if my_major is None or self._major(cfg.method.tag) != my_major:
+                return None
+            with Store.open(db_path, create=False) as up:
+                if up.one("SELECT 1 FROM runs WHERE run_id = ?", (d.run_id,)) is None:
+                    return None
+                row = up.one(
+                    "SELECT h.hold_id, r.review_id, r.reviewer, r.ts, r.verdict FROM holds h "
+                    "JOIN reviews r ON r.review_id = h.resolved_by_review "
+                    "WHERE h.kind = 'confirm' AND h.run_id IS NULL "
+                    "ORDER BY h.created DESC, h.rowid DESC LIMIT 1"
+                )
+            if row is None or row["verdict"] not in ("accept", "override"):
+                return None
+            entry = {
+                "project": d.project,
+                "run_id": d.run_id,
+                "hold_id": row["hold_id"],
+                "review_id": row["review_id"],
+                "reviewer": row["reviewer"],
+                "ts": row["ts"],
+            }
+            seen[d.project] = entry
+            upstreams.append(entry)
+        return {"upstreams": upstreams, "design_blake3": my_design, "method_major": my_major}
 
     def confirm_hold(self) -> Any:
         """Reads: holds. The confirm hold bound to the current declaration digest, or None."""
@@ -308,11 +385,15 @@ class Project:
     def ensure_confirm_hold(self, objects: dict[str, ObjectState] | None = None) -> str | None:
         """Open the init confirm hold for the current declarations if none exists (design 2.7).
 
-        Reads: holds. Writes: holds (kind `confirm`, waits on the owner) and `echo.md`.
+        Reads: holds. Writes: holds (kind `confirm`, waits on the owner) and `echo.md`. When the
+        confirmation is inherited (2.7, `inherited_confirmation`), also writes one `reviews` row
+        (`via: inherited`, the upstream owner's acceptance by reference) and resolves the hold at
+        once, so `run` may open without a new acceptance.
         Returns the new hold_id, or None when a hold for these declarations already exists.
         """
         if self.confirm_hold() is not None:
             return None
+        inherited = self.inherited_confirmation()
         text = self.render_echo(objects)
         self.echo_path().write_text(text)
         hashes = self.declaration_hashes()
@@ -323,17 +404,47 @@ class Project:
             if decl.brief and (self.root / decl.brief).exists():
                 context["brief"] = decl.brief
                 context["brief_blake3"] = hashing.hash_file(self.root / decl.brief)
-        return self.store.create_hold(
+        if inherited is not None:
+            context["inherited"] = inherited
+        digest = hashing.prefixed(self.declaration_digest())
+        hold_id = self.store.create_hold(
             {
                 "run_id": None,
                 "step_id": None,
                 "kind": "confirm",
-                "reason": "init echo-back awaits the owner's acceptance",
+                "reason": (
+                    "init echo-back: confirmation inherited from the upstream project(s)"
+                    if inherited is not None
+                    else "init echo-back awaits the owner's acceptance"
+                ),
                 "waits_on_role": "owner",
-                "bound_input_digest": hashing.prefixed(self.declaration_digest()),
+                "bound_input_digest": digest,
                 "context_json": context,
             }
         )
+        if inherited is not None:
+            ups = inherited["upstreams"]
+            review_id = new_id()
+            self.store.insert(
+                "reviews",
+                {
+                    "review_id": review_id,
+                    "hold_id": hold_id,
+                    "reviewer": ups[0]["reviewer"],
+                    "host": socket.gethostname(),
+                    "via": "inherited",
+                    "ts": now_iso(),
+                    "verdict": "accept",
+                    "reason": "; ".join(
+                        f"inherited from {u['project']}: hold {u['hold_id']}, review "
+                        f"{u['review_id']} accepted by {u['reviewer']} at {u['ts']}"
+                        for u in ups
+                    ),
+                    "bound_input_digest": digest,
+                },
+            )
+            self.store.resolve_hold(hold_id, review_id, "inherited")
+        return hold_id
 
     def confirm_status(self) -> str:
         """`accepted`, `rejected`, or `pending` for the current declarations. Reopens the
