@@ -73,10 +73,13 @@ a file only when none exists), then `publish(name, overwrite=True)`. The same st
 
 Session test 3.4 of `spec/plans/ux-two-audiences.md`, measured 2026-09-15 on PROTSEQ: delegate
 downloads of request files and the operator's downloads of delivered files raise one card each
-even inside a configured data root (7 of 17 cards on the toy-engine drive). Whether the
-`call_command` card offers a standing grant is still unrecorded; the checklist that answers both
-questions under the lab data root `/data/lab/projects`, and drives the measured toy run through the
-analysis skill, is `hosts/protseq-session-tests.md` (2026-09-23).
+even inside a configured data root (7 of 17 cards on the toy-engine drive). Answered
+2026-09-23 by the owner in the app (`hosts/protseq-session-tests.md`, "Results of B and C"): the
+`download` card offers "allow for this conversation" scoped to the file's parent directory on the
+host, and names the app's scratch directory as the only path it reads without asking; the
+`call_command` card offers once, this conversation, this project, or global, and a project-scoped
+grant covered every later `stringency` command without a card. The measured toy run through the
+analysis skill (section D of the same checklist) gives the count under those grants.
 
 ## Rendering the brief and context
 

@@ -65,6 +65,31 @@ If no standing grant exists, say so in the row; the card estimate in UX note 3.5
 written (8 or 9 cards for the toy with one dispatch), and the remaining lever is the engine's
 one-command-per-moment shape.
 
+## Results of B and C (owner, 2026-09-23, Claude Science desktop app on the MacBook)
+
+Test 1, downloads. The `download` of `samples.csv` raised a card. Its text, as the owner
+recorded it:
+
+> Download a file from protseq? Download `/data/lab/projects/2026-09_stringency-drive2_jrrose5/data/samples.csv` (56 B) from `protseq`? This path is outside the directories Claude Science normally reads on this host (`/home/jrrose5/.claude-science-scratch`). Allowing copies the file into your local workspace. Allow for this conversation. Scope applies to any file under `/data/lab/projects/2026-09_stringency-drive2_jrrose5/data` on `protseq` (hidden files still ask).
+
+So the card offers a conversation-scoped grant per directory (the file's parent), and the
+directory the app treats as normal on this host is its scratch directory, not `/data/lab/projects`;
+whether a data-root setting for `protseq` was in force at the time is not recorded, and is a
+question for the next run. The row-count `call_command` also raised a card. A delegate's download
+of the same file raised no card, but the conversation-scoped grant had already been given, so
+this does not separate "delegates inherit the grant" from "delegate downloads never ask".
+
+Test 2, standing grants. The `call_command` card offers four scopes: once, this conversation,
+this project, global. The owner chose "this project"; `stringency --version` and
+`stringency board /data/lab/projects` afterwards raised no card. So a project-scoped grant covers
+every later `call_command` in that project, and the command cards of a run collapse to one.
+
+What this means for the card estimate (UX note 3.5): with one project-scoped command grant and
+one conversation-scoped download grant per directory, a toy run costs one command card plus one
+download card per distinct directory the operator or its delegates read from (the dispatch
+directory under `runs/`, the `deliver/` directory), against 17 on 2026-09-15. The measured run in
+section D is the check.
+
 ## D. The measured toy run through the analysis skill
 
 The acceptance test of Track 1 is this run done by someone other than the owner. Until a lab

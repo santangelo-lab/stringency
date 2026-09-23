@@ -27,7 +27,10 @@ not in a roadmap lane (the engine gaps that are, sit under roadmap Lane A items 
 One row per toy run, before and after each Track 1 step. Baseline from the PROTSEQ chained run.
 Next row: the toy run through `stringency-analyze-toy-compare` (checklist
 `integrations/claude-science/hosts/protseq-session-tests.md` section D), which also answers the two
-3.4 session tests; prepared 2026-09-23, not yet run.
+3.4 session tests; prepared 2026-09-23. The 3.4 answers (owner, 2026-09-23, app): a download under
+`/data/lab/projects` raises a card offering a conversation-scoped grant per directory; the `call_command`
+card offers once, this conversation, this project, or global, and a project grant covered every later
+`stringency` command with no card (`integrations/claude-science/hosts/protseq-session-tests.md`).
 
 | date | pipeline | approval cards | person turns to result | time to first delivered file | unrequested commands, JSON, ids shown | holds and `via` | operator misreports vs trace |
 |---|---|---|---|---|---|---|---|

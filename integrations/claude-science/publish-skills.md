@@ -41,7 +41,7 @@ engine version; if the copy and the repository disagree, the repository wins.
 - An analysis skill: on every tag of its method repository. The rendered file is committed there;
   render it again with `render_skill.py <method repo> --pipeline <name> --write` before tagging
   when the `.analyze.yml`, the pipeline titles, or the engine template changed.
-  `stringency-analyze-toy-compare`: not yet published on any instance (2026-09-23).
+  `stringency-analyze-toy-compare`: published on the owner's instance 2026-09-23 (toy method `v0.1.4`).
 
 A publish is recorded nowhere by the engine; the session's transcript is the only record. Note
 the date in this file's table when a republish is done on the lab's instances.
