@@ -34,7 +34,9 @@ session ran Lane E in a worktree at the same time (its own notes; brief in
 - Later, after PR #3 merged (`v0.2.1`, installed as the shared `current`): 5b inherited
   confirmation (`Project.inherited_confirmation`, `via: inherited`, `echo.render_inherited_echo`,
   design 2.7) and 5c batch review (`review --holds A,B,C --projects <dir>`, `review_batch.py`,
-  `reason_code: batch`, design 7.3, 14.1) on PR #4 (`lane-a-5b`), suite green.
+  `reason_code: batch`, design 7.3, 14.1) and the renderer fix (`review_render.tables_seen`:
+  hold packets resolve citations against the step's `evidence/` tables, so the outlier module's
+  "no such cell" lines go away) on PR #4 (`lane-a-5b`), suite green.
 - Earlier the same day, on `main`: Lane D item 3 (shared engine, onboarding notes), the lane
   revisions in the roadmap, every repo pushed (method `v0.3.3-rc1`, plugin `v0.1.11`, toy
   `v0.1.3`).
@@ -70,8 +72,7 @@ session ran Lane E in a worktree at the same time (its own notes; brief in
 
 1. Owner: merge PR #4 (5b, 5c); then tag `v0.2.2` and reinstall the shared engine. (PR #3
    merged, `v0.2.1` installed.)
-2. Lane A: the review-packet renderer's citation lookup for secondary evidence tables; the
-   `any_low` design question (K2); the item-5 list
+2. Lane A: the `any_low` design question (K2, owner); the item-5 list
    (`submit --failed`, extractor env per tool, variable-arity inputs, lint parses the env
    manifest, `abandon` closes the step row, one hold for invalid replicates).
 3. Lane F (data side): repair `qc_outliers_all` by the owner's chosen route; the module-version

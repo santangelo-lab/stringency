@@ -381,7 +381,9 @@ revised 2026-09-23 (Status section); each lane's heading carries its state.
    then decide how a completed run repairs its artifact (`backlog.md` K7). Done 2026-09-23 (PR #2,
    `v0.2.0`): the consensus output is rewritten when the last item hold settles, post flags wait
    for the decided consensus, and a completed run is not repaired in place (a new run or a method
-   bump; DECISIONS). The renderer's citation lookup and the `any_low` question stay open.
+   bump; DECISIONS). The renderer's citation lookup fixed 2026-09-23 (PR #4:
+   `review_render.tables_seen` reads the step's `evidence/` tables, secondary ones keyed by their
+   own column). The `any_low` question stays open (K2, owner).
 
 State 2026-09-22. Branch `lane-c-directory-inputs`, in order: `7671a3c` directory inputs and
 outputs, symlinked binds, per-step tmp, `propose --new`; `ee9cd68` `init.column_missing` skips

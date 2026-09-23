@@ -26,6 +26,23 @@ from stringency.runs import RunContext, load_run
 from stringency.state import State, latest_state
 from stringency.steps import StepPlan, action_from_row, evidence_tables_for, plan_step
 
+
+def tables_seen(plan: StepPlan) -> dict[str, EvidenceTable]:
+    """The evidence tables the reviewers saw. A judgment module with a `pre.*` script shows
+    what the script wrote under the step's `evidence/`, and a secondary table (a metric guide,
+    a reference summary) is keyed by its own first column, so a citation into it resolves; the
+    declared table inputs otherwise. Reads files under the step directory, nothing from the
+    trace. (Lane A item 6: every citation printed "no such cell" on the outlier module.)"""
+    if plan.module.manifest.judgment is not None:
+        from stringency.exit_codes import ConfigError
+        from stringency.judgment import evidence_tables_from_disk
+
+        try:
+            return evidence_tables_from_disk(plan)[0]
+        except ConfigError:
+            pass
+    return evidence_tables_for(plan)
+
 INDENT = "  "
 
 
@@ -412,7 +429,7 @@ def render_flag(
     judg = predicate.startswith("judg.") and plan is not None
     if judg:
         assert plan is not None
-        tables = evidence_tables_for(plan)
+        tables = tables_seen(plan)
         flagged = _flagged_pairs(evidence)
         by_key = _item_judgments(project, h, action.attempt if action else None)
         cited: set[tuple[str, str]] = set()
@@ -499,7 +516,7 @@ def render_item(
 
     Reads: actions, judgments, messages; the evidence tables from disk."""
     module_ref = plan.module.ref if plan else (action.module if action else None)
-    tables = evidence_tables_for(plan) if plan else {}
+    tables = tables_seen(plan) if plan else {}
     item = str(h["item_id"])
     question = (
         "which replicate's call stands for this item, or none"
