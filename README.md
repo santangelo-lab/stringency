@@ -55,7 +55,7 @@ the code exists to fill it correctly.
 
 ### What it does not do
 
-A belay does not make anyone a better climber. It makes falling survivable, and it makes the falls
+A belay does not make anyone a better climber. It makes falling survivable, and it makes the falls or missteps
 visible.
 
 stringency will not make an analysis correct, and it is not a substitute for knowing what you are
