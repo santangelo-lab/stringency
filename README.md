@@ -109,7 +109,8 @@ in design 14.2. Every verb takes `--json`.
 
 ## Claude Science setup
 
-I'm working on making stringency accessible to many different kind of operators through different AI harnesses. The one I'm using at the moment is Claude Science so here I'm including specific details for it. Hopefully more to come soon!
+>[!Note]
+>I'm working on making stringency accessible to many different kind of operators through different AI harnesses. The one I'm using at the moment is Claude Science so here I'm including specific details for it. Hopefully more to come soon!
 
 A Claude Science session drives a project as its operator: it calls the CLI, runs the steps the
 engine hands it, and answers judgment dispatches with fresh delegates. The session's sandbox
