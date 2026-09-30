@@ -20,7 +20,29 @@ path. A model that asserts something false about your data will happily build on
 the session ends the reasoning ends with it, and the spreadsheet left on your desk has no answer to
 "how did you get this?" or "why this way?"
 
-So the route goes up before the climb, and the rope stays on:
+### What it does not do
+
+A belay does not make anyone a better climber. It makes falling survivable, and it makes the falls or missteps
+visible.
+
+stringency will not make an analysis correct, and it is not a substitute for knowing what you are
+doing. It holds an agent to a path you declared, stops it where a person should be looking, and
+leaves a record complete enough to answer "how did you do this?" and "why this way?" months later.
+The science is still yours.
+
+## Design
+
+The engine is domain-free. Domain knowledge (state extractors, predicates, vocabularies) lives in
+plugins registered under the `stringency.plugins` entry point group. `plugins/stringency-toy` is the
+reference plugin and the one the test suite uses; `stringency-singlecell` (separate repository) is
+the plugin for application 1.
+
+The spec is `spec/stringency-design.md`; `spec/README.md` maps the rest of that directory. The
+motivation, and the twelve constraints the design answers to, is `spec/commandments.md`. Choices
+made where the design is silent are in `spec/DECISIONS.md`; contract deviations, if any, in
+`spec/DEVIATIONS.md`. Current plans are in `spec/plans/`, starting with `roadmap-2026-09.md`.
+
+### More Climbing Analogies
 
 - **The route is bolted in advance.** The pipeline topology, the modules, their parameters and
 thresholds, the prompts, the gate implementations and the controlled vocabularies all live in a git
@@ -52,28 +74,6 @@ output, with the same rigor applied to the human call as to the model's.
 level: every action proposed, every gate verdict and the evidence it inspected, every model
 invocation with its cost, every human review, every output with its hash. The trace is the product;
 the code exists to fill it correctly.
-
-### What it does not do
-
-A belay does not make anyone a better climber. It makes falling survivable, and it makes the falls or missteps
-visible.
-
-stringency will not make an analysis correct, and it is not a substitute for knowing what you are
-doing. It holds an agent to a path you declared, stops it where a person should be looking, and
-leaves a record complete enough to answer "how did you do this?" and "why this way?" months later.
-The science is still yours.
-
-## Design
-
-The engine is domain-free. Domain knowledge (state extractors, predicates, vocabularies) lives in
-plugins registered under the `stringency.plugins` entry point group. `plugins/stringency-toy` is the
-reference plugin and the one the test suite uses; `stringency-singlecell` (separate repository) is
-the plugin for application 1.
-
-The spec is `spec/stringency-design.md`; `spec/README.md` maps the rest of that directory. The
-motivation, and the twelve constraints the design answers to, is `spec/commandments.md`. Choices
-made where the design is silent are in `spec/DECISIONS.md`; contract deviations, if any, in
-`spec/DEVIATIONS.md`. Current plans are in `spec/plans/`, starting with `roadmap-2026-09.md`.
 
 ## Status
 
@@ -108,6 +108,8 @@ stringency deliver      # on a completed run: finals, coverage.md, methods.md, i
 in design 14.2. Every verb takes `--json`.
 
 ## Claude Science setup
+
+I'm working on making stringency accessible to many different kind of operators through different AI harnesses. The one I'm using at the moment is Claude Science so here I'm including specific details for it. Hopefully more to come soon!
 
 A Claude Science session drives a project as its operator: it calls the CLI, runs the steps the
 engine hands it, and answers judgment dispatches with fresh delegates. The session's sandbox
