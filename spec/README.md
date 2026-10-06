@@ -11,6 +11,7 @@ What each file is, and how much weight it carries.
 | `backlog.md` | current | open items not in a lane (K, L series), the measurement table |
 | `ux-two-audiences.md` | open, small (Lane E) | Track 1 in detail; built through 1h; section 8's amendments applied; the status line says what remains |
 | `judge-sources-plan.md` | proposed (Lane G) | judgment agents from many sources: the `openai-compatible` adapter, the Qwen3 evaluation, judge identity, a panel specification (*design*), the operator fallback, a `/data/protect` routing rule; seven owner decisions in section 6 |
+| `confirm-once.md` | proposed (Lane A) | why the owner was asked five times on 2026-10-06 to confirm one design and sixteen times to approve one parameter set, and five rules to make a chained study one acceptance (wider inheritance, study-level design acceptance, re-declaration, accept-once for identical flags, say so in advance); four owner decisions |
 | `egress-and-remeasurement.md` | unscheduled | data egress classes and judgment re-measurement endpoints borrowed from ClawBio; backlog L1 to L4 |
 | `bulkrna-plan.md` | dormant (Lane B) | Track 2 in detail, kept as written since 2026-09-23 |
 

@@ -24,6 +24,8 @@ Shared engine on PROTSEQ: `0.2.6-sc0.1.8`. Method `stringency-xenium-method` `v0
 `singlecell` 0.1.8. Data: ten `qc2_*` projects delivered under `/lab/projects/Lyons_CLP`, the
 owner's `punch_exclusions.csv` written; the downstream pilot is in R (owner, 2026-10-06). Day
 record: `notes/2026-10-06-1345-lane-f-phase0.md`. Unscheduled plan notes: `egress-and-remeasurement.md`.
+For Lane A: `confirm-once.md` (2026-10-06) proposes the rules that make a chained study one design
+acceptance instead of five, and one parameter approval instead of sixteen.
 
 ### Status history
 
