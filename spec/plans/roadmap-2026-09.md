@@ -1,18 +1,42 @@
 # stringency: roadmap after the Phase A exit (2026-09-14)
 
 Working note, not the spec. Approved by the owner on 2026-09-14. Detail per track: `spec/plans/ux-two-audiences.md`
-(Track 1), `spec/plans/bulkrna-plan.md` (Track 2), `spec/plans/app1-spatial-qc-plan.md` (Track 3). Track 0 was done the
-same day; see `notes/2026-09-14-1600-track0-and-roadmap.md`.
+(Track 1), `spec/plans/bulkrna-plan.md` (Track 2), `spec/archive/app1-spatial-qc-plan.md` (Track 3). Track 0 was done the
+same day; see `notes/2026-09-14-1600-track0-and-roadmap.md`. The current state is the next section;
+the rest of this file is the approved plan with per-lane status under Order.
 
-## Status (2026-10-06)
+## Where things stand (2026-10-06)
 
-Lane F phase 0 ran end to end on 2026-10-06 (`notes/2026-10-06-1345-lane-f-phase0.md`): F0 to F3
-done, method `v0.4.0`, ten `qc2_*` projects delivered on the shared engine `0.2.6` without an
-engine change, the owner's `punch_exclusions.csv` written. The owner chose R (the ROSC_MTA2 code)
-for the downstream pilot, so phases 1 to 7 are re-planned before F4. Engine findings: L5, L6.
-The earlier status paragraphs follow.
+Read this section first; everything from Context on is the plan as approved on 2026-09-14 and its
+per-lane detail, kept as written with each heading carrying its state.
 
-### Status (2026-09-23)
+| lane | state | plan | next |
+|---|---|---|---|
+| A engine | complete 2026-09-23 (`v0.2.4`); Track 1h added `v0.2.5`, `v0.2.6` | this file, Lane A | small items only: `backlog.md` K3 to K5, L5, L6 |
+| B bulk RNA-seq | dormant since 2026-09-23 (owner) | `bulkrna-plan.md` | nothing until the owner reopens it |
+| C spatial QC | closed 2026-09-23, delivered | `spec/archive/app1-spatial-qc-plan.md` | none; superseded by F |
+| D owner and operations | closed 2026-09-23 | this file, Lane D | owner housekeeping: K6 tag cleanup, the standing page and `notify.yml` |
+| E skills and UX | open, small | `ux-two-audiences.md` | three template fixes and a re-tag; a toy run by someone other than the owner; measurement rows |
+| F spatial method, Lyons CLP pilot | **active**; phase 0 (F0 to F3) done 2026-10-06 | `spatial-method-plan.md` | owner's decisions 12 to 15, then F4 (`xenium-r` image, plugin 0.2, the merge spike) |
+| G judge sources | proposed 2026-09-23, not started | `judge-sources-plan.md` | the seven decisions in its section 6 |
+
+Shared engine on PROTSEQ: `0.2.6-sc0.1.8`. Method `stringency-xenium-method` `v0.4.0`. Plugin
+`singlecell` 0.1.8. Data: ten `qc2_*` projects delivered under `/lab/projects/Lyons_CLP`, the
+owner's `punch_exclusions.csv` written; the downstream pilot is in R (owner, 2026-10-06). Day
+record: `notes/2026-10-06-1345-lane-f-phase0.md`. Unscheduled plan notes: `egress-and-remeasurement.md`.
+
+### Status history
+
+Earlier status paragraphs, verbatim, newest first.
+
+#### 2026-10-06, midday
+
+Lane F phase 0 ran end to end (`notes/2026-10-06-1345-lane-f-phase0.md`): F0 to F3 done, method
+`v0.4.0`, ten `qc2_*` projects delivered on the shared engine `0.2.6` without an engine change,
+the owner's `punch_exclusions.csv` written. The owner chose R (the ROSC_MTA2 code) for the
+downstream pilot, so phases 1 to 7 were re-planned before F4. Engine findings: L5, L6.
+
+#### 2026-09-23
 
 Lane C reached its deliverable: `xenium-qc` delivered on all eight Lyons CLP regions
 (2026-09-18), the four Proseg resegmentations as their own projects, the cross-region summary,
@@ -31,7 +55,7 @@ and `run --deliver` completed the run, but the delivered proposal is stale: item
 `consensus` table and never the `consensus.json` artifact the next step binds (Lane A item 6,
 `backlog.md` K7). The proposal must not be used as the review list until the run is repaired.
 Per-lane status is under each lane in the Order section; the Track 3 outcome against its plan is
-`app1-spatial-qc-plan.md` section 5.
+`spec/archive/app1-spatial-qc-plan.md` section 5.
 
 Engine, end of 2026-09-23: Lane A is complete. PRs #2 to #6 and #8 merged (Lane C branch and K7,
 `v0.2.0`; E1, E2, `param.agent_proposed`, `fork`, the review page, `v0.2.1`; inherited
@@ -98,7 +122,7 @@ dispatch), not from the gates. Two holds needed a person; the other 24 were mech
   `plugins/stringency-singlecell` (Lane D item 2), give `stringency-toy-method` a remote.
 - Commit the 51 uncommitted files in `ROSC_MTA2` (owner) before any wrapping work touches it.
 
-## Track 1: UX, two audiences (runs alongside Track 2)
+## Track 1: UX, two audiences [1a to 1h built; Lane E holds the remainder]
 
 ### 1a. Design note and amendments [approved 2026-09-15, applied to the design]
 
@@ -198,7 +222,7 @@ commands/JSON/ids shown, holds and `via`, operator misreports vs trace. Two sess
 PROTSEQ first: do delegate downloads under a data root raise cards; do standing grants cover
 `call_command`. Target for an all-engine five-step run with one dispatch: 26 -> 8 or 9 cards.
 
-### 1h. Project page and notify on hold [in progress 2026-09-23, `spec/plans/project-page-and-notify.md`]
+### 1h. Project page and notify on hold [in progress 2026-09-23, `spec/archive/project-page-and-notify.md`]
 
 After the first measured run: the chat path is near its floor (7 turns, 15 minutes), so the next
 cost to the person is presence and finding results later. `review --serve` grows into the project
@@ -297,7 +321,7 @@ PROTSEQ Nextflow install + `nfcore-rnaseq` module; 12 Project B run and A' chain
 
 ## Track 3: spatial (Lyons CLP), QC first [S0 to S4 done 2026-09-18; Lane C closed 2026-09-23, successor Lane F]
 
-Outcome against the plan, and what is open for the track: `app1-spatial-qc-plan.md` section 5.
+Outcome against the plan, and what is open for the track: `spec/archive/app1-spatial-qc-plan.md` section 5.
 
 The app-1 plan (`spec/archive/app1-spatial-tma-plan.md`) predates both the dataset and `ROSC_MTA2`; its
 inventory (section 2) is now answerable and its sessions 1 to 3 are reframed around wrapping
@@ -338,7 +362,7 @@ existing steps rather than inventing them.
 Status 2026-09-15: item 1 approved as written; item 2 answered except the DESeq2 parameter list
 (session 0); item 3 answered in full (the Lyons CLP design from the collaborator's documents on
 2026-09-15; Track 3 S0 inventory note written the same day). Answers are recorded in section 8 of `bulkrna-plan.md` and section 4
-of `app1-spatial-qc-plan.md`.
+of `spec/archive/app1-spatial-qc-plan.md`.
 
 1. Track 1a amendment texts (7.5 `via: web` incl. strict, 10.4 two-kinds-of-skill, 12.1
    `summary.md` engine-rendered, 14.1 flags, 17 row).
@@ -359,7 +383,7 @@ lanes run as separate sessions at the same time. The engine is one lane so that 
 on the eight Lyons CLP regions, delivered 2026-09-18; two items in Lane D gated it. Lanes were
 revised 2026-09-23 (Status section); each lane's heading carries its state.
 
-### Lane A: engine (serial, engine repo)
+### Lane A: engine (serial, engine repo) [complete 2026-09-23 at v0.2.4; small items only]
 
 1. Track 1b flags with the 1c operator skill text in one session: `operator_line`,
    `run --responses`, `run --deliver`, `steps[].title` and `plain`, `--attest` requires a session
@@ -459,14 +483,14 @@ the outlier judgment (`xenium-qc-outliers-ref`, method `v0.3.3-rc1`, plugin `v0.
 tags) run, its seven holds decided and the run delivered 2026-09-23. The outcome against the plan,
 including where the build departed from it (resegmentation as its own project per region, Xenium
 Ranger 4.0.1.4, coordinates as a directory, revised spleen thresholds), is
-`app1-spatial-qc-plan.md` section 5; the data-side record is `/lab/projects/Lyons_CLP/PROGRESS.md`.
+`spec/archive/app1-spatial-qc-plan.md` section 5; the data-side record is `/lab/projects/Lyons_CLP/PROGRESS.md`.
 
 Closed by the owner 2026-09-23: the first scientific deliverable is in hand, `xenium-qc` on all
 eight regions with the summary and the review proposal chained through `derived_from`. What the
 lane left open moves to Lane F; the engine defect it exposed (the stale consensus artifact,
 `backlog.md` K7) is Lane A item 6.
 
-### Lane F: the spatial method after QC, Lyons CLP as the pilot (planned 2026-09-23, F0 done 2026-10-06)
+### Lane F: the spatial method after QC, Lyons CLP as the pilot [active; phase 0 done 2026-10-06]
 
 Successor to Lane C. Plan: `spec/plans/spatial-method-plan.md` (drafted 2026-09-23 from the
 ROSC_MTA2 archive survey). F0 done 2026-10-06: the owner decided items 9 (no pathology pass; the
@@ -494,7 +518,7 @@ Carried over from Lane C and Lane D item 7 (all inside the plan's phase 0 and se
 Proseg transcript floor and the gut label (owner); the pathology pass; the splitter merge and
 the tag cleanup (owner housekeeping, `backlog.md` K6).
 
-### Lane G: judge sources (proposed 2026-09-23, awaits the owner)
+### Lane G: judge sources [proposed 2026-09-23, awaits the owner]
 
 Plan: `spec/plans/judge-sources-plan.md`. Judgment agents from many sources: the deferred
 `openai-compatible` direct adapter pointed at the local Ollama Qwen3 models (design 17's trigger,
@@ -553,7 +577,7 @@ scratched. The layout decisions under item 2 stay because they are decisions, no
    proposal is stale (`backlog.md` K7). The decisions that survive (transcript floor, gut label,
    exclusion decision, pushes and tag cleanup, splitter merge) are listed under Lane F.
 
-### Lane E: skills and UX (after Lane A step 1)
+### Lane E: skills and UX [open, small; after Lane A step 1]
 
 Track 1d analysis skill template and the toy instance; the two Track 1g session tests on PROTSEQ;
 the measurement rows; Track 2 session 10 with a lab member once Lane B session 8 is done.
@@ -573,7 +597,7 @@ real instance will be a spatial pipeline once Lane F has one. Left: three templa
 run and a toy re-tag; the toy run by someone other than the owner, which needs K8 tagged and
 installed and a method location the tester can read (the toy method is under `/home/jrrose5`,
 remote BMESEQ); then close the lane, with skills a step of every method build.
-Next, from the 2026-09-23 brainstorm: Track 1h (`spec/plans/project-page-and-notify.md`), the
+Next, from the 2026-09-23 brainstorm: Track 1h (`spec/archive/project-page-and-notify.md`), the
 project page and notify on hold; its engine steps need a session that owns `src/stringency/`.
 
 ### Running it

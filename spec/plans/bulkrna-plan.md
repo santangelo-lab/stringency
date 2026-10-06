@@ -5,6 +5,8 @@ Working note, not the spec. Roadmap Track 2 (`spec/plans/roadmap-2026-09.md`). T
 owner on 2026-09-14: counts first, alignment second; this is the first real plugin; it must be
 runnable by a non-computational lab member through an analysis skill.
 
+**Status 2026-10-06.** Dormant since 2026-09-23 by the owner's decision (roadmap Lane B); kept as written, nothing built beyond the engine prerequisites that Lane A delivered. Not a current instruction.
+
 ## 1. Data and reference
 
 Dataset on PROTSEQ: `/data/lab/raw/2026-09_plasmidsaurus_darpa-united-sarna-comparison/`, 44

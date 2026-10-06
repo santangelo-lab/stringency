@@ -1,5 +1,7 @@
 # Declarations drafted by an agent, and objectives that arrive later
 
+**Archived 2026-10-06.** Design note of 2026-09-09; items 1 to 3 built (declare --check, drafted-by, chained projects) and item 4 exceeded by the Lyons CLP chain. The one open question, staged mode (H5), is tracked in `spec/plans/backlog.md`.
+
 A design note, written 2026-09-09 after the improvements backlog and before application 1. Not
 the spec: a proposal for changes to design 2.3 through 2.7, 2.6, 14.1, and 17, and for the order
 in which to build them. Two questions from the same conversation:

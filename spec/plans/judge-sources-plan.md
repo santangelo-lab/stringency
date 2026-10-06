@@ -6,6 +6,8 @@ specification), and one evaluation. Items marked *design* change design text and
 owner's approval; the rest are DECISIONS-level. Section 6 lists the decisions the owner is asked
 to make; section 7 the order.
 
+**Status 2026-10-06.** Proposed (Lane G), not started; waits on the seven decisions in section 6. S2(b)'s answer key now exists: `qc2_outliers_all` run `01M492CYVV7JBT69W85MXZY8AF` (2026-10-06), the owner's verdicts on the same six punches as September.
+
 ## 1. The question
 
 The owner wants the engine to source judgment agents from many places: delegated subagents of

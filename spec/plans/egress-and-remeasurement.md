@@ -7,6 +7,8 @@ project is assessed in `judge-sources-plan.md` section 9 and not integrated. Ite
 goes through `DEVIATIONS.md`; the rest is DECISIONS-level. Neither part is scheduled; both are
 recorded here so they can be built when a lane needs them. Backlog rows L1 to L4 point here.
 
+**Status 2026-10-06.** Unscheduled; backlog L1 to L4. L1 is the gate before the first PROTECT project; L4's `ill_formed` control kind is wanted by Lane F's annotation judgment (F7).
+
 The line that justifies both, from ClawBio's `tests/test_data_handling_doc.py`: "A prose promise
 that networked skills are individually labelled governs nothing." Both mechanisms turn a
 statement the design already makes into something the engine checks and the trace records.

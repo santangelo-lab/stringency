@@ -1,5 +1,7 @@
 # Application 1, revised: Lyons CLP Xenium, QC first
 
+**Archived 2026-10-06.** Track 3 and Lane C, closed 2026-09-23 with the QC layer delivered; section 5 is the outcome against the plan. Successor: `spec/plans/spatial-method-plan.md` (Lane F), whose phase 0 re-ran this plan's chain on method v0.4.0 on 2026-10-06.
+
 Working note, not the spec. Roadmap Track 3 (`spec/plans/roadmap-2026-09.md`). Revises the opening of
 `spec/archive/app1-spatial-tma-plan.md`, which predates both the dataset and the mature pipeline; its
 sessions 1 to 3 become wrapping work, and its inventory (section 2) is now answerable. The owner's

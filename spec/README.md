@@ -4,42 +4,23 @@ What each file is, and how much weight it carries.
 
 ## The spec
 
-| file | what | changes need |
+| file | state (2026-10-06) | what |
 |---|---|---|
-| `stringency-design.md` | the design; where it and any other document disagree, this wins | the owner's approval for a contract, a DECISIONS line below the contract level |
-| `commandments.md` | the constraints the design implements | the owner |
-| `module-contract.md` | frozen at the Phase A exit: what a method repo and a `module.yml` declare, what a module script receives and writes | the owner, via `DEVIATIONS.md` |
-| `predicate-contract.md` | frozen: the predicate signature, phases, scopes, dispositions | the owner, via `DEVIATIONS.md` |
-| `trace-schema.md` | frozen: the tables and columns of `prov/run.db`; additive columns are DECISIONS-level | the owner for anything not additive |
-| `method-skills.md` | the two skill files a method repository carries per pipeline (delivery skill, design 14.4; analysis skill source, design 10.4): fields, checks, render, publish, routing test | a DECISIONS line; the schemas themselves are the design's |
+| `roadmap-2026-09.md` | current | the plan approved 2026-09-14 and the lanes it became; its first section, "Where things stand", is the one-page state of every lane with pointers; the rest is the approved detail with per-lane status |
+| `spatial-method-plan.md` | **active (Lane F)** | the spatial method after QC with Lyons CLP as the pilot: sections 1 to 4 phase 0 (done 2026-10-06), sections 5 to 7 the downstream pilot re-planned for R, section 8 every owner decision (12 to 15 open) |
+| `backlog.md` | current | open items not in a lane (K, L series), the measurement table |
+| `ux-two-audiences.md` | open, small (Lane E) | Track 1 in detail; built through 1h; section 8's amendments applied; the status line says what remains |
+| `judge-sources-plan.md` | proposed (Lane G) | judgment agents from many sources: the `openai-compatible` adapter, the Qwen3 evaluation, judge identity, a panel specification (*design*), the operator fallback, a `/data/protect` routing rule; seven owner decisions in section 6 |
+| `egress-and-remeasurement.md` | unscheduled | data egress classes and judgment re-measurement endpoints borrowed from ClawBio; backlog L1 to L4 |
+| `bulkrna-plan.md` | dormant (Lane B) | Track 2 in detail, kept as written since 2026-09-23 |
 
-## The ledgers
-
-| file | what |
-|---|---|
-| `DECISIONS.md` | every choice made where the design was silent, one line each with a reason; append only |
-| `DEVIATIONS.md` | frozen contracts that could not be implemented as written; each needs the owner's acknowledgement; empty so far |
-
-## Plans (`plans/`)
-
-Working notes, not the spec. They say what to build next and why; when they propose changing a
-design section, the text is marked as an amendment awaiting approval.
-
-| file | what |
-|---|---|
-| `roadmap-2026-09.md` | the plan approved on 2026-09-14 after the Phase A exit: Track 0 cleanup (done), Track 1 two-audience UX, Track 2 bulk RNA-seq plugin, Track 3 Lyons CLP spatial QC (done to S4); its Status section and the per-lane status lines under Order say where each lane stands |
-| `ux-two-audiences.md` | Track 1 in detail; section 8 holds the amendment texts for design 7.5, 10.4, 12.1, 14.1, 17 |
-| `project-page-and-notify.md` | Track 1h: the project page (board, progress, results and holds served by `review --serve`, read-only standing instance) and notify on hold (engine-sent messages on hold, completion, delivery); section 5 holds the owner's decisions |
-| `bulkrna-plan.md` | Track 2 in detail; section 8 holds the session-0 decisions for the owner |
-| `app1-spatial-qc-plan.md` | Track 3 in detail; section 4 holds the owner's decisions; section 5 the outcome against the plan and what is open for the track |
-| `lane-c-day1-2026-09-17.md` | the running tooling log of Lane C on 2026-09-17 and 2026-09-18 (hold ids, run ids, decisions, engine gaps); closed, kept because the notes and the trace cite it |
-| `declarations-and-objectives.md` | agent-drafted declarations (built) and the five options for objectives that arrive late; staged mode (H5) is still open here |
-| `judge-sources-plan.md` | judgment agents from many sources (2026-09-23): the `openai-compatible` adapter for local Ollama models, the Qwen3 evaluation, judge identity for reviewers, a panel specification with `role: vote | check` (*design*), the operator-judges-itself fallback, a `/data/protect` routing rule; Jev tabled in section 8 |
-| `egress-and-remeasurement.md` | two mechanisms borrowed from ClawBio (2026-09-23), unscheduled: data egress classes declared by harness and module, scanned by lint, capped by `policy.yml` and reported per run (backlog L1); judgment re-measurement endpoints, an `ill_formed` control kind (*design*), `abstain_stability` in coverage, judge identity on control results (L2 to L4) |
-| `backlog.md` | the open items that are not in a track, and the measurement table |
+Every live plan opens with a dated **Status** line; a document without one has not been reviewed
+since 2026-10-06.
 
 ## Archive (`archive/`)
 
 Finished or superseded documents, kept because the notes and the trace cite them. Each opens with
 a line saying why it was archived and where its live successor is. Nothing in `archive/` is an
-instruction to a session.
+instruction to a session. Moved there on 2026-10-06: `app1-spatial-qc-plan.md` (Track 3, Lane C,
+closed), `lane-c-day1-2026-09-17.md` (its day log), `project-page-and-notify.md` (Track 1h, built),
+`declarations-and-objectives.md` (design note, built; H5 in the backlog).

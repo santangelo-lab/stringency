@@ -1,5 +1,7 @@
 # Project page and notify on hold (Track 1h)
 
+**Archived 2026-10-06.** Track 1h, built 2026-09-23 (engine v0.2.5 and v0.2.6: notify on hold, the project page on `review --serve`). What remains is the owner's install of the standing page and `notify.yml`, listed under Open in `notes/2026-09-23-1442-track1h-start.md`; the measurement runs are in `backlog.md`.
+
 Working note, not the spec. Roadmap Track 1, added 2026-09-23 after the first measured run
 through an analysis skill (`notes/2026-09-23-1355-lane-e-skills-and-first-run.md`). Proposes two
 engine additions below the contract level and one design question for the owner (section 5).

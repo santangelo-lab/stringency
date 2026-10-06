@@ -4,6 +4,8 @@ Working note, not the spec. Roadmap Track 1 (`spec/plans/roadmap-2026-09.md`). P
 7.5, 10.4, 12.1, 14.1, and 17; the amendment texts are in section 8 and need the owner's approval
 before build. Everything else here is DECISIONS-level or skill text.
 
+**Status 2026-10-06.** Track 1 items 1a to 1h are built (1h 2026-09-23, `spec/archive/project-page-and-notify.md`). Open under Lane E: three analysis-skill template fixes and a re-tag, a toy run by someone other than the owner, and the measurement rows in `backlog.md`; the first spatial analysis skill is Lane F session F11. Section 8's amendments were approved and applied 2026-09-15.
+
 ## 1. The problem
 
 The owner, 2026-09-14: much of what the AI operator sends is unintelligible to the person watching,

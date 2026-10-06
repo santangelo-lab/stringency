@@ -1,6 +1,6 @@
 # Lane F: the spatial method after QC, Lyons CLP as the pilot (2026-09-23)
 
-Working note, not the spec. Successor to `app1-spatial-qc-plan.md` (Track 3, Lane C, closed
+Working note, not the spec. Successor to `spec/archive/app1-spatial-qc-plan.md` (Track 3, Lane C, closed
 2026-09-23) and to the sessions of `spec/archive/app1-spatial-tma-plan.md` that the QC work did
 not reach (7 to 12 and 14). Drafted for the owner's approval; the decisions it needs are in
 section 8. Engine: `v0.2.4` when drafted, `v0.2.6` (Track 1h) when phase 0 started on
@@ -8,6 +8,8 @@ section 8. Engine: `v0.2.4` when drafted, `v0.2.6` (Track 1h) when phase 0 start
 items this plan absorbs. All eleven decisions of section 8 were taken by the owner on 2026-10-06;
 F0 to F3 ran the same day (phase 0 complete). Decision 1 chose R with the ROSC code, so sections
 5 to 7 were rewritten for R the same evening; decisions 12 to 15 wait before F4.
+
+**Status 2026-10-06.** Sections 1 to 4 are the plan as drafted and, for phase 0, as run (F0 to F3 done 2026-10-06; the record is `/lab/projects/Lyons_CLP/PROGRESS.md` and `notes/2026-10-06-1345-lane-f-phase0.md`). Sections 5 to 7 are current: the downstream pilot re-planned for R. Section 8 carries every owner decision; 12 to 15 are open and gate F4.
 
 ## 1. Where this sits
 
