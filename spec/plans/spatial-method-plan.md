@@ -7,9 +7,9 @@ section 8. Engine: `v0.2.4` when drafted, `v0.2.6` (Track 1h) when phase 0 start
 2026-10-06. Method: `stringency-xenium-method` `v0.3.3-rc1`, `PLAN.md` there lists the open module
 items this plan absorbs. All eleven decisions of section 8 were taken by the owner on 2026-10-06;
 F0 to F3 ran the same day (phase 0 complete). Decision 1 chose R with the ROSC code, so sections
-5 to 7 were rewritten for R the same evening; decisions 12 to 15 wait before F4.
+5 to 7 were rewritten for R the same evening and decisions 12 to 15 taken; F4 is next.
 
-**Status 2026-10-06.** Sections 1 to 4 are the plan as drafted and, for phase 0, as run (F0 to F3 done 2026-10-06; the record is `/lab/projects/Lyons_CLP/PROGRESS.md` and `notes/2026-10-06-1345-lane-f-phase0.md`). Sections 5 to 7 are current: the downstream pilot re-planned for R. Section 8 carries every owner decision; 12 to 15 are open and gate F4.
+**Status 2026-10-06.** Sections 1 to 4 are the plan as drafted and, for phase 0, as run (F0 to F3 done 2026-10-06; the record is `/lab/projects/Lyons_CLP/PROGRESS.md` and `notes/2026-10-06-1345-lane-f-phase0.md`). Sections 5 to 7 are current: the downstream pilot re-planned for R. Section 8 carries every owner decision, all fifteen taken; F4 is next.
 
 ## 1. Where this sits
 
@@ -172,9 +172,10 @@ objects.
 - **Reading the QC objects.** The `qc_object_set` is h5ad (checked 2026-10-06: raw counts in `X`,
   `obs` with `cell_id`, `cell_area`, `nCount`, `nFeature`, `punch_id`, `animal`, `timepoint_h`,
   `condition`, `slide`, `organ`, `obsm["spatial"]`, `uns["stringency_qc"]`). The merge module reads
-  them with `anndataR::read_h5ad` and `as_Seurat`, keeps `cell_area` in meta.data (LogArea needs
-  it) and the coordinates as a FOV. anndataR is the package ROSC already uses, in the other
-  direction.
+  them with `anndataR::read_h5ad` as a Seurat object, keeps `cell_area` in meta.data (LogArea
+  needs it) and the coordinates as a FOV. anndataR is the package ROSC already uses, but only in
+  the other direction (decision 12): the reader is proven in the F4 spike by a round trip before
+  any pipeline depends on it.
 - **Writing h5ad when Python needs it.** One module, `export-h5ad`, writes `as_AnnData(obj,
   x_mapping = "counts", ...)` with `obsm[["spatial"]]`, as ROSC's `convert_to_h5ad.R` does; its
   output is an `anndata` object the existing Python extractor reads, and a predicate
@@ -297,7 +298,7 @@ Deliverables: `clustered_object` (`seurat_object`), `markers`, `cluster_report`.
 | F1 | method `v0.4.0`: the five phase-0 changes, tests (`tests/run_summary.sh` with a glob input, `run_outliers.sh` with clipped bands), lint | tag pushed | done 2026-10-06 |
 | F2 | phase 0 run, part 1: eight `qc2` projects through batch review; the summary through inherited confirmation | eight QC deliveries, one summary | done 2026-10-06 (inheritance did not fire: L5; sixteen `param.agent_proposed` holds: L6) |
 | F3 | phase 0 run, part 2: `qc2_outliers_all` with three fresh delegates; the owner's decisions; `punch_exclusions.csv`; the comparison note; the Lane E measurement row for a chained real run | the exclusion file | done 2026-10-06 (one run rejected by `judg.numeric_claims_match`, the second clean) |
-| F4 | image `xenium-r` built on GHCR and pulled by digest; `modules/_rlib/` copied from the archive with provenance headers; plugin 0.2 (`seurat_object`, `extract_seurat.R`, `sc.export_mismatch`, the ten predicates with Seurat-state fixtures, typed operations); a spike: `merge-punches` and `normalize` on `qc2_0076570_Liver` plus `qc2_0076581_Liver` (the smallest organ), the extractor's envelope read back | image in `MANIFEST.md`; plugin tag; a normalised liver object | plugin tests green; `lint` clean; the envelope shows `normalisation: logarea` |
+| F4 | image `xenium-r` (renv lock, rocker, PPM, Bioconductor 3.22) built on GHCR and pulled by digest; `modules/_rlib/` copied from the archive with provenance headers, `convert_to_h5ad.R` among them; plugin 0.2 (`seurat_object`, `extract_seurat.R`, `sc.export_mismatch`, the ten predicates with Seurat-state fixtures, typed operations); a spike: anndataR round trip on one liver QC object (read as Seurat, write back, compare counts, `obs`, coordinates, `uns`), then `merge-punches` and `normalize` on `qc2_0076570_Liver` plus `qc2_0076581_Liver`, the extractor's envelope read back | image in `MANIFEST.md`; plugin tag; a normalised liver object; the round-trip report | plugin tests green; `lint` clean; round trip equal; the envelope shows `normalisation: logarea` |
 | F5 | `xenium-cluster` modules and pipeline; synthetic control (a two-punch fixture from the toy-like generator, in R); run on liver | clustered liver, markers, report | delivered |
 | F6 | `xenium-cluster` on spleen, lung, gut; the cluster reports read with the owner; resolution and `ndim` decisions recorded as `param.agent_proposed` acceptances; spleen runtime measured | four clustered objects | delivered |
 | F7 | vocabularies for four organs with collapse maps (owner approves); `annotate-clusters` module (`pre.py`, prompt, schema, `guide.md`); controls from the ROSC liver and spleen objects through `find-markers` | module lints; both controls pass | controls green |
@@ -333,7 +334,7 @@ parameter holds. The plugin half of F4 and the image half can run in parallel.
   the order of tens of GB in R; the resources block says 128 GB for `reduce-cluster` on spleen and
   64 GB elsewhere, within the shared machine's 500 GB.
 
-## 8. Decisions for the owner (1 to 11 before F1, all taken 2026-10-06; 12 to 15 before F4)
+## 8. Decisions for the owner (all fifteen taken 2026-10-06)
 
 1. **Language.** Decided 2026-10-06, against the recommendation: **R, reusing the ROSC_MTA2
    code as designed for that project** rather than writing new Python ("I'd rather use that than
@@ -367,18 +368,33 @@ parameter holds. The plugin half of F4 and the image half can run in parallel.
 
 Raised by the re-plan for R (section 5, 2026-10-06), to decide before F4:
 
-12. **Reading the QC objects.** Read the delivered h5ad objects into R with `anndataR` at the
-    merge (recommended: the QC chain stays as delivered and anndataR is the package ROSC already
-    used), or re-deliver the QC objects as `.rds` from a new `qc-cells` version (a third chain).
-13. **The squidpy step.** Keep `neighborhood-enrichment` in Python through `export-h5ad` and
-    `sc.export_mismatch` (recommended: ROSC's code, one hand-off, one predicate), or write an R
-    equivalent so the pilot is one language.
-14. **Clustering resolutions.** A short list (0.2, 0.4, 0.6, 0.8, 1.0; 0.4 the default) instead of
-    ROSC's eleven resolutions from 0 to 1 (recommended: the five-hour step was those eleven runs;
-    clustree over five is still readable), or the full sweep.
-15. **The image build.** `rocker/r-ver` 4.5 with Posit Package Manager binaries and Bioconductor
-    3.22, pinned by a committed `renv.lock`, built on GHCR by the existing workflow (recommended),
-    or a local Apptainer `.def` build on PROTSEQ kept off GHCR like the Xenium Ranger image.
+12. **Reading the QC objects.** Decided 2026-10-06 after checking the archive: ROSC has tested
+    conversion code in one direction only, Seurat to h5ad, `analysis/downstream/scripts/convert_to_h5ad.R`
+    (anndataR `as_AnnData` with counts in `X`, the FOV coordinates into `obsm["spatial"]` with a
+    refusal on any cell lacking one, ASCII sanitising of metadata and gene names); the pathway
+    scripts' "re-export" is a CSV, and no R code anywhere in ROSC reads an h5ad (only Python does).
+    So: `export-h5ad` copies that script's logic verbatim into `_rlib`; the merge step reads the
+    QC h5ad with the same package's reader (`anndataR::read_h5ad`, as a Seurat object), which
+    ROSC never exercised, and the F4 spike proves it with a round trip on one liver object
+    (counts, `obs`, coordinates and `uns["stringency_qc"]` equal after read and write). No third
+    QC chain.
+13. **The squidpy step.** Decided 2026-10-06 as recommended: `neighborhood-enrichment` stays in
+    Python through `export-h5ad` and `sc.export_mismatch`.
+14. **Clustering resolutions.** Decided 2026-10-06 as recommended: 0.2, 0.4, 0.6, 0.8, 1.0 with
+    0.4 the default; `resolutions` stays a parameter so the full sweep can be proposed on one organ
+    if a report asks for it.
+15. **The image build and the R environment manager.** Decided 2026-10-06 after reviewing the
+    options (rworks.dev, "R environment managers": renv, rix, rv, uvr, ir; rig for R versions):
+    **renv** inside a `rocker/r-ver:4.5` Docker image, restored from Posit Package Manager binaries
+    and Bioconductor 3.22, the `renv.lock` committed, built on GHCR by the existing workflow. Fit
+    with stringency: the engine's contract is a committed lockfile the local executor hashes
+    (design 10.3 names `renv.lock` already) and a SIF digest in production, so any lockfile tool
+    works and renv is the one the design, Bioconductor and the lab already know. rix (Nix) is the
+    only option that is byte-reproducible without a network, but it is a second build system the
+    machines do not have, and Seurat and Bioconductor through nixpkgs lag; not now. rv is the
+    credible faster alternative if renv's restore makes the CI build slow (a `DECISIONS.md` line
+    would add `rv.lock` to the hashed lockfiles). uvr and ir are too new; rig is unnecessary inside
+    a rocker image, which pins R. No R exists on PROTSEQ outside the image, by design.
 9. **Phase 0 timing against the pathology pass.** Decided 2026-10-06: there is no pathology
    pass; the histology file is final; the chain runs now.
 10. **Exclusion file format** (`PLAN.md` 1.9). Decided 2026-10-06: the columns in section 4 item 4

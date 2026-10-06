@@ -17,7 +17,7 @@ per-lane detail, kept as written with each heading carrying its state.
 | C spatial QC | closed 2026-09-23, delivered | `spec/archive/app1-spatial-qc-plan.md` | none; superseded by F |
 | D owner and operations | closed 2026-09-23 | this file, Lane D | owner housekeeping: K6 tag cleanup, the standing page and `notify.yml` |
 | E skills and UX | open, small | `ux-two-audiences.md` | three template fixes and a re-tag; a toy run by someone other than the owner; measurement rows |
-| F spatial method, Lyons CLP pilot | **active**; phase 0 (F0 to F3) done 2026-10-06 | `spatial-method-plan.md` | owner's decisions 12 to 15, then F4 (`xenium-r` image, plugin 0.2, the merge spike) |
+| F spatial method, Lyons CLP pilot | **active**; phase 0 (F0 to F3) done 2026-10-06; all fifteen decisions taken | `spatial-method-plan.md` | F4: `xenium-r` image (renv, rocker, GHCR), plugin 0.2, the anndataR round trip and merge spike on liver |
 | G judge sources | proposed 2026-09-23, not started | `judge-sources-plan.md` | the seven decisions in its section 6 |
 
 Shared engine on PROTSEQ: `0.2.6-sc0.1.8`. Method `stringency-xenium-method` `v0.4.0`. Plugin
@@ -502,8 +502,9 @@ vocabularies, niche escape hatch and contrasts as recommended; item 8: CellQuant
 Hotspot out of the pilot. The pilot's stated goal: the tissues and time points where CLP leaves an
 obvious signal despite n = 2. Phase 0 (F0 to F3) ran the same day; sections 5 to 7 of the plan were
 rewritten for R that evening (Seurat objects between steps, `xenium-r` image, R extractor
-`extract_seurat.R`, judgment modules stay Python, one `export-h5ad` hand-off to squidpy); four
-re-plan decisions (section 8 items 12 to 15) wait before F4. Phase 0 started the
+`extract_seurat.R`, judgment modules stay Python, one `export-h5ad` hand-off to squidpy); the four
+re-plan decisions (section 8 items 12 to 15: anndataR both ways with a round-trip proof, squidpy
+stays Python, five resolutions, renv in a rocker image on GHCR) were taken the same evening. Phase 0 started the
 same day on engine `0.2.6`.
 In one line: phase 0 re-runs the QC chain on `v0.2.4` with the method fixes it exposed (batch
 review over the eight QC holds, inherited confirmation on the summary, `arity: many`, a clean
