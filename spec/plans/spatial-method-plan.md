@@ -5,8 +5,9 @@ Working note, not the spec. Successor to `app1-spatial-qc-plan.md` (Track 3, Lan
 not reach (7 to 12 and 14). Drafted for the owner's approval; the decisions it needs are in
 section 8. Engine: `v0.2.4` when drafted, `v0.2.6` (Track 1h) when phase 0 started on
 2026-10-06. Method: `stringency-xenium-method` `v0.3.3-rc1`, `PLAN.md` there lists the open module
-items this plan absorbs. Decisions 9, 10 and 11 were taken by the owner on 2026-10-06 (section 8);
-F0 is done and phase 0 is running.
+items this plan absorbs. All eleven decisions of section 8 were taken by the owner on 2026-10-06;
+F0 to F3 ran the same day (phase 0 complete). Decision 1 chose R with the ROSC code, so sections
+5 to 7 were rewritten for R the same evening; decisions 12 to 15 wait before F4.
 
 ## 1. Where this sits
 
@@ -137,126 +138,156 @@ Engine follow-up this phase may raise (Lane A, small): an input with `role: refe
 defeat inherited confirmation, since a reference table is not this design's data; today
 `qc2_outliers_all` opens an ordinary hold because of it.
 
-## 5. The downstream pipelines
+## 5. The downstream pipelines (re-planned for R, 2026-10-06)
 
-One method repository, one Python image extended from `xenium-py` (section 7), one module per
-step with per-organ defaults, each pipeline a project per organ chained through `derived_from`,
-and a cross-organ step over `arity: many` where a table spans organs. Judgment enters exactly
-where ROSC put a person and an agent (cell-type labels, zone names) and nowhere numeric.
+Owner decision 1 (section 8): the pilot reuses the ROSC_MTA2 code, which is Seurat v5 in R end to
+end (survey of the archive, 2026-10-06: every R step reads and writes `.rds`; `anndataR` 1.0.0
+converts to h5ad once, for the Python squidpy step; no step reads h5ad into R). What changes
+against the first draft: the object between steps is a Seurat object, the modules that touch it are
+R scripts in one `xenium-r` image, and the plugin reads a Seurat object's state through an R
+extractor. What does not change: one module per step with per-organ defaults, judgment where ROSC
+put a person (labels, zone names), the parameter values tuned on this platform, the deliverable
+set, and the gates. Judgment modules stay in Python (`xenium-py`): their evidence is tables, not
+objects.
 
-### Phase 1: foundations (plugin and image, before any pipeline runs)
+### 5.0 How R meets the engine
 
-- Plugin `stringency-singlecell` 0.2: the `anndata` extractor's `domain` block reports what the
-  downstream predicates need (archived plan session 4): normalised or not (an `uns` flag written
-  by the normalise module, plus `X` dtype and max), HVG selected, PCA and neighbours present with
-  their parameters, clustering present with resolution and seed, spatial graph present with its
-  definition, cells per cluster per punch and per animal, labels present and which vocabulary.
-  Object type `clustered_object_set`? No: one `anndata` per organ is the object from phase 2 on;
-  the per-punch set ends at QC.
-- Predicates (archived plan session 5, instantiated with must-fire and must-pass fixtures):
-  `qc.filter_ordering` (cells filtered after normalisation; block), `sc.panel_hvg` (HVG selection
-  on a targeted panel; flag), `spatial.neighborhood_undeclared` (a spatial statistic on an object
-  whose graph definition is not in the state; block), `spatial.no_permutation_null` (an enrichment
-  claim without a permutation artifact; block), `de.replication_unit` (a test whose unit is the
-  cell or the punch when the design says animal; block), `de.covariate_omission` (`slide` in
-  `design.batch` and absent from the formula; flag), `de.selection_bias` (a test between clusters
-  derived from the same counts; flag, scoped so a declared-factor contrast does not fire),
-  `test.multiple_comparison` (no correction; block), `sc.small_niche` (a niche under the floor;
-  flag), `sc.unknown_fraction` (more than a policy share of cells labelled `unknown`; flag).
-- Vocabularies: `cell_types_<organ>@1` for gut, spleen, lung, liver, each a Cell Ontology subset
-  with ids plus `unknown`, `low_quality`, `contamination`; a collapse map to broad groups as the
-  ROSC `cell_type_collapse_map.csv` does, committed with the vocabulary; `niches_<organ>@1` with
-  a `proposed_label` escape hatch that always opens a hold (the archived plan's session 6
-  question, decided in section 8). Typed operation schemas for `normalize`, `select_hvg`,
-  `cluster`, `find_markers`, `annotate_clusters`, `spatial_neighborhood`, `characterise_niches`,
-  `test_differential_expression`.
-- Questions: `processed_object` (already), `cell_type_annotation`, `niche_characterisation`
-  (already), `differential_expression` (already).
-- Image `xenium-py` 0.2.0: adds `leidenalg`, `scikit-learn`, `statsmodels` and `pydeseq2` (or
-  the owner's choice, section 8) pinned; the ROSC lock (`lock_rosc_downstream.yml`: scanpy
-  1.11.5, squidpy 1.8.1, anndata 0.12.0, leidenalg 0.12.0) is the reference set.
+- **Object type `seurat_object`** (plugin 0.2): a `.rds` holding a Seurat v5 object. Extractor
+  `tools/extract_seurat.R`, run by the engine as `Rscript` inside the module's image (the executor
+  already dispatches `.R` scripts; the tool's env is the producing module's env, `xenium-r`). It
+  prints the design 4.2 envelope with the same keys the `anndata` extractor prints, so every
+  predicate stays object-agnostic: `n_obs`, `n_var`, `fields.obs` (meta.data columns with dtype,
+  `n_unique`, levels), `fields.obsm` (reductions: `pca`, `umap`, `spatial` from the FOV coordinates),
+  `fields.layers` (`counts`, `data`, `scale.data` present or not), `fields.uns_flags` from
+  `obj@misc$stringency` (below), `counts_per_group` from the design, and `domain` (cells per
+  cluster per punch and per animal, labels present and their vocabulary, the spatial graph's
+  definition). Load time is the cost: a 1.4 M-cell spleen object takes a minute or two to read.
+- **`misc$stringency`**: every R module writes what it did into the object (`normalisation:
+  {method, scale_factor}`, `hvg: {n, flavor}`, `pca: {ndim}`, `neighbors: {dims, k}`, `clustering:
+  {algorithm, resolution, seed, column}`, `spatial_graph: {k, per: punch_id}`, `labels: {column,
+  vocabulary}`), the R twin of the `uns` flags the Python draft relied on; `qc.filter_ordering`,
+  `spatial.neighborhood_undeclared` and `sc.panel_hvg` read these through the extractor.
+- **Reading the QC objects.** The `qc_object_set` is h5ad (checked 2026-10-06: raw counts in `X`,
+  `obs` with `cell_id`, `cell_area`, `nCount`, `nFeature`, `punch_id`, `animal`, `timepoint_h`,
+  `condition`, `slide`, `organ`, `obsm["spatial"]`, `uns["stringency_qc"]`). The merge module reads
+  them with `anndataR::read_h5ad` and `as_Seurat`, keeps `cell_area` in meta.data (LogArea needs
+  it) and the coordinates as a FOV. anndataR is the package ROSC already uses, in the other
+  direction.
+- **Writing h5ad when Python needs it.** One module, `export-h5ad`, writes `as_AnnData(obj,
+  x_mapping = "counts", ...)` with `obsm[["spatial"]]`, as ROSC's `convert_to_h5ad.R` does; its
+  output is an `anndata` object the existing Python extractor reads, and a predicate
+  `sc.export_mismatch` (block) compares `n_obs`, the obs columns and the label column against the
+  parent `seurat_object`'s state. Only the squidpy module binds it.
+- **Shared R code** lives in `modules/_rlib/` (copied from the archive with the `/data-raid` paths
+  and the per-tissue copies removed; the archive commit recorded in each file's header):
+  `LogAreaNormalize` and `MultiResCluster` from `Xen_Seurat_functions.R`, the niche builder from
+  `run_niche_Spleen.R`, `de_utils.R`, `pathway_utils.R`, `innate_pathway_genesets.R`,
+  `qc_exclusion.R`. Each module is `run.R` reading the job JSON (`jsonlite`) and writing outputs
+  to the paths it names; `_rlib` is bound with the module directory as `qc_plots.py` is today.
+  Column names move from ROSC's (`run_name`, `time`, `TMA`, `tissue`) to Lyons' (`punch_id`,
+  `timepoint_h`, `slide`, `organ`) at the merge; `animal` exists here and did not in ROSC.
+- **Determinism.** `set.seed` from the step's `seed` parameter before every stochastic call; no
+  `future::plan(multicore)` (ROSC's ten workers made run order a variable); `RunUMAP` with
+  `seed.use`; the resources block caps cpus.
 
-### Phase 2: `xenium-cluster` (one project per organ, four)
+### Phase 1: foundations (F4)
 
-| step | module | params (default, range) | notes |
+- Image `xenium-r` (section 7). Plugin 0.2: `seurat_object` and `extract_seurat.R`;
+  `sc.export_mismatch`; the ten predicates of the first draft unchanged in meaning, their fixtures
+  now Seurat-state envelopes as well as anndata ones; vocabularies `cell_types_<organ>@1` (Cell
+  Ontology subsets with ids, drafted by the agent from the panel and ROSC's 237-row
+  `cell_type_collapse_map.csv`, plus `unknown`, `low_quality`, `contamination`; the collapse map
+  per organ committed beside it) and `niches_<organ>@1` with `proposed_label`; typed operations
+  `merge_objects`, `normalize`, `reduce_cluster`, `find_markers`, `annotate_clusters`,
+  `apply_labels`, `spatial_niches`, `label_niches`, `apply_zones`, `compose_cells`, `export_h5ad`,
+  `neighborhood_enrichment`, `pseudobulk_de`, `score_pathways`; question `cell_type_annotation`.
+
+### Phase 2: `xenium-cluster` (one project per organ)
+
+| step | module | env | params (default, range) | notes |
+|---|---|---|---|---|
+| 01_merge | `merge-punches` | xenium-r | none | `qc_objects: {type: qc_object_set, arity: many}` bound `$inputs.qc_*` over the organ's two `qc2` deliveries; `punch_exclusions` (csv, role observation) applied and recorded in `misc$stringency$exclusions`; one `seurat_object` with the design columns and `cell_area` on meta.data, coordinates as FOVs per punch |
+| 02_normalize | `normalize` | xenium-r | `method` logarea (default, decision 2) \| log_total; `scale_factor` 100 | ROSC `LogAreaNormalize` (`counts %*% Diagonal(1/cell_area)`, then `log1p(x * 100)`); the report shows both methods on one punch once |
+| 03_reduce_cluster | `reduce-cluster` | xenium-r | `n_features` 2000 (500 to all); `ndim` 35 (20 to 50; ROSC used 40 for spleen); `resolutions` [0.2, 0.4, 0.6, 0.8, 1.0]; `resolution` 0.4; `seed` 1984 | ROSC order kept: `FindVariableFeatures`, `ScaleData`, `RunPCA`, `FindNeighbors(dims 1:ndim)`, Louvain at the listed resolutions only (not 0 to 1 by 0.1: eleven clusterings at 1.4 M cells is the five-hour step), `Idents` at `resolution`; `RunUMAP` uwot cosine, n.neighbors 30, min.dist 0.3, seed 42, for the report only; `stochastic: true`, `seed_param: seed` |
+| 04_markers | `find-markers` | xenium-r | `logfc_min` 0.5, `min_pct` 0.1, `test` wilcox | `FindAllMarkers` at the chosen resolution; one table: cluster, gene, logfc, pct in, pct out, adjusted p |
+| 05_report | `cluster-report` | xenium-r | none | the ROSC `timepoint_batch` tables as code: cells per cluster per punch, animal, time point and slide; ISG enrichment per cluster; UMAP and per-punch spatial PNGs; every numeral a table cell |
+
+Deliverables: `clustered_object` (`seurat_object`), `markers`, `cluster_report`. Decision points:
+`resolution`, `ndim`, `method`; `param.agent_proposed` will hold once per project on each.
+
+### Phase 3: `xenium-annotate` (the first downstream judgment)
+
+- `annotate-clusters` (judgment, `xenium-py`, `all_items`, 3 replicates, abstain required, ordinal
+  confidence). `pre.py` reads the `markers` table and the report's composition tables (no object)
+  and writes the evidence: `markers` (top 25 per cluster with logfc, pct in and out), `composition`
+  (cells per cluster per punch, animal, time point, slide), `context` (organ, species, panel,
+  expected populations and known absences from the collapse map). Vocabulary
+  `cell_types_<organ>@1`; the `/single-cell-annotation` skill's evidence rules transcribed into
+  `prompt.md` and `guide.md`; `alternative_labels` allowed; the prompt says time points and other
+  clusters' ids in words (method `PLAN.md` 1.10).
+- Controls (before the first real run): positive, ROSC `Liver_annotated.rds` and
+  `Spleen_annotated.rds` from the archive (`analysis/upstream/<T>/output/pipeline/objs/`) through
+  `find-markers` and the same `pre.py`, agreement at the collapsed group level after the collapse
+  map; negative, marker symbols shuffled across clusters, expecting `unknown` or abstain.
+- `apply-labels` (xenium-r): consensus to `meta.data$cell_type` with the ontology id, the collapse
+  map to `cell_type_group`, `Low quality` and `Contamination` groups flagged for exclusion from
+  spatial statistics (ROSC `exclude_qc`); `misc$stringency$labels`; deliverables
+  `annotated_object` and a label summary table. `sc.unknown_fraction` flags a poorly resolved
+  organ.
+
+### Phase 4: `xenium-niches`
+
+| step | module | env | params |
 |---|---|---|---|
-| 01_merge | `merge-punches` | none | `qc_objects: {type: qc_object_set, arity: many}` bound `$inputs.qc_*` over the organ's two region deliveries; `punch_exclusions` applied here and recorded; one `anndata` with `punch_id`, `animal`, `timepoint_h`, `slide` on obs |
-| 02_normalize | `normalize` | `method` logarea \| log_total (default per section 8), `target` 100 | writes `uns["stringency_norm"]`; `qc.filter_ordering` reads history |
-| 03_features | `select-hvg` | `n_top` 2000 (500 to all), `flavor` seurat | `sc.panel_hvg` flags on a 5k panel; default may be "all genes" |
-| 04_reduce_cluster | `reduce-cluster` | `n_pcs` 35 (20 to 50), `n_neighbors` 15 (10 to 30), `resolution` 0.4 (0.2 to 1.0), `seed` 1984 | `stochastic: true`, `seed_param: seed`; leiden; UMAP for the report only |
-| 05_markers | `find-markers` | `method` wilcoxon, `logfc_min` 0.5, `min_pct` 0.1 | one table: cluster, gene, logfc, pct in, pct out, adjusted p |
-| 06_report | `cluster-report` | none | cluster sizes per punch and animal, time-point and slide composition per cluster (the ROSC `timepoint_batch` tables as code), UMAP and spatial PNGs |
+| 01_niches | `spatial-niches` | xenium-r | `k` 25 (10 to 50); `k_range` 4 to 12; `nstart` 30; `seed` 42 | ROSC `run_niche`: per-punch spatial KNN on the FOV coordinates, one-hot `cell_type` summed over neighbours (QC groups excluded), a `niche` assay, `ScaleData`, k-means over `k_range`; writes `misc$stringency$spatial_graph` (so `spatial.neighborhood_undeclared` is decidable), the WSS table, composition per niche cluster per k, sizes per punch |
+| 02_label | `label-niches` (judgment, xenium-py) | evidence from the CSVs: composition per niche at the proposed `k`, the WSS table, the top cell types; vocabulary `niches_<organ>@1` plus `proposed_label` (always holds); `k` proposed by the module from the WSS second difference and approved by the person (`param.agent_proposed`) |
+| 03_zones | `apply-zones` | xenium-r | `zone`, `zone_broad` on meta.data (ROSC `zone_map`, `broad_map`); `zone_labels.csv` with barcode, as ROSC's export; `sc.small_niche` on any zone under 200 cells |
 
-Deliverables: `clustered_object` (`anndata`), `markers`, `cluster_report`. Decision points:
-`resolution`, `n_pcs`, `method`. Delivery skill `skills/xenium-cluster.yml`: the composition
-tables and the report; analysis skill later (phase 7).
+### Phase 5: composition and neighbourhoods, descriptive
 
-### Phase 3: `xenium-annotate` (one per organ; the first downstream judgment)
+- `compose-cells` (xenium-r): cells per cell type per punch, animal and zone; proportions with the
+  animal as the unit; with n = 2 the table header says nothing is tested (CellQuant is out).
+- `export-h5ad` (xenium-r): `anndataR::as_AnnData` with counts in `X`, `obsm["spatial"]`, the label
+  and zone columns; object type `anndata`; `sc.export_mismatch` against the parent.
+- `neighborhood-enrichment` (xenium-py, squidpy, from ROSC `run_neighborhoods` and
+  `neighborhood_utils.py`): `spatial_neighbors(coord_type generic, n_neighs 15)`, `nhood_enrichment`
+  per punch, per time point and per zone with `n_perms` 1000 and `seed` 42, the permutation
+  artifact recorded so `spatial.no_permutation_null` is decidable; `co_occurrence` guarded (the
+  ROSC index error); descriptive deltas only, no p-values, the report says so.
 
-- `annotate-clusters` (judgment, `all_items`, 3 replicates, abstain required, ordinal
-  confidence): evidence tables written by `pre.py`: `markers` (top 25 per cluster with logfc,
-  pct in and out), `composition` (cells per cluster per punch, animal, time point, slide),
-  `context` (organ, species, panel, expected populations and known absences from the collapse
-  map). Vocabulary `cell_types_<organ>@1`. Prompt from the `/single-cell-annotation` skill's
-  evidence rules (the skill itself is in the owner's Claude Code user skills, not the archive;
-  its rules are transcribed into `prompt.md` and `guide.md` as the outlier module did). Output
-  per cluster: label, ontology id, confidence, cited marker cells, rationale; `alternative_labels`
-  allowed in the schema.
-- Controls (archived plan session 8): positive, a ROSC tissue with the same organ (`Liver`,
-  `Spleen`: `analysis/downstream/data/<T>_annotated.h5ad` in the archive) run through the same
-  `pre.py`, agreement at the collapsed group level after the collapse map; negative, marker gene
-  symbols shuffled across clusters, expecting `unknown` or abstain on every item.
-- `apply-labels` (deterministic): consensus to `obs["cell_type"]`, the collapse map to
-  `obs["cell_type_group"]`, QC labels flagged for exclusion from spatial statistics; the
-  `annotated_object` deliverable and a label summary table.
-- Holds: disagreement and abstention per cluster (item holds), then the flags. With the K7 fix
-  the applied labels are the decided ones. `sc.unknown_fraction` flags a poorly resolved organ.
+### Phase 6: `xenium-de` (contrasts declared in `objective.yml`)
 
-### Phase 4: `xenium-niches` (one per organ)
-
-| step | module | params |
-|---|---|---|
-| 01_neighborhood | `spatial-neighborhood` | `k` 25 (10 to 50), per punch, generic coordinates; writes the graph definition to `uns` so `spatial.neighborhood_undeclared` is decidable |
-| 02_niches | `cluster-niches` | composition vectors over `cell_type` (QC labels excluded), k-means `k` range 4 to 12, `nstart` 30, `seed` 42; outputs the WSS table, composition per niche, sizes per punch |
-| 03_label | `label-niches` (judgment) | evidence: the composition table per niche cluster, the WSS table, the top cell types; vocabulary `niches_<organ>@1` plus `proposed_label`; three replicates; the chosen `k` is a decision the module proposes from the WSS second difference and the person approves (`param.agent_proposed`) |
-| 04_export | `export-zones` | `zone`, `zone_broad` on obs; `zone_labels.csv`; `sc.small_niche` on any zone under 200 cells |
-
-### Phase 5: composition and neighbourhoods, descriptive (one per organ)
-
-- `compose-cells`: cells per cell type per punch and animal, per zone; proportions with the animal
-  as the unit; with n = 2 the module tests nothing and says so in its table header (the CellQuant
-  GLMM is out of the pilot).
-- `neighborhood-enrichment`: squidpy `nhood_enrichment` per punch and per time point, 1000
-  permutations, seed 42, z-scores and the permutation artifact; `co_occurrence` guarded (the ROSC
-  index error); descriptive only, no p-values, the report says so.
-
-### Phase 6: `xenium-de` (one per organ; contrasts declared in `objective.yml`)
-
-- `pseudobulk-de`: pseudobulk per animal × cell type (and, when zones exist, per animal × zone ×
-  cell type); contrasts `24 vs 6`, `48 vs 6`, `48 vs 24` on `timepoint_h`; method the owner's
-  choice (section 8): `pydeseq2` in the Python image, or limma-voom in an R image; design
-  `~ timepoint_h` with `slide` declared as batch and its omission flagged, since with two slides
-  and three time points it is not estimable; BH; `min_cells_per_pseudobulk` 30,
-  `min_animals_per_group` 2. `de.replication_unit`, `de.covariate_omission`,
-  `test.multiple_comparison`, `obj.feasibility` all in scope.
-- `score-pathways`: `scanpy.tl.score_genes` over the ROSC innate gene sets translated from
-  `scripts/innate_pathway_genesets.R` (ifn_isg, tlr_prr, nfkb_cytokines, inflammasome, complement,
-  chemokines, antigen_presentation, myeloid_activation) and the liver sets; animal means per cell
-  type; the same contrasts through the DE module's test.
-- Later, not the pilot: `flag-salient` (judgment, `considered_set: true`; the engine now fills the
-  denominator) over the DE and pathway tables.
+- `pseudobulk-de` (xenium-r, from ROSC `de_utils.R`, decision 4): `AggregateExpression` summed
+  counts per **animal** × cell type (ROSC aggregated per punch; here the punch pair of one animal
+  is one sample), later per animal × zone × cell type; `filterByExpr`, `calcNormFactors`, `voom`,
+  `lmFit(~ timepoint_h)`, `eBayes`, `topTable` per contrast (24 vs 6, 48 vs 6, 48 vs 24); BH;
+  `min_cells_per_pseudobulk` 30, `min_animals_per_group` 2; `slide` declared batch, its omission
+  flagged once (`de.covariate_omission`). ROSC's cell-level `FindMarkers` stays only as a
+  concordance table marked descriptive, never as a claim (`de.replication_unit` blocks a
+  cell-level test offered as one). Logged: `de.selection_bias` is scoped so a declared-factor
+  contrast does not fire.
+- `score-pathways` (xenium-r, ROSC `run_pathway`): `UCell::AddModuleScore_UCell` over the innate
+  sets (`ifn_isg, tlr_prr, nfkb_cytokines, inflammasome, complement, chemokines,
+  antigen_presentation`, supplementary `myeloid_activation`; `validate_genesets` at min 5 genes
+  and 0.5 coverage writes the coverage table), animal means per cell type, `limma` on the means
+  with the same design and contrasts; the liver sets from `hepatocyte_pathway_genesets.R` for
+  liver only.
+- Later, not the pilot: `flag-salient` (judgment, `considered_set: true`) over the DE and pathway
+  tables; Hotspot.
 
 ### Phase 7: reports, cross-organ, skills
 
-- `report-spatial`: code-generated prose per pipeline (every numeral a table cell,
-  `judg.numeric_claims_match` on report steps), the figures the tables feed.
-- `xenium-cross-organ`: one step with `arity: many` over the four organs' label summaries, niche
-  tables and DE tables, in the style of ROSC `cross_tissue`.
-- Skills: `skills/<pipeline>.yml` (delivery) and `skills/<pipeline>.analyze.yml` (analysis) per
-  pipeline, per `spec/method-skills.md`; the first spatial analysis skill is the Lane E
-  acceptance test's target.
+- `report-spatial` (xenium-r): code-generated prose per pipeline, every numeral a table cell
+  (`judg.numeric_claims_match` on report steps), the figures the tables feed; for the pilot's
+  goal (section 3) a ranking of tissue × time point by the size and consistency of the departure
+  from 6 h across clusters, zones and pathways, descriptive.
+- `xenium-cross-organ` (xenium-py): one step with `arity: many` over the four organs' label
+  summaries, niche tables, DE and pathway tables, joined on the collapsed group only (ROSC
+  `accumulate_cross_tissue.py` as the shape).
+- Skills: `skills/<pipeline>.yml` and `skills/<pipeline>.analyze.yml` per pipeline; the first
+  spatial analysis skill is Lane E's acceptance target.
 
-## 6. Sessions (half a day each, in order)
+## 6. Sessions (half a day each, in order; F0 to F3 done 2026-10-06)
 
 | # | session | delivers | gate to the next |
 |---|---|---|---|
@@ -264,33 +295,43 @@ tables and the report; analysis skill later (phase 7).
 | F1 | method `v0.4.0`: the five phase-0 changes, tests (`tests/run_summary.sh` with a glob input, `run_outliers.sh` with clipped bands), lint | tag pushed | done 2026-10-06 |
 | F2 | phase 0 run, part 1: eight `qc2` projects through batch review; the summary through inherited confirmation | eight QC deliveries, one summary | done 2026-10-06 (inheritance did not fire: L5; sixteen `param.agent_proposed` holds: L6) |
 | F3 | phase 0 run, part 2: `qc2_outliers_all` with three fresh delegates; the owner's decisions; `punch_exclusions.csv`; the comparison note; the Lane E measurement row for a chained real run | the exclusion file | done 2026-10-06 (one run rejected by `judg.numeric_claims_match`, the second clean) |
-| F4 | **re-planned for R first** (decision 1): image `xenium-r`, the ROSC scripts as modules, Seurat state for the plugin; then the plugin 0.2 work as re-planned | the re-plan, then plugin tag and image | owner's yes on the re-plan |
-| F5 | `xenium-cluster` modules and pipeline; synthetic control (a two-punch fixture from the toy-like generator); run on liver (three punches) | clustered liver | delivered |
-| F6 | `xenium-cluster` on spleen, lung, gut; the cluster reports read with the owner; resolution decisions recorded as `param.agent_proposed` acceptances | four clustered objects | delivered |
-| F7 | `annotate-clusters` module: `pre.py`, prompt, schema, `guide.md` from the annotation skill's rules; controls from the ROSC liver and spleen objects | module lints; both controls pass | controls green |
-| F8 | `xenium-annotate` on the four organs; the owner walks the item holds (review page or chat); `apply-labels` | four annotated objects, label summaries | delivered |
-| F9 | `xenium-niches` modules; run on the four organs; the niche-label judgment | zones per organ | delivered |
-| F10 | phase 5 descriptives; `xenium-de` with the owner's method choice; contrasts declared; feasibility at n = 2 read honestly | DE and pathway tables per organ | delivered |
-| F11 | reports, cross-organ step, delivery and analysis skills; the first spatial analysis skill run by a lab member (Lane E's acceptance test) | the deliverable set for the collaborator | owner's reading |
-| F12 | retrospective (archived plan session 14): override rate per judgment module, uncovered decision points, one delivered number reconstructed from `run.db` alone, the backlog for the next method version | note | |
+| F4 | image `xenium-r` built on GHCR and pulled by digest; `modules/_rlib/` copied from the archive with provenance headers; plugin 0.2 (`seurat_object`, `extract_seurat.R`, `sc.export_mismatch`, the ten predicates with Seurat-state fixtures, typed operations); a spike: `merge-punches` and `normalize` on `qc2_0076570_Liver` plus `qc2_0076581_Liver` (the smallest organ), the extractor's envelope read back | image in `MANIFEST.md`; plugin tag; a normalised liver object | plugin tests green; `lint` clean; the envelope shows `normalisation: logarea` |
+| F5 | `xenium-cluster` modules and pipeline; synthetic control (a two-punch fixture from the toy-like generator, in R); run on liver | clustered liver, markers, report | delivered |
+| F6 | `xenium-cluster` on spleen, lung, gut; the cluster reports read with the owner; resolution and `ndim` decisions recorded as `param.agent_proposed` acceptances; spleen runtime measured | four clustered objects | delivered |
+| F7 | vocabularies for four organs with collapse maps (owner approves); `annotate-clusters` module (`pre.py`, prompt, schema, `guide.md`); controls from the ROSC liver and spleen objects through `find-markers` | module lints; both controls pass | controls green |
+| F8 | `xenium-annotate` on the four organs; the owner walks the item holds; `apply-labels` | four annotated objects, label summaries | delivered |
+| F9 | `xenium-niches` modules; run on the four organs; the niche-label judgment with the `k` proposal | zones per organ | delivered |
+| F10 | phase 5 descriptives (`compose-cells`, `export-h5ad`, `neighborhood-enrichment`); `xenium-de` with limma-voom at the animal; contrasts declared; feasibility at n = 2 read honestly | DE and pathway tables per organ | delivered |
+| F11 | `report-spatial`, `xenium-cross-organ`, delivery and analysis skills; the first spatial analysis skill run by a lab member (Lane E's acceptance test); the tissue × time point ranking for the owner | the deliverable set for the collaborator | owner's reading |
+| F12 | retrospective: override rate per judgment module, uncovered decision points, one delivered number reconstructed from `run.db` alone, the backlog for the next method version; whether to bring CellChat and CellQuant in now that the image can hold them | note | |
 
-F1 to F3 need the owner for holds and the exclusion file; F4 to F5 run without; F6 onward need
-the owner at each judgment's holds. Two sessions can run in parallel from F4: the plugin (F4)
-and the method image do not touch the phase-0 projects.
+F4 needs the owner once (the image's package list and the first `seurat_object` envelope shown);
+F5 runs without; F6 onward needs the owner at each judgment's holds and at the per-project
+parameter holds. The plugin half of F4 and the image half can run in parallel.
 
 ## 7. Environments
 
-- `xenium-py` 0.2.0 (extend, do not fork): scanpy 1.11.5, squidpy 1.8.1, anndata 0.12.0,
-  spatialdata 0.7.2 (present), plus leidenalg 0.12.0, scikit-learn, statsmodels, pydeseq2 if
-  chosen. Pinned by the ROSC lock where the package is in it. Built by the existing GitHub
-  workflow to GHCR, pulled by digest to `/data/lab/env/images/`, recorded in `MANIFEST.md`.
-- An R image (`xenium-r`: R 4.5, Seurat 5.4, limma 3.66, edgeR 4.8, UCell 2.14, CellChat
-  2.2.0.9001 from `setup/envs/r_package_versions.csv`) only if the owner chooses limma-voom or
-  wants CellChat later. Not in the pilot's critical path.
-- Every module runs under apptainer with `<step dir>/tmp` bound (K8 fixed); Nextflow is not
-  involved downstream.
+- **`xenium-r`** (new; nothing in the archive defines ROSC's R library, so it is rebuilt from the
+  27 pins in `setup/envs/r_package_versions.csv`): `rocker/r-ver:4.5.1` with Posit Package Manager
+  binaries for the CRAN set, Bioconductor 3.22 for `limma` 3.66, `edgeR` 4.8, `UCell` 2.14,
+  `rhdf5` 2.54; CRAN `Seurat` 5.4.0, `SeuratObject` 5.3.0, `Matrix` 1.7-3, `uwot` 0.2.4, `igraph`
+  2.2.2, `irlba`, `clustree`, `nanoparquet`, `arrow`, `RANN`, `anndataR` 1.0.0, `jsonlite`,
+  `yaml`, `tidyverse`; not `CellChat`, `sdmTMB`, `speckle`, `lme4` (out of the pilot; added when
+  F12 says so). Pinned by an `renv.lock` written at the first successful build and committed
+  (design 10.3: the lock is the env digest for the local executor; the SIF sha256 for apptainer).
+  Built by `.github/workflows/image.yml` (matrix gains `xenium-r`) to GHCR, pulled by digest to
+  `/data/lab/env/images/xenium-r-0.1.0.sif`, recorded in `MANIFEST.md`. Build time is the F4 risk:
+  Seurat and its dependencies compile for an hour without binaries; with PPM binaries minutes.
+  `future` is installed but no module calls `plan()`.
+- **`xenium-py` 0.1.0** stays as it is for `qc-cells`, the judgment `pre.py` scripts,
+  `neighborhood-enrichment` (scanpy 1.11.5, squidpy 1.8.1, anndata 0.12.0 are already in it) and
+  `xenium-cross-organ`. No `xenium-py` 0.2.0 is needed; `leidenalg` and `pydeseq2` are not added.
+- Every module runs under apptainer with `<step dir>/tmp` bound; Nextflow is not involved
+  downstream. Memory: a Seurat object of two spleen slides (about 1.4 M cells, 5,175 genes) is on
+  the order of tens of GB in R; the resources block says 128 GB for `reduce-cluster` on spleen and
+  64 GB elsewhere, within the shared machine's 500 GB.
 
-## 8. Decisions for the owner (before F1, unless marked)
+## 8. Decisions for the owner (1 to 11 before F1, all taken 2026-10-06; 12 to 15 before F4)
 
 1. **Language.** Decided 2026-10-06, against the recommendation: **R, reusing the ROSC_MTA2
    code as designed for that project** rather than writing new Python ("I'd rather use that than
@@ -321,6 +362,21 @@ and the method image do not touch the phase-0 projects.
 8. **CellQuant, CellChat, Hotspot.** Decided 2026-10-06: out of the pilot, for a later session if
    reached. With R chosen they are feasible in the pilot's image (CellChat 2.2 and sdmTMB are in
    ROSC's pinned list), so a later pipeline costs no new environment.
+
+Raised by the re-plan for R (section 5, 2026-10-06), to decide before F4:
+
+12. **Reading the QC objects.** Read the delivered h5ad objects into R with `anndataR` at the
+    merge (recommended: the QC chain stays as delivered and anndataR is the package ROSC already
+    used), or re-deliver the QC objects as `.rds` from a new `qc-cells` version (a third chain).
+13. **The squidpy step.** Keep `neighborhood-enrichment` in Python through `export-h5ad` and
+    `sc.export_mismatch` (recommended: ROSC's code, one hand-off, one predicate), or write an R
+    equivalent so the pilot is one language.
+14. **Clustering resolutions.** A short list (0.2, 0.4, 0.6, 0.8, 1.0; 0.4 the default) instead of
+    ROSC's eleven resolutions from 0 to 1 (recommended: the five-hour step was those eleven runs;
+    clustree over five is still readable), or the full sweep.
+15. **The image build.** `rocker/r-ver` 4.5 with Posit Package Manager binaries and Bioconductor
+    3.22, pinned by a committed `renv.lock`, built on GHCR by the existing workflow (recommended),
+    or a local Apptainer `.def` build on PROTSEQ kept off GHCR like the Xenium Ranger image.
 9. **Phase 0 timing against the pathology pass.** Decided 2026-10-06: there is no pathology
    pass; the histology file is final; the chain runs now.
 10. **Exclusion file format** (`PLAN.md` 1.9). Decided 2026-10-06: the columns in section 4 item 4
@@ -345,15 +401,30 @@ and the method image do not touch the phase-0 projects.
   joins on the collapsed group only.
 - Scope creep from ROSC. Seven modules and a cargo pipeline took months on BMESEQ; the pilot is
   clustering, annotation, niches, descriptives and one DE pass. CellChat and CellQuant wait.
-- Runtime. ROSC's downstream was five hours per tissue at 800k cells; Lyons organs are an order
-  of magnitude smaller, but `nhood_enrichment` with 1000 permutations and k-means over k 4 to 12
-  are the two steps to cap (`--max_cpus 24`, memory caps as for Nextflow).
+- Runtime. ROSC's downstream was five hours per tissue at 800k cells, most of it eleven Louvain
+  runs; here the resolutions are a short list, but spleen (two slides, about 1.4 M cells) is larger
+  than any ROSC tissue, so F6 measures it first and the resources block caps it. `nhood_enrichment`
+  with 1000 permutations and k-means over k 4 to 12 are the other two steps to cap.
+- The R image. No ROSC container exists; the rebuild from 27 pins may not reproduce ROSC's
+  behaviour exactly (transitive dependencies unpinned there). The F7 positive control, ROSC's own
+  annotated liver and spleen through this method's `find-markers` and `annotate-clusters`, is also
+  the check that the rebuilt environment agrees with the original on the markers it finds.
+- Two languages. The hand-off is one module (`export-h5ad`) with one predicate on it
+  (`sc.export_mismatch`); anndataR is already how ROSC moved objects to squidpy. Keep it that way:
+  no module reads both an rds and an h5ad.
+- Interactive ROSC steps. Annotation, zone naming and interpretation were an agent writing code
+  into Quarto documents; here they are judgment modules with vocabularies and a report module. The
+  ROSC label maps are evidence for the controls and the vocabularies, never applied as code.
 
 ## 10. Verification
 
 - Method: `stringency lint .` clean; `tests/run_*.sh` green, one per pipeline, on synthetic
   fixtures; controls pass for every judgment module before its first real run.
-- Plugin: `uv run pytest` at the workspace root; every predicate in `CASES`.
+- Plugin: `uv run pytest` at the workspace root; every predicate in `CASES`, with a Seurat-state
+  fixture beside each anndata one; `extract_seurat.R` tested on a small `.rds` written by the
+  image (the test needs the SIF, as `tests/run.sh` does).
+- Image: `Rscript -e 'library(Seurat); library(limma); library(anndataR)'` inside the SIF prints
+  the pinned versions; `renv.lock` committed; the SIF sha256 and OCI digest in both manifests.
 - Data: each phase's deliveries under `/lab/projects/Lyons_CLP/<project>/deliver/`, with
   `coverage.md` naming every check that ran and did not, `methods.md` citing the upstream runs,
   and `summary.md` for the collaborator; `stringency board /lab/projects/Lyons_CLP --write` after

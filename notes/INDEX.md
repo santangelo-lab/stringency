@@ -12,8 +12,9 @@ it is the first thing a new session reads.
   (second outlier judgment: one run rejected by `judg.numeric_claims_match` and abandoned, the
   second clean with four item holds against September's seven; `punch_exclusions.csv`, one
   exclusion). Engine `0.2.6` unchanged. New backlog rows L5 (inheritance with raw-identical and
-  reference inputs) and L6 (batch review of identical flag holds). Next: re-plan phases 1 to 7 for
-  R before F4; start from `/lab/projects/Lyons_CLP/PROGRESS.md` and the method's `PLAN.md`.
+  reference inputs) and L6 (batch review of identical flag holds). Phases 1 to 7 re-planned for R
+  the same evening (plan sections 5 to 7; decisions 12 to 15 before F4). Next: F4 once the owner
+  answers them; start from `/lab/projects/Lyons_CLP/PROGRESS.md` and the method's `PLAN.md`.
 
 ## Previous state (2026-09-23, night)
 

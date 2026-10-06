@@ -476,7 +476,10 @@ the plan's Python recommendation; phases 1 to 7 are re-planned for an R image be
 default, per-organ clustering without integration, limma-voom for pseudobulk DE (ROSC `mod6`),
 vocabularies, niche escape hatch and contrasts as recommended; item 8: CellQuant, CellChat and
 Hotspot out of the pilot. The pilot's stated goal: the tissues and time points where CLP leaves an
-obvious signal despite n = 2. Phase 0 started the
+obvious signal despite n = 2. Phase 0 (F0 to F3) ran the same day; sections 5 to 7 of the plan were
+rewritten for R that evening (Seurat objects between steps, `xenium-r` image, R extractor
+`extract_seurat.R`, judgment modules stay Python, one `export-h5ad` hand-off to squidpy); four
+re-plan decisions (section 8 items 12 to 15) wait before F4. Phase 0 started the
 same day on engine `0.2.6`.
 In one line: phase 0 re-runs the QC chain on `v0.2.4` with the method fixes it exposed (batch
 review over the eight QC holds, inherited confirmation on the summary, `arity: many`, a clean
