@@ -3,7 +3,19 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-09-23, night)
+## Current state (2026-10-06, afternoon)
+
+- Lane F phase 0 done in one session (`notes/2026-10-06-1345-lane-f-phase0.md`): F0 (all eleven
+  owner decisions; **downstream in R reusing ROSC code**, LogArea, limma-voom, no pathology pass,
+  gut is small intestine, exclusion file format), F1 (method `v0.4.0`), F2 (eight `qc2_*` projects
+  through one batch review and sixteen `param.agent_proposed` holds; summary on `arity: many`), F3
+  (second outlier judgment: one run rejected by `judg.numeric_claims_match` and abandoned, the
+  second clean with four item holds against September's seven; `punch_exclusions.csv`, one
+  exclusion). Engine `0.2.6` unchanged. New backlog rows L5 (inheritance with raw-identical and
+  reference inputs) and L6 (batch review of identical flag holds). Next: re-plan phases 1 to 7 for
+  R before F4; start from `/lab/projects/Lyons_CLP/PROGRESS.md` and the method's `PLAN.md`.
+
+## Previous state (2026-09-23, night)
 
 - Lane A complete (`notes/2026-09-23-1700-lane-a-k7-step2-review-page.md`, the day's record):
   PRs #2 to #6 and #8 merged, tags `v0.2.0` to `v0.2.4`, `v0.2.4` installed as the shared
@@ -104,6 +116,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-06-1345-lane-f-phase0.md` — Lane F phase 0: F0 decisions (R, LogArea, limma-voom, no pathology pass, small intestine, exclusion file), method v0.4.0, the second QC chain through batch review and sixteen parameter holds, the summary on arity many, the second outlier judgment (one numeric-claims rejection, four item holds), the owner's exclusion file; L5, L6.
 - `2026-09-23-1930-judge-sources-brainstorm.md` — judge sourcing survey and plan (`spec/plans/judge-sources-plan.md`, proposed Lane G): harness state, local Ollama judges, panel roles, operator fallback, Jev tabled; ClawBio assessed (no integration) and two mechanisms borrowed into `spec/plans/egress-and-remeasurement.md` (backlog L1 to L4).
 - `2026-09-23-1442-track1h-start.md` — Track 1h: notify on hold and the project page on `review --serve`; owner decisions, build order, install label.
 - `2026-09-23-1700-lane-a-k7-step2-review-page.md` — Lane A, the whole day: K7, Lane C branch merged, E1/E2, `param.agent_proposed`, review page, inherited confirmation, batch review, renderer fix, `any_low` B, K8, item-5 fixes, `arity: many`; tags 0.2.0 to 0.2.4; Lane A complete.

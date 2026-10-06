@@ -260,11 +260,11 @@ tables and the report; analysis skill later (phase 7).
 
 | # | session | delivers | gate to the next |
 |---|---|---|---|
-| F0 | this plan approved; owner decisions in section 8 recorded in `PLAN.md` | the plan | owner's yes |
-| F1 | method `v0.4.0`: the five phase-0 changes, tests (`tests/run_summary.sh` with a glob input, `run_outliers.sh` with clipped bands), lint | tag pushed | green |
-| F2 | phase 0 run, part 1: eight `qc2` projects through batch review; the summary through inherited confirmation | eight QC deliveries, one summary | `qc2_summary_all` delivered |
-| F3 | phase 0 run, part 2: `qc2_outliers_all` with three fresh delegates; the owner's decisions; `punch_exclusions.csv`; the comparison note; the Lane E measurement row for a chained real run | the exclusion file | owner's file exists |
-| F4 | plugin 0.2: extractor domain block, ten predicates with fixtures, vocabularies for four organs with collapse maps, typed operations; image `xenium-py` 0.2.0 | plugin tag, image in `MANIFEST.md` | plugin tests green; `lint` clean |
+| F0 | this plan approved; owner decisions in section 8 recorded in `PLAN.md` | the plan | done 2026-10-06 (all eleven) |
+| F1 | method `v0.4.0`: the five phase-0 changes, tests (`tests/run_summary.sh` with a glob input, `run_outliers.sh` with clipped bands), lint | tag pushed | done 2026-10-06 |
+| F2 | phase 0 run, part 1: eight `qc2` projects through batch review; the summary through inherited confirmation | eight QC deliveries, one summary | done 2026-10-06 (inheritance did not fire: L5; sixteen `param.agent_proposed` holds: L6) |
+| F3 | phase 0 run, part 2: `qc2_outliers_all` with three fresh delegates; the owner's decisions; `punch_exclusions.csv`; the comparison note; the Lane E measurement row for a chained real run | the exclusion file | done 2026-10-06 (one run rejected by `judg.numeric_claims_match`, the second clean) |
+| F4 | **re-planned for R first** (decision 1): image `xenium-r`, the ROSC scripts as modules, Seurat state for the plugin; then the plugin 0.2 work as re-planned | the re-plan, then plugin tag and image | owner's yes on the re-plan |
 | F5 | `xenium-cluster` modules and pipeline; synthetic control (a two-punch fixture from the toy-like generator); run on liver (three punches) | clustered liver | delivered |
 | F6 | `xenium-cluster` on spleen, lung, gut; the cluster reports read with the owner; resolution decisions recorded as `param.agent_proposed` acceptances | four clustered objects | delivered |
 | F7 | `annotate-clusters` module: `pre.py`, prompt, schema, `guide.md` from the annotation skill's rules; controls from the ROSC liver and spleen objects | module lints; both controls pass | controls green |
