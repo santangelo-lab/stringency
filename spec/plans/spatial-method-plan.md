@@ -38,16 +38,16 @@ each here:
 | ROSC step | what it does | Lyons CLP |
 |---|---|---|
 | `upstream.loadqcpca` | per-punch QC (nCount, nFeature, area), LogArea normalisation, PCA | done by `qc-cells` (QC) ; normalisation and PCA move to the clustering pipeline |
-| `upstream.clustering` | Seurat FindNeighbors, Louvain over resolutions 0 to 1, res 0.4 used, UMAP; seed 1984; ndim 35 (Spleen 40) | `xenium-cluster` pipeline, scanpy; leiden; the resolution is a ranged parameter |
+| `upstream.clustering` | Seurat FindNeighbors, Louvain over resolutions 0 to 1, res 0.4 used, UMAP; seed 1984; ndim 35 (Spleen 40) | `xenium-cluster` pipeline in R (Seurat, Louvain, section 5); the resolution is a ranged parameter |
 | `upstream.annotation` (interactive) | FindAllMarkers (logfc 0.5) then a hand-written cluster to label map, written by an agent with the `/single-cell-annotation` skill and a person; `AssertAnnotationComplete` refuses NA or fallback labels | the first downstream judgment module: three replicates over a marker table, a closed vocabulary per organ with `unknown`, controls before the first real run |
 | `upstream.timepoint_batch` (interactive) | per-cluster time-point and TMA composition tables, ISG enrichment, agent prose | code-only tables in the cluster report; no prose module |
 | `downstream.h5ad` | rds to h5ad, `obsm["spatial"]` | not needed; the objects are h5ad from the start |
 | `mod1_niche`, `mod1_zones` (interactive), `mod1_zone_export` | spatial kNN (k 25) composition per cell, k-means k 4 to 12 (nstart 30, seed 42), WSS elbow, hand-named zones, `zone_labels.csv` | `xenium-niches` pipeline: neighbourhood, k-means, a niche-labelling judgment, export |
 | `mod2_cellquant` | 200 µm tiles, spatial NB GLMM (sdmTMB) per cell type, adjusted by zone; external R package `CellQuant` (not in the archive) | out of the pilot: R, an unarchived package, and n = 2 animals; composition is reported descriptively (section 5, phase 5) |
-| `mod3_pathway`, `mod3_hotspot` | UCell scores over 7 innate gene sets, punch means, limma per contrast; Hotspot autocorrelation | `score-pathways` in Python (`scanpy.tl.score_genes` over the same gene sets), animal means, the DE module's test; Hotspot deferred |
+| `mod3_pathway`, `mod3_hotspot` | UCell scores over 7 innate gene sets, punch means, limma per contrast; Hotspot autocorrelation | `score-pathways` in R (UCell over the same gene sets, section 5), animal means, limma on the means; Hotspot deferred |
 | `mod4_neighborhoods` | squidpy `nhood_enrichment` per punch, 1000 permutations, seed 42, descriptive only | `neighborhood-enrichment`, descriptive, with the permutation null recorded so `spatial.no_permutation_null` is decidable |
 | `mod5_cellchat` | spatial CellChat per arm, 100 bootstraps, filtered by the proximity mask | out of the pilot (R, the highest confabulation risk per the archived plan's session 10); a later pipeline if the owner wants it |
-| `mod6_de` | per zone × cell type: FindMarkers (cell level) and pseudobulk limma-voom (punch level), concordance, boundary gradient | `pseudobulk-de`: pseudobulk per animal × cell type (or zone × cell type), the animal as the replication unit, contrasts between time points, no cell-level test as a claim |
+| `mod6_de` | per zone × cell type: FindMarkers (cell level) and pseudobulk limma-voom (punch level), concordance, boundary gradient | `pseudobulk-de`: limma-voom pseudobulk per animal × cell type (or zone × cell type), the animal as the replication unit, contrasts between time points, no cell-level test as a claim |
 | `mod7_*` (cargo, pyMFI) | reporter delivery from IF | not applicable |
 | `interpret` (interactive) | agent rewrites the Quarto prose | replaced by a report module (code-generated prose, every numeral a table cell) and, later, a salience judgment with a considered set |
 | `cross_tissue` | concatenates the per-tissue CSVs | one `arity: many` step over the per-organ deliveries |
@@ -93,7 +93,7 @@ owner accepts with a reason once per project (7.4 rebind); punch-level analyses 
 generation and the objective says so; the runtime and memory that made ROSC a five-hour-per-tissue
 affair shrink by an order of magnitude here.
 
-## 4. Phase 0: the QC chain again, under 0.2.4 (owner's request, 2026-09-23)
+## 4. Phase 0: the QC chain again (owner's request, 2026-09-23; done 2026-10-06 on engine 0.2.6)
 
 Everything Lane A built this week was built from what the QC chain exposed. Running the chain
 again on the same data, with the method fixes it also exposed, is both the validation of the
