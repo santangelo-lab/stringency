@@ -463,8 +463,13 @@ lane left open moves to Lane F; the engine defect it exposed (the stale consensu
 Successor to Lane C. Plan: `spec/plans/spatial-method-plan.md` (drafted 2026-09-23 from the
 ROSC_MTA2 archive survey). F0 done 2026-10-06: the owner decided items 9 (no pathology pass; the
 histology file is final), 10 (the exclusion file's columns, all 42 punches) and 11 (floor 20, gut
-is small intestine); items 1 to 8 gate F4 onward and stay open. Phase 0 started the same day on
-engine `0.2.6`.
+is small intestine). Later the same day, items 1 to 7: **R, reusing the ROSC_MTA2 code** (against
+the plan's Python recommendation; phases 1 to 7 are re-planned for an R image before F4), LogArea
+default, per-organ clustering without integration, limma-voom for pseudobulk DE (ROSC `mod6`),
+vocabularies, niche escape hatch and contrasts as recommended; item 8: CellQuant, CellChat and
+Hotspot out of the pilot. The pilot's stated goal: the tissues and time points where CLP leaves an
+obvious signal despite n = 2. Phase 0 started the
+same day on engine `0.2.6`.
 In one line: phase 0 re-runs the QC chain on `v0.2.4` with the method fixes it exposed (batch
 review over the eight QC holds, inherited confirmation on the summary, `arity: many`, a clean
 second outlier judgment, the owner's exclusion file); then clustering, annotation (the first

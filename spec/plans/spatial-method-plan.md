@@ -68,6 +68,13 @@ times 100) is right for Xenium (`setup/Claude/Normalization_intercept_proposal.m
 
 ## 3. Lyons CLP against ROSC
 
+**The pilot's goal (owner, 2026-10-06):** identify the tissues and time points where the CLP
+procedure leaves an obvious signal, despite n = 2 animals per time point. The downstream
+deliverable is a screen across four organs and three time points, read descriptively, with the
+DE pass naming candidates for a powered study, not a confirmatory test of any one contrast. Every
+downstream `objective.yml` says this, and the reports rank tissue × time point by the size and
+consistency of the departure from 6 h rather than by p-values alone.
+
 | | ROSC_MTA2 | Lyons CLP |
 |---|---|---|
 | design | routes RO, SC and a pooled control; D1 and D3; six contrasts | one factor, time point 6, 24, 48 h after CLP; no sham; contrasts between time points |
@@ -285,27 +292,35 @@ and the method image do not touch the phase-0 projects.
 
 ## 8. Decisions for the owner (before F1, unless marked)
 
-1. **Language.** Python and scanpy throughout the pilot, R only for a later CellChat or
-   limma-voom (recommended), or an R image now.
-2. **Normalisation default.** ROSC's LogArea (log1p of counts per cell area × 100, its own open
-   question) or library-size log1p (`target_sum` 100). Recommended: log_total as the default with
-   logarea as a ranged option, and the report shows both on one punch once.
-3. **Clustering scope.** One object per organ across both slides with no integration (ROSC's
-   choice), or per slide. Recommended: per organ, no integration, slide composition per cluster in
-   the report; integration only if the report shows slide-driven clusters.
-4. **DE method at n = 2 animals.** `pydeseq2` in the Python image, or limma-voom in an R image;
-   and whether zone × cell type pseudobulks are in the pilot or only cell type. Recommended:
-   pydeseq2, cell type first.
-5. **Cell-type vocabularies.** Per organ, Cell Ontology subset; who drafts them (the agent from
-   the panel and the ROSC collapse maps, the owner approves) and whether ontology ids are required
-   in the first version. Recommended: drafted by the agent, ids required, `unknown` allowed.
-6. **Niche vocabulary.** Closed per organ, or open with `proposed_label` that always holds.
-   Recommended: open with the escape hatch for the pilot; close it in the next version from the
-   override corpus.
-7. **Contrasts and feasibility.** The three time-point contrasts with `min_n_per_group` 2, the
-   slide confound accepted with a written reason; punch-level analyses declared hypothesis
-   generation. Recommended as stated.
-8. **CellQuant, CellChat, Hotspot.** Out of the pilot (recommended), or any of them in.
+1. **Language.** Decided 2026-10-06, against the recommendation: **R, reusing the ROSC_MTA2
+   code as designed for that project** rather than writing new Python ("I'd rather use that than
+   create new"). Consequence: phases 1 to 7 are re-planned for an R image (`xenium-r`, section 7)
+   with the ROSC scripts wrapped as modules; the plugin needs a way to read the state of a Seurat
+   object (an extractor in the R image, or h5ad as the interchange format written by each module);
+   the per-organ defaults and parameter values stay. The re-plan is written before F4 and shown to
+   the owner.
+2. **Normalisation default.** Decided 2026-10-06: **LogArea is the default** (ROSC's log1p of
+   counts per cell area × 100); library-size log1p stays a ranged option and the report shows both
+   on one punch once.
+3. **Clustering scope.** Decided 2026-10-06 as recommended: one object per organ across both
+   slides, no integration, slide composition per cluster in the report; integration only if the
+   report shows slide-driven clusters.
+4. **DE method at n = 2 animals.** Decided 2026-10-06: **limma-voom**, the ROSC `mod6` pseudobulk
+   method (limma 3.66, edgeR 4.8 for `filterByExpr`), chosen over edgeR quasi-likelihood and
+   DESeq2 after the options were shown; pseudobulk per animal × cell type first, zone × cell type
+   later; design `~ timepoint_h` with slide declared as batch and its omission flagged once.
+5. **Cell-type vocabularies.** Decided 2026-10-06 as recommended: drafted by the agent per organ
+   from the panel and the ROSC collapse maps, Cell Ontology ids required, `unknown` allowed, the
+   owner approves.
+6. **Niche vocabulary.** Decided 2026-10-06 as recommended: open per organ with the
+   `proposed_label` escape hatch that always holds; closed in the next version from the override
+   corpus.
+7. **Contrasts and feasibility.** Decided 2026-10-06 as recommended: 24 vs 6, 48 vs 6, 48 vs 24
+   with `min_n_per_group` 2, the slide confound accepted once with a written reason, punch-level
+   analyses declared hypothesis generation.
+8. **CellQuant, CellChat, Hotspot.** Decided 2026-10-06: out of the pilot, for a later session if
+   reached. With R chosen they are feasible in the pilot's image (CellChat 2.2 and sdmTMB are in
+   ROSC's pinned list), so a later pipeline costs no new environment.
 9. **Phase 0 timing against the pathology pass.** Decided 2026-10-06: there is no pathology
    pass; the histology file is final; the chain runs now.
 10. **Exclusion file format** (`PLAN.md` 1.9). Decided 2026-10-06: the columns in section 4 item 4
