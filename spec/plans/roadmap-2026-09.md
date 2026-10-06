@@ -38,7 +38,8 @@ method build-out with Lyons CLP as the pilot dataset, is a placeholder lane (Lan
 planned. **Track 2 and Lane B are dormant**, kept as written. **Lane D is closed**: item 3 (the
 shared engine install and onboarding notes) was run the same day
 (`integrations/claude-science/hosts/protseq-shared-install.md`); every other item is done or
-scratched. Active lanes: A and E now, F once planned.
+scratched. Active lanes: A and E now, F once planned. Proposed 2026-09-23 evening: Lane G, judge sources
+(`spec/plans/judge-sources-plan.md`), awaiting the owner's decisions.
 
 ## Context
 
@@ -473,6 +474,16 @@ Carried over from Lane C and Lane D item 7 (all inside the plan's phase 0 and se
 `qc_outliers_all` repair by a module bump and a new run; `qc-cells` `segmentation_of`; the
 Proseg transcript floor and the gut label (owner); the pathology pass; the splitter merge and
 the tag cleanup (owner housekeeping, `backlog.md` K6).
+
+### Lane G: judge sources (proposed 2026-09-23, awaits the owner)
+
+Plan: `spec/plans/judge-sources-plan.md`. Judgment agents from many sources: the deferred
+`openai-compatible` direct adapter pointed at the local Ollama Qwen3 models (design 17's trigger,
+"the Qwen3 evaluation", is now satisfiable on PROTSEQ), judge identity per replicate on the review
+surfaces, a marked or closed operator-judges-itself fallback, a `/data/protect` routing lint, and,
+after the evaluation, a `panel` specification with judge slots and roles (*design*, amends 10.1,
+10.2 and 17). Engine work, serial; S2 rides on Lane F phase 0's clean second outlier judgment.
+Seven decisions for the owner in the plan's section 6. TypeSafe Jev assessed and tabled (section 8).
 
 ### Lane D: owner and operations [closed 2026-09-23]
 

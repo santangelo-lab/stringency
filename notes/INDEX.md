@@ -17,6 +17,11 @@ it is the first thing a new session reads.
   Status section; the next data-side session from `/lab/projects/Lyons_CLP/PROGRESS.md` and the
   method's `PLAN.md`.
 
+- Judge sources (2026-09-23, evening): `spec/plans/judge-sources-plan.md` drafted, proposed Lane G;
+  seven owner decisions open in its section 6; S3 and S5 can start without them; Jev tabled;
+  ClawBio assessed, two mechanisms borrowed (`spec/plans/egress-and-remeasurement.md`, backlog L1 to L4)
+  (`notes/2026-09-23-1930-judge-sources-brainstorm.md`). Uncommitted.
+
 ## Lane E state (2026-09-23, afternoon)
 
 - Lane E (`notes/2026-09-23-1355-lane-e-skills-and-first-run.md`), all merged to `main` (PR #1,
@@ -99,6 +104,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-09-23-1930-judge-sources-brainstorm.md` — judge sourcing survey and plan (`spec/plans/judge-sources-plan.md`, proposed Lane G): harness state, local Ollama judges, panel roles, operator fallback, Jev tabled; ClawBio assessed (no integration) and two mechanisms borrowed into `spec/plans/egress-and-remeasurement.md` (backlog L1 to L4).
 - `2026-09-23-1442-track1h-start.md` — Track 1h: notify on hold and the project page on `review --serve`; owner decisions, build order, install label.
 - `2026-09-23-1700-lane-a-k7-step2-review-page.md` — Lane A, the whole day: K7, Lane C branch merged, E1/E2, `param.agent_proposed`, review page, inherited confirmation, batch review, renderer fix, `any_low` B, K8, item-5 fixes, `arity: many`; tags 0.2.0 to 0.2.4; Lane A complete.
 - `2026-09-23-1355-lane-e-skills-and-first-run.md` — Lane E: analysis skill template and `render_skill.py` (Track 1d), `spec/method-skills.md`, toy method `v0.1.4` with `stringency-analyze-toy-compare`, the UX 3.4 session-test answers, the first measured run through an analysis skill (7 turns, 0 misreports), K8 found.

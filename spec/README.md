@@ -34,6 +34,8 @@ design section, the text is marked as an amendment awaiting approval.
 | `app1-spatial-qc-plan.md` | Track 3 in detail; section 4 holds the owner's decisions; section 5 the outcome against the plan and what is open for the track |
 | `lane-c-day1-2026-09-17.md` | the running tooling log of Lane C on 2026-09-17 and 2026-09-18 (hold ids, run ids, decisions, engine gaps); closed, kept because the notes and the trace cite it |
 | `declarations-and-objectives.md` | agent-drafted declarations (built) and the five options for objectives that arrive late; staged mode (H5) is still open here |
+| `judge-sources-plan.md` | judgment agents from many sources (2026-09-23): the `openai-compatible` adapter for local Ollama models, the Qwen3 evaluation, judge identity for reviewers, a panel specification with `role: vote | check` (*design*), the operator-judges-itself fallback, a `/data/protect` routing rule; Jev tabled in section 8 |
+| `egress-and-remeasurement.md` | two mechanisms borrowed from ClawBio (2026-09-23), unscheduled: data egress classes declared by harness and module, scanned by lint, capped by `policy.yml` and reported per run (backlog L1); judgment re-measurement endpoints, an `ill_formed` control kind (*design*), `abstain_stability` in coverage, judge identity on control results (L2 to L4) |
 | `backlog.md` | the open items that are not in a track, and the measurement table |
 
 ## Archive (`archive/`)
