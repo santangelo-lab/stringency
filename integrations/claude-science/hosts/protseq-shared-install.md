@@ -158,3 +158,10 @@ BMESEQ gets `/data/lab/env/images` by symlink so the same manifest paths resolve
 - `stringency status` in `qc_outliers_all` matches the per-user engine's output.
 - `direct_url.json` commits match the preflight commits.
 - `find ... ! -perm -g+r` under `versions/` prints nothing.
+
+## 7. Versions installed since
+
+- `0.2.6-sc0.2.0` (2026-10-06, Lane F F4): engine `v0.2.6` unchanged, plugin `stringency-plugins@v0.2.0`
+  (`seurat_object` with the R extractor). Installed from the GitHub tags with `UV_VENV_CLEAR=1`
+  after a first attempt with an `https://` source URL failed (the script wants `git+ssh://` refs,
+  as section 6 says) and left an empty venv; `current` moved to it, `0.2.6-sc0.1.8` stays beside.

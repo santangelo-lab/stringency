@@ -17,11 +17,11 @@ per-lane detail, kept as written with each heading carrying its state.
 | C spatial QC | closed 2026-09-23, delivered | `spec/archive/app1-spatial-qc-plan.md` | none; superseded by F |
 | D owner and operations | closed 2026-09-23 | this file, Lane D | owner housekeeping: K6 tag cleanup, the standing page and `notify.yml` |
 | E skills and UX | open, small | `ux-two-audiences.md` | three template fixes and a re-tag; a toy run by someone other than the owner; measurement rows |
-| F spatial method, Lyons CLP pilot | **active**; phase 0 (F0 to F3) done 2026-10-06; all fifteen decisions taken | `spatial-method-plan.md` | F4: `xenium-r` image (renv, rocker, GHCR), plugin 0.2, the anndataR round trip and merge spike on liver |
+| F spatial method, Lyons CLP pilot | **active**; phase 0 and F4 done 2026-10-06 (R pilot foundations: `xenium-r`, plugin 0.2.0, method `v0.5.0-rc2`, `cluster_liver` delivered) | `spatial-method-plan.md` | F5: `reduce-cluster`, `find-markers`, `cluster-report` on liver; the plugin's downstream predicates |
 | G judge sources | proposed 2026-09-23, not started | `judge-sources-plan.md` | the seven decisions in its section 6 |
 
-Shared engine on PROTSEQ: `0.2.6-sc0.1.8`. Method `stringency-xenium-method` `v0.4.0`. Plugin
-`singlecell` 0.1.8. Data: ten `qc2_*` projects delivered under `/lab/projects/Lyons_CLP`, the
+Shared engine on PROTSEQ: `0.2.6-sc0.2.0`. Method `stringency-xenium-method` `v0.5.0-rc2`. Plugin
+`singlecell` 0.2.0. Data: ten `qc2_*` projects delivered under `/lab/projects/Lyons_CLP`, the
 owner's `punch_exclusions.csv` written; the downstream pilot is in R (owner, 2026-10-06). Day
 record: `notes/2026-10-06-1345-lane-f-phase0.md`. Unscheduled plan notes: `egress-and-remeasurement.md`.
 For Lane A: `confirm-once.md` (2026-10-06) proposes the rules that make a chained study one design
