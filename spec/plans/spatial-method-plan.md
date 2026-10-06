@@ -3,8 +3,10 @@
 Working note, not the spec. Successor to `app1-spatial-qc-plan.md` (Track 3, Lane C, closed
 2026-09-23) and to the sessions of `spec/archive/app1-spatial-tma-plan.md` that the QC work did
 not reach (7 to 12 and 14). Drafted for the owner's approval; the decisions it needs are in
-section 8. Engine: `v0.2.4`, Lane A complete. Method: `stringency-xenium-method` `v0.3.3-rc1`,
-`PLAN.md` there lists the open module items this plan absorbs.
+section 8. Engine: `v0.2.4` when drafted, `v0.2.6` (Track 1h) when phase 0 started on
+2026-10-06. Method: `stringency-xenium-method` `v0.3.3-rc1`, `PLAN.md` there lists the open module
+items this plan absorbs. Decisions 9, 10 and 11 were taken by the owner on 2026-10-06 (section 8);
+F0 is done and phase 0 is running.
 
 ## 1. Where this sits
 
@@ -120,9 +122,9 @@ Comparison note at the end (data side, `PROGRESS.md`): per-punch metrics identic
 chain except the segmentation label; the outlier verdicts against the 2026-09-23 decisions; how
 many cards and holds the second chain cost against the first (the Lane E measurement row).
 
-If the pathology pass replacing `histology_include.csv` arrives before this phase, it goes in
-here and the chain runs once; if after, the affected `qc2` projects re-open on the new hash and
-the summary and outliers follow (inherited confirmation and rebind make that cheap).
+There is no pathology pass (owner, 2026-10-06): `histology_include.csv`, the owner's notes of
+2026-09-16 confirmed 2026-09-17, is the final histology call, and the chain runs on it. Earlier
+text here and in the Lyons project files that promised a later pathology pass was an error.
 
 Engine follow-up this phase may raise (Lane A, small): an input with `role: reference` should not
 defeat inherited confirmation, since a reference table is not this design's data; today
@@ -304,11 +306,16 @@ and the method image do not touch the phase-0 projects.
    slide confound accepted with a written reason; punch-level analyses declared hypothesis
    generation. Recommended as stated.
 8. **CellQuant, CellChat, Hotspot.** Out of the pilot (recommended), or any of them in.
-9. **Phase 0 timing against the pathology pass.** Run the chain now on the current histology
-   file, or wait for the pathologist.
-10. **Exclusion file format** (`PLAN.md` 1.9): the columns in section 4 item 4, or the owner's.
-11. **The Proseg transcript floor and the gut label** (`PLAN.md` 2.2, 2.3): decided before F1 so
-    the `qc2` projects carry them.
+9. **Phase 0 timing against the pathology pass.** Decided 2026-10-06: there is no pathology
+   pass; the histology file is final; the chain runs now.
+10. **Exclusion file format** (`PLAN.md` 1.9). Decided 2026-10-06: the columns in section 4 item 4
+    (`punch_id, excluded, reason, decided_by, review_id`), one row for every one of the 42 punches,
+    so an absent punch is an error rather than a silent keep.
+11. **The Proseg transcript floor and the gut label** (`PLAN.md` 2.2, 2.3). Decided 2026-10-06: the
+    floor stays at 20 (the second chain uses the first chain's thresholds, so the per-punch
+    comparison is clean); the gut punches are **small intestine** in every table and in the
+    reference match (`organ: small_intestine` in the layout; the thresholds alias maps it to the
+    ROSC `Sintest` entry, whose values equal `LgIntest`).
 
 ## 9. Risks
 

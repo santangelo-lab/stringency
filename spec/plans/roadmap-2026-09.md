@@ -458,10 +458,13 @@ eight regions with the summary and the review proposal chained through `derived_
 lane left open moves to Lane F; the engine defect it exposed (the stale consensus artifact,
 `backlog.md` K7) is Lane A item 6.
 
-### Lane F: the spatial method after QC, Lyons CLP as the pilot (planned 2026-09-23)
+### Lane F: the spatial method after QC, Lyons CLP as the pilot (planned 2026-09-23, F0 done 2026-10-06)
 
 Successor to Lane C. Plan: `spec/plans/spatial-method-plan.md` (drafted 2026-09-23 from the
-ROSC_MTA2 archive survey; awaits the owner's approval and the eleven decisions in its section 8).
+ROSC_MTA2 archive survey). F0 done 2026-10-06: the owner decided items 9 (no pathology pass; the
+histology file is final), 10 (the exclusion file's columns, all 42 punches) and 11 (floor 20, gut
+is small intestine); items 1 to 8 gate F4 onward and stay open. Phase 0 started the same day on
+engine `0.2.6`.
 In one line: phase 0 re-runs the QC chain on `v0.2.4` with the method fixes it exposed (batch
 review over the eight QC holds, inherited confirmation on the summary, `arity: many`, a clean
 second outlier judgment, the owner's exclusion file); then clustering, annotation (the first
