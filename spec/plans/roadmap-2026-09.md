@@ -7,7 +7,7 @@ same day; see `notes/2026-09-14-1600-track0-and-roadmap.md`.
 ## Status (2026-10-06)
 
 Lane F phase 0 ran end to end on 2026-10-06 (`notes/2026-10-06-1345-lane-f-phase0.md`): F0 to F3
-done, method `v0.4.0`, eleven `qc2_*` projects delivered on the shared engine `0.2.6` without an
+done, method `v0.4.0`, ten `qc2_*` projects delivered on the shared engine `0.2.6` without an
 engine change, the owner's `punch_exclusions.csv` written. The owner chose R (the ROSC_MTA2 code)
 for the downstream pilot, so phases 1 to 7 are re-planned before F4. Engine findings: L5, L6.
 The earlier status paragraphs follow.
