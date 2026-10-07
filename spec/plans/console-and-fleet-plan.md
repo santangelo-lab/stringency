@@ -15,8 +15,10 @@ F5, `notes/2026-10-07-1100-lane-f-f5-upstream.md`). Two asks from the owner that
 Items marked *design* change design text and need the owner's approval; the rest are
 DECISIONS-level or below. Section 6 lists the decisions the owner takes before the build.
 
-**Status 2026-10-07.** Proposed. Nothing built. Part 1 (engine v0.2.7) is the next Lane A session;
-part 2 (the console) follows once decisions 1 to 4 are taken.
+**Status 2026-10-07.** Brainstorm, not yet a plan the owner has approved. Nothing built. The owner's
+direction the same evening: "I want the new interface to be more interactive than the old board";
+section 3.3 is the brainstorm of what interactive means here. Part 1 (engine v0.2.7) is the next
+Lane A session; part 2 follows once decisions 1 to 5 are taken.
 
 ## 1. What already exists, and what the day showed
 
@@ -165,12 +167,68 @@ Either way the machine needs a cap: four `cluster-umap` steps at 128 GB each wou
 executor through a lock directory, so a step waits for a slot rather than failing; the console shows
 "waiting for a slot". Spleen (1.4 M cells) sets the slot size.
 
-**C5. A richer client (later, decision 4).** The page is no-JavaScript by design (auditable, no build
-step). If the owner wants live updates without reloads, filters, or a dashboard feel, the honest next
-step is JSON endpoints on the same server (`/api/projects`, `/api/holds`, `/api/hold/<id>`) and a
-small front end that renders them (htmx-style partial refresh keeps no build step; a React app would
-be a separate artifact). The verdict form stays the server's. A full web app with its own identity,
-accounts and sharing is a different product and needs section 5 settled first.
+**C5. The interactive console (the target, decision 4).** The owner wants the new interface
+more interactive than the board. The page today is a no-JavaScript document that reloads itself;
+the console becomes an application: the same server grows JSON endpoints (`/api/projects`,
+`/api/holds`, `/api/hold/<id>`, `/api/run/<id>`, an event stream `/api/events` by server-sent
+events so the page updates when the trace changes, no reload), and a front end that renders them.
+The verdict stays a POST to the server, recorded under the account, so the trust boundary is
+unchanged. Section 3.3 lists the interactions; section 3.4 the technical options.
+
+### 3.3 What "interactive" can mean here (brainstorm)
+
+Things a person could do on the console that they cannot do on the board or in chat:
+
+- **An inbox of holds.** The queue reads like mail: unread first, grouped by what it asks, keyboard
+  navigation (next hold, accept, reject), a hold opens in place with the packet, the tables and the
+  figures, and the verdict form at the bottom. Answering one advances to the next. Snooze equals
+  defer with a note.
+- **Figures that can be looked at.** The batch panel, the UMAPs by slide and animal, the elbow
+  plot and the marker dot plot inline at the hold, zoomable, side by side where the decision is a
+  comparison (uncorrected beside corrected, resting beside activated). Today the person asks the
+  operator to show them.
+- **Tables that can be sorted and filtered.** The per-cluster batch table sorted by excess, the
+  cluster summary filtered to single-slide clusters, the markers of one cluster on click. The data
+  are already CSVs the engine hashed; the page only renders them.
+- **The elbow as a chart with the proposal drawn on it.** The operator's proposed `ndim` as a line
+  on the elbow curve, the knee heuristics marked, so the person sees what thirty-five means before
+  approving. No slider that changes the proposal: the operator proposes, the person approves (7.5);
+  a "reject with a suggested value in the reason" is the honest form of a slider.
+- **A note to the operator.** Beside the verdict, a free-text note the operator reads when `wait`
+  returns ("use rpca, not harmony"; "re-run at resolution 0.6"). It is the review's reason today;
+  the console makes it a first-class field the operator is told to read.
+- **Batch accept across siblings.** Identical parameter holds across four organs shown as one card
+  with the differing cells highlighted, one verdict (L6).
+- **Who is driving, live.** Per project: the operator session, its last engine call, its current
+  step and how long it has been running against the step's expected time, a stale mark; a fleet
+  view of all of them on one screen; a per-project timeline of runs, forks and abandons with their
+  reasons (the liver had seven runs across three projects today; nobody can reconstruct that from
+  the board).
+- **Live updates.** The page changes when the trace changes: a hold appears, a step completes, a
+  delivery lands, without reloading and without losing the form the person is typing in.
+- **The delivery as a gallery.** The report's figures as a browsable gallery, the summary beside
+  them, the labels table with the replicates' rationales on hover; a link to the artifact the
+  session published, if any.
+- **Decision history.** Every verdict the person ever gave, searchable ("what did I say about
+  resolution on lung"), with the hold it answered; the override corpus (7.6) made visible.
+- **What the console must not do:** choose a verdict, pre-fill a reason, change a parameter, start
+  or stop an operator, or let one account answer for another.
+
+### 3.4 How to build it (options)
+
+1. *Progressive enhancement on the existing server* (recommended first): JSON endpoints and an SSE
+   stream added to `review_serve.py`; the page keeps server-rendered HTML and adds a small amount of
+   JavaScript, vendored into the package (no CDN, no build step, works through the tunnel), for
+   live refresh, sorting, filtering, keyboard navigation and image zoom. Reversible, auditable, one
+   codebase, no new process.
+2. *A single-page application* (React or Svelte) built into a static bundle served by the same
+   server from `/app`, talking only to the JSON endpoints; the verdict POST unchanged. More
+   interactive, a build step, a second codebase; worth it if the console becomes the lab's daily
+   tool for many people.
+3. *A separate web service* with its own identity: rejected until section 5 is settled, since it
+   would move the verdict's trust boundary off the account.
+
+Both 1 and 2 keep the engine as the only writer of the trace and the server as the only verdict path.
 
 ## 4. What the console shows, by page
 
@@ -206,8 +264,10 @@ Recommendation: option 1 now; option 2 only when a second regular reviewer exist
    subagent model tried on ROSC where there are eleven tissues.
 2. The standing console: loopback plus tunnel (recommended) or a fixed lab-network port.
 3. `wait` as an engine verb (recommended) or a loop in the skill text only.
-4. Whether C5 (JSON endpoints and a live front end) is wanted after C2, or C2's server-rendered
-   pages are enough for now. Recommendation: judge after a week on C2.
+4. The build route for the interactive console (section 3.4): progressive enhancement on the
+   existing server (recommended first) or a single-page application; and which of the section 3.3
+   interactions come first. Recommendation: the inbox, the figures at the hold, live updates, who is
+   driving; the rest after a week of use.
 5. The several-reviewers model (section 5). Recommendation: option 1 until a second reviewer exists.
 
 ## 7. Order and measurement
@@ -223,7 +283,7 @@ Recommendation: option 1 now; option 2 only when a second regular reviewer exist
 | C2 queue | C1 | 1 day |
 | C3 operators wait | 2.5, C1 | half a day |
 | C4 fleet cap + skill | C3, decision 1 | 1 day |
-| C5 richer client | C2, decision 4 | 2 days |
+| C5 interactive console, first interactions | C2, decision 4 | 2 to 3 days (route 1), a week (route 2) |
 
 Measure on the next organs: time from hold opened to verdict recorded (from `holds.created` and
 `reviews.ts`), the number of chat turns the owner spends on holds per project (target: zero relayed
