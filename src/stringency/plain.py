@@ -22,11 +22,13 @@ def _join(titles: list[str]) -> str:
 
 
 def progress_sentence(pipeline: Pipeline, statuses: dict[str, str]) -> str:
-    """Which steps have completed, by title, in pipeline order."""
+    """Which steps have completed, by title, in pipeline order; then any skipped (L13)."""
     done = [pipeline.title(s) for s in pipeline.order() if statuses.get(s) == "completed"]
+    skipped = [pipeline.title(s) for s in pipeline.order() if statuses.get(s) == "skipped"]
+    tail = f" Skipped: {_join(skipped)}." if skipped else ""
     if not done:
-        return "No step has completed."
-    return f"Completed: {_join(done)}."
+        return "No step has completed." + tail
+    return f"Completed: {_join(done)}.{tail}"
 
 
 def stop_sentence(
@@ -72,6 +74,10 @@ def stop_sentence(
             return f"Stopped after {pipeline.title(until)}, as asked."
         return "The run is complete."
     if kind == "runnable":
+        skip = detail.get("skip")
+        if skip:
+            why = str(skip.get("reason") or "").removeprefix("skipped: ")
+            return f"Next: {title} will be skipped" + (f" ({why})." if why else ".")
         waiting = detail.get("waiting_on") or []
         if waiting:
             return f"Next: {title}, after {_join([pipeline.title(w) for w in waiting])}."

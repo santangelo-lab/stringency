@@ -202,6 +202,8 @@ An input reference is `$inputs.<name>` or `$steps.<id>.<output>`. A module input
 
 Parameters are declared with a `default` and, where the agent may choose, a `range` (numeric bounds, or an `options` list for categorical parameters). Under the `standard` profile the agent proposes a value inside the range; under `strict` parameters are locked to their defaults; under `exploratory` an out-of-range proposal flags instead of blocking (6.4). A parameter with no `range` is fixed. The ranges are in git, so widening one is a diff with an author and a reason, and the agent's chosen value is in the Action record, so the choice is in the trace. This keeps Commandment 1 (the plan is pre-specified) while letting the agent do the tuning a person would do by eye.
 
+A step may carry one condition, `when: {step: <id>, param: <name>, equals: <value>}` (or `not_equals:`), naming an ancestor step and one of its parameters. When the step is reached (7.1) the engine reads that ancestor's admitted value from its Action in the run (or, for a step a fork inherited, from the run it was inherited from); if the condition is false the step is skipped rather than run, and its outputs resolve to nothing: an optional input bound to them is omitted, and `lint` refuses a required input that binds only outputs of a conditional step, a `when` on a step that is not an ancestor, and a `when` on a parameter the ancestor does not declare. A step whose `when` names a skipped step is skipped too. The use is a branch decided by an earlier choice that is itself in the trace: batch correction happens at most once, so `assess_batch: when: {step: reduce, param: integration, equals: none}` (added 2026-10-07, L13; owner decision 20 of the Lane F plan).
+
 `runner` selects who executes the step: `operator` (the agent runs the code and submits evidence, 3.4) or `engine` (the engine runs the module script). It defaults to the project's `execution` setting. A step that references a module absent from the method repo, or a module whose `modes` excludes the project's mode, fails `lint` and fails `init`.
 
 ### 3.2 Module contract v1
@@ -600,7 +602,8 @@ Predicates do not read the agent's rationale as evidence for admissibility. The 
 
 | From | Event | To |
 |---|---|---|
-| pending | every input step is `completed` | proposed (Action written) |
+| pending | every input step is `completed` or `skipped` | proposed (Action written) |
+| pending | every input step is `completed` or `skipped`, and the step's `when` (3.1) is false | skipped (no Action; the `step_events` payload carries the condition, the actual value and the reason; added 2026-10-07) |
 | proposed | pre-gate: nothing fired, or only `log` | admissible |
 | proposed | pre-gate: `flag` fired | held (kind `flag`) |
 | proposed | pre-gate: `block` fired | blocked |
@@ -621,7 +624,7 @@ Predicates do not read the agent's rationale as evidence for admissibility. The 
 | proposed, admissible, held, running, awaiting_execution, dispatching, produced | the run is abandoned | abandoned (the step closes with the run; its open holds are withdrawn; added 2026-09-23) |
 | awaiting_execution | `submit <ticket> --failed --reason` (the operator reports the external run failed) | running, then failed; the executions row carries the reported exit code (added 2026-09-23) |
 
-Run status is derived: `held` if any step is held; `blocked` or `failed` if the frontier is; `completed` when every step is completed; otherwise `running`.
+Run status is derived: `held` if any step is held; `blocked` or `failed` if the frontier is; `completed` when every step is completed or skipped; otherwise `running`. A skipped step is done for its successors and for the run; summaries, the methods paragraph, the board and the project page name it with its reason, and coverage counts it as not evaluated.
 
 `stringency next` returns the first `pending` step whose inputs are complete, or the current hold, block, or failure with its reason. `run` loops on `next` until it returns something other than a runnable step, then exits with the matching code (14.2). Every transition writes a `step_events` row in the same transaction as the status change.
 

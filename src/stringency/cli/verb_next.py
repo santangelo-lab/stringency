@@ -31,6 +31,9 @@ def next_(as_json: bool = typer.Option(False, "--json")) -> None:
         lines = [
             f"next: {plan['step_id']}  {plan['module']}  {plan['operation']} ({plan['kind']}, runner {plan['runner']})"
         ]
+        if nx.detail.get("skip"):
+            # a conditional step whose `when` is false; `run` records the skip (L13)
+            lines.append(f"  {nx.detail['skip']['reason']}; `run` records it and moves on")
         for k, v in plan["parameters"].items():
             rng = (
                 f" range {v['range']}"

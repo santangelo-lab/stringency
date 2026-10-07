@@ -645,3 +645,9 @@ def test_action_param_sources(project: Project) -> None:
     assert action.param_source == {"replicate_unit": "default", "correction": "default"}
     assert action.proposed_by == "pipeline"
     assert SUMMARY_TABLE.cell("A", "mean_value") == (True, 74.31)
+
+
+def test_predecessor_skipped_counts_as_done(project: Project) -> None:
+    """L13: a skipped conditional predecessor does not block its successor."""
+    ctx = make_ctx(project, "02_summarize", step_status={"01_filter": "skipped"})
+    assert _run_one("topo.predecessor_incomplete", ctx) is False

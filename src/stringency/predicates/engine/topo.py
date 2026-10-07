@@ -50,7 +50,9 @@ def predecessor_incomplete(ctx: GateContext) -> Verdict:
     incomplete = {
         p: ctx.project.step_status.get(p, "pending")
         for p in pipeline.step(ctx.action.step_id).predecessors()
-        if ctx.project.step_status.get(p) != "completed"
+        # a skipped conditional step is done (L13); no run before 0.2.7 has one, so every
+        # earlier verdict is unchanged and the version stays 1
+        if ctx.project.step_status.get(p) not in ("completed", "skipped")
     }
     if incomplete:
         return Verdict(

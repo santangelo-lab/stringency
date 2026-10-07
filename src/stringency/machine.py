@@ -27,6 +27,7 @@ class StepStatus(StrEnum):
     REJECTED = "rejected"
     FAILED = "failed"
     ABANDONED = "abandoned"  # the run was abandoned while the step was open (added 2026-09-23)
+    SKIPPED = "skipped"  # its `when` was false when it was reached (L13, added 2026-10-07)
 
 
 S = StepStatus
@@ -63,6 +64,8 @@ EDGES: frozenset[tuple[StepStatus, StepStatus]] = frozenset(
         (S.AWAITING_EXECUTION, S.ABANDONED),
         (S.DISPATCHING, S.ABANDONED),
         (S.PRODUCED, S.ABANDONED),
+        # a conditional step whose `when` is false is skipped, not run (7.1, L13 2026-10-07)
+        (S.PENDING, S.SKIPPED),
     }
 )
 
@@ -71,6 +74,8 @@ OPEN_STEP = frozenset(
     {S.PROPOSED, S.ADMISSIBLE, S.HELD, S.RUNNING, S.AWAITING_EXECUTION, S.DISPATCHING, S.PRODUCED}
 )
 RETRYABLE = TERMINAL_FOR_ATTEMPT | {S.PENDING}
+# a successor may start once each predecessor is one of these (L13)
+DONE = frozenset({S.COMPLETED, S.SKIPPED})
 
 
 class IllegalTransition(Exception):
@@ -111,20 +116,20 @@ def transition(
         dict(payload or {}),
         attempt=attempt,
         started=to in {S.RUNNING, S.AWAITING_EXECUTION, S.DISPATCHING},
-        ended=to in {S.COMPLETED, S.REJECTED, S.FAILED, S.BLOCKED, S.ABANDONED},
+        ended=to in {S.COMPLETED, S.REJECTED, S.FAILED, S.BLOCKED, S.ABANDONED, S.SKIPPED},
     )
 
 
 def derive_run_status(statuses: Mapping[str, str], order: list[str]) -> str:
     """Design 7.1: held if any step is held; blocked or failed if the frontier is; completed
-    when every step is completed; otherwise running."""
+    when every step is completed or skipped; otherwise running."""
     vals = [statuses.get(s, "pending") for s in order]
     if any(v == "held" for v in vals):
         return "held"
-    if all(v == "completed" for v in vals):
+    if all(v in DONE for v in vals):
         return "completed"
     for v in vals:
-        if v == "completed":
+        if v in DONE:
             continue
         if v in ("blocked", "rejected"):
             return "blocked"

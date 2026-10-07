@@ -85,11 +85,49 @@ class ParamDecl(BaseModel):
         return bool(value == self.default)
 
 
+class WhenDecl(BaseModel):
+    """`when: {step, param, equals | not_equals}` on a step (3.1, L13, 2026-10-07): the step runs
+    only when the referenced ancestor's admitted parameter satisfies the one condition;
+    otherwise it is skipped (7.1)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    step: str
+    param: str
+    equals: Any = None
+    not_equals: Any = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _one_condition(cls, data: Any) -> Any:
+        if isinstance(data, dict) and ("equals" in data) == ("not_equals" in data):
+            raise ValueError("when takes exactly one of equals or not_equals")
+        return data
+
+    @property
+    def negated(self) -> bool:
+        return "not_equals" in self.model_fields_set
+
+    @property
+    def value(self) -> Any:
+        return self.not_equals if self.negated else self.equals
+
+    def holds(self, actual: Any) -> bool:
+        return bool(actual != self.value) if self.negated else bool(actual == self.value)
+
+    def describe(self) -> dict[str, Any]:
+        return {"step": self.step, "param": self.param, self._key: self.value}
+
+    @property
+    def _key(self) -> str:
+        return "not_equals" if self.negated else "equals"
+
+
 class StepDecl(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     id: str
     module: str
     title: str | None = None  # plain phrase for a lay reader ("Filter low-count genes")
+    when: WhenDecl | None = None  # conditional step (L13); evaluated when the step is reached
     # one reference, or for an `arity: many` module input a list of references or a
     # `$inputs.<glob>` (3.1, 2026-09-23)
     inputs: dict[str, str | list[str]] = Field(default_factory=dict)
@@ -162,6 +200,16 @@ class Pipeline(BaseModel):
                 if pred not in known:
                     raise ValueError(f"step {s.id} references unknown step {pred}")
         self._order()  # raises on cycles
+        for s in self.steps:
+            if s.when is None:
+                continue
+            if s.when.step not in known:
+                raise ValueError(f"step {s.id}: when names unknown step {s.when.step}")
+            if s.when.step not in self.ancestors(s.id):
+                raise ValueError(
+                    f"step {s.id}: when names {s.when.step}, which is not an ancestor of "
+                    f"{s.id}; the condition must be decided before the step is reached"
+                )
         return self
 
     def step(self, step_id: str) -> StepDecl:
@@ -199,6 +247,21 @@ class Pipeline(BaseModel):
 
     def order(self) -> list[str]:
         return self._order()
+
+    def ancestors(self, step_id: str) -> set[str]:
+        """Every step `step_id` depends on through its inputs, transitively."""
+        out: set[str] = set()
+        frontier = list(self.step(step_id).predecessors())
+        while frontier:
+            cur = frontier.pop()
+            if cur not in out:
+                out.add(cur)
+                frontier.extend(self.step(cur).predecessors())
+        return out
+
+    def skippable(self) -> set[str]:
+        """Steps that may be skipped: those that declare a `when`."""
+        return {s.id for s in self.steps if s.when is not None}
 
     def successors(self, step_id: str) -> list[str]:
         return [s.id for s in self.steps if step_id in s.predecessors()]

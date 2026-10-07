@@ -1,5 +1,6 @@
 """`fork` (design 2.6): a child run that inherits inputs and every completed step before
-`--at`, applies declared parameter changes, and leaves the parent untouched.
+`--at`, applies declared parameter changes, and leaves the parent untouched. A step the parent
+skipped before `--at` is inherited as skipped (L13).
 
 Reads: runs, steps, artifacts, state_snapshots, actions. Writes: runs, steps (inherited ones
 as completed), artifacts (rows pointing at the parent's files), state_snapshots (history
@@ -45,7 +46,7 @@ def fork(project: Project, *, from_run: str, at: str, sets: list[str], reason: s
     statuses = parent.step_status()
     inherit = [s for s in order[: order.index(at)]]
     for s in inherit:
-        if statuses.get(s) != "completed":
+        if statuses.get(s) not in ("completed", "skipped"):
             raise ConfigError(
                 f"cannot fork at {at}: step {s} is {statuses.get(s)} in run {from_run}, not completed"
             )
@@ -61,6 +62,25 @@ def fork(project: Project, *, from_run: str, at: str, sets: list[str], reason: s
         for sid in inherit:
             row = store.one("SELECT * FROM steps WHERE run_id=? AND step_id=?", (from_run, sid))
             assert row is not None
+            if row["status"] == "skipped":
+                # the parent's evaluation, so the child names the same reason (L13)
+                ev = store.one(
+                    "SELECT payload_json FROM step_events WHERE run_id=? AND step_id=? "
+                    "AND event='status:skipped' ORDER BY seq DESC LIMIT 1",
+                    (from_run, sid),
+                )
+                skipped = json.loads(ev["payload_json"]) if ev else {}
+                store.set_step_status(
+                    child.run_id,
+                    sid,
+                    "skipped",
+                    {
+                        **{k: skipped[k] for k in ("when", "actual", "reason") if k in skipped},
+                        "inherited_from": from_run,
+                    },
+                    ended=True,
+                )
+                continue
             store.set_step_status(
                 child.run_id,
                 sid,
@@ -89,7 +109,8 @@ def fork(project: Project, *, from_run: str, at: str, sets: list[str], reason: s
                     }
                 )
         # the inherited state: the parent's snapshot after the last inherited step, history marked inherited
-        parent_state = _state_after(parent, inherit[-1]) if inherit else None
+        ran = [s for s in inherit if statuses.get(s) == "completed"]  # a skipped step has no state
+        parent_state = _state_after(parent, ran[-1]) if ran else None
         if parent_state is not None:
             inherited_state = State(
                 run_id=child.run_id,

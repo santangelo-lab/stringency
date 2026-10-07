@@ -296,7 +296,7 @@ def test_every_transition_in_7_1(project: Project) -> None:
     with pytest.raises(IllegalTransition):
         transition(store, run_id, "bad", StepStatus.COMPLETED)
     assert store.scalar("SELECT status FROM steps WHERE step_id='bad'") == "pending"
-    assert len(EDGES) == 28
+    assert len(EDGES) == 29  # 28 plus pending -> skipped (L13)
 
 
 def test_status_lists_open_holds_with_ids(make_project: InitFn) -> None:

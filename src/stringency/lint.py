@@ -275,6 +275,49 @@ def lint_pipeline(
                     report.error(
                         where, f"step {step.id} input {name} references {ref}, which does not exist"
                     )
+    _lint_when(pipeline, modules, report, where)
+
+
+def _lint_when(pipeline: Pipeline, modules: ModuleIndex, report: LintReport, where: str) -> None:
+    """Conditional steps (L13): the parameter a `when` asks about is declared by the step it
+    names, and every input that could bind only skipped outputs is optional on its module."""
+    skippable = pipeline.skippable()
+    for step in pipeline.steps:
+        if step.when is not None:
+            ref = pipeline.step(step.when.step)
+            ref_mod = modules.get(ref.module)
+            declared = set(ref.params) | (set(ref_mod.declared_params) if ref_mod else set())
+            if step.when.param not in declared:
+                report.error(
+                    where,
+                    f"step {step.id}: when asks about {step.when.param}, which step {ref.id} "
+                    "does not declare",
+                )
+            decl = ref.params.get(step.when.param)
+            if (
+                decl is not None
+                and decl.options is not None
+                and step.when.value not in decl.options
+            ):
+                report.warn(
+                    where,
+                    f"step {step.id}: when compares {ref.id}.{step.when.param} with "
+                    f"{step.when.value!r}, not one of its options {decl.options}",
+                )
+        mod = modules.get(step.module)
+        if mod is None:
+            continue
+        for name, refs in step.refs().items():
+            if not refs or not all(r.kind == "steps" and r.name in skippable for r in refs):
+                continue
+            spec = mod.manifest.inputs.get(name)
+            if spec is not None and not spec.optional:
+                names = ", ".join(sorted({r.name for r in refs}))
+                report.error(
+                    where,
+                    f"step {step.id} input {name} binds only outputs of a conditional step "
+                    f"({names}); the input must be optional on {mod.ref}",
+                )
 
 
 def lint_path(path: Path, *, design: Design | None = None) -> LintReport:

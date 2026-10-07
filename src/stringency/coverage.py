@@ -14,6 +14,7 @@ from stringency import __version__
 from stringency.gate import in_scope_specs
 from stringency.predicates import registry
 from stringency.runs import RunContext
+from stringency.when import skip_reason
 
 
 def decision_point_coverage(rc: RunContext) -> tuple[list[str], list[str]]:
@@ -213,8 +214,14 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "declared": len(steps),
             **{
                 k: status_counts.get(k, 0)
-                for k in ("completed", "held", "blocked", "rejected", "failed")
+                for k in ("completed", "held", "blocked", "rejected", "failed", "skipped")
             },
+            # conditional steps whose `when` was false: no predicate was evaluated on them (L13)
+            "not_evaluated": [
+                {"step": s["step_id"], "reason": skip_reason(store, rc.run_id, s["step_id"])}
+                for s in steps
+                if s["status"] == "skipped"
+            ],
         },
         "gate": {
             "registered": len(registry.all()),
@@ -259,7 +266,9 @@ def render_coverage(d: dict[str, Any]) -> str:
         f"run {d['run_id']} | project {d['project_id']} | pipeline {d['pipeline']} | mode {d['mode']} | profile {d['profile']}",
         f"policy {d['policy_version']} (blake3:{d['policy_digest'][:12]}) | stringency {d['stringency_version']} | method {d['method_sha'][:12]} ({'dirty' if d['method_dirty'] else 'clean'})",
         "",
-        f"steps: {s['declared']} declared, {s['completed']} completed, {s['held']} held, {s['blocked']} blocked, {s['rejected']} rejected, {s['failed']} failed",
+        f"steps: {s['declared']} declared, {s['completed']} completed, {s['held']} held, {s['blocked']} blocked, {s['rejected']} rejected, {s['failed']} failed"
+        + (f", {s['skipped']} skipped" if s.get("skipped") else ""),
+        *[f"  not evaluated: {n['step']} ({n['reason']})" for n in s.get("not_evaluated", [])],
         "",
         f"gate: {g['registered']} predicates registered; {g['in_scope']} in scope for this pipeline; {g['evaluated']} evaluated over {s['declared']} steps, both phases",
         f"  fired: {g['fired']['block']} block, {g['fired']['flag']} flag, {g['fired']['log']} log",

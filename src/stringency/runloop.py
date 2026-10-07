@@ -15,7 +15,7 @@ from typing import Any
 from stringency.exit_codes import ConfigError, Exit, RefusedError
 from stringency.gate import GateResult
 from stringency.holds import open_holds
-from stringency.machine import StepStatus
+from stringency.machine import DONE, StepStatus, transition
 from stringency.operator_exec.tickets import job_spec, render_job_spec
 from stringency.plain import plain_next
 from stringency.review_render import packet_paths
@@ -29,6 +29,7 @@ from stringency.steps import (
     propose,
     resume_after_hold,
 )
+from stringency.when import skip_decision
 
 
 @dataclass
@@ -124,7 +125,7 @@ def next_step(rc: RunContext) -> Next:
         )
     for sid in order:
         st = StepStatus(statuses[sid])
-        if st == StepStatus.COMPLETED:
+        if st in DONE:
             continue
         if st == StepStatus.AWAITING_EXECUTION:
             row = rc.store.one(
@@ -200,7 +201,21 @@ def next_step(rc: RunContext) -> Next:
             StepStatus.PRODUCED,
         ):
             preds = rc.project.pipeline.step(sid).predecessors()
-            if all(statuses.get(p) == "completed" for p in preds):
+            if all(statuses.get(p) in DONE for p in preds):
+                skip = (
+                    skip_decision(rc.store, rc.project.pipeline, rc.run_id, sid)
+                    if st == StepStatus.PENDING
+                    else None
+                )
+                if skip is not None:
+                    # read-only here; `run` records the skip (L13)
+                    return Next(
+                        "runnable",
+                        sid,
+                        {"plan": plan_template(rc, sid), "status": str(st), "skip": skip},
+                        0,
+                        f"next: {sid} ({skip['reason']})",
+                    )
                 return Next(
                     "runnable",
                     sid,
@@ -214,7 +229,7 @@ def next_step(rc: RunContext) -> Next:
                 {
                     "plan": plan_template(rc, sid),
                     "status": str(st),
-                    "waiting_on": [p for p in preds if statuses.get(p) != "completed"],
+                    "waiting_on": [p for p in preds if statuses.get(p) not in DONE],
                 },
                 0,
                 f"next: {sid} (waiting on predecessors)",
@@ -231,9 +246,12 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
     collected: set[str] = set()
     dispatched_now: set[str] = set()
     completed_now: list[str] = []  # steps this invocation ran to completion (I8)
+    skipped_now: list[str] = []  # conditional steps this invocation skipped (L13)
 
     def _done(nx: Next) -> Next:
         nx.detail["completed_steps"] = list(completed_now)
+        if skipped_now:
+            nx.detail["skipped_steps"] = list(skipped_now)
         nx.detail["plain"] = plain_for(rc, nx)
         return nx
 
@@ -268,6 +286,15 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
         ) > rc.project.pipeline.order().index(until):
             return _done(Next("completed", None, {"until": until}, 0, f"stopped after {until}"))
         st = StepStatus(rc.step_status()[sid])
+        skip = nx.detail.get("skip")
+        if skip is not None:
+            # writes: step_events (the evaluation), steps.status
+            transition(rc.store, rc.run_id, sid, StepStatus.SKIPPED, payload=skip)
+            rc.refresh_status()
+            skipped_now.append(sid)
+            if until is not None and sid == until:
+                return _done(Next("completed", sid, {"until": until}, 0, f"stopped after {until}"))
+            continue
         if st == StepStatus.PENDING:
             delta = rc.delta_for(sid)
             # a fork's --set values are a person's decision, recorded with a reason on the run

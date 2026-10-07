@@ -27,7 +27,7 @@ def _tty(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_edges_include_abandoned() -> None:
-    assert len(EDGES) == 28
+    assert len(EDGES) == 29  # 28 plus pending -> skipped (L13)
     assert (StepStatus.AWAITING_EXECUTION, StepStatus.ABANDONED) in EDGES
 
 

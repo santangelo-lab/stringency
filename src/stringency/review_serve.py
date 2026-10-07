@@ -44,6 +44,7 @@ from stringency.present import Site, present_hold, present_run, render_html
 from stringency.project import Project
 from stringency.review import _replicates_for, get_hold, record_review
 from stringency.review_render import render
+from stringency.when import skip_reason
 
 DEFAULT_PORT = 8765
 DEFAULT_BIND = "127.0.0.1"
@@ -642,11 +643,16 @@ class ReviewHandler(BaseHTTPRequestHandler):
         try:
             steps: list[dict[str, str]] = []
             if entry.get("run"):
-                statuses = site.step_statuses(entry["run"]["run_id"])
+                run_id = entry["run"]["run_id"]
+                statuses = site.step_statuses(run_id)
                 steps = [
                     {
                         "title": site.pipeline.title(s),
-                        "status": statuses.get(s, "pending").replace("_", " "),
+                        "status": (
+                            skip_reason(site.store, run_id, s) or "skipped"
+                            if statuses.get(s) == "skipped"
+                            else statuses.get(s, "pending").replace("_", " ")
+                        ),
                     }
                     for s in site.pipeline.order()
                 ]

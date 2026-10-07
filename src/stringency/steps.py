@@ -34,6 +34,7 @@ from stringency.runs import RunContext
 from stringency.schemas import validate
 from stringency.state import ObjectState, State, store_snapshot
 from stringency.tables import load_table
+from stringency.when import skip_decision
 
 EXT = {"csv": "csv", "tsv": "tsv", "json": "json", "jsonl": "jsonl", "md": "md", "txt": "txt"}
 
@@ -131,7 +132,9 @@ def resolve_inputs(rc: RunContext, step: StepDecl, module: Module) -> dict[str, 
     """`$inputs.<name>` from the manifest; `$steps.<id>.<out>` from that step's produced
     artifacts. An `arity: many` input takes a list of references or a `$inputs.<glob>`, which
     expands to every manifest input whose name matches and whose type is the input's, in name
-    order; it must resolve to at least one part unless the input is optional."""
+    order; it must resolve to at least one part unless the input is optional. A reference to a
+    skipped step's output (L13) resolves to nothing, so an optional input is omitted and a
+    required one raises (lint refuses that wiring)."""
     out: dict[str, ResolvedInput] = {}
     inputs_by_name = rc.project.inputs.by_name()
     for name, refs in step.refs().items():
@@ -166,6 +169,8 @@ def resolve_inputs(rc: RunContext, step: StepDecl, module: Module) -> dict[str, 
                     digests.append(item.blake3)
                     types.append(item.type)
             else:
+                if step_status(rc.store, rc.run_id, ref.name) == StepStatus.SKIPPED:
+                    continue  # a skipped step's outputs resolve to nothing (L13)
                 produced = step_outputs(rc.store, rc.run_id, ref.name)
                 row = produced.get(ref.output or "")
                 if row is None:
@@ -234,6 +239,11 @@ def propose(
     current = step_status(store, rc.run_id, step_id)
     if current not in RETRYABLE:
         raise RefusedError(f"step {step_id} is {current}; it cannot be proposed now")
+    skip = skip_decision(store, rc.project.pipeline, rc.run_id, step_id)
+    if skip is not None:
+        raise RefusedError(
+            f"step {step_id} does not run in this run ({skip['reason']}); `run` records it as skipped"
+        )
     prev_attempt = (
         store.scalar(
             "SELECT attempt FROM steps WHERE run_id = ? AND step_id = ?", (rc.run_id, step_id)

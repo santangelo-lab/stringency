@@ -15,6 +15,7 @@ from typing import Any
 from stringency.methods import number_word
 from stringency.runs import RunContext
 from stringency.steps import action_from_row
+from stringency.when import skip_reason
 
 NOT_CHECKED = "not checked: anything not listed above"
 
@@ -55,7 +56,7 @@ def _plural(n: int, one: str, many: str | None = None) -> str:
 
 def what_ran(rc: RunContext) -> list[str]:
     """One line per step, by title: parameters that differed from the defaults, or
-    'at defaults'. Reads: steps, actions."""
+    'at defaults'; a skipped step with its reason. Reads: steps, actions, step_events."""
     store, project = rc.store, rc.project
     lines: list[str] = []
     for step in project.pipeline.steps:
@@ -63,6 +64,10 @@ def what_ran(rc: RunContext) -> list[str]:
             "SELECT status FROM steps WHERE run_id=? AND step_id=?", (rc.run_id, step.id)
         )
         title = project.pipeline.title(step.id)
+        if st == "skipped":
+            reason = skip_reason(store, rc.run_id, step.id) or "skipped"
+            lines.append(f"- {title} (step {step.id}): {reason}.")
+            continue
         if st != "completed":
             lines.append(f"- {title} (step {step.id}): did not complete; status {st}.")
             continue

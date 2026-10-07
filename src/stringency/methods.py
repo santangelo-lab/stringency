@@ -9,6 +9,7 @@ from typing import Any
 from stringency import __version__
 from stringency.runs import RunContext
 from stringency.steps import action_from_row
+from stringency.when import skip_reason
 
 
 def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
@@ -27,10 +28,18 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
                 f"Input {item.name} was delivered by stringency run {d.run_id}{where}."
             )
     described: list[str] = []
+    not_run: list[str] = []
     for step in project.pipeline.steps:
         st = store.scalar(
             "SELECT status FROM steps WHERE run_id=? AND step_id=?", (rc.run_id, step.id)
         )
+        if st == "skipped":
+            reason = (skip_reason(store, rc.run_id, step.id) or "").removeprefix("skipped: ")
+            title = project.pipeline.title(step.id)
+            not_run.append(
+                f"{title} (step {step.id}) was not run" + (f": {reason}" if reason else "")
+            )
+            continue
         if st != "completed":
             continue
         row = store.one(
@@ -66,6 +75,8 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
     if described:
         joined = "; ".join(described)
         sentences.append(joined[0].upper() + joined[1:] + ".")
+    for s in not_run:
+        sentences.append(s[0].upper() + s[1:] + ".")
     g = coverage["gate"]
     n_flags = len(g["flags"])
     sentences.append(

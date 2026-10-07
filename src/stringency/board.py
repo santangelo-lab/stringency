@@ -92,8 +92,9 @@ def project_entry(root: Path) -> dict[str, Any]:
                 "SELECT step_id, status FROM steps WHERE run_id = ? ORDER BY rowid",
                 (run["run_id"],),
             )
-            current = next((s for s in steps if s["status"] != "completed"), None)
-            entry["steps_done"] = sum(1 for s in steps if s["status"] == "completed")
+            # a skipped conditional step counts as done (L13)
+            current = next((s for s in steps if s["status"] not in ("completed", "skipped")), None)
+            entry["steps_done"] = sum(1 for s in steps if s["status"] in ("completed", "skipped"))
             entry["steps_total"] = len(steps)
             if current is not None:
                 entry["step"] = {
