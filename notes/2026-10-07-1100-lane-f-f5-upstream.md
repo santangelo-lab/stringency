@@ -1,0 +1,88 @@
+# Lane F F5: one upstream pipeline, merge to annotation (2026-10-07)
+
+Session on PROTSEQ, Claude Code in `~/mytools/stringency` (moved into `screen -r stringency` mid-morning
+so it survives the owner's laptop moving), shared engine `0.2.6-sc0.2.0` then `0.2.6-sc0.3.1`, method
+`stringency-xenium-method` `v0.5.0-rc2` then `v0.6.0-rc2`, plugin `singlecell` 0.2.0 then 0.3.1.
+Plan: `spec/plans/spatial-method-plan.md` section 5.1, phase 2, decisions 16 to 18. Data-side
+record: `/lab/projects/Lyons_CLP/PROGRESS.md` (2026-10-07 entry).
+
+## The owner's request
+
+One pipeline from reading the Seurat objects through normalisation, concatenation, PCA and UMAP with
+the ROSC plots, clustering and cluster annotation; no echo-backs between steps; the operator explicit
+about the normalisation it recommends, a person approving; concatenation without batch correction
+first, a route to assess and rerun with correction; ROSC per-tissue PCA and UMAP defaults, the
+operator reasoning from elbow plots, a person signing off on the final parameters; one organ per
+project; "as many steps within just a few overall large pipelines as possible going forward".
+
+## What the engine already allowed, and what it did not
+
+Read in source (0.2.6): `run --until <step>` stops after a step, so the operator can read the elbow
+table and `propose 04_cluster --set ndim=.. --set resolution=.. --reason` before the next step runs.
+`param.agent_proposed` fires only on a departure from the pipeline default; a proposal at the default
+opens nothing; module.yml `confirm:` is parsed and read by nothing. A judgment control is wired by
+replacing a project input of the fixture's type, so a mid-pipeline judgment cannot have a control
+unless a one-step pipeline binds its input as a project input. The hold packet shows the proposal's
+`rationale_ref` as a hash, not the text. Filed: backlog L8 (rationale text in flag packets), L9
+(decision-point sign-off belongs in the engine).
+
+## Built
+
+- **Plugin `singlecell` 0.3.0 and 0.3.1** (two forked sessions): operations `reduce_pca`,
+  `cluster_umap`, `find_markers` extended, `annotate_clusters`, `apply_labels`, `report_upstream`
+  (`reduce_cluster` removed); object type `cluster_evidence` (`sc.cluster_evidence@1`, directory
+  extractor; `fields.summary_columns`, not `columns`, so `init.column_missing` leaves it alone);
+  predicates `sc.decision_unreviewed` (pre, flag: a step's decision points taken at their defaults
+  without a person's sign-off; silent when `param.agent_proposed` fires, so exactly one hold per
+  decision step; silent on a fork), `sc.batch_effect_suspected` (post on `cluster_umap`, from
+  `uns_flags.batch_assessment.suspected`; the reason names the fork route), `sc.unknown_fraction`
+  (post on `apply_labels`, policy ceiling 0.2), `qc.filter_ordering`; vocabulary `cell_types_mouse@1`
+  (43 labels, CL ids, agent draft); generator tool `shuffle_markers`. 60 tests. Installed as shared
+  `0.2.6-sc0.3.0` then `0.2.6-sc0.3.1` from the engine's `v0.2.6` tag. Found in passing: the engine
+  checkout on `main` is `v0.2.4-23`; `v0.2.6` sits on `track-1h-text` (three commits not on main;
+  main has seventeen not in v0.2.6). A stray `/data/lab/env/stringency/bin/stringency` symlink from
+  the first install attempt remains (harmless).
+- **Image `xenium-r` 0.2.0**: 0.1.0 plus harmony 2.0.5 (the batch-correction route), built on GHCR
+  from the harmony commit, pulled by digest to `/data/lab/env/images/xenium-r-0.2.0.sif`, sha256 in
+  `envs/manifest.yml` and `MANIFEST.md`, `renv.lock` and `versions.csv` committed.
+- **Method `v0.6.0-rc2`**, pipeline `xenium-upstream` 0.1.0 (replaces `xenium-cluster`): `merge-punches`
+  0.1.1 (restores the seven-digit slide id the QC objects had reduced to a number), `normalize` 0.1.1
+  (gates declared), `reduce-pca` 0.1.0 (HVG, scale, PCA 50; `elbow_table` with two heuristics and the
+  knee; HVG, elbow, loadings and PCA-pair plots; `integration` none|harmony|rpca|cca on layers split by
+  `batch_key`), `cluster-umap` 0.1.0 (neighbours, Louvain at five resolutions, UMAP, clustree, UMAPs
+  by every design column and split views, image plots per punch, composition tables, the batch
+  assessment written to `misc$stringency$batch_assessment`), `find-markers` 0.1.0 (FindAllMarkers
+  with a seeded ten-thousand-cell subsample per cluster, top-25 table, per-cluster mean and fraction
+  expressing for every gene, dot plot, the `cluster_evidence` directory), `annotate-clusters` 0.1.0
+  (judgment; evidence `cluster_summary`, `markers_top`, `canonical_markers`, `organ_guide`; prompt
+  with ROSC's reading rules and the "in words" line; controls from the ROSC liver: positive with the
+  collapse-map truth at agreement 0.75, negative with shuffled symbols), `apply-labels` 0.1.0,
+  `upstream-report` 0.1.0 (markdown and a self-contained HTML with every figure); `xenium-annotate`
+  for controls and re-annotation; `docs/tissue-defaults.md`; `skills/xenium-upstream.yml`;
+  `tests/run_upstream.sh`, `tests/run_annotate.sh`. Lint: four deliberate warnings.
+- **Dev run on the real liver cells** (103,127 cells; the `cluster_liver` normalised object; outside
+  the engine under `/lab/scratch/jrrose5/upstream-dev`): PCA 2 min, knee at component 16 against
+  the ROSC default of 35; clustering and UMAP about 6 min, 20 clusters at 0.4 (ROSC liver also had
+  20); markers 3.4 min, 12,548 rows; the judgment's pre-script on the real evidence: 500 top-marker
+  rows, 111 canonical genes on the panel for 26 expected liver labels; apply-labels and the report
+  with a fabricated dev consensus, 72 figures gathered. Batch assessment: kNN same-slide excess 0.344
+  within the one shared time point (24 h), above the 0.30 rule, so the flag will open on the real
+  run; no cluster flagged by composition; the caveat row says each slide holds one animal at 24 h.
+  As in ROSC, time point dominates the clusters (four clusters are 24 h only, four are 6 h only).
+- **`upstream_liver` declared** (`/lab/projects/Lyons_CLP/declarations/upstream_liver`, the
+  `cluster_liver` inputs unchanged; `declare --check` clean, 7 init predicates, none fired) and
+  initialised on `v0.6.0-rc2`; it waits on the owner's init confirm.
+
+## Open
+
+1. Owner: the init confirm of `upstream_liver`; then the method hold at step 02 and the ndim and
+   resolution hold at step 04 (the operator proposes from `elbow_table`); the batch flag after step
+   04; the judgment's item holds; the vocabulary and organ guides (decision 17, F7).
+2. The annotation controls: the scratch project `/lab/scratch/jrrose5/annotate-control/project` on
+   the ROSC liver fixture waits on its own init confirm; `controls run` after that (plugin 0.3.1 has
+   the generator). The engine's `controls` design cannot run a mid-pipeline judgment's controls
+   inside `xenium-upstream`; `xenium-annotate` is the workaround.
+3. Engine: L8, L9; the `v0.2.6` branch state; L5 to L7 still open.
+4. Method: qc-cells writes the slide id as a number (merge 0.1.1 repairs it; fix at the source in
+   qc-cells 0.1.4 when the QC modules next change); the batch rule's thresholds are a first guess.
+5. F6: lung, gut, spleen on the same pipeline once liver has run through its holds.
