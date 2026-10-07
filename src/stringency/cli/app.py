@@ -23,6 +23,7 @@ from stringency.cli import (
     verb_run,
     verb_status,
     verb_submit,
+    verb_wait,
 )
 
 app = typer.Typer(
@@ -46,6 +47,7 @@ app.command("review")(verb_review.review)
 app.command("deliver")(verb_deliver.deliver)
 app.command("fork")(verb_fork.fork)
 app.command("abandon")(verb_abandon.abandon)
+app.command("wait")(verb_wait.wait)
 app.command("lint")(verb_lint.lint)
 app.add_typer(verb_controls.app, name="controls")
 app.add_typer(verb_policy.app, name="policy")

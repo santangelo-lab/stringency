@@ -1096,6 +1096,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
 | `fork` | `--from <run> --at <step> [--set k=v]… --reason "<txt>"` | none | opens a child run with delta | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
+| `wait` | `[--hold <id> \| --run <id>] [--timeout <s>] [--json]` | none | reads only, every five seconds: returns (exit 0) when the hold is resolved or withdrawn, printing the review's verdict, reason, reviewer and via, or when the run's status, a step's status or its open holds change, or at once on a closed run; exit 10 when the timeout passes, 15 on an unknown id; with neither option, the latest run. The operator's way to sleep until a person has answered (added 2026-10-07) | none |
 | `board <root>` | `[--write] [--json]` | none | reads every project under `<root>` (one level; skips `superseded/`, `declarations/`): plan status, latest run and step, open holds and who they wait on, latest delivery's files; `--write` rewrites `<root>/STATUS.md`, which `init`, `run`, `propose`, `submit`, `review`, `deliver` and `abandon` refresh when it exists | none |
 | `present` | `[--run <id>] [--hold <id>] [--skills-dir <dir>] [--json]` | none | reads the run's delivery or the hold and renders what the method's delivery skill (14.4) says a person should see; the engine default is the progress sentence and the deliverables | none |
 | `lint` | `<path>` or `<repo-or-url>@<tag>` | static checks on a module directory or a method repo; a tagged spec is cloned into a temporary directory first | none | none |
@@ -1103,7 +1104,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `policy show` | `[--profile]` | prints resolved dispositions | none | none |
 | `plugins list` | | | | |
 
-`run` remains the loop: it calls `next`, and for operator-run steps it stops at `propose` (exit 21) and resumes after `submit`. `propose` and `submit` are exposed as verbs because the agent needs to call them individually; `fork` and `abandon` are small enough not to count against the five-verb budget; `trace` stays a flag on `status` until someone needs more.
+`run` remains the loop: it calls `next`, and for operator-run steps it stops at `propose` (exit 21) and resumes after `submit`. `propose` and `submit` are exposed as verbs because the agent needs to call them individually; `fork`, `abandon` and `wait` are small enough not to count against the five-verb budget; `trace` stays a flag on `status` until someone needs more.
 
 ### 14.2 Exit codes
 
