@@ -149,6 +149,11 @@ corrected. The annotation judgment passed its gates on the first dispatch once t
 the cap, the key rules and the words rule. Owner decisions today: 16 to 20. Engine backlog filed
 today: L8 to L13. Method `v0.6.0-rc6`; plugin 0.4.2.
 
+## Records
+
+Flow diagram of the pipeline (artifact, private to the owner): https://claude.ai/artifact/6XZ6AT4KHxrjwft9vd15cx.
+Delivery: `/lab/projects/Lyons_CLP/upstream_liver/deliver/01M4BTD4967ZR7JS5CR7RMXCWK/`. Data-side log: `/lab/projects/Lyons_CLP/PROGRESS.md` (2026-10-07).
+
 ## Open
 
 1. Owner: the init confirm of `upstream_liver`; then the method hold at step 02 and the ndim and
