@@ -8,6 +8,7 @@ What each file is, and how much weight it carries.
 |---|---|---|
 | `roadmap-2026-09.md` | current | the plan approved 2026-09-14 and the lanes it became; its first section, "Where things stand", is the one-page state of every lane with pointers; the rest is the approved detail with per-lane status |
 | `spatial-method-plan.md` | **active (Lane F)** | the spatial method after QC with Lyons CLP as the pilot: sections 1 to 4 phase 0 (done 2026-10-06), sections 5 to 7 the downstream pilot re-planned for R, section 8 every owner decision (12 to 15 open) |
+| `console-and-fleet-plan.md` | **designed, not built (Lane H)** | the console: `review --serve` grown into one place for every run and every hold (inbox by ask, figures and the elbow chart at the hold, who is driving, an event stream), the console-mode hold protocol, the fleet's resource cap; seven owner decisions in section 7; mockup in `plans/mockups/` |
 | `backlog.md` | current | open items not in a lane (K, L series), the measurement table |
 | `ux-two-audiences.md` | open, small (Lane E) | Track 1 in detail; built through 1h; section 8's amendments applied; the status line says what remains |
 | `judge-sources-plan.md` | proposed (Lane G) | judgment agents from many sources: the `openai-compatible` adapter, the Qwen3 evaluation, judge identity, a panel specification (*design*), the operator fallback, a `/data/protect` routing rule; seven owner decisions in section 6 |

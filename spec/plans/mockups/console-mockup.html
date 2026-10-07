@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>stringency console (mockup)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --ink: #222; --muted: #666; --line: #ddd; --bg: #fff; --panel: #f6f6f6; --mark: #2f5d9e; --warn: #8a5a00; --warnbg: #fff4d6; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #e6e6e6; --muted: #a0a0a0; --line: #444; --bg: #161616; --panel: #222; --mark: #7fa6e0; --warn: #e0b45a; --warnbg: #3a2e10; } }
+  body { font-family: system-ui, sans-serif; max-width: 72em; margin: 2em auto; padding: 0 1em; color: var(--ink); background: var(--bg); }
+  h1 { font-size: 1.2em; font-weight: 600; }
+  h2 { font-size: 1em; font-weight: 600; margin-top: 2em; }
+  h3 { font-size: 0.95em; font-weight: 600; margin: 1.2em 0 0.4em; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 0.3em 0.6em; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; cursor: pointer; }
+  pre { white-space: pre-wrap; word-break: break-word; background: var(--panel); padding: 1em; border: 1px solid var(--line); }
+  p.note { color: var(--muted); font-size: 0.9em; }
+  .banner { background: var(--warnbg); color: var(--warn); border: 1px solid var(--warn); padding: 0.6em 1em; font-size: 0.9em; }
+  nav a { margin-right: 1.2em; cursor: pointer; text-decoration: underline; color: var(--mark); }
+  nav a.on { font-weight: 600; text-decoration: none; }
+  section.view { display: none; } section.view.on { display: block; }
+  .card { border: 1px solid var(--line); padding: 0.8em 1em; margin: 0.6em 0; }
+  .card.focus { outline: 2px solid var(--mark); }
+  .card .meta { color: var(--muted); font-size: 0.9em; }
+  .tag { display: inline-block; border: 1px solid var(--line); border-radius: 3px; padding: 0 0.4em; font-size: 0.8em; color: var(--muted); margin-left: 0.4em; }
+  .tag.mock { border-color: var(--warn); color: var(--warn); }
+  .stale { color: var(--warn); }
+  fieldset { border: 1px solid var(--line); margin: 1em 0; padding: 0.6em 1em; }
+  label { display: block; margin: 0.3em 0; }
+  textarea, select, input[type=text] { font: inherit; width: 100%; max-width: 40em; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+  button { font: inherit; padding: 0.4em 1.2em; }
+  .figs { display: grid; grid-template-columns: 1fr 1fr; gap: 1em; }
+  .fig { border: 1px dashed var(--line); background: var(--panel); min-height: 14em; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.9em; text-align: center; padding: 1em; }
+  .timeline { border-left: 2px solid var(--line); margin-left: 0.5em; padding-left: 1em; }
+  .timeline div { margin: 0.4em 0; }
+  .timeline .fork { margin-left: 1.5em; }
+  kbd { font: 0.85em ui-monospace, monospace; border: 1px solid var(--line); border-radius: 3px; padding: 0 0.3em; }
+  svg text { fill: var(--ink); font-size: 11px; }
+  svg .axis { stroke: var(--line); }
+  svg .grid { stroke: var(--line); stroke-dasharray: 2 3; }
+  svg .series { stroke: var(--mark); fill: none; stroke-width: 2; }
+  svg .pt { fill: var(--bg); stroke: var(--mark); stroke-width: 2; }
+  svg .mark { stroke: var(--ink); stroke-width: 1.5; }
+  svg .tick { stroke: var(--muted); stroke-width: 1.5; }
+  svg .muted { fill: var(--muted); }
+</style>
+</head>
+<body>
+<h1>stringency console <span class="tag">mockup</span></h1>
+<p class="banner">A picture of the console plan (spec/plans/console-and-fleet-plan.md, sections 3.5 to 3.9), not the product. The liver rows, the liver hold and its chart are filled from the real trace of upstream_liver on 2026-10-07; rows marked <span class="tag mock">mock</span> are invented to show a fleet of four organs. Nothing here records anything.</p>
+<p class="note">Served by stringency review --serve for jrrose5 on PROTSEQ. A verdict recorded here is recorded as this account's, via web. Live: the page updates when a trace changes.</p>
+
+<nav><a class="on" data-view="inbox">Inbox and fleet</a><a data-view="hold">A hold</a><a data-view="project">A project</a><a data-view="history">History</a></nav>
+
+<!-- ============================ landing: inbox + fleet ============================ -->
+<section class="view on" id="inbox">
+<h2>Needs you <span class="tag">4 holds in 3 projects</span> <span class="tag"><kbd>j</kbd>/<kbd>k</kbd> move, <kbd>Enter</kbd> open</span></h2>
+
+<h3>Confirm the plan</h3>
+<p class="note">none</p>
+
+<h3>Approve the operator's parameters</h3>
+<div class="card">
+  <strong>Normalise: method and scale factor</strong> in <strong>upstream_gut</strong> and <strong>upstream_spleen</strong> <span class="tag">2 projects, one form</span><span class="tag mock">mock</span>
+  <div class="meta">open 8 min and 6 min · param.agent_proposed, phase pre · the proposed values are identical in both; the operators' reasons differ in words and are shown on the card</div>
+  <table>
+    <tr><th>parameter</th><th>default</th><th>proposed</th><th>upstream_gut</th><th>upstream_spleen</th></tr>
+    <tr><td>method</td><td>logarea</td><td>logarea</td><td>same</td><td>same</td></tr>
+    <tr><td>scale_factor</td><td>100</td><td>100</td><td>same</td><td>same</td></tr>
+  </table>
+</div>
+<div class="card focus">
+  <strong>Cluster and embed: ndim and resolution</strong> in <strong>upstream_liver</strong>
+  <div class="meta">open 56 s · sc.decision_unreviewed, phase pre · hold 01M4BSV3CWDQEMRX0164DJXGKC · waits on reviewer jrrose5 · <a data-view="hold" style="color:var(--mark);cursor:pointer">open</a></div>
+</div>
+
+<h3>Decide on the reviewers' consensus</h3>
+<p class="note">none</p>
+<h3>Settle a disagreement</h3>
+<p class="note">none</p>
+<h3>Accept a flagged condition</h3>
+<p class="note">none</p>
+
+<h2>Fleet <span class="tag">4 projects under /lab/projects/Lyons_CLP, 26 delivered rows folded</span></h2>
+<table id="fleet">
+  <tr><th>project</th><th>pipeline</th><th>method</th><th>run</th><th>current step</th><th>same step elsewhere</th><th>waiting on</th><th>driver</th><th>last call</th></tr>
+  <tr><td>upstream_liver</td><td>xenium-upstream</td><td>v0.6.0-rc6</td><td>running</td><td>Cluster and embed (held)</td><td></td><td><strong>you</strong>: approve parameters</td><td>claude-code · lane-f-f5-2026-10-07 · PROTSEQ</td><td>56 s ago</td></tr>
+  <tr><td>upstream_lung <span class="tag mock">mock</span></td><td>xenium-upstream</td><td>v0.6.0-rc6</td><td>running</td><td>Cluster and embed (running, 12 min)</td><td>liver: 5 min</td><td>the engine</td><td>claude-code · lane-f-f6-lung · PROTSEQ</td><td>12 min ago</td></tr>
+  <tr><td>upstream_gut <span class="tag mock">mock</span></td><td>xenium-upstream</td><td>v0.6.0-rc6</td><td>running</td><td>Normalise (held)</td><td>liver: 40 s</td><td><strong>you</strong>: approve parameters</td><td>claude-code · lane-f-f6-gut · PROTSEQ</td><td>8 min ago</td></tr>
+  <tr><td>upstream_spleen <span class="tag mock">mock</span></td><td>xenium-upstream</td><td>v0.6.0-rc6</td><td>running</td><td>Normalise (held)</td><td>liver: 40 s</td><td><strong>you</strong>: approve parameters</td><td>claude-code · lane-f-f6-spleen · PROTSEQ</td><td>6 min ago</td></tr>
+</table>
+<p class="note">Other cells the fleet view can show: "a slot (352 of 400 GB claimed by lung)" when the executor waits under the resource cap; "the operator session" for a ticket or a dispatch; a <span class="stale">stale</span> mark when a running or dispatching step has had no engine call for longer than fifteen minutes and twice the same step's duration elsewhere. Click a column header to sort.</p>
+<h2>Delivered today</h2>
+<table><tr><th>when</th><th>project</th><th>files</th></tr><tr><td>19:09</td><td>upstream_liver (run of 18:35, forked at Assess batch)</td><td>18 files; report with every figure</td></tr></table>
+</section>
+
+<!-- ============================ a hold ============================ -->
+<section class="view" id="hold">
+<p class="note"><a data-view="inbox" style="color:var(--mark);cursor:pointer">All projects</a> / upstream_liver</p>
+<h2>Approve the operator's parameters: Cluster and embed (ndim, resolution)</h2>
+<p class="note">Hold 01M4BSV3CWDQEMRX0164DJXGKC (flag) on step 04_cluster, module cluster-umap@0.1.1, attempt 1, created 2026-10-07T18:26:03Z. Predicate sc.decision_unreviewed@1, phase pre: a step's decision points taken at their defaults without a person's sign-off. What follows is what stringency review prints at a terminal; the form records the same verdicts by the same rules. <kbd>a</kbd> accept, <kbd>r</kbd> reject, <kbd>d</kbd> defer, <kbd>Ctrl-Enter</kbd> record.</p>
+
+<h3>The decision</h3>
+<table>
+  <tr><th>parameter</th><th>default</th><th>value</th><th>source</th></tr>
+  <tr><td>ndim</td><td>35</td><td>35</td><td>agent</td></tr>
+  <tr><td>resolution</td><td>0.4</td><td>0.4</td><td>agent</td></tr>
+</table>
+
+<h3>The operator's reason <span class="tag">L8: the text behind rationale_ref</span></h3>
+<pre>Recommend ndim thirty-five and resolution zero point four, the ROSC liver defaults, the values the owner approved on this organ's rc3 project ('Reasonable parameter choices'). The elbow table of the split-layer PCA that Harmony integrated is nearly identical to the uncorrected one: the knee heuristic lands at component sixteen, the cumulative-ninety-percent rule at thirty-two, the standard deviation stays above one point one through component forty, so the components between the knee and thirty-five still carry structure, which on a targeted panel is where rare populations separate. Thirty-five dimensions of the Harmony embedding keep the clustering comparable with the uncorrected run (twenty clusters at the same settings) and with ROSC; the development test of this route gave sixteen clusters. Resolution zero point four is kept for comparability; five resolutions are computed and clustree shows the alternatives.</pre>
+
+<h3>Elbow: standard deviation per component, with the proposal drawn on it <span class="tag">hold_view kind: chart</span></h3>
+<p class="note">Drawn by the server from 03_reduce/elbow_table.csv; the vertical line is the value of ndim in this hold's evidence; the ticks are the table's boolean columns where TRUE. Hover a point for its row.</p>
+<div id="elbow"></div>
+
+<h3>Elbow table <span class="tag">hold_view kind: table, sortable</span></h3>
+<p><input type="text" placeholder="filter rows (page-side; the data are the rows the engine rendered)"></p>
+<table id="elbowtab"><tr><th>component</th><th>stdev</th><th>pct_variance</th><th>cumulative_pct</th><th>drop_to_next_pct</th><th>knee</th><th>cum90_and_below5</th><th>last_drop_over_0p1</th></tr></table>
+
+<h3>Figures named by the view <span class="tag">hold_view kind: figure, beside</span></h3>
+<div class="figs">
+  <div class="fig">03_reduce/pca_figures/elbow.png<br>(the module's own elbow plot; served through the step-file route; click to zoom)</div>
+  <div class="fig">03_reduce/pca_figures/pca_1_v_2.png<br>(beside: the first PCA pair)</div>
+</div>
+<p class="note">For the batch-route hold the pair is 04_cluster/batch_evidence/batch_panel.png beside $inputs.uncorrected_batch_evidence/batch_panel.png: corrected against uncorrected at the same size.</p>
+
+<h3>The packet, as the terminal prints it</h3>
+<pre>hold 01M4BSV3CWDQEMRX0164DJXGKC  kind flag  waits on reviewer jrrose5
+step 04_cluster  module cluster-umap@0.1.1  attempt 1  created 2026-10-07T18:26:03Z
+
+question: is the flagged condition acceptable here
+
+predicate sc.decision_unreviewed@1  phase pre
+reason: sc.decision_unreviewed: the step's decision points were taken without a person's sign-off
+parameters: batch_key=slide  ndim=35  resolution=0.4  resolutions=[0.2,0.4,0.6,0.8,1.0]  seed=1
+evidence:
+  decision_points:
+    ndim: {"default": 35, "source": "agent", "value": 35}
+    resolution: {"default": 0.4, "source": "agent", "value": 0.4}
+  rationale_ref: 134a60e8cedd945617691dc579b18fcf29b37d80fdd65f3c256e6cd08870921c
+
+verdicts:
+  accept: the flagged condition is acceptable here; the hold clears and the step proceeds to execution
+  reject: the attempt closes; a new attempt needs a change to the method or a fork
+  defer: the hold stays; the deferral is recorded so the queue shows it was seen</pre>
+
+<form onsubmit="return false">
+<fieldset><legend>Verdict</legend>
+<label><input type="radio" name="v"> <strong>accept</strong>: the flagged condition is acceptable here; the hold clears and the step proceeds to execution</label>
+<label><input type="radio" name="v"> <strong>reject</strong>: the attempt closes; a new attempt needs a change to the method or a fork</label>
+<label><input type="radio" name="v"> <strong>defer</strong>: the hold stays; the deferral is recorded so the queue shows it was seen</label>
+</fieldset>
+<fieldset><legend>Your reason. The operator reads it when it resumes: if the verdict needs a next step, say it here. (required for accept on a flag, reject)</legend>
+<textarea rows="3" placeholder="e.g. Reviewed in previous run   |   e.g. reject: re-propose with ndim 20, the knee is at sixteen"></textarea>
+</fieldset>
+<button type="button">Record verdict</button> <span class="note">then the next hold in the inbox opens</span>
+</form>
+<p class="note">What the real hold got at 18:26:59Z: accept, "Reviewed in previous run", via relayed (answered in chat and relayed by the operator). On the console it would read via web.</p>
+</section>
+
+<!-- ============================ a project ============================ -->
+<section class="view" id="project">
+<p class="note"><a data-view="inbox" style="color:var(--mark);cursor:pointer">All projects</a></p>
+<h2>upstream_liver</h2>
+<p>upstream_liver runs xenium-upstream from method v0.6.0-rc6. The latest run completed. Delivered: 18 files in /data/lab/projects/Lyons_CLP/upstream_liver/deliver/01M4BTD4967ZR7JS5CR7RMXCWK.</p>
+<p class="note">Driver: claude-code, session lane-f-f5-2026-10-07, on PROTSEQ as jrrose5. Last engine call 19:09:09Z (delivered).</p>
+
+<h3>Steps (latest run)</h3>
+<table>
+<tr><th>step</th><th>status</th><th>took</th><th>holds</th></tr>
+<tr><td>Merge punches</td><td>completed (inherited from the parent run)</td><td>49 s</td><td></td></tr>
+<tr><td>Normalise</td><td>completed (inherited)</td><td>40 s</td><td>approve parameters, 2 min 11 s</td></tr>
+<tr><td>Reduce dimensions</td><td>completed (inherited)</td><td>2 min 49 s</td><td>approve parameters, 1 min 20 s</td></tr>
+<tr><td>Cluster and embed</td><td>completed (inherited)</td><td>5 min 0 s</td><td>approve parameters, 56 s</td></tr>
+<tr><td>Assess batch</td><td>completed</td><td>6 min 8 s (dispatch and hold)</td><td>decide on the consensus, 6 min 6 s</td></tr>
+<tr><td>Find markers</td><td>completed</td><td>3 min 3 s</td><td></td></tr>
+<tr><td>Annotate clusters</td><td>completed</td><td>19 min 30 s (dispatch 15 min, hold 4 min 30 s)</td><td>settle a disagreement (item 9), 4 min 30 s</td></tr>
+<tr><td>Apply labels</td><td>completed</td><td>1 min 8 s</td><td></td></tr>
+<tr><td>Write the report</td><td>completed</td><td>25 s</td><td></td></tr>
+</table>
+<p class="note">With engine v0.2.7 a step a <code>when:</code> clause skipped shows as "skipped: integration was harmony".</p>
+
+<h3>Timeline</h3>
+<div class="timeline">
+  <div>18:11:05 project initialised on rc6; confirm hold opened. 18:17:54 accepted, "Matches project" (via relayed).</div>
+  <div>18:17:56 run 01M4BSC5… opened by claude-code (lane-f-f5-2026-10-07).</div>
+  <div>18:18:46 held at Normalise; 18:20:57 accepted "Same as before". 18:21:41 held at Reduce dimensions (integration harmony proposed); 18:23:01 accepted "Reasonable choices". 18:26:03 held at Cluster and embed; 18:26:59 accepted "Reviewed in previous run".</div>
+  <div>18:35:19 Assess batch rejected by the gate (judg.evidence_exists; backlog L12); run blocked.</div>
+  <div class="fork">18:35:55 fork 01M4BTD4… at Assess batch from 01M4BSC5…, no delta; steps 1 to 4 inherited.</div>
+  <div class="fork">18:38:52 held at Assess batch (reviewers agreed cannot_tell); 18:44:58 accepted "Step is unnecessary".</div>
+  <div class="fork">19:03:03 held at Annotate clusters, item 9 (fibroblast / mixed_doublet / endothelial); 19:07:33 accepted replicate 1, "Accept reviewer 1 label".</div>
+  <div class="fork">19:09:09 completed and delivered, 18 files.</div>
+</div>
+</section>
+
+<!-- ============================ history ============================ -->
+<section class="view" id="history">
+<h2>Decision history <span class="tag">6 reviews in upstream_liver; 31 on 2026-10-06 across the qc2 chain</span></h2>
+<p><input type="text" placeholder="filter by reason, step or project, e.g. resolution"></p>
+<table>
+<tr><th>when</th><th>project</th><th>step</th><th>ask</th><th>verdict</th><th>reason</th><th>via</th></tr>
+<tr><td>19:07:33</td><td>upstream_liver</td><td>Annotate clusters, item 9</td><td>settle a disagreement</td><td>accept replicate 1</td><td>Accept reviewer 1 label</td><td>relayed</td></tr>
+<tr><td>18:44:58</td><td>upstream_liver</td><td>Assess batch</td><td>decide on the consensus</td><td>accept</td><td>Step is unnecessary</td><td>relayed</td></tr>
+<tr><td>18:26:59</td><td>upstream_liver</td><td>Cluster and embed</td><td>approve parameters</td><td>accept</td><td>Reviewed in previous run</td><td>relayed</td></tr>
+<tr><td>18:23:01</td><td>upstream_liver</td><td>Reduce dimensions</td><td>approve parameters</td><td>accept</td><td>Reasonable choices</td><td>relayed</td></tr>
+<tr><td>18:20:57</td><td>upstream_liver</td><td>Normalise</td><td>approve parameters</td><td>accept</td><td>Same as before</td><td>relayed</td></tr>
+<tr><td>18:17:54</td><td>upstream_liver</td><td>the plan</td><td>confirm the plan</td><td>accept</td><td>Matches project</td><td>relayed</td></tr>
+</table>
+<p class="note">Above the table in the product: override and rejection rates per module version from status --overrides (design 7.6).</p>
+</section>
+
+<script>
+// Mockup only: tab switching, the elbow chart from the real table, a sortable fleet table.
+document.querySelectorAll('[data-view]').forEach(a => a.addEventListener('click', () => {
+  document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === a.dataset.view));
+  document.querySelectorAll('nav a').forEach(n => n.classList.toggle('on', n.dataset.view === a.dataset.view));
+  window.scrollTo(0, 0);
+}));
+
+// upstream_liver, run 01M4BSC5…, 03_reduce/elbow_table.csv (components 1 to 44 of 50)
+const rows = [
+[1,6.9278,21.098,21.1,10.13,0,0,0],[2,4.9951,10.968,32.07,2.751,0,0,0],[3,4.3236,8.217,40.28,2.299,0,0,0],[4,3.6693,5.918,46.2,0.791,0,0,0],
+[5,3.4153,5.128,51.33,0.906,0,0,0],[6,3.0989,4.222,55.55,0.752,0,0,0],[7,2.8093,3.469,59.02,0.422,0,0,0],[8,2.6331,3.048,62.07,0.319,0,0,0],
+[9,2.4914,2.729,64.8,0.18,0,0,0],[10,2.4079,2.549,67.35,0.105,0,0,0],[11,2.3576,2.443,69.79,0.564,0,0,0],[12,2.0676,1.879,71.67,0.145,0,0,0],
+[13,1.9865,1.735,73.4,0.161,0,0,0],[14,1.8919,1.573,74.98,0.26,0,0,0],[15,1.7284,1.313,76.29,0.064,0,0,0],[16,1.6858,1.249,77.54,0.148,0,1,1],
+[17,1.5828,1.101,78.64,0.032,0,0,0],[18,1.5596,1.069,79.71,0.066,0,0,0],[19,1.5106,1.003,80.71,0.038,0,0,0],[20,1.4814,0.965,81.68,0.095,0,0,0],
+[21,1.4069,0.87,82.55,0.016,0,0,0],[22,1.394,0.854,83.4,0.034,0,0,0],[23,1.3661,0.82,84.22,0.026,0,0,0],[24,1.3442,0.794,85.02,0.038,0,0,0],
+[25,1.3113,0.756,85.77,0.029,0,0,0],[26,1.2857,0.727,86.5,0.028,0,0,0],[27,1.2606,0.699,87.2,0.014,0,0,0],[28,1.2478,0.684,87.88,0.015,0,0,0],
+[29,1.2342,0.67,88.55,0.009,0,0,0],[30,1.2255,0.66,89.21,0.018,0,0,0],[31,1.2088,0.642,89.85,0.03,0,0,0],[32,1.1799,0.612,90.47,0.023,1,0,0],
+[33,1.1572,0.589,91.06,0.009,0,0,0],[34,1.1481,0.579,91.63,0.009,0,0,0],[35,1.1391,0.57,92.21,0.003,0,0,0],[36,1.1358,0.567,92.77,0.015,0,0,0],
+[37,1.1207,0.552,93.32,0.008,0,0,0],[38,1.1126,0.544,93.87,0.001,0,0,0],[39,1.1115,0.543,94.41,0.005,0,0,0],[40,1.1066,0.538,94.95,0.008,0,0,0],
+[41,1.0982,0.53,95.48,0.005,0,0,0],[42,1.0927,0.525,96,0.007,0,0,0],[43,1.0859,0.518,96.52,0.003,0,0,0],[44,1.0828,0.515,97.04,0.01,0,0,0]];
+const cols = ["component","stdev","pct_variance","cumulative_pct","drop_to_next_pct","cum90_and_below5","last_drop_over_0p1","knee"];
+const marks = {param: "ndim", value: 35, ticks: [["knee", 7], ["cum90_and_below5", 5], ["last_drop_over_0p1", 6]]};
+
+function elbow() {
+  const W = 720, H = 300, L = 48, R = 16, T = 20, B = 40;
+  const xs = rows.map(r => r[0]), ys = rows.map(r => r[1]);
+  const x = c => L + (c - 1) / (xs[xs.length - 1] - 1) * (W - L - R);
+  const ymax = Math.ceil(Math.max(...ys)), y = v => T + (1 - v / ymax) * (H - T - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="standard deviation per principal component with the proposed ndim marked">`;
+  for (let v = 0; v <= ymax; v += 1) s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" class="muted">${v}</text>`;
+  s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>`;
+  for (const c of [1, 10, 20, 30, 40]) s += `<text x="${x(c)}" y="${H - B + 16}" text-anchor="middle" class="muted">${c}</text>`;
+  s += `<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle" class="muted">component</text>`;
+  s += `<text x="${L}" y="${T - 6}" class="muted">stdev</text>`;
+  // the marked parameter value
+  s += `<line class="mark" x1="${x(marks.value)}" x2="${x(marks.value)}" y1="${T}" y2="${y(0)}"/><text x="${x(marks.value) + 6}" y="${T + 12}">${marks.param} = ${marks.value} (proposed)</text>`;
+  // boolean columns drawn as ticks
+  let k = 0;
+  for (const [name, i] of marks.ticks) for (const r of rows) if (r[i]) {
+    const ty = T + 34 + 16 * k; k++;   // labels stacked at the top, where the curve is not
+    s += `<line class="tick" x1="${x(r[0])}" x2="${x(r[0])}" y1="${y(r[1]) - 6}" y2="${ty + 4}"/><text x="${x(r[0]) + 5}" y="${ty}" class="muted">${name} at ${r[0]}</text>`;
+  }
+  s += `<path class="series" d="${rows.map((r, i) => (i ? 'L' : 'M') + x(r[0]) + ' ' + y(r[1])).join(' ')}"/>`;
+  for (const r of rows) s += `<circle class="pt" cx="${x(r[0])}" cy="${y(r[1])}" r="3"><title>component ${r[0]}: stdev ${r[1]}, ${r[2]}% of variance, cumulative ${r[3]}%</title></circle>`;
+  s += `</svg>`;
+  document.getElementById('elbow').innerHTML = s;
+  const t = document.getElementById('elbowtab');
+  for (const r of rows) t.insertAdjacentHTML('beforeend', `<tr>${[r[0], r[1], r[2], r[3], r[4], r[7] ? 'TRUE' : 'FALSE', r[5] ? 'TRUE' : 'FALSE', r[6] ? 'TRUE' : 'FALSE'].map(v => `<td>${v}</td>`).join('')}</tr>`);
+}
+elbow();
+
+// sortable tables (page-side over rendered rows)
+document.querySelectorAll('table').forEach(tbl => tbl.querySelectorAll('th').forEach((th, i) => th.addEventListener('click', () => {
+  const trs = [...tbl.querySelectorAll('tr')].slice(1);
+  const asc = th.dataset.asc !== '1'; th.dataset.asc = asc ? '1' : '0';
+  trs.sort((a, b) => {
+    const A = a.children[i]?.textContent.trim() ?? '', Bv = b.children[i]?.textContent.trim() ?? '';
+    const n = parseFloat(A), m = parseFloat(Bv);
+    return (!isNaN(n) && !isNaN(m) ? n - m : A.localeCompare(Bv)) * (asc ? 1 : -1);
+  });
+  trs.forEach(tr => tbl.appendChild(tr));
+})));
+</script>
+</body>
+</html>
