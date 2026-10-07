@@ -108,6 +108,25 @@ the engine's item hold and the predicate stays silent (plugin 0.4.2, `sc.batch_r
 method `v0.6.0-rc4`: `assess-batch` 0.1.1 with the `slide_timepoint` row key and the cap in the
 prompt). Backlog L10 sharpened: route-named verdicts belong in the engine.
 
+## Evening: the Harmony route, and the comparison
+
+The owner accepted the batch-route hold ("Batch effect is evident"); the fork at `03_reduce` with
+`integration=harmony` failed after Harmony itself had run: `HVFInfo` has a different column layout
+with split layers (`reduce-pca` 0.1.1, rc5). The route tested in scratch on the liver cells: 16
+clusters, kNN excess 0.269; animal 24-2 now shares the manifold with the 48 h and 6 h animals, but
+animal 24-1 (33k cells, clusters 0, 5 and 8) still sits apart from everyone, so what remains after
+slide alignment is one animal. The project was re-declared on rc5 (the rc3 record superseded; the
+operator will propose harmony at 03 on the new project). The owner then asked where the uncorrected
+and corrected UMAPs live "to show/justify our decision": the uncorrected ones were in a superseded
+project and the corrected ones would be in the delivered report, with nothing linking them. Built
+(rc6): `cluster-umap` 0.1.1 writes a batch panel and the slide and animal UMAPs into
+`batch_evidence`; `upstream-report` 0.1.1 takes an optional reference input
+`uncorrected_batch_evidence` (glob `$inputs.uncorrected_*`, so a first pass binds none) and writes a
+"Batch decision" section with both runs side by side; for liver the uncorrected directory was
+regenerated from the rc3 run's PCA object with identical parameters (cluster summary identical) into
+`superseded/upstream_liver.v0.6.0-rc3/comparison/`. Backlog L11: a fork should bind its parent's
+outputs so the comparison needs no re-declaration.
+
 ## Open
 
 1. Owner: the init confirm of `upstream_liver`; then the method hold at step 02 and the ndim and

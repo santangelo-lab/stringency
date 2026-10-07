@@ -257,7 +257,13 @@ the real Lyons CLP processing. How the engine (0.2.6, read in source) meets each
   reason names the route. When the reviewers disagree, the engine's own item hold (label
   disagreement) asks the owner to accept one replicate's call or override with a label, that label
   is the route, and the plugin predicate stays silent. A fork's `--set` is a person's decision and
-  opens no further hold. Harmony is not in
+  opens no further hold. **The comparison** (owner, 2026-10-07: the uncorrected UMAPs must exist beside the
+  corrected ones whenever a correction is run, to justify the decision): `04_cluster` writes the
+  batch panel (UMAP by slide, by animal, by time point) and the slide and animal UMAPs into the
+  `batch_evidence` directory; a corrected project declares the uncorrected run's directory as a
+  reference input `uncorrected_batch_evidence`, and the report's "Batch decision" section shows both
+  runs side by side with both per-cluster tables. Backlog L11: a fork should bind its parent's
+  outputs so this works without a re-declaration. Harmony is not in
   `xenium-r` 0.1.0; 0.2.0 adds it (built and pulled 2026-10-07). Controls for the judgment run
   through the one-step `xenium-assess-batch` (synthetic split and mixed fixtures).
 - **Per-tissue defaults.** The pipeline file carries one default per parameter (ROSC default:
