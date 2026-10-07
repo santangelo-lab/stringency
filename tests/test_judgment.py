@@ -313,3 +313,34 @@ def test_low_confidence_on_agreed_label_is_logged_not_held(
     doc = json.loads(prop.plan.output_paths["consensus"].read_text())
     a = next(i for i in doc["items"] if i["item_id"] == "A")
     assert any("low-confidence" in n and "not held" in n for n in a["notes"])
+
+
+def test_table_keys_and_id_like_cells_stay_as_read(tmp_path: Path) -> None:
+    """L12: `int()` reads `0076570_24` as 7657024; keys and id-like cells are text."""
+    from stringency.tables import load_table
+
+    t = tmp_path / "slides.tsv"
+    t.write_text(
+        "slide\tsample\tn_cells\tfrac\tp\tflag\n"
+        "0076570_24\t0076581\t1200\t0.25\t1e-05\tnan\n"
+        "12\t1_000\t-3\t-0.5\t2.5E3\tinf\n"
+    )
+    tab = load_table(t, "slides", "slide")
+    assert list(tab.rows) == ["0076570_24", "12"]
+    a, b = tab.rows["0076570_24"], tab.rows["12"]
+    assert a == {
+        "slide": "0076570_24",
+        "sample": "0076581",
+        "n_cells": 1200,
+        "frac": 0.25,
+        "p": 1e-05,
+        "flag": "nan",
+    }
+    assert b == {
+        "slide": "12",
+        "sample": "1_000",
+        "n_cells": -3,
+        "frac": -0.5,
+        "p": 2500.0,
+        "flag": "inf",
+    }
