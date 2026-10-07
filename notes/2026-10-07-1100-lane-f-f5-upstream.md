@@ -73,6 +73,23 @@ unless a one-step pipeline binds its input as a project input. The hold packet s
   `cluster_liver` inputs unchanged; `declare --check` clean, 7 init predicates, none fired) and
   initialised on `v0.6.0-rc2`; it waits on the owner's init confirm.
 
+## Afternoon: the batch assessment becomes a judgment (decision 19)
+
+On seeing the first design the owner said batch effect assessment "needs to be turned into another
+judgement step. It's greater than just choosing parameters" and asked for a review hold before the
+run moves forward. Built the same afternoon (two more forked sessions, plugin 0.4.0 and the module):
+`04_cluster` now also writes a `batch_evidence` directory (`sc.batch_evidence@1`: overview, per-cluster
+assessment, cluster summary, slide by time point with animals and punches, compositions) and a one-row
+`batch_overview` table; `05_assess_batch` (judgment, xenium-py, one item = the dataset, evidence
+`batch_overview`, `batch_by_cluster`, `slide_by_timepoint`, `batch_guide`, vocabulary `batch_route@1`:
+`proceed_uncorrected`, `correct_batch`, `cannot_tell`; synthetic split and mixed controls through the
+one-step `xenium-assess-batch`); `sc.batch_route_review@1` (post, flag) always opens a hold on that
+step: accept continues the run uncorrected, reject closes it and the operator forks at `03_reduce`
+with the correction the owner names; `sc.batch_effect_suspected` is version 2 and logged. The
+pipeline is nine steps; the report shows the route beside the batch tables. Method `v0.6.0-rc3`;
+the rc2 `upstream_liver` (never confirmed) moved to `superseded/`. Backlog L10: `judgment.hold:
+always` belongs in the engine.
+
 ## Open
 
 1. Owner: the init confirm of `upstream_liver`; then the method hold at step 02 and the ndim and
