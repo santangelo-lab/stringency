@@ -247,10 +247,17 @@ the real Lyons CLP processing. How the engine (0.2.6, read in source) meets each
   many animals per slide there), the overall kNN excess, the clusters that are single-slide though
   their time point is mixed, depth and area of those clusters, and what a correction would remove,
   and name the route from `batch_route@1`: `proceed_uncorrected`, `correct_batch`, `cannot_tell`.
-  The plugin's `sc.batch_route_review` (post, flag) ALWAYS opens a hold on that step: accept
-  continues the run uncorrected; reject closes it and the operator forks,
-  `stringency fork --from <run> --at 03_reduce --set 03_reduce.integration=harmony --reason "..."`
-  (a fork's `--set` is a person's decision and opens no further hold). Harmony is not in
+  Hold semantics (owner, 2026-10-07 late afternoon, after the first real dispatch showed that
+  "accept" read as "agree with the reviewers" while the engine's accept meant "continue"): the
+  plugin's `sc.batch_route_review@2` opens a hold only when the reviewers AGREED; accept means the
+  owner agrees with them and the operator acts on the label (`correct_batch`: `stringency fork
+  --from <run> --at 03_reduce --set 03_reduce.integration=<recommended> --reason "..."`, then the
+  uncorrected run is abandoned with that reason; `proceed_uncorrected`: the run continues;
+  `cannot_tell`: the owner's reason must name the route); reject means the owner disagrees and the
+  reason names the route. When the reviewers disagree, the engine's own item hold (label
+  disagreement) asks the owner to accept one replicate's call or override with a label, that label
+  is the route, and the plugin predicate stays silent. A fork's `--set` is a person's decision and
+  opens no further hold. Harmony is not in
   `xenium-r` 0.1.0; 0.2.0 adds it (built and pulled 2026-10-07). Controls for the judgment run
   through the one-step `xenium-assess-batch` (synthetic split and mixed fixtures).
 - **Per-tissue defaults.** The pipeline file carries one default per parameter (ROSC default:

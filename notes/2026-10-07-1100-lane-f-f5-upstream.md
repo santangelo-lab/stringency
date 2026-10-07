@@ -90,6 +90,24 @@ pipeline is nine steps; the report shows the route beside the batch tables. Meth
 the rc2 `upstream_liver` (never confirmed) moved to `superseded/`. Backlog L10: `judgment.hold:
 always` belongs in the engine.
 
+## Late afternoon: the first real judgment, and the hold's meaning
+
+`upstream_liver` (rc3) ran: confirm accepted ("Continue analysis"); `02` LogArea proposed and
+accepted ("Parameters agreed upon"); `03` knee at component 16 against ROSC's 35, `ndim` 35 and
+`resolution` 0.4 proposed and accepted ("Reasonable parameter choices"); `04` 20 clusters, kNN excess
+0.344 at 24 h. The batch judgment took three dispatches to pass the gates, the reviewers agreeing on
+`correct_batch` (harmony) every time: dispatch one rejected on the twelve-hundred-character rationale
+cap (zero valid replicates), dispatch two on `judg.evidence_exists` (`slide_by_timepoint` keyed by
+slide, which repeats per time point) and `judg.numeric_claims_match` (cluster ids as digits);
+each time the run was forked at step 05 (`01M4BNK6…`, `01M4BNV3…`) and the delegates told the
+constraints. The owner then asked why accept would mean "no correction" when the reviewers agreed
+correction was needed: the flag hold's fixed verdicts had been mapped to routes, and "accept" read
+as agreement. Decided: accept = agree with the reviewers, the operator acts on the label; reject =
+the reason names the route; `cannot_tell` needs the route in the reason either way; disagreement is
+the engine's item hold and the predicate stays silent (plugin 0.4.2, `sc.batch_route_review@2`;
+method `v0.6.0-rc4`: `assess-batch` 0.1.1 with the `slide_timepoint` row key and the cap in the
+prompt). Backlog L10 sharpened: route-named verdicts belong in the engine.
+
 ## Open
 
 1. Owner: the init confirm of `upstream_liver`; then the method hold at step 02 and the ndim and
