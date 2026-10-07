@@ -174,6 +174,44 @@ def _waiting(e: dict[str, Any]) -> str:
     return "nothing"
 
 
+COLUMNS = (
+    "project",
+    "pipeline",
+    "method",
+    "plan",
+    "latest run",
+    "current step",
+    "waiting on",
+    "delivered",
+)
+
+
+def row(e: dict[str, Any]) -> dict[str, str]:
+    """The board's table cells for one project, keyed by `COLUMNS`; the markdown board and the
+    project page (Track 1h) both render these, so they cannot disagree."""
+    if "error" in e:
+        cells = [e["name"], "", "", "", "", "", "unreadable", ""]
+        return dict(zip(COLUMNS, cells, strict=True))
+    run = e["run"]["status"] if e["run"] else "none"
+    step = ""
+    if e["step"]:
+        step = f"{e['step']['title']} ({e['step']['status'].replace('_', ' ')})"
+    elif e["run"] and e["run"]["status"] == "completed":
+        step = "all steps completed"
+    delivered = ", ".join(e["delivered"]["files"]) if e.get("delivered") else ""
+    cells = [
+        e["name"],
+        e["pipeline"],
+        e["method_tag"],
+        e["confirm"],
+        run,
+        step,
+        _waiting(e),
+        delivered,
+    ]
+    return dict(zip(COLUMNS, cells, strict=True))
+
+
 def render(entries: list[dict[str, Any]], root: Path, when: str | None = None) -> str:
     """Markdown: a heading with the time, one summary table, then one sentence per project."""
     when = when or now_iso()
@@ -187,20 +225,7 @@ def render(entries: list[dict[str, Any]], root: Path, when: str | None = None) -
         "|---|---|---|---|---|---|---|---|",
     ]
     for e in entries:
-        if "error" in e:
-            lines.append(f"| {e['name']} | | | | | | unreadable | |")
-            continue
-        run = e["run"]["status"] if e["run"] else "none"
-        step = ""
-        if e["step"]:
-            step = f"{e['step']['title']} ({e['step']['status'].replace('_', ' ')})"
-        elif e["run"] and e["run"]["status"] == "completed":
-            step = "all steps completed"
-        delivered = ", ".join(e["delivered"]["files"]) if e.get("delivered") else ""
-        lines.append(
-            f"| {e['name']} | {e['pipeline']} | {e['method_tag']} | {e['confirm']} | {run} | "
-            f"{step} | {_waiting(e)} | {delivered} |"
-        )
+        lines.append("| " + " | ".join(row(e).values()) + " |")
     lines += ["", "## In words", ""]
     lines += [f"- {sentence(e)}" for e in entries]
     return "\n".join(lines) + "\n"

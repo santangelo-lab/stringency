@@ -1,0 +1,40 @@
+# The standing, read-only stringency project page on PROTSEQ (Track 1h, plan section 3.3;
+# owner's decision 2026-09-23: loopback port 8766, reached through a tunnel).
+#
+# A `systemd --user` unit for the account that runs it. It records no verdict: every POST is
+# refused (405) with the two routes that do take one (your own scripts/review-page.sh, or
+# `stringency review --hold <id>` at a terminal). The token lives in ~/.config/stringency/page-token
+# (created on first start, mode 600), so the URL is stable across restarts and can go into
+# `page_url` of ~/.config/stringency/notify.yml.
+#
+# Install (as the owner, once):
+#     mkdir -p ~/.config/systemd/user
+#     cp scripts/stringency-page.service ~/.config/systemd/user/
+#     systemctl --user daemon-reload
+#     systemctl --user enable --now stringency-page.service
+#     systemctl --user status stringency-page.service
+#     journalctl --user -u stringency-page.service -n 5     # prints the URL with its token
+#     sudo loginctl enable-linger $USER                      # once: keep it running after logout
+#
+# Reach it from a laptop:  ssh -N -L 8766:127.0.0.1:8766 protseq   then open the printed URL.
+# Projects: everything two levels under /data/lab/projects; add `--project <path>` lines to
+# ExecStart for deeper ones. Ports 8000 and 8001 are this machine's Claude Science; 8765 is the
+# personal review page.
+
+[Unit]
+Description=stringency project page (read-only, loopback 8766)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/data/lab/env/stringency/current/bin/stringency review --serve --read-only \
+    --bind 127.0.0.1 --port 8766 \
+    --token-file %h/.config/stringency/page-token \
+    --projects /data/lab/projects
+Restart=on-failure
+RestartSec=10
+UMask=0002
+Environment=STRINGENCY_NOTIFY=0
+
+[Install]
+WantedBy=default.target

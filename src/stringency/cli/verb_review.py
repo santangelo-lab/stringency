@@ -59,6 +59,16 @@ def review(
         "--holds",
         help="batch: comma-separated confirm hold ids across sibling projects; one echo-back, one verdict",
     ),
+    read_only: bool = typer.Option(
+        False,
+        "--read-only",
+        help="--serve: refuse every verdict (405); for a standing page that only shows progress and results",
+    ),
+    token_file: Path | None = typer.Option(
+        None,
+        "--token-file",
+        help="--serve: read the token from this file (created, mode 600, when missing) so the URL is stable across restarts",
+    ),
 ) -> None:
     if batch_holds:
         from stringency.review_batch import batch_view, locate_holds, record_batch
@@ -90,7 +100,9 @@ def review(
         roots = list(project_paths or [])
         if not roots and projects_dir is None:
             roots = [Project.find().root]
-        serve_page(roots, projects_dir, bind=bind, port=port)
+        serve_page(
+            roots, projects_dir, bind=bind, port=port, read_only=read_only, token_file=token_file
+        )
         return
     project = Project.find()
     if verdict is None and hold is not None:
