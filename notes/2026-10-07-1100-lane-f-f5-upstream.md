@@ -140,6 +140,15 @@ The owner: a second judgment should never happen, correction is done at most onc
 readout is the record (decision 20; backlog L13, conditional steps). The hold was accepted "Step is
 unnecessary" and the run continued to markers and annotation.
 
+## Night: liver delivered
+
+Run `01M4BTD4967ZR7JS5CR7RMXCWK` on rc6 delivered: 16 Harmony-corrected clusters, every one labelled
+(fifteen agreed by three reviewers, one disagreement on the portal-tract mixture decided by the owner:
+fibroblast), no `unknown`; 79 figures; the report's Batch decision section shows uncorrected beside
+corrected. The annotation judgment passed its gates on the first dispatch once the delegates were told
+the cap, the key rules and the words rule. Owner decisions today: 16 to 20. Engine backlog filed
+today: L8 to L13. Method `v0.6.0-rc6`; plugin 0.4.2.
+
 ## Open
 
 1. Owner: the init confirm of `upstream_liver`; then the method hold at step 02 and the ndim and
@@ -152,4 +161,4 @@ unnecessary" and the run continued to markers and annotation.
 3. Engine: L8, L9; the `v0.2.6` branch state; L5 to L7 still open.
 4. Method: qc-cells writes the slide id as a number (merge 0.1.1 repairs it; fix at the source in
    qc-cells 0.1.4 when the QC modules next change); the batch rule's thresholds are a first guess.
-5. F6: lung, gut, spleen on the same pipeline once liver has run through its holds.
+5. F6: lung, gut, spleen on the same pipeline (liver delivered 2026-10-07 night); the vocabulary needs a portal-tract or stromal-mixture label (F7); L13 before the next organ if possible, else the operator answers the redundant hold with the owner's words.
