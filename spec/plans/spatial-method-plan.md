@@ -263,7 +263,9 @@ the real Lyons CLP processing. How the engine (0.2.6, read in source) meets each
   `batch_evidence` directory; a corrected project declares the uncorrected run's directory as a
   reference input `uncorrected_batch_evidence`, and the report's "Batch decision" section shows both
   runs side by side with both per-cluster tables. Backlog L11: a fork should bind its parent's
-  outputs so this works without a re-declaration. Harmony is not in
+  outputs so this works without a re-declaration. **At most one correction** (decision 20): the
+  judgment is for the uncorrected run only; a corrected run skips step 05 (engine L13, `when:` on a
+  prior step's parameter) and the comparison readout in the report is the record. Harmony is not in
   `xenium-r` 0.1.0; 0.2.0 adds it (built and pulled 2026-10-07). Controls for the judgment run
   through the one-step `xenium-assess-batch` (synthetic split and mixed fixtures).
 - **Per-tissue defaults.** The pipeline file carries one default per parameter (ROSC default:
@@ -401,7 +403,7 @@ parameter holds. The plugin half of F4 and the image half can run in parallel.
   the order of tens of GB in R; the resources block says 128 GB for `reduce-cluster` on spleen and
   64 GB elsewhere, within the shared machine's 500 GB.
 
-## 8. Decisions for the owner (fifteen taken 2026-10-06; 16 to 19 taken 2026-10-07)
+## 8. Decisions for the owner (fifteen taken 2026-10-06; 16 to 20 taken 2026-10-07)
 
 1. **Language.** Decided 2026-10-06, against the recommendation: **R, reusing the ROSC_MTA2
    code as designed for that project** rather than writing new Python ("I'd rather use that than
@@ -493,6 +495,14 @@ Raised by the re-plan for R (section 5, 2026-10-06), to decide before F4:
     the deterministic rule is not enough ("greater than just choosing parameters"); `05_assess_batch`
     is a three-reviewer judgment on the dataset with a hold that always opens before the run
     proceeds (section 5.1); the rule's verdict is logged as evidence, not held on.
+20. **Batch correction happens at most once.** Decided 2026-10-07 (evening), on seeing the
+    corrected liver run dispatch a second judgment that returned `cannot_tell`: "There should never
+    be a time when you perform a batch correction more than once. After harmony was initially
+    performed there should not have been another judgment step. Instead a simple readout for the
+    comparison and then moving on with the batch corrected data fork." The judgment runs only on an
+    uncorrected run; a corrected run skips it, the report's Batch decision section is the readout.
+    The engine cannot skip a step on a prior step's parameter today (backlog L13, the next Lane A
+    item); until it can, the operator answers the redundant hold with the owner's words.
 
 ## 9. Risks
 

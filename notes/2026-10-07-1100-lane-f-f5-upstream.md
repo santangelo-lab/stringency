@@ -127,6 +127,19 @@ regenerated from the rc3 run's PCA object with identical parameters (cluster sum
 `superseded/upstream_liver.v0.6.0-rc3/comparison/`. Backlog L11: a fork should bind its parent's
 outputs so the comparison needs no re-declaration.
 
+## Night: the corrected run, and the rule that correction happens once
+
+`upstream_liver` on rc6 (the comparison input declared): confirm "Matches project"; LogArea "Same as
+before"; `integration=harmony` proposed at 03 citing the rc3 decision, accepted "Reasonable choices";
+ndim 35 and resolution 0.4 "Reviewed in previous run"; 16 clusters, kNN excess 0.269 (rule silent).
+The batch judgment dispatched again on the corrected clustering: dispatch one rejected on
+`judg.evidence_exists` because the engine renders the `slide_timepoint` key through its numeric
+coercion (`0076570_24` shown as 7657024) while looking rows up by the raw string (backlog L12); the
+redo agreed `cannot_tell` three for three (animal 24-1 remains apart; one animal per slide at 24 h).
+The owner: a second judgment should never happen, correction is done at most once, the comparison
+readout is the record (decision 20; backlog L13, conditional steps). The hold was accepted "Step is
+unnecessary" and the run continued to markers and annotation.
+
 ## Open
 
 1. Owner: the init confirm of `upstream_liver`; then the method hold at step 02 and the ndim and
