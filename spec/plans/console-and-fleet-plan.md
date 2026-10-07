@@ -49,65 +49,11 @@ answered in chat, three judgment dispatches re-run on mechanical faults, three r
 - The operator relays every hold into chat and the person answers in chat; with one organ that is
   fine, with four it is the problem the owner names.
 
-## 2. Part 1: engine `v0.2.7` before the next organ
+## 2. Part 1: the engine release before the next organ
 
-In this order, one Lane A session, about a day and a half.
-
-### 2.1 Reconcile `main` with `v0.2.6` (an hour)
-
-Merge `v0.2.6` into `main` (no code conflicts: `main` touched no `src/` file since the tag; the
-three page commits bring `review_serve.py`, `board.py`, `present.py`, `verb_review.py`, the tests and
-`spec/plans/project-page-and-notify.md`). Every later tag is cut from `main`. Record the branch
-state in `DECISIONS.md` so it is not rediscovered.
-
-### 2.2 L13: conditional steps (half a day) — *design*, 3.3 and 7.1
-
-The owner's rule (Lane F decision 20): batch correction happens at most once; a corrected run gets a
-readout, not a second judgment.
-
-- `StepDecl` gains `when: {step: <id>, param: <name>, equals: <value>}` (or `not_equals`), one
-  condition, on a step that precedes it. Lint: the referenced step must be an ancestor, must declare
-  the parameter, and every required input of a skippable step's successors that binds one of its
-  outputs must be `optional` on the module, else error.
-- `StepStatus.SKIPPED`, edges `pending → skipped`; `next_step` evaluates `when` against the
-  referenced step's admitted action when the step becomes runnable, transitions it with a
-  `step_events` payload `{"when": ..., "actual": ..., "reason": "skipped: integration was harmony"}`,
-  and successors treat `skipped` as done. `resolve_inputs`: a `$steps.<skipped>.<out>` reference
-  resolves to nothing; optional inputs are omitted, required ones raise (lint prevents it).
-- `plain`, `summary` ("What ran": the step by title, "skipped: ..."), `present`, the board and the
-  page show skipped steps as such; coverage counts them as not evaluated, named.
-- Tests on the toy: a two-branch pipeline where the second step's `when` depends on the first's
-  parameter; both branches; the optional-input omission; the lint error; a fork that changes the
-  parameter flips the branch.
-- Method follow-up (`stringency-xenium-method` v0.6.0-rc7): `05_assess_batch` gets
-  `when: {step: 03_reduce, param: integration, equals: none}`, the report's `batch_consensus`
-  becomes optional, PLAN 3.12 closes.
-
-### 2.3 L12: evidence-table keys (an hour)
-
-`tables.py`: never coerce the key column; coerce only values that are purely digits with an optional
-decimal point (no underscores, no leading zeros); render keys exactly as read. Test with an id-like
-key (`0076570_24`). Closes the cause of one rejected dispatch today.
-
-### 2.4 L8: the recommendation in the packet (an hour)
-
-`review_render` and the hold page resolve `rationale_ref` to the stored message for
-`param.agent_proposed` and `sc.decision_unreviewed` holds and print it under "the operator's
-reason". The person then sees the recommendation where they decide, not only in chat.
-
-### 2.5 `stringency wait` (two hours) — DECISIONS-level, 14.1 one row
-
-`wait --hold <id> | --run <id> [--timeout <s>] [--json]`: blocks, polling `run.db` every five
-seconds, until the hold is resolved or withdrawn (exit 0, printing the review's verdict and reason)
-or the run leaves its current state, or the timeout passes (exit 10). No writes. This is the
-operator's way to sleep until a person has answered on the console: a Claude Code session arms it
-as a background command and is re-invoked when it returns; a plain script loops on it. Without it
-every operator polls `run` by hand, which is what today's session did.
-
-### 2.6 Release
-
-Tag `v0.2.7` from `main`; install as shared `0.2.7-sc0.4.2`; the method tags rc7; the next organ
-(lung) runs on both. The operator skill's section 5 gains the `wait` step (Lane E, half an hour).
+Moved to its own document, `engine-v0.2.7-plan.md` (merge `v0.2.6` into `main`, L13 conditional
+steps, L12, L8, the `wait` verb, release `v0.2.7`, method rc7). The console depends on `wait`
+(section 3.2, C3) and on the merge (the page code is on the tag, not on `main`).
 
 ## 3. Part 2: the console
 
@@ -270,7 +216,18 @@ Recommendation: option 1 now; option 2 only when a second regular reviewer exist
    driving; the rest after a week of use.
 5. The several-reviewers model (section 5). Recommendation: option 1 until a second reviewer exists.
 
-## 7. Order and measurement
+## 7. Handoff for the next session
+
+The session that wrote this ran out of context. To continue: read this document and
+`engine-v0.2.7-plan.md` (its section 0 names every path, the branch state and the install). The
+page code to extend is `src/stringency/review_serve.py` as it stands on the `v0.2.6` tag (landing,
+project, run, hold, file routes; `--read-only`, `--token-file`; jinja2 string templates, inline
+CSS, no JavaScript) with `review_render.py`, `present.py`, `board.py`, `review_batch.py` and
+`notify.py` beside it; the earlier plan is `project-page-and-notify.md` (on the tag). Start the page
+today with `scripts/review-page.sh protseq /lab/projects` from the laptop. Nothing in part 2 should
+begin before the owner has taken decisions 1 to 5 in section 6; part 1 can begin at once.
+
+## 8. Order and measurement
 
 | step | depends on | estimate |
 |---|---|---|
