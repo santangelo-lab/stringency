@@ -235,17 +235,24 @@ the real Lyons CLP processing. How the engine (0.2.6, read in source) meets each
   the elbow table (stdev per component, cumulative variance, the knee heuristics) and the plots,
   then `propose 04_cluster --set ndim=.. --set resolution=.. --reason ".."`; the hold shows the
   proposal against the ROSC default; the person accepts; `run` continues to the end.
-- **Batch correction second, assessed first.** `integration` is a parameter of `03_reduce` with
-  options `none | harmony | rpca | cca`, default `none`, NOT a decision point (the owner decided the
-  order in advance). `04_cluster` computes, beside the clusters, composition per slide, animal and
-  punch and a nearest-neighbour same-slide fraction within the 24 h time point, the only time point
-  present on both slides (6 h is TMA1 only, 48 h TMA2 only, so slide and time point are confounded
-  elsewhere); it writes `misc$stringency$batch_assessment` with a declared rule. The plugin's
-  `sc.batch_effect_suspected` (post, flag) opens a hold whose text names the route:
-  `stringency fork --from <run> --at 03_reduce --set 03_reduce.integration=harmony --reason "..."`;
-  a fork's `--set` is a person's decision and opens no further hold. The report carries the
-  batch tables whether or not the flag fired, so the owner can ask for the fork anyway. Harmony is
-  not in `xenium-r` 0.1.0; 0.2.0 adds it (build dispatched 2026-10-07).
+- **Batch correction second, assessed first, judged by reviewers.** `integration` is a parameter
+  of `03_reduce` with options `none | harmony | rpca | cca`, default `none`, NOT a decision point
+  (the owner decided the order in advance). `04_cluster` computes, beside the clusters, composition
+  per slide, animal and punch, a nearest-neighbour same-slide fraction within the time points present
+  on both slides (in Lyons only 24 h: 6 h is TMA1 only, 48 h TMA2 only), a deterministic rule
+  (`sc.batch_effect_suspected`, logged since plugin 0.4.0), and the `batch_evidence` directory
+  (`sc.batch_evidence@1`). Then **`05_assess_batch` is a judgment** (owner, 2026-10-07 afternoon:
+  "batch effect assessment needs to be turned into another judgement step. It's greater than just
+  choosing parameters"): three reviewers read the design table (which time points are shared, how
+  many animals per slide there), the overall kNN excess, the clusters that are single-slide though
+  their time point is mixed, depth and area of those clusters, and what a correction would remove,
+  and name the route from `batch_route@1`: `proceed_uncorrected`, `correct_batch`, `cannot_tell`.
+  The plugin's `sc.batch_route_review` (post, flag) ALWAYS opens a hold on that step: accept
+  continues the run uncorrected; reject closes it and the operator forks,
+  `stringency fork --from <run> --at 03_reduce --set 03_reduce.integration=harmony --reason "..."`
+  (a fork's `--set` is a person's decision and opens no further hold). Harmony is not in
+  `xenium-r` 0.1.0; 0.2.0 adds it (built and pulled 2026-10-07). Controls for the judgment run
+  through the one-step `xenium-assess-batch` (synthetic split and mixed fixtures).
 - **Per-tissue defaults.** The pipeline file carries one default per parameter (ROSC default:
   `ndim` 35, `resolution` 0.4); `docs/tissue-defaults.md` in the method lists ROSC's per-tissue
   values (spleen `ndim` 40); the operator proposes the tissue's value, a departure opens the
@@ -265,19 +272,20 @@ the real Lyons CLP processing. How the engine (0.2.6, read in source) meets each
 | 02_normalize | `normalize` 0.1.1 | xenium-r | `method` logarea (default, decision 2) \| log_total; `scale_factor` 100 | decision points `method`, `scale_factor`; `sc.decision_unreviewed` or `param.agent_proposed` holds once |
 | 03_reduce | `reduce-pca` 0.1.0 | xenium-r | `n_features` 2000 (500 to all); `npcs` 50; `integration` none (options harmony, rpca, cca); `batch_key` slide | ROSC order: `FindVariableFeatures`, `ScaleData`, `RunPCA`; HVG plot, elbow plot and `elbow_table.csv`, dim loadings (ROSC `AllVizDimLoadings`), PCA pair plots; with `integration` not none the layers are split by `batch_key` before HVG and `IntegrateLayers` writes the integrated reduction; `misc$stringency$hvg`, `pca`, `integration` |
 | 04_cluster | `cluster-umap` 0.1.0 | xenium-r | `ndim` 35 (10 to 50; spleen 40); `resolution` 0.4 (0.1 to 2); `resolutions` [0.2, 0.4, 0.6, 0.8, 1.0]; `k_neighbors` 20; `algorithm` 1 (Louvain); `umap_n_neighbors` 30; `umap_min_dist` 0.3; `seed` 1984 | `FindNeighbors(dims 1:ndim, reduction)`, `FindClusters` at the listed resolutions, `Idents` at `resolution`, `RunUMAP`; clustree, UMAP per resolution, UMAP by cluster, punch, animal, time point, slide, split views, `ImageDimPlot` per punch; composition tables; the batch assessment; `misc$stringency$neighbors`, `clustering`, `batch_assessment`; decision points `ndim`, `resolution`; `stochastic: true`, `seed_param: seed`; gates `sc.batch_effect_suspected` |
-| 05_markers | `find-markers` 0.1.0 | xenium-r | `logfc_min` 0.5; `min_pct` 0.1; `test` wilcox; `max_cells_per_ident` 10000; `only_pos` false; `top_n` 25 | `FindAllMarkers`; `markers`, `markers_top`; dot plot of the top genes; writes the `cluster_evidence` directory (plugin object type `sc.cluster_evidence@1`: manifest, cluster summary, compositions, markers, per-cluster mean and fraction expressing for every gene, the batch table) the judgment reads |
-| 06_annotate | `annotate-clusters` 0.1.0 (judgment) | xenium-py | none | items = clusters; evidence `cluster_summary`, `markers_top`, `canonical_markers`, `organ_guide`; vocabulary `cell_types_mouse@1` (one closed list for the four organs, with CL ids; the organ guide says which labels to expect; agent draft, decision 17); schema adds `ontology_id`, `fine_label`, `alternative_labels`; 3 replicates, abstain required, ordinal confidence; prompt writes time points, punch ids and other clusters' ids in words (`PLAN.md` 1.10); controls: positive from the ROSC liver (markers, compositions, the collapse-map labels), negative with shuffled symbols; run through `xenium-annotate` |
-| 07_apply_labels | `apply-labels` 0.1.0 | xenium-r | none | consensus to `meta.data$cell_type` with `ontology_id` and `cell_type_fine`; `misc$stringency$labels`; UMAP and per-punch image plots by label; label summary table; Explorer CSV per punch as ROSC did; gate `sc.unknown_fraction` |
-| 08_report | `upstream-report` 0.1.0 | xenium-r | none | `upstream_report.md` and a self-contained HTML with every figure of the run, every numeral a table cell; deterministic (code-generated prose, no harness) |
+| 05_assess_batch | `assess-batch` 0.1.0 (judgment) | xenium-py | none | one item, the dataset; evidence `batch_overview`, `batch_by_cluster`, `slide_by_timepoint`, `batch_guide`; vocabulary `batch_route@1`; 3 replicates, abstain required; gate `sc.batch_route_review` always holds; controls synthetic (split, mixed) through `xenium-assess-batch` |
+| 06_markers | `find-markers` 0.1.0 | xenium-r | `logfc_min` 0.5; `min_pct` 0.1; `test` wilcox; `max_cells_per_ident` 10000; `only_pos` false; `top_n` 25 | `FindAllMarkers`; `markers`, `markers_top`; dot plot of the top genes; writes the `cluster_evidence` directory (plugin object type `sc.cluster_evidence@1`: manifest, cluster summary, compositions, markers, per-cluster mean and fraction expressing for every gene, the batch table) the judgment reads |
+| 07_annotate | `annotate-clusters` 0.1.0 (judgment) | xenium-py | none | items = clusters; evidence `cluster_summary`, `markers_top`, `canonical_markers`, `organ_guide`; vocabulary `cell_types_mouse@1` (one closed list for the four organs, with CL ids; the organ guide says which labels to expect; agent draft, decision 17); schema adds `ontology_id`, `fine_label`, `alternative_labels`; 3 replicates, abstain required, ordinal confidence; prompt writes time points, punch ids and other clusters' ids in words (`PLAN.md` 1.10); controls: positive from the ROSC liver (markers, compositions, the collapse-map labels), negative with shuffled symbols; run through `xenium-annotate` |
+| 08_apply_labels | `apply-labels` 0.1.0 | xenium-r | none | consensus to `meta.data$cell_type` with `ontology_id` and `cell_type_fine`; `misc$stringency$labels`; UMAP and per-punch image plots by label; label summary table; Explorer CSV per punch as ROSC did; gate `sc.unknown_fraction` |
+| 09_report | `upstream-report` 0.1.0 | xenium-r | none | `upstream_report.md` and a self-contained HTML with every figure of the run, every numeral a table cell; deterministic (code-generated prose, no harness) |
 
 Deliverables: `annotated_object` (`seurat_object`), `markers`, `cluster_evidence`,
 `label_summary`, `batch_assessment`, `elbow_table`, `upstream_report`, `figures`. Holds per organ:
-the init confirm; `02` method (and scale factor); `04` `ndim` and `resolution`; `sc.batch_effect_suspected`
-when the rule fires; the annotation's item holds; `sc.unknown_fraction` when many cells stay
+the init confirm; `02` method (and scale factor); `04` `ndim` and `resolution`; `05` the batch route
+(always); the annotation's item holds; `sc.unknown_fraction` when many cells stay
 `unknown`. Projects `/lab/projects/Lyons_CLP/upstream_<organ>/`, liver first (105 k cells), then
 lung (405 k), gut (525 k), spleen (1.41 M, `resources` 128 GB on `04_cluster`, the long one).
 
-### Phase 3: `xenium-annotate` (controls and re-annotation only)
+### Phase 3: `xenium-annotate` and `xenium-assess-batch` (controls and re-judging only)
 
 One step, `annotate-clusters` on a project input `cluster_evidence` (normally `derived_from` an
 `xenium-upstream` delivery). Exists because a judgment control can only be wired through a
@@ -345,7 +353,7 @@ reclustering. Not a routine stage.
 | F2 | phase 0 run, part 1: eight `qc2` projects through batch review; the summary through inherited confirmation | eight QC deliveries, one summary | done 2026-10-06 (inheritance did not fire: L5; sixteen `param.agent_proposed` holds: L6) |
 | F3 | phase 0 run, part 2: `qc2_outliers_all` with three fresh delegates; the owner's decisions; `punch_exclusions.csv`; the comparison note; the Lane E measurement row for a chained real run | the exclusion file | done 2026-10-06 (one run rejected by `judg.numeric_claims_match`, the second clean) |
 | F4 | image `xenium-r` (renv lock, rocker, PPM, Bioconductor 3.22) on GHCR, pulled by digest; `modules/_rlib/` from the archive; plugin 0.2 (`seurat_object`, `extract_seurat.R`, `sc.export_mismatch`, typed operations); the anndataR round trip; `merge-punches` and `normalize` on the two livers | image in `MANIFEST.md`; plugin `v0.2.0` installed as `0.2.6-sc0.2.0`; method `v0.5.0-rc2`; `cluster_liver` delivered | done 2026-10-06 (round trip EQUAL; the ten predicates with Seurat fixtures moved to F5; engine L7 found) |
-| F5 | `xenium-upstream` (section 5.1 and phase 2): plugin 0.3.0 (`sc.decision_unreviewed`, `sc.batch_effect_suspected`, `sc.unknown_fraction`, `qc.filter_ordering`, `cluster_evidence`, `cell_types_mouse@1`), image `xenium-r` 0.2.0 (harmony), the six new modules, `annotate-clusters` with the ROSC liver controls, `xenium-annotate`; `upstream_liver` declared and run to its holds | the pipeline on liver; holds presented | started 2026-10-07 |
+| F5 | `xenium-upstream` (section 5.1 and phase 2): plugin 0.3.0 to 0.4.0 (`assess_batch`, `batch_evidence`, `batch_route@1`, `sc.batch_route_review`, `sc.decision_unreviewed`, `sc.batch_effect_suspected`, `sc.unknown_fraction`, `qc.filter_ordering`, `cluster_evidence`, `cell_types_mouse@1`), image `xenium-r` 0.2.0 (harmony), the six new modules, `annotate-clusters` with the ROSC liver controls, `xenium-annotate`; `upstream_liver` declared and run to its holds | the pipeline on liver; holds presented | started 2026-10-07 |
 | F6 | `xenium-upstream` on lung, gut, spleen; the owner's holds; the batch assessment read per organ and the harmony fork where the owner asks; spleen runtime measured | four annotated objects | delivered |
 | F7 | the owner reviews `cell_types_mouse@1` and the organ guides (decision 17); vocabulary 2 if labels are missing; `xenium-annotate` re-runs where needed | approved vocabulary | owner's reading |
 | F8 | (folded into F5 and F6: annotation is step 06 of `xenium-upstream`) | | |
@@ -380,7 +388,7 @@ parameter holds. The plugin half of F4 and the image half can run in parallel.
   the order of tens of GB in R; the resources block says 128 GB for `reduce-cluster` on spleen and
   64 GB elsewhere, within the shared machine's 500 GB.
 
-## 8. Decisions for the owner (fifteen taken 2026-10-06; 16 to 18 taken 2026-10-07)
+## 8. Decisions for the owner (fifteen taken 2026-10-06; 16 to 19 taken 2026-10-07)
 
 1. **Language.** Decided 2026-10-06, against the recommendation: **R, reusing the ROSC_MTA2
    code as designed for that project** rather than writing new Python ("I'd rather use that than
@@ -468,6 +476,10 @@ Raised by the re-plan for R (section 5, 2026-10-06), to decide before F4:
     animal and punch; kNN same-slide fraction within the 24 h time point), a flag hold when the rule
     fires, correction by `fork` at `03_reduce` with `integration=harmony` (ROSC's first option;
     `rpca` and `cca` available), the image rebuilt as `xenium-r` 0.2.0 to hold harmony.
+19. **Batch assessment is a judgment.** Decided 2026-10-07 (afternoon), on seeing the first design:
+    the deterministic rule is not enough ("greater than just choosing parameters"); `05_assess_batch`
+    is a three-reviewer judgment on the dataset with a hold that always opens before the run
+    proceeds (section 5.1); the rule's verdict is logged as evidence, not held on.
 
 ## 9. Risks
 
