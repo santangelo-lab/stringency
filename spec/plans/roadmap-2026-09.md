@@ -18,6 +18,7 @@ per-lane detail, kept as written with each heading carrying its state.
 | D owner and operations | closed 2026-09-23 | this file, Lane D | owner housekeeping: K6 tag cleanup, the standing page and `notify.yml` |
 | E skills and UX | open, small | `ux-two-audiences.md` | three template fixes and a re-tag; a toy run by someone other than the owner; measurement rows |
 | F spatial method, Lyons CLP pilot | **active**; phase 0 and F4 done 2026-10-06; F5 done 2026-10-07: one upstream pipeline `xenium-upstream` (nine steps, two judgments), plugin 0.4.2, image 0.2.0, **liver delivered** on `v0.6.0-rc6` (16 Harmony-corrected clusters, all labelled); owner decisions 16 to 20; backlog L8 to L13 | `spatial-method-plan.md` (section 5.1, decisions 16 to 20) | F6: lung, gut, spleen on rc6; Lane A: L13 conditional steps first |
+| H console and fleet | **proposed** 2026-10-07 (`console-and-fleet-plan.md`): engine v0.2.7 first (merge v0.2.6 into main, L13 conditional steps, L12, L8, `wait` verb), then the console (standing `review --serve`, the hold queue by ask, operators that wait, the fleet cap) | `console-and-fleet-plan.md` | owner decisions 1 to 5 there; then a Lane A session for part 1 |
 | G judge sources | proposed 2026-09-23, not started | `judge-sources-plan.md` | the seven decisions in its section 6 |
 
 Shared engine on PROTSEQ: `0.2.6-sc0.2.0`. Method `stringency-xenium-method` `v0.5.0-rc2`. Plugin
