@@ -18,7 +18,7 @@ per-lane detail, kept as written with each heading carrying its state.
 | D owner and operations | closed 2026-09-23 | this file, Lane D | owner housekeeping: K6 tag cleanup, the standing page and `notify.yml` |
 | E skills and UX | open, small | `ux-two-audiences.md` | three template fixes and a re-tag; a toy run by someone other than the owner; measurement rows |
 | F spatial method, Lyons CLP pilot | **active**; phase 0 and F4 done 2026-10-06; F5 done 2026-10-07: one upstream pipeline `xenium-upstream` (nine steps, two judgments), plugin 0.4.2, image 0.2.0, **liver delivered** on `v0.6.0-rc6` (16 Harmony-corrected clusters, all labelled); owner decisions 16 to 20; backlog L8 to L13 | `spatial-method-plan.md` (section 5.1, decisions 16 to 20) | F6: lung, gut, spleen on rc6; Lane A: L13 conditional steps first |
-| A engine v0.2.7 | **next** (`engine-v0.2.7-plan.md`, 2026-10-07): merge v0.2.6 into main, L13 conditional steps, L12, L8, `wait` verb, release, method rc7; before lung, gut, spleen | `engine-v0.2.7-plan.md` | a Lane A session; section 0 is the handoff |
+| A engine v0.2.7 | **built** 2026-10-07 evening (`notes/2026-10-07-1730-engine-v027.md`): v0.2.6 merged into main, L13 conditional steps, L12, L8, `wait`; method `v0.6.0-rc7` | `engine-v0.2.7-plan.md` | F6 runs on 0.2.7 and rc7 |
 | H console and fleet | **brainstorm** 2026-10-07 (`console-and-fleet-plan.md`): the interactive console on `review --serve` (inbox of holds, figures at the hold, live updates, who is driving), operators that wait, the fleet cap; two build routes | `console-and-fleet-plan.md` | owner decisions 1 to 5 there, then build |
 | G judge sources | proposed 2026-09-23, not started | `judge-sources-plan.md` | the seven decisions in its section 6 |
 

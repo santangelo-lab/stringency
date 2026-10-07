@@ -5,7 +5,10 @@ the other Lyons CLP data I want to update the engine with the one correction rou
 part 2, the console, is `console-and-fleet-plan.md`. Items marked *design* change design text and
 need the owner's approval; the rest are DECISIONS-level or below.
 
-**Status 2026-10-07.** Proposed, nothing built. This is the next Lane A session's work, to be done
+**Status 2026-10-07, evening.** Built on branch `engine-v0.2.7`: 1.1 (main reconciled, pushed),
+1.2 L13, 1.3 L12, 1.4 L8, 1.5 `wait`, the operator skill's `wait` paragraphs; version 0.2.7. The
+release steps of 1.6 follow in the session note `notes/2026-10-07-1730-engine-v027.md`.
+Earlier status: proposed, nothing built. This is the next Lane A session's work, to be done
 before lung, gut and spleen run on `xenium-upstream`. The session that wrote this ran out of
 context; section 0 is the handoff.
 

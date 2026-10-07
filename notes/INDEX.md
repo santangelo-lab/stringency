@@ -3,7 +3,14 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-06, afternoon)
+## Current state (2026-10-07, evening)
+
+- Engine v0.2.7 (`notes/2026-10-07-1730-engine-v027.md`): main reconciled with `v0.2.6`; L13
+  conditional steps (`when:`, `skipped`), L12 evidence keys, L8 the operator's reason at the hold,
+  `stringency wait`; method `v0.6.0-rc7` skips the batch judgment on a corrected run. Next: lung,
+  gut, spleen on 0.2.7 and rc7; the console (part 2) on branch `console`.
+
+## Previous state (2026-10-06, afternoon)
 
 - Lane F phase 0 done in one session (`notes/2026-10-06-1345-lane-f-phase0.md`): F0 (all eleven
   owner decisions; **downstream in R reusing ROSC code**, LogArea, limma-voom, no pathology pass,
@@ -121,6 +128,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-07-1730-engine-v027.md` — engine v0.2.7: v0.2.6 merged into main; L13 conditional steps (`when:`, `pending -> skipped`, design 3.1 and 7.1); L12 evidence-table keys as read; L8 the operator's reason in the flag packet; `stringency wait`; the operator skill arms `wait`; method rc7 (`when:` on `05_assess_batch`, report 0.1.2).
 - `2026-10-06-1345-lane-f-phase0.md` — Lane F phase 0 and F4: F0 decisions (R, LogArea, limma-voom, no pathology pass, small intestine, exclusion file), method v0.4.0, the second QC chain through batch review and sixteen parameter holds, the summary on arity many, the second outlier judgment (one numeric-claims rejection, four item holds), the owner's exclusion file; L5, L6.
 - `2026-10-07-1100-lane-f-f5-upstream.md` — Lane F F5: the owner's one-upstream-pipeline request and how the engine meets it (run --until, param.agent_proposed's gap, the controls wiring constraint); plugin 0.3.0 and 0.3.1 (sc.decision_unreviewed, sc.batch_effect_suspected, sc.unknown_fraction, qc.filter_ordering, cluster_evidence, cell_types_mouse@1); image xenium-r 0.2.0 with harmony; method v0.6.0-rc2 with xenium-upstream (eight steps) and xenium-annotate; the dev run on the real liver cells; upstream_liver initialised; L8, L9.
 - `2026-09-23-1930-judge-sources-brainstorm.md` — judge sourcing survey and plan (`spec/plans/judge-sources-plan.md`, proposed Lane G): harness state, local Ollama judges, panel roles, operator fallback, Jev tabled; ClawBio assessed (no integration) and two mechanisms borrowed into `spec/plans/egress-and-remeasurement.md` (backlog L1 to L4).

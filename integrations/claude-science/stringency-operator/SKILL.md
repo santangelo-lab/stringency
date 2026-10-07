@@ -147,7 +147,13 @@ pass the path). The engine files the responses and continues;
 it refuses (exit 16) when the step is not dispatching, when the count differs from
 `manifest.json`, or when response files already exist, and in each case nothing is written.
 
-**10, a hold.** Follow section 6.
+**10, a hold.** Follow section 6. While a person answers elsewhere (at a terminal, on the review
+page), do not poll `run`: run `stringency wait --hold <id> --json` (engine 0.2.7 or later), as a
+background command when your harness has one, so you are woken when it returns. It reads the
+trace every five seconds and writes nothing; exit 0 means the hold was resolved or withdrawn and
+the payload carries the verdict, the reason, the reviewer and how it was recorded; exit 10 means
+`--timeout` passed with the hold still open. `stringency wait --json` with no option waits until
+anything about the latest run changes. Then `stringency run --json` again.
 
 **Anything else.** Stop and report the `plain` sentence, then the message.
 
@@ -188,7 +194,9 @@ never runs `review` without a verdict word and a reason from the conversation, a
 `review --serve`.
 
 The person may instead resolve the hold themselves at a terminal or on the review page. If they
-say so, wait; call `run --json` again when they say it is done.
+say so, arm `stringency wait --hold {id} --json` (section 5) and call `run --json` again when it
+returns, or when they say it is done. Relay the verdict and reason from the `wait` payload
+verbatim; do not restate them in your words.
 
 ## 7. What to show the person
 
