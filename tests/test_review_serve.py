@@ -15,6 +15,7 @@ import pytest
 
 from stringency.project import Project
 from stringency.review import queue
+from stringency.review_render import render
 from stringency.review_serve import discover, make_server
 from stringency.runs import open_or_resume
 from stringency.steps import propose
@@ -171,8 +172,19 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
     p = make_project(pipeline="toy-engine", execution="engine")
     accept_hold(p.store, p.confirm_hold()["hold_id"])
     rc = open_or_resume(p)
-    prop = propose(rc, "01_filter", {"min_value": 12}, rationale="12 is the floor here")
+    prop = propose(
+        rc,
+        "01_filter",
+        {"min_value": 12},
+        rationale="12 is the floor here.\nRows below it are noise.",
+    )
     assert str(prop.status) == "held"
+    # L8: the operator's reason is in the packet the terminal shows
+    view = render(p, queue(p)[0])
+    assert view.operator_reason == "12 is the floor here.\nRows below it are noise."
+    assert (
+        "the operator's reason:\n  12 is the floor here.\n  Rows below it are noise." in view.text
+    )
     srv = make_server([p.root], port=0, token=TOKEN)
     t = threading.Thread(target=srv.serve_forever, daemon=True)
     t.start()
@@ -182,6 +194,7 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
         assert h["kind"] == "flag"
         status, body = get(f"{base}/p/0/hold/{h['hold_id']}?t={TOKEN}")
         assert status == 200 and "param.agent_proposed" in body and "min_value" in body
+        assert "the operator&#39;s reason:" in body and "Rows below it are noise." in body
         status, body = post(
             f"{base}/p/0/hold/{h['hold_id']}", t=TOKEN, verdict="accept", reason="agreed, 12"
         )

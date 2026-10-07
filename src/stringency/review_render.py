@@ -109,6 +109,7 @@ class HoldView:
     flagged: list[dict[str, Any]] = field(default_factory=list)
     verdicts: list[dict[str, str]] = field(default_factory=list)
     packet: Path | None = None  # the Markdown packet on disk, when one was written
+    operator_reason: str | None = None  # the `propose --reason` text behind the action (L8)
 
     def to_json(self) -> dict[str, Any]:
         h = self.hold
@@ -130,6 +131,7 @@ class HoldView:
             "flagged": self.flagged,
             "verdicts": self.verdicts,
             "packet": str(self.packet) if self.packet else None,
+            "operator_reason": self.operator_reason,
             "text": self.text,
         }
 
@@ -415,6 +417,10 @@ def render_flag(
     read. When the predicate is a judgment check (`judg.*`) the flagged replicates and items
     are shown with their cited cells resolved against the evidence table.
 
+    The operator's reason for the proposal (`propose --reason`, stored behind the action's
+    `rationale_ref`) is printed under the parameters, so the recommendation is read where the
+    decision is made (L8).
+
     Reads: actions, judgments, messages, state_snapshots, executions."""
     ctx = json.loads(h["context_json"] or "{}")
     predicate = str(ctx.get("predicate", ""))
@@ -432,6 +438,10 @@ def render_flag(
     view = HoldView(h, "", module_ref=module_ref)
     if action:
         lines.append("parameters: " + (_kv(action.parameters) or "none"))
+        reason = project.store.message(action.rationale_ref) if action.rationale_ref else None
+        if reason:
+            view.operator_reason = reason
+            lines += ["", "the operator's reason:", *_quoted(reason)]
     judg = predicate.startswith("judg.") and plan is not None
     if judg:
         assert plan is not None
@@ -479,6 +489,11 @@ def render_flag(
     lines += ["", *_verdict_lines(view.verdicts), *_resolution_lines(h)]
     view.text = "\n".join(lines)
     return view
+
+
+def _quoted(text: str) -> list[str]:
+    """The operator's words, indented, line breaks kept."""
+    return [f"{INDENT}{line}".rstrip() for line in text.strip().splitlines()]
 
 
 def _is_pair_list(v: Any) -> bool:
