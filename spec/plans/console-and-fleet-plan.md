@@ -250,7 +250,8 @@ Without the script the pages keep the sixty-second meta refresh they have today.
 Grouped by what the hold asks, because the person's question is "what do you need from me", not
 "what kind of row is this". The grouping rule is the engine's and knows no biology; it reads the
 hold kind and the shape of its evidence. A method may name the ask in its own words through the
-delivery skill (`hold_view[].ask`, 3.8), and the method's phrase wins when present.
+delivery skill (`hold_view[].ask`, 3.8): the group heading stays the engine's, the card's title is
+the method's phrase when it gives one (built: C2, 2026-10-07).
 
 | ask (engine default heading) | rule | the card shows |
 |---|---|---|

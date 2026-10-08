@@ -319,7 +319,9 @@ def present_hold(
         matching: list[dict[str, Any]] = [
             v
             for v in views
-            if isinstance(v, dict) and str(v.get("predicate", "")).split("@")[0] == pred_id
+            if isinstance(v, dict)
+            and str(v.get("predicate", "")).split("@")[0] == pred_id
+            and v.get("step") in (None, h["step_id"])  # an entry may name the step it is for
         ]
         payload["sections"] += render_items(project, h["run_id"], matching, None)[0]
         ns = skill.get("never_show")

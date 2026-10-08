@@ -1146,6 +1146,8 @@ after_delivery:            # rendered by `present --run`, in order
 never_show: [run ids, hashes, ...]          # echoed as a footer, a rule for the operator
 hold_view:                 # rendered by `present --hold` for the predicate that opened the hold
   - predicate: <predicate id>
+    step: <step id>        # optional (added 2026-10-07, console): holds on this step only
+    ask: "<phrase>"        # optional (added 2026-10-07, console): the card's title on the inbox
     source: <path relative to runs/<run>/>
     kind: table | json_table | jsonl
     columns: [...]

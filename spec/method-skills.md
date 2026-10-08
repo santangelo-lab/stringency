@@ -41,6 +41,8 @@ after_delivery:            # rendered by `present`, in order
 never_show: [run ids, hashes, ...]         # echoed as a footer; a rule for the operator
 hold_view:                 # rendered by `present --hold` for the predicate that opened the hold
   - predicate: <predicate id>
+    step: <step id>        # optional: this entry applies to holds on this step only (console, 2026-10-07)
+    ask: "<phrase>"        # optional: the card's title on the console's inbox, in the method's words
     source: <path relative to runs/<run>/>
     kind: table | json_table | jsonl
     columns: [...]
@@ -54,7 +56,11 @@ method's instruction to the operator, not a filter the engine applies to files.
 Write it for the reader who did not watch the run: one title per table saying what the rows are,
 columns in the order a person would read them, formats that keep the engine's precision (a
 `format` may round for display; the delivered file is unchanged). `hold_view` names the tables a
-reviewer needs beside a flag: for a judgment hold, the consensus and the judgment log.
+reviewer needs beside a flag: for a judgment hold, the consensus and the judgment log. A
+predicate that fires on several steps (`param.agent_proposed` on every decision step) gets one
+entry per step with `step:` set, so the elbow table is shown at the clustering hold and not at
+the normalisation hold; `ask:` is the question in the method's words, which the console's inbox
+uses as the card's title ("Approve the number of components and the clustering resolution").
 
 ## 3. The analysis skill source, `skills/<pipeline>.analyze.yml`
 

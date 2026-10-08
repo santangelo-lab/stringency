@@ -46,9 +46,19 @@ from jinja2 import Environment, StrictUndefined
 from markupsafe import Markup
 
 from stringency.board import COLUMNS, project_entry, refresh_if_present, row, sentence
-from stringency.console import Registry, discover
+from stringency.console import (
+    Registry,
+    ask_of,
+    card_title,
+    discover,
+    driver,
+    group_cards,
+    hold_context,
+    references,
+    timeline,
+)
 from stringency.exit_codes import ConfigError, RefusedError
-from stringency.present import Site, present_hold, present_run, render_html
+from stringency.present import Site, load_skill, present_hold, present_run, render_html
 from stringency.project import Project
 from stringency.review import _replicates_for, get_hold, record_review
 from stringency.review_render import render
@@ -89,6 +99,9 @@ _STYLE = """
 body { font-family: system-ui, sans-serif; max-width: 64em; margin: 2em auto; padding: 0 1em; color: #222; }
 h1 { font-size: 1.2em; font-weight: 600; }
 h2 { font-size: 1em; font-weight: 600; margin-top: 2em; }
+h3 { font-size: 0.95em; font-weight: 600; margin: 1.2em 0 0.4em; }
+.fork { margin-left: 1.5em; }
+.stale { color: #8a5a00; }
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: 0.3em 0.6em; border-bottom: 1px solid #ddd; vertical-align: top; }
 pre { white-space: pre-wrap; word-break: break-word; background: #f6f6f6; padding: 1em; border: 1px solid #ddd; }
@@ -116,27 +129,28 @@ LANDING_HTML = _ENV.from_string(
     _HEAD
     + """<h1>Projects</h1>
 <p class="note">Served by stringency review --serve for {{ user }} on {{ host }}{% if read_only %}, read-only{% else %}. A verdict recorded here is recorded as this account's, via web{% endif %}. Read fresh on every load; this page reloads itself every {{ refresh }} seconds.</p>
-<h2>Needs you</h2>
-{% if holds %}
+<h2>Needs you{% if n_holds %} ({{ n_holds }}){% endif %}</h2>
+{% if n_holds %}
+{% for g in groups if g.cards %}
+<h3>{{ g.heading }}</h3>
 <table>
-<tr><th>project</th><th>step</th><th>kind</th><th>item</th><th>waits on</th><th>open for</th></tr>
-{% for r in holds %}
-<tr>
-<td><a href="{{ r.project_href }}">{{ r.project }}</a></td>
-<td><a href="{{ r.href }}">{{ r.step }}</a></td><td>{{ r.kind }}</td><td>{{ r.item }}</td><td>{{ r.waits_on }}</td><td>{{ r.age }}</td>
-</tr>
+<tr><th>project</th><th>what</th><th>step</th><th>kind</th><th>item</th><th>waits on</th><th>open for</th></tr>
+{% for c in g.cards %}
+<tr><td><a href="{{ c.project_href }}">{{ c.project }}</a></td><td><a href="{{ c.href }}">{{ c.title }}</a></td><td>{{ c.step }}</td><td>{{ c.kind }}</td><td>{{ c.item }}</td><td>{{ c.waits_on }}</td><td>{{ c.age }}</td></tr>
 {% endfor %}
 </table>
+{% endfor %}
 {% else %}
 <p>No unresolved holds in {{ n_projects }} project(s).</p>
 {% endif %}
 <h2>Board</h2>
 <table>
-<tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr>
+<tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}<th>for</th><th>elsewhere</th><th>driver</th><th>last call</th></tr>
 {% for b in board %}
-<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}</tr>
+<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}<td>{{ b.driver.elapsed }}</td><td>{{ b.driver.elsewhere }}</td><td>{{ b.driver.who }}</td><td>{{ b.driver.last_call_age }}{% if b.driver.stale %} <strong class="stale">stale</strong>{% endif %}</td></tr>
 {% endfor %}
 </table>
+<p class="note">"for": how long the current step has been in its state; "elsewhere": the median time the same step took where it completed, in the projects shown; "stale": no engine call for longer than fifteen minutes and twice that time while the step is the engine's or the operator's.</p>
 <h2>In words</h2>
 <ul>
 {% for b in board %}<li>{% if b.href %}<a href="{{ b.href }}">{{ b.name }}</a>{% else %}{{ b.name }}{% endif %}: {{ b.sentence }}</li>
@@ -152,6 +166,7 @@ PROJECT_HTML = _ENV.from_string(
 <h1>{{ name }}</h1>
 <p>{{ sentence }}</p>
 {% if error %}<p class="error">{{ error }}</p>{% else %}
+{% if driver %}<p class="note">Driver: {{ driver.who }}. Last engine call {{ driver.last_call_age }} ago{% if driver.stale %}, <strong class="stale">stale</strong>{% endif %}.{% if driver.step %} '{{ driver.step }}' has been {{ driver.status }} for {{ driver.elapsed }}{% if driver.elsewhere %}; elsewhere it took {{ driver.elsewhere }}{% endif %}.{% endif %}</p>{% endif %}
 <h2>Steps</h2>
 {% if steps %}
 <table>
@@ -163,9 +178,9 @@ PROJECT_HTML = _ENV.from_string(
 <h2>Needs you</h2>
 {% if holds %}
 <table>
-<tr><th>step</th><th>kind</th><th>item</th><th>waits on</th><th>open for</th></tr>
+<tr><th>what</th><th>step</th><th>kind</th><th>item</th><th>waits on</th><th>open for</th></tr>
 {% for r in holds %}
-<tr><td><a href="{{ r.href }}">{{ r.step }}</a></td><td>{{ r.kind }}</td><td>{{ r.item }}</td><td>{{ r.waits_on }}</td><td>{{ r.age }}</td></tr>
+<tr><td><a href="{{ r.href }}">{{ r.title }}</a></td><td>{{ r.step }}</td><td>{{ r.kind }}</td><td>{{ r.item }}</td><td>{{ r.waits_on }}</td><td>{{ r.age }}</td></tr>
 {% endfor %}
 </table>
 {% else %}<p>Nothing waits on a person. The plan is {{ confirm }}.</p>{% endif %}
@@ -178,6 +193,14 @@ PROJECT_HTML = _ENV.from_string(
 {% endfor %}
 </table>
 {% else %}<p>Nothing delivered yet.</p>{% endif %}
+<h2>Timeline</h2>
+{% for r in timeline %}
+<h3{% if r.fork %} class="fork"{% endif %}>{{ r.label }}, {{ r.status }}{% if r.fork %} (a fork){% endif %}</h3>
+<ul{% if r.fork %} class="fork"{% endif %}>
+{% for e in r.events %}<li>{{ e.when }}: {{ e.text }}</li>
+{% endfor %}
+</ul>
+{% endfor %}
 {% endif %}
 """
     + _FOOT
@@ -333,6 +356,17 @@ def _content_type(name: str, kind: str) -> str:
     return guessed or "application/octet-stream"
 
 
+_NO_DRIVER: dict[str, Any] = {
+    "who": "",
+    "elapsed": "",
+    "elsewhere": "",
+    "last_call_age": "",
+    "stale": False,
+    "step": None,
+    "status": None,
+}
+
+
 @dataclass
 class ServerState:
     registry: Registry
@@ -441,8 +475,11 @@ class ReviewHandler(BaseHTTPRequestHandler):
         pid = self.state.registry.id_of(root)
         return f"/project/{pid}" if pid else ""
 
-    def _hold_rows(self, root: Path, site: Site) -> list[dict[str, str]]:
-        rows: list[dict[str, str]] = []
+    def _cards(self, root: Path, site: Site) -> list[dict[str, Any]]:
+        """The open holds of one project as inbox cards: the engine's group (which question the
+        hold asks) and the method's title when its delivery skill gives one."""
+        skill, _note = load_skill(site)
+        cards: list[dict[str, Any]] = []
         for h in site.store.all(_OPEN_HOLDS_SQL):
             step = h["step_id"]
             title = (
@@ -455,8 +492,14 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 if h["waits_on_role"] == "reviewer"
                 else site.config.roles.owner
             )
-            rows.append(
+            ctx = hold_context(h)
+            group = ask_of(h, ctx)
+            cards.append(
                 {
+                    "hold_id": h["hold_id"],
+                    "created": h["created"] or "",
+                    "group": group,
+                    "title": card_title(h, ctx, group, title, skill),
                     "project": site.root.name,
                     "project_href": self._project_href(root),
                     "step": title,
@@ -467,7 +510,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     "href": f"/hold/{h['hold_id']}",
                 }
             )
-        return rows
+        return cards
 
     # -- routes -------------------------------------------------------------------------------
 
@@ -499,7 +542,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 _pid, root = reg.owner_of("run", parts[1])
                 self._send_file(root, parts[1], parts[2])
             elif parts[0] == "p":
-                self._redirect_legacy(parts)
+                self._redirect_legacy(parts, params)
             else:
                 self._error(HTTPStatus.NOT_FOUND, "no such page")
         except (ConfigError, ValueError) as e:
@@ -508,18 +551,20 @@ class ReviewHandler(BaseHTTPRequestHandler):
             self.log_message("error: %s: %s", type(e).__name__, e)
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, f"{type(e).__name__}: {e}")
 
-    def _redirect_legacy(self, parts: list[str]) -> None:
+    def _redirect_legacy(self, parts: list[str], params: dict[str, list[str]]) -> None:
         """The `/p/<i>/...` routes of engine 0.2.6 (bookmarks, old notification links): the
-        project at that position today, redirected to its id route."""
+        project at that position today, redirected to its id route. A query token is carried
+        over, since a client following the redirect may not keep the cookie."""
         reg = self.state.registry
+        suffix = f"?t={params['t'][0]}" if params.get("t") else ""
         if len(parts) == 2:
-            self._redirect(self._project_href(reg.root_at(int(parts[1]))) or "/")
+            self._redirect((self._project_href(reg.root_at(int(parts[1]))) or "/") + suffix)
         elif len(parts) == 4 and parts[2] in ("hold", "run"):
             reg.root_at(int(parts[1]))
-            self._redirect(f"/{parts[2]}/{parts[3]}")
+            self._redirect(f"/{parts[2]}/{parts[3]}{suffix}")
         elif len(parts) == 5 and parts[2] == "file":
             reg.root_at(int(parts[1]))
-            self._redirect(f"/file/{parts[3]}/{parts[4]}")
+            self._redirect(f"/file/{parts[3]}/{parts[4]}{suffix}")
         else:
             self._error(HTTPStatus.NOT_FOUND, "no such page")
 
@@ -601,29 +646,33 @@ class ReviewHandler(BaseHTTPRequestHandler):
     # -- rendering ----------------------------------------------------------------------------
 
     def _render_landing(self) -> str:
-        holds: list[dict[str, str]] = []
+        cards: list[dict[str, Any]] = []
         board: list[dict[str, Any]] = []
         roots = self.state.roots
+        refs = references(roots)
         for root in roots:
             entry = project_entry(root)
+            drv: dict[str, Any] = _NO_DRIVER
+            if "error" not in entry:
+                site = Site.load(root)
+                try:
+                    cards += self._cards(root, site)
+                    drv = self._driver(site, entry, refs)
+                finally:
+                    site.store.close()
             board.append(
                 {
                     "name": root.name,
                     "href": self._project_href(root),
                     "cells": row(entry),
                     "sentence": sentence(entry),
+                    "driver": drv,
                 }
             )
-            if "error" in entry:
-                continue
-            site = Site.load(root)
-            try:
-                holds += self._hold_rows(root, site)
-            finally:
-                site.store.close()
         return LANDING_HTML.render(
             title="stringency projects",
-            holds=holds,
+            groups=group_cards(cards),
+            n_holds=len(cards),
             board=board,
             columns=list(COLUMNS),
             n_projects=len(roots),
@@ -633,6 +682,21 @@ class ReviewHandler(BaseHTTPRequestHandler):
             refresh=REFRESH_SECONDS,
             style=_STYLE,
         )
+
+    def _driver(
+        self, site: Site, entry: dict[str, Any], refs: dict[tuple[str, str], float]
+    ) -> dict[str, Any]:
+        if not entry.get("run"):
+            return _NO_DRIVER
+        run = site.store.one("SELECT * FROM runs WHERE run_id = ?", (entry["run"]["run_id"],))
+        if run is None:
+            return _NO_DRIVER
+        d = driver(site.store.conn, run, entry.get("step"), site.config.pipeline, refs)
+        who = d["harness"] or "a terminal"
+        if d["session"]:
+            who += f", {d['session']}"
+        d["who"] = f"{who}, {d['user']} on {d['host']}"
+        return d
 
     def _render_project(self, root: Path) -> str:
         entry = project_entry(root)
@@ -646,10 +710,20 @@ class ReviewHandler(BaseHTTPRequestHandler):
         }
         if "error" in entry:
             return PROJECT_HTML.render(
-                error=entry["error"], steps=[], holds=[], deliveries=[], confirm="", **common
+                error=entry["error"],
+                steps=[],
+                holds=[],
+                deliveries=[],
+                confirm="",
+                driver=None,
+                timeline=[],
+                **common,
             )
         site = Site.load(root)
         try:
+            drv = self._driver(site, entry, references(self.state.roots))
+            titles = {sid: site.pipeline.title(sid) for sid in site.pipeline.order()}
+            runs = timeline(site.store.conn, titles)
             steps: list[dict[str, str]] = []
             if entry.get("run"):
                 run_id = entry["run"]["run_id"]
@@ -665,7 +739,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     }
                     for s in site.pipeline.order()
                 ]
-            holds = self._hold_rows(root, site)
+            holds = self._cards(root, site)
             deliveries: list[dict[str, Any]] = []
             for d in site.store.all(
                 "SELECT run_id, path, ts FROM deliveries ORDER BY ts DESC, rowid DESC"
@@ -685,6 +759,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
             holds=holds,
             deliveries=deliveries,
             confirm=entry.get("confirm", ""),
+            driver=drv if drv is not _NO_DRIVER else None,
+            timeline=runs,
             **common,
         )
 

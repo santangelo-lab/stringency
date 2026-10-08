@@ -303,9 +303,15 @@ def test_landing_has_needs_you_then_the_board_with_sentences(server: tuple[str, 
     assert sentence(project_entry(p.root)) in html.unescape(body)  # the board's sentence, verbatim
     assert f'href="/project/{p.config.project_id}"' in body and 'content="60"' in body
     tables = _tables(body)
-    assert tables[0][0] == ["project", "step", "kind", "item", "waits on", "open for"]
-    assert tables[0][1][:4] == [p.root.name, "Label the groups", "run_disagreement", "A"]
-    assert tables[1][0][:4] == ["project", "pipeline", "method", "plan"]
+    assert tables[0][0] == ["project", "what", "step", "kind", "item", "waits on", "open for"]
+    assert tables[0][1][:5] == [
+        p.root.name,
+        "Label the groups, item A",
+        "Label the groups",
+        "run_disagreement",
+        "A",
+    ]
+    assert tables[-1][0][:4] == ["project", "pipeline", "method", "plan"]
 
 
 def test_project_page_names_every_step_by_title_with_status(server: tuple[str, Project]) -> None:
@@ -358,8 +364,11 @@ def test_run_page_tables_equal_present_rows_and_files_download(make_project: Ini
         assert get(f"{base}/run/NOTARUN?t={TOKEN}")[0] == 404
         # the positional routes of 0.2.6 redirect to the id routes; a notification's link is a page
         status, loc = _no_follow(f"{base}/p/0/run/{run_id}?t={TOKEN}")
-        assert (status, loc) == (302, f"/run/{run_id}")
-        assert _no_follow(f"{base}/p/0?t={TOKEN}") == (302, f"/project/{p.config.project_id}")
+        assert (status, loc) == (302, f"/run/{run_id}?t={TOKEN}")
+        assert _no_follow(f"{base}/p/0?t={TOKEN}") == (
+            302,
+            f"/project/{p.config.project_id}?t={TOKEN}",
+        )
         assert _no_follow(f"{base}/run/NOTARUN?t={TOKEN}")[0] == 404
 
 
@@ -390,7 +399,7 @@ def test_hold_page_shows_hold_view_tables_and_redirect(make_project: InitFn) -> 
         assert body.index("<table") < body.index("<pre>")  # the method's table above the packet
         assert "<form" in body
         status, loc = _no_follow(f"{base}/p/0/hold/{hid}?t={TOKEN}")
-        assert (status, loc) == (302, f"/hold/{hid}")
+        assert (status, loc) == (302, f"/hold/{hid}?t={TOKEN}")
         assert _no_follow(f"{base}/hold/NOPE?t={TOKEN}")[0] == 404
 
 
@@ -547,3 +556,144 @@ def test_two_project_dirs_and_a_project_that_appears_later(
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+# -- the console, C2 first cut (plan 3.7, 3.9): the inbox by ask, the driver, the timeline ------
+
+
+def test_inbox_groups_holds_by_ask_and_the_method_names_the_card(make_project: InitFn) -> None:
+    from stringency.console import ask_of, card_title, group_cards, hold_context, method_ask
+    from tests.test_board_present import _skill
+
+    p = make_project(pipeline="toy-engine", execution="engine")
+    confirm = p.confirm_hold()
+    assert ask_of(confirm, hold_context(confirm)) == "confirm"
+    accept_hold(p.store, confirm["hold_id"])
+    rc = open_or_resume(p)
+    propose(rc, "01_filter", {"min_value": 12}, rationale="12 is the floor here")
+    h = queue(p)[0]
+    ctx = hold_context(h)
+    assert ask_of(h, ctx) == "parameters"
+    assert card_title(h, ctx, "parameters", "Filter low-value rows", None) == (
+        "Filter low-value rows: min_value"
+    )
+    # the method's `ask` phrase names the card; an entry for another step does not apply
+    skill = {
+        "hold_view": [
+            {"predicate": "param.agent_proposed", "step": "02_other", "ask": "wrong step"},
+            {"predicate": "param.agent_proposed", "ask": "Approve the floor"},
+        ]
+    }
+    assert method_ask(skill, "param.agent_proposed@1", "01_filter") == "Approve the floor"
+    assert card_title(h, ctx, "parameters", "Filter low-value rows", skill) == "Approve the floor"
+
+    # the shapes the engine groups by, without a trace behind them
+    class Row(dict):  # noqa: D401 - a sqlite3.Row stand-in
+        def __getitem__(self, k: str):  # type: ignore[override]
+            return dict.get(self, k)
+
+    item = Row(kind="run_disagreement", item_id="7", context_json="{}")
+    assert ask_of(item, {}) == "disagreement"
+    unsure = Row(kind="self_uncertain", item_id="7", context_json="{}")
+    assert ask_of(unsure, {}) == "uncertain"
+    invalid = Row(kind="run_disagreement", item_id=None, context_json="{}")
+    assert ask_of(invalid, {}) == "invalid"
+    route = Row(kind="flag", item_id=None, context_json="{}")
+    assert ask_of(route, {"evidence": {"consensus_label": "correct_batch"}}) == "consensus"
+    other = Row(kind="flag", item_id=None, context_json="{}")
+    assert ask_of(other, {"evidence": {"n": 1}, "predicate": "toy.flagged@1"}) == "flag"
+    groups = group_cards(
+        [
+            {"group": "flag", "created": "2026-01-01T00:00:02Z", "hold_id": "B"},
+            {"group": "confirm", "created": "2026-01-01T00:00:03Z", "hold_id": "C"},
+            {"group": "flag", "created": "2026-01-01T00:00:01Z", "hold_id": "A"},
+        ]
+    )
+    assert [g["key"] for g in groups][:2] == ["confirm", "parameters"]
+    assert [c["hold_id"] for g in groups for c in g["cards"]] == ["C", "A", "B"]
+    # on the page: the parameter hold under its heading, with the method's phrase
+    _skill(p, [], hold_view=[{"predicate": "param.agent_proposed", "ask": "Approve the floor"}])
+    for base in _serve(p):
+        status, body = get(f"{base}/?t={TOKEN}")
+        assert status == 200
+        assert "Approve the operator&#39;s parameters" in body and "Approve the floor" in body
+        assert "Confirm the plan" not in body  # an empty group is not shown
+
+
+def test_driver_block_and_timeline(server: tuple[str, Project]) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from stringency.console import driver, references, timeline
+
+    base, p = server
+    run = p.store.one("SELECT * FROM runs ORDER BY started DESC LIMIT 1")
+    assert run is not None
+    refs = references([p.root])
+    assert refs[("toy-engine", "01_filter")] >= 0  # a completed step gives the reference
+    current = {"step_id": "03_label", "title": "Label the groups", "status": "held"}
+    d = driver(p.store.conn, run, current, "toy-engine", refs)
+    assert d["user"] == run["user"] and d["host"] == run["host"]
+    assert d["last_call"] is not None and d["step"] == "Label the groups" and d["status"] == "held"
+    assert d["elapsed"] and not d["stale"]  # a held step is the person's, never stale
+    # a running step with no engine call for an hour is stale; one of twenty minutes is not,
+    # when the same step took fifteen minutes elsewhere (twice that is the limit)
+    later = datetime.now(UTC) + timedelta(hours=1)
+    running = {"step_id": "03_label", "title": "Label the groups", "status": "dispatching"}
+    assert driver(p.store.conn, run, running, "toy-engine", refs, now=later)["stale"]
+    soon = datetime.now(UTC) + timedelta(minutes=20)
+    slow = {("toy-engine", "03_label"): 15 * 60.0}
+    assert not driver(p.store.conn, run, running, "toy-engine", slow, now=soon)["stale"]
+    assert driver(p.store.conn, run, running, "toy-engine", {}, now=soon)["stale"]
+    # the timeline: one run, opened, held at the labelling step; the page shows it
+    titles = {s: p.pipeline.title(s) for s in p.pipeline.order()}
+    tl = timeline(p.store.conn, titles)
+    assert len(tl) == 1 and tl[0]["status"] == "held" and not tl[0]["fork"]
+    texts = [e["text"] for e in tl[0]["events"]]
+    assert texts[0].startswith("opened by ")
+    assert any(t.startswith("held at 'Label the groups', item A (run_disagreement)") for t in texts)
+    status, body = get(f"{base}/project/{p.config.project_id}?t={TOKEN}")
+    assert status == 200 and "Timeline" in body and "held at &#39;Label the groups&#39;" in body
+    assert "Driver:" in body and "Last engine call" in body
+    status, body = get(f"{base}/?t={TOKEN}")
+    assert "<th>driver</th>" in body and "<th>elsewhere</th>" in body
+
+
+def test_hold_view_entry_for_another_step_is_not_shown(make_project: InitFn) -> None:
+    import json
+
+    from tests.test_board_present import _delivered, _skill
+
+    p, run_id, _ = _delivered(make_project)
+    (p.root / "runs" / run_id / "proposal.csv").write_text("item,verdict\ng1,exclude\n")
+    _skill(
+        p,
+        [],
+        hold_view=[
+            {
+                "predicate": "toy.flagged",
+                "step": "01_filter",
+                "source": "proposal.csv",
+                "kind": "table",
+            },
+            {
+                "predicate": "toy.flagged",
+                "step": "04_compare",
+                "source": "proposal.csv",
+                "kind": "table",
+            },
+        ],
+    )
+    hid = p.store.create_hold(
+        {
+            "run_id": run_id,
+            "step_id": "04_compare",
+            "kind": "flag",
+            "reason": "toy.flagged: something looked off",
+            "waits_on_role": "reviewer",
+            "context_json": json.dumps({"predicate": "toy.flagged@1", "evidence": {"n": 1}}),
+        }
+    )
+    for base in _serve(p):
+        status, body = get(f"{base}/hold/{hid}?t={TOKEN}")
+        assert status == 200
+        assert len([t for t in _tables(body) if t and t[0] == ["item", "verdict"]]) == 1
