@@ -150,7 +150,11 @@ This protocol is the text of section 6 of the `stringency-operator` skill; the t
 drift. Before the ask, when the method attaches tables to the predicate that fired, run
 `stringency present --hold <id>` and relay it, as the operator skill's section 7 says. The review
 page is a route only when it is available on this host; until then every hold is answered here
-and recorded as relayed.
+and recorded as relayed. When a console is configured (the person says so, or `page_url` is set
+in `~/.config/stringency/notify.yml`), the operator skill's console mode applies instead: one
+sentence naming the hold and its console link, `stringency wait --hold <id> --json` in the
+background, and the person's reason read as the instruction when it returns; the packet and the
+tables are on the console, not here.
 
 ## 6. Deliver and report
 

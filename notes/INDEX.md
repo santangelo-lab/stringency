@@ -9,10 +9,11 @@ it is the first thing a new session reads.
   conditional steps (`when:`, `skipped`), L12 evidence keys, L8 the operator's reason at the hold,
   `stringency wait`; method `v0.6.0-rc7` skips the batch judgment on a corrected run. Next: lung,
   gut, spleen on 0.2.7 and rc7; the console (part 2) on branch `console`.
-- Lane F F5 done and the liver delivered (`notes/2026-10-07-1100-lane-f-f5-upstream.md`); the console designed, not built, on branch `console`
-  (`notes/2026-10-07-1720-console-plan.md`, `spec/plans/console-and-fleet-plan.md`): the owner took
-  its seven decisions the same evening (section 7); next: C1, then the first cut (inbox with the
-  operator's reason, live updates, who is driving), then console mode.
+- Lane F F5 done and the liver delivered (`notes/2026-10-07-1100-lane-f-f5-upstream.md`); the console's first cut built on branch `console`
+  (`notes/2026-10-07-1720-console-plan.md`, `spec/plans/console-and-fleet-plan.md` status line):
+  routes by id, cookie, inbox by ask, driver block, timeline, event stream, page script, console
+  mode in the skill. Next: merge into main, tag `v0.2.8`, install, start
+  `scripts/stringency-console.service`; second cut after a week of use.
 
 ## Previous state (2026-10-06, afternoon)
 
@@ -132,7 +133,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
-- `2026-10-07-1720-console-plan.md` — Lane H: `console-and-fleet-plan.md` fleshed out into a design (routes by id, event stream on `data_version`, inbox by ask with batch cards, `hold_view` figure and chart kinds, who is driving, console-mode hold protocol, the slot cap); mockup `spec/plans/mockups/console-mockup.html`; seven owner decisions; branch `console`, no engine code touched.
+- `2026-10-07-1720-console-plan.md` — Lane H: `console-and-fleet-plan.md` fleshed out into a design, the owner's seven decisions taken, and the first cut BUILT the same night (C1 routes by id and cookie, C2 inbox by ask and driver block and timeline, C5 event stream and page script, C3 console mode in the skill; branch `console`, not merged) (routes by id, event stream on `data_version`, inbox by ask with batch cards, `hold_view` figure and chart kinds, who is driving, console-mode hold protocol, the slot cap); mockup `spec/plans/mockups/console-mockup.html`; seven owner decisions; branch `console`, no engine code touched.
 - `2026-10-07-1730-engine-v027.md` — engine v0.2.7: v0.2.6 merged into main; L13 conditional steps (`when:`, `pending -> skipped`, design 3.1 and 7.1); L12 evidence-table keys as read; L8 the operator's reason in the flag packet; `stringency wait`; the operator skill arms `wait`; method rc7 (`when:` on `05_assess_batch`, report 0.1.2).
 - `2026-10-06-1345-lane-f-phase0.md` — Lane F phase 0 and F4: F0 decisions (R, LogArea, limma-voom, no pathology pass, small intestine, exclusion file), method v0.4.0, the second QC chain through batch review and sixteen parameter holds, the summary on arity many, the second outlier judgment (one numeric-claims rejection, four item holds), the owner's exclusion file; L5, L6.
 - `2026-10-07-1100-lane-f-f5-upstream.md` — Lane F F5: the owner's one-upstream-pipeline request and how the engine meets it (run --until, param.agent_proposed's gap, the controls wiring constraint); plugin 0.3.0 and 0.3.1 (sc.decision_unreviewed, sc.batch_effect_suspected, sc.unknown_fraction, qc.filter_ordering, cluster_evidence, cell_types_mouse@1); image xenium-r 0.2.0 with harmony; method v0.6.0-rc2 with xenium-upstream (eight steps) and xenium-annotate; the dev run on the real liver cells; upstream_liver initialised; L8, L9.

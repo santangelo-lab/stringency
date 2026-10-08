@@ -198,6 +198,23 @@ say so, arm `stringency wait --hold {id} --json` (section 5) and call `run --jso
 returns, or when they say it is done. Relay the verdict and reason from the `wait` payload
 verbatim; do not restate them in your words.
 
+**Console mode** (owner's decision 7, 2026-10-07). On when the person says they are using the
+console, or when `~/.config/stringency/notify.yml` has a `page_url` (the console's address;
+`review --serve`, engine 0.2.8 or later). Then, at a hold, instead of steps 1 to 4 and
+`present --hold`: say one sentence, "The analysis paused at {step title}: {for a flag, the
+predicate's reason verbatim; for a confirm, 'does this reading of your experiment match'; for an
+item hold, 'which call for {item} should stand'}. Answer on the console ({page_url}/hold/{id})
+or here." Then arm `stringency wait --hold {id} --timeout 86400 --json` as a background command
+and say once "waiting on the console for the {step title} hold". When it returns, read
+`verdict`, `via` and `reason` and relay them verbatim. The reason is the person's instruction: if
+it names a next step you can take with the verbs you have (a fork with a parameter, a proposal, an
+abandon), take it and say so in one sentence; if it asks for something outside those verbs, say
+what you cannot do and stop. Then `run --json`. If the person answers here instead, follow steps 1
+to 4 and relay as above; if both happen, `review` refuses the second as already resolved and you
+report which verdict stands. Steps completing are still relayed as `plain` lines and delivery is
+unchanged (section 7): the packet, the tables and the verdict are on the console, not here.
+Without a console, nothing changes.
+
 ## 7. What to show the person
 
 The person driving the session reads results, not tool output. The method states what its results

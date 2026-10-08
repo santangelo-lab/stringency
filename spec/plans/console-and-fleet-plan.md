@@ -15,8 +15,16 @@ F5, `notes/2026-10-07-1100-lane-f-f5-upstream.md`). Two asks from the owner that
 Items marked *design* change design text and need the owner's approval; the rest are
 DECISIONS-level or below. Section 7 lists the decisions the owner takes before the build.
 
-**Status 2026-10-07, evening.** Design done and the owner's seven decisions taken (section 7);
-nothing built. The owner's direction: "I want the new interface to be more interactive than the old
+**Status 2026-10-08, night.** Built on branch `console` the same night the decisions were taken:
+C1 (routes by id, the cookie, several roots with a rescanning registry, the service unit), the C2
+first cut (the inbox grouped by ask with the method's `ask` phrase and `step` selector, the
+driver block, the timeline), the C5 first cut (the `data_version` watcher, `/events`, the JSON
+routes, the vendored script, CSP) and C3 (console mode in the operator skill). Not built: the
+second cut (figures, tables and the chart at the hold, batch cards, the gallery, the history), C4
+(the resource cap), `resources_observed`, `wait --json` already prints the reason. Nothing is
+released: the branch merges into `main` and tags `v0.2.8`; the standing unit
+`scripts/stringency-console.service` then runs the shared install. Earlier status: design done and
+the owner's seven decisions taken (section 7) on 2026-10-07 evening. The owner's direction: "I want the new interface to be more interactive than the old
 board." Part 1 (engine v0.2.7) was released the same evening (`notes/2026-10-07-1730-engine-v027.md`:
 L13, L12, L8, `wait`, shared `0.2.7-sc0.4.2`, method rc7), so part 2 can start with C1. The order
 after the decisions: C1, then the first cut of C2 and C5 together (the inbox with the operator's
@@ -598,10 +606,11 @@ The order after the owner's decisions (2026-10-07 evening):
 | step | depends on | estimate |
 |---|---|---|
 | engine v0.2.7 | released 2026-10-07 | done |
-| C1 standing console: several roots, stable routes, the cookie, the systemd unit | nothing | half a day |
-| C2 first cut: the inbox grouped by ask with the operator's reason and the `ask` field; the driver block and the timeline | C1 | 1 day |
-| C5 first cut: the event stream, the JSON routes, the script (live updates, keyboard, sorting) | C2 | 2 days |
-| C3 console-mode skill text, `wait` in the loop | C1 | half a day |
+| C1 standing console: several roots, stable routes, the cookie, the systemd unit | nothing | built 2026-10-08 |
+| C2 first cut: the inbox grouped by ask with the operator's reason and the `ask` field; the driver block and the timeline | C1 | built 2026-10-08 |
+| C5 first cut: the event stream, the JSON routes, the script (live updates, keyboard, sorting) | C2 | built 2026-10-08 |
+| C3 console-mode skill text, `wait` in the loop | C1 | built 2026-10-08 (skill text; republish to Claude Science pending) |
+| release: merge `console` into `main`, tag `v0.2.8`, shared install, start the unit, `page_url` in `notify.yml` | the above | an hour, the owner's |
 | second cut: figures, tables and the chart at the hold (`figure`, `figures`, `chart`, `beside`); batch cards; the gallery; the history | a week of use | 2 days |
 | C4 fleet cap, `resources_observed` | when the organs need it | 1 day |
 
