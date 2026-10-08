@@ -560,18 +560,105 @@ Below the contract and decided when built, listed so they are not rediscovered: 
 id, the token as a cookie, the `data_version` watcher, the step-file route's two conditions, the
 grouping rule of 3.7, the batch key, the stale rule.
 
-## 8. Handoff
+## 8. Handoff: how to pick this up again
 
-Branch `console`, worktree `~/mytools/stringency/stringency-console`, cut from `main` at the
-v0.2.6 merge; the engine v0.2.7 work is on `engine-v0.2.7` in `stringency-v027` and is merged
-into `main` first; the console branch rebases on that. The page code to extend is
-`src/stringency/review_serve.py` (landing, project, run, hold, file routes; `--read-only`,
-`--token-file`; jinja2 string templates, inline CSS, no JavaScript) with `review_render.py`,
-`present.py`, `board.py`, `review_batch.py` and `notify.py` beside it; the tests are
-`tests/test_review_serve.py` (fourteen tests, several asserting no `<script`). The earlier plan is
-`spec/archive/project-page-and-notify.md`. Start the page today with `scripts/review-page.sh
-protseq /lab/projects` from the laptop. The mockup is `spec/plans/mockups/console-mockup.html`.
-Nothing in part 2 should begin before the owner has taken decisions 1 to 7.
+Written 2026-10-07 night after the first cut and the figures shipped. Everything below is on
+`main`; the `console` branch is kept in step with `main` and can be deleted.
+
+### 8.1 What exists and where
+
+| piece | where | what it does |
+|---|---|---|
+| the server | `src/stringency/review_serve.py` | routes (`/`, `/project/<id>`, `/hold/<id>`, `/run/<id>`, `/file/...`, `/step-file/...`, `/input-file/...`, `/events`, `/api/...`, `/static/console.js`), the jinja templates and CSS, the verdict POST, the cookie, the image routes, the URL mapping from a figure's path to its route |
+| the readers | `src/stringency/console.py` | `discover` and `Registry` (projects by `project_id`, rescanned every thirty seconds), `ask_of`/`card_title`/`method_ask`/`group_cards` (the inbox), `driver`/`references` (who is driving, the stale rule), `timeline`, `snapshot`/`diff_snapshots`/`Watcher` (the event stream) |
+| the renderer | `src/stringency/present.py` | the delivery skill's kinds including `figure`, `figures`, `chart`; `step_dir` and `_resolve` (sources through `artifacts`, `$inputs`); `present_hold`, `present_step`; `render_html` with `url_for`; `chart_svg` |
+| the page script | `src/stringency/static/console.js` | live `data-live` sections from `/events`, sortable tables, `j`/`k`/`Enter`, `a`/`r`/`d`/`o`, `Ctrl-Enter`, click-to-zoom figures |
+| the service | `scripts/stringency-console.service` | `systemd --user` unit, loopback 8765, token file `~/.config/stringency/console-token` |
+| the operator's side | `integrations/claude-science/stringency-operator/SKILL.md` section 6 (console mode), mirrored in `templates/analyze-skill.md.j2` | one sentence per hold, `wait`, the reason as instruction |
+| the method's side | `stringency-xenium-method` `skills/xenium-upstream.yml` (`v0.6.0-rc8`) | `hold_view` per hold with `step`, `ask`, figures and the elbow chart; `step_view` per step |
+| the schema | design 14.4, `spec/method-skills.md` section 2 | the delivery-skill fields |
+| the ledger | `spec/DECISIONS.md`, the five console entries from "The console (Lane H, C1" on | every choice below the contract and its reason |
+| tests | `tests/test_review_serve.py` (from "the console, C1" on), `tests/test_board_present.py` | the routes, the cookie, the registry, the inbox rule, the driver, the timeline, the stream, the JSON routes, the figure kinds, the fork resolution, the image routes |
+| the mockup | `spec/plans/mockups/console-mockup.html` | the picture the layout follows; no longer ahead of the product except the figure placeholders |
+
+Releases so far: `v0.2.8` (C1, C2, C3, C5 first cut), `v0.2.9` (the restyle), `v0.2.10` (figures).
+The shared install the service runs is `/data/lab/env/stringency/current`; the owner installs each
+release (section 8.3).
+
+### 8.2 How to work on it
+
+- Checkout `~/mytools/stringency/stringency` on `main`. `uv sync --all-groups`, then `uv run
+  pytest` (the console tests take about a minute), `uv run ruff check . && uv run ruff format
+  --check . && uv run mypy`, `scripts/check_no_biology.sh`. One commit per milestone with the
+  suite green, as before.
+- To look at a change against real projects without touching the running service, start a
+  second instance read-only on a spare loopback port from the checkout:
+  `STRINGENCY_NOTIFY=0 uv run stringency review --serve --projects /lab/projects/Lyons_CLP
+  --port 8799 --read-only`, then `curl` or a tunnel to 8799. The dev environment has only the
+  toy plugin, so a hold page of a singlecell project fails there with "not a loaded plugin";
+  install the plugin into the checkout's venv (`uv pip install 'git+https://github.com/
+  santangelo-lab/stringency-plugins@v0.4.2#subdirectory=plugins/stringency-singlecell'`) when a
+  hold page must be checked, or check it on the service after the install.
+- To look at a page without a server: `present.render_html(present_hold(site, hold_id,
+  skills_dir), url_for)` with a `skills_dir` pointing at a method checkout, which is how the
+  rc8 skill was checked against the liver's holds before the method was tagged. Firefox headless
+  (`firefox --headless --screenshot out.png file://...`) renders a static page; it cannot load
+  images from `/data`.
+- The method's skill is read from the project's own `method/skills/` checkout, pinned at the
+  project's tag. A project initialised on an older tag keeps the older skill.
+
+### 8.3 Release and install
+
+1. Bump `version` in `pyproject.toml` and `src/stringency/__init__.py`, the version string in
+   `tests/golden/methods_toy_engine.md`, `uv lock`; commit on `main`; `git tag -a vX.Y.Z`; push
+   `main` and the tag.
+2. The owner installs (the permission classifier refuses an agent writing to `/data/lab/env`):
+   `umask 002 && scripts/install.sh --prefix /data/lab/env/stringency --source
+   git+https://github.com/santangelo-lab/stringency@vX.Y.Z --plugin 'git+https://github.com/
+   santangelo-lab/stringency-plugins@v0.4.2#subdirectory=plugins/stringency-singlecell'
+   --label X.Y.Z-sc0.4.2 --no-toy`, then `systemctl --user restart stringency-console.service`.
+3. The URL and token do not change across restarts. `systemctl --user status
+   stringency-console.service` shows it running; the journal is not readable by the account, so
+   the token is read from `~/.config/stringency/console-token`.
+4. The method: edit `skills/<pipeline>.yml`, `stringency lint .`, tag `v0.6.0-rcN`, push; a
+   project declared on that tag gets it.
+
+### 8.4 Still the owner's
+
+- `sudo loginctl enable-linger jrrose5` (once), so the service survives logout.
+- `~/.config/stringency/notify.yml` with `page_url` set to the console URL, if hold emails
+  should link to the inbox.
+- Republishing the operator skill in Claude Science (`integrations/claude-science/
+  publish-skills.md`), so Claude Science sessions know console mode; a Claude Code session
+  reads the skill from the repository.
+
+### 8.5 What is not built, in the order decided
+
+1. The first real use: lung on `xenium-upstream` rc8 with the operator in console mode, and the
+   measurement of section 10 (hold-to-verdict per ask, relayed holds, session switches). What
+   chafes goes into `backlog.md` before gut and spleen.
+2. Batch cards (L6, section 3.7): identical parameter holds across sibling projects as one card,
+   recorded through `review_batch` with `reason_code: batch`; `review --holds` extended to flag
+   holds.
+3. The delivery gallery on the run page (the report's `figures.csv`, the summary beside it) and
+   the decision history page (`reviews` joined to `holds` across roots, with `status
+   --overrides` per module at the top).
+4. C4, the resource cap (section 6.3), when gut and spleen run together: `STRINGENCY_SLOTS`,
+   `capacity.yml`, `slot:waiting`/`slot:acquired` step events, the console cell; and
+   `resources_observed` in `executions.observed_params_json` from the first lung run to size it.
+5. The two asks of the engine that were deferred: `wait --json` already prints the reason;
+   `resources_observed` is item 4.
+
+### 8.6 Known rough edges
+
+- The driver block's "elsewhere" is a median over the projects shown and does not know cell
+  counts; a step's elapsed time on a larger organ will look slow against the liver.
+- A hold page of a project whose plugin is not installed in the serving environment fails with
+  the engine's message; the shared install carries the singlecell plugin, the dev venv does not.
+- `/events` holds one thread per browser tab; fine for a lab, not for a public page.
+- The figure routes serve PNG, JPEG, SVG, GIF, WebP and PDF under 25 MB; a method writing a
+  larger figure sees "file too large to serve".
+- The liver's old holds (rc6) show tables only; the figures appear from rc8 projects on.
 
 ## 9. Tests, by phase
 

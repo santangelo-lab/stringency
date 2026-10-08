@@ -9,11 +9,11 @@ it is the first thing a new session reads.
   conditional steps (`when:`, `skipped`), L12 evidence keys, L8 the operator's reason at the hold,
   `stringency wait`; method `v0.6.0-rc7` skips the batch judgment on a corrected run. Next: lung,
   gut, spleen on 0.2.7 and rc7; the console (part 2) on branch `console`.
-- Lane F F5 done and the liver delivered (`notes/2026-10-07-1100-lane-f-f5-upstream.md`); the console's first cut built on branch `console`
-  (`notes/2026-10-07-1720-console-plan.md`, `spec/plans/console-and-fleet-plan.md` status line):
-  routes by id, cookie, inbox by ask, driver block, timeline, event stream, page script, console
-  mode in the skill. Next: merge into main, tag `v0.2.8`, install, start
-  `scripts/stringency-console.service`; second cut after a week of use.
+- The console built, released and running (`notes/2026-10-07-2300-console-build.md`): engine
+  `v0.2.10` with the figures at the hold, method `v0.6.0-rc8` naming them, `stringency-console.service`
+  on loopback 8765 under the owner's account. Pick up from `spec/plans/console-and-fleet-plan.md`
+  section 8 (where everything is, release and install, what is next: lung in console mode, then
+  batch cards, gallery, history, the resource cap).
 
 ## Previous state (2026-10-06, afternoon)
 
@@ -133,6 +133,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-07-2300-console-build.md` — Lane H: the console built and released (v0.2.8 first cut, v0.2.9 restyle, v0.2.10 figures at the hold; method rc8 names the figures), running as `stringency-console.service`; the plan's section 8 is the pick-up guide.
 - `2026-10-07-1720-console-plan.md` — Lane H: `console-and-fleet-plan.md` fleshed out into a design, the owner's seven decisions taken, and the first cut BUILT the same night (C1 routes by id and cookie, C2 inbox by ask and driver block and timeline, C5 event stream and page script, C3 console mode in the skill; branch `console`, not merged) (routes by id, event stream on `data_version`, inbox by ask with batch cards, `hold_view` figure and chart kinds, who is driving, console-mode hold protocol, the slot cap); mockup `spec/plans/mockups/console-mockup.html`; seven owner decisions; branch `console`, no engine code touched.
 - `2026-10-07-1730-engine-v027.md` — engine v0.2.7: v0.2.6 merged into main; L13 conditional steps (`when:`, `pending -> skipped`, design 3.1 and 7.1); L12 evidence-table keys as read; L8 the operator's reason in the flag packet; `stringency wait`; the operator skill arms `wait`; method rc7 (`when:` on `05_assess_batch`, report 0.1.2).
 - `2026-10-06-1345-lane-f-phase0.md` — Lane F phase 0 and F4: F0 decisions (R, LogArea, limma-voom, no pathology pass, small intestine, exclusion file), method v0.4.0, the second QC chain through batch review and sixteen parameter holds, the summary on arity many, the second outlier judgment (one numeric-claims rejection, four item holds), the owner's exclusion file; L5, L6.
