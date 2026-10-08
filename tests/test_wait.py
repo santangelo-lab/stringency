@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
@@ -116,3 +119,32 @@ def test_wait_refusals(held: Project) -> None:
     assert r.exit_code == 15 and "no run NOPE" in str(r.stderr)
     r = cli(held, "wait", "--hold", "a", "--run", "b")
     assert r.exit_code == 15
+
+
+def test_run_json_at_a_hold_names_the_wait_the_page_and_the_skill(
+    held: Project, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Backlog L14: an operator holding an older skill did not wait for a console verdict. The
+    held payload names the `wait` command, the console page when `page_url` is set, and the
+    operator skill installed with the engine; the terse human message is unchanged (14.2)."""
+    env = {**MOCK, "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml")}
+    r = cli(held, "run", "--json", env=env)
+    assert r.exit_code == 10, r.output
+    out = json.loads(r.output)
+    hid = out["holds"][0]["hold_id"]
+    assert out["wait_command"] == f"stringency wait --hold {hid} --timeout 86400 --json"
+    assert out["review_page"] is None and out["operator_skill"] is None
+
+    cfg = Path(os.environ["XDG_CONFIG_HOME"]) / "stringency" / "notify.yml"
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text("page_url: http://127.0.0.1:8765/?t=tok\nchannels: []\n")
+    skill = tmp_path / "venv" / "skills" / "stringency-operator" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: stringency-operator\n---\n")
+    monkeypatch.setattr(sys, "prefix", str(tmp_path / "venv"))
+    out = json.loads(cli(held, "run", "--json", env=env).output)
+    assert out["review_page"] == f"http://127.0.0.1:8765/hold/{hid}?t=tok"
+    assert out["operator_skill"] == str(skill)
+
+    r = cli(held, "run", env=env)
+    assert "stringency wait" not in r.output and "8765" not in r.output

@@ -8,6 +8,7 @@ than a runnable step comes back, then exits with the matching code.
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -67,6 +68,36 @@ def hold_message(rc: RunContext, holds: list[Any]) -> str:
     )
 
 
+def operator_skill_path() -> Path | None:
+    """The operator skill installed beside this engine (`scripts/install.sh` copies it into the
+    version's directory, `<prefix>/versions/<label>/skills/`), or None in a checkout or an install
+    without it. Reads only the filesystem."""
+    p = Path(sys.prefix) / "skills" / "stringency-operator" / "SKILL.md"
+    return p if p.is_file() else None
+
+
+def while_held(hold_id: str) -> dict[str, Any]:
+    """What an operator needs while a person answers a hold elsewhere (backlog L14): the `wait`
+    command that returns when the hold is resolved, the console's page for the hold when
+    `page_url` is set in the per-user notify file, and the operator skill installed with this
+    engine so a session holding an older published copy can read the current one. None of these
+    resolves the hold, so the terse message of design 14.2 is unchanged; they go in the JSON only.
+    Reads the notify file and the filesystem; writes nothing."""
+    from stringency.notify import load_config, page_link
+
+    try:
+        cfg = load_config()
+    except (ValueError, OSError):
+        cfg = None
+    page = page_link(cfg.page_url, f"/hold/{hold_id}") if cfg and cfg.page_url else None
+    skill = operator_skill_path()
+    return {
+        "wait_command": f"stringency wait --hold {hold_id} --timeout 86400 --json",
+        "review_page": page,
+        "operator_skill": str(skill) if skill else None,
+    }
+
+
 def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
     """What the coming step is (design 14.1 `next --json`)."""
     step = rc.project.pipeline.step(step_id)
@@ -119,7 +150,7 @@ def next_step(rc: RunContext) -> Next:
         return Next(
             "held",
             holds[0]["step_id"],
-            {"holds": [dict(h) for h in holds]},
+            {"holds": [dict(h) for h in holds], **while_held(holds[0]["hold_id"])},
             int(Exit.HELD),
             hold_message(rc, holds),
         )

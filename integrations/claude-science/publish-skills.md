@@ -28,9 +28,13 @@ stringency loads the operator skill.
 ## Where the current text lives
 
 The canonical text is the engine repository at its installed tag (operator, declare) and the
-method repository at its tag (analysis skills). A convenience copy for the download cell can be
-kept at `/data/lab/env/stringency/skills/<skill>/SKILL.md`, refreshed by whoever installs a new
-engine version; if the copy and the repository disagree, the repository wins.
+method repository at its tag (analysis skills). From engine 0.2.11, `scripts/install.sh` copies the
+operator and declare skills beside each installed version, at
+`<prefix>/versions/<label>/skills/<skill>/SKILL.md` (on PROTSEQ,
+`/data/lab/env/stringency/current/skills/<skill>/SKILL.md`), which is the path for the download
+cell; a held `run --json` names that copy as `operator_skill`, and the skill tells an operator
+holding an older published text to follow it. If the copy and the repository disagree, the
+repository wins.
 
 ## When to republish
 

@@ -12,6 +12,7 @@
 # Layout:  <prefix>/versions/<label>/   a venv holding the engine and plugins
 #          <prefix>/current             symlink to the version in use
 #          <prefix>/envs/               container images referenced by method manifests
+#          <prefix>/versions/<label>/skills/<skill>/SKILL.md   the operator and declare skills
 #
 # Requires `uv` (https://docs.astral.sh/uv/) and a system python3 >= 3.12. No sudo is needed when
 # <prefix> is writable; otherwise run under sudo with uv on root's PATH, or pre-create <prefix>
@@ -69,6 +70,16 @@ uv venv --quiet --python "$python" "$venv"
 # tool.uv.sources pin of the engine to its GitHub URL, which conflicts with any other --source
 # (a branch, a tag, a local checkout); the engine installed here is the one named on the line.
 uv pip install --quiet --no-sources --python "$venv/bin/python" "$source" "${plugins[@]}"
+# The operator and declare skills ride with the engine version (backlog L14): `run --json` names
+# the installed operator skill at a hold, so a session holding an older published copy can read
+# the current text. Copied from this checkout; check it is at the tag being installed.
+for s in stringency-operator stringency-declare; do
+  if [ -f "$here/integrations/claude-science/$s/SKILL.md" ]; then
+    mkdir -p "$venv/skills/$s"
+    cp "$here/integrations/claude-science/$s/SKILL.md" "$venv/skills/$s/SKILL.md"
+  fi
+done
+echo "skills copied from $here at $(git -C "$here" describe --tags --always 2>/dev/null || echo 'an unknown commit')"
 ln -sfn "versions/$label" "$prefix/current"
 
 if [ -z "$link_bin" ] && [ -w /usr/local/bin ]; then link_bin=/usr/local/bin; fi

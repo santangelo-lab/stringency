@@ -68,6 +68,13 @@ The container runtime is `apptainer` or `singularity`; the engine finds either. 
 image the project's method manifest names is readable, for example
 `ls -la $(grep -o '/[^ ]*\.sif' <project>/method/envs/manifest.yml)`.
 
+**Which text of this skill to follow.** This text is for engine 0.2.11. The engine installs its own
+copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
+The first time a payload names it, read that file once. If it is not this text, it is the version
+that matches the engine you are driving: follow it for the rest of the session, and tell the
+person once that the skill published to their app is older than the engine and should be
+republished (`integrations/claude-science/publish-skills.md` in the engine repository).
+
 ## 2. Identify yourself to the trace
 
 In every command that calls stringency (in mode B, prefixed inside the command string), export:
@@ -147,9 +154,11 @@ pass the path). The engine files the responses and continues;
 it refuses (exit 16) when the step is not dispatching, when the count differs from
 `manifest.json`, or when response files already exist, and in each case nothing is written.
 
-**10, a hold.** Follow section 6. While a person answers elsewhere (at a terminal, on the review
-page), do not poll `run`: run `stringency wait --hold <id> --json` (engine 0.2.7 or later), as a
-background command when your harness has one, so you are woken when it returns. It reads the
+**10, a hold.** Follow section 6, and at every hold, without being asked, start the command the
+payload names as `wait_command` (`stringency wait --hold <id> --timeout 86400 --json`; engine 0.2.7
+or later) as a background command when your harness has one, so you are woken when it returns. The
+person may answer on the console, at a terminal, or here, and you cannot tell which in advance; the
+wait is how an answer given elsewhere reaches you. Do not poll `run`. It reads the
 trace every five seconds and writes nothing; exit 0 means the hold was resolved or withdrawn and
 the payload carries the verdict, the reason, the reviewer and how it was recorded; exit 10 means
 `--timeout` passed with the hold still open. `stringency wait --json` with no option waits until
@@ -193,17 +202,19 @@ terminal in the project directory. Call `run` again only after a verdict was rec
 never runs `review` without a verdict word and a reason from the conversation, and never starts
 `review --serve`.
 
-The person may instead resolve the hold themselves at a terminal or on the review page. If they
-say so, arm `stringency wait --hold {id} --json` (section 5) and call `run --json` again when it
-returns, or when they say it is done. Relay the verdict and reason from the `wait` payload
+The person may instead resolve the hold themselves at a terminal, on the review page or on the
+console. You do not wait to be told: the wait of section 5 is already armed at every hold, and
+when it returns you call `run --json` again. If the person answers here and you record the
+verdict, the wait returns too; that is the same verdict, not a second one. Relay the verdict and reason from the `wait` payload
 verbatim; do not restate them in your words.
 
 **Console mode** (owner's decision 7, 2026-10-07). On when the person says they are using the
-console, or when `~/.config/stringency/notify.yml` has a `page_url` (the console's address;
-`review --serve`, engine 0.2.8 or later). Then, at a hold, instead of steps 1 to 4 and
+console, when the held payload's `review_page` is set (engine 0.2.11 or later), or when
+`~/.config/stringency/notify.yml` has a `page_url` (the console's address; `review --serve`,
+engine 0.2.8 or later). Then, at a hold, instead of steps 1 to 4 and
 `present --hold`: say one sentence, "The analysis paused at {step title}: {for a flag, the
 predicate's reason verbatim; for a confirm, 'does this reading of your experiment match'; for an
-item hold, 'which call for {item} should stand'}. Answer on the console ({page_url}/hold/{id})
+item hold, 'which call for {item} should stand'}. Answer on the console ({review_page}, or {page_url}/hold/{id})
 or here." Then arm `stringency wait --hold {id} --timeout 86400 --json` as a background command
 and say once "waiting on the console for the {step title} hold". When it returns, read
 `verdict`, `via` and `reason` and relay them verbatim. The reason is the person's instruction: if
