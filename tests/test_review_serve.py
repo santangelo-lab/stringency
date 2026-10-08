@@ -307,16 +307,23 @@ def test_landing_has_needs_you_then_the_board_with_sentences(server: tuple[str, 
     assert body.index("Needs you") < body.index("Board") < body.index("In words")
     assert sentence(project_entry(p.root)) in html.unescape(body)  # the board's sentence, verbatim
     assert f'href="/project/{p.config.project_id}"' in body and 'content="60"' in body
+    # the inbox: one card under its ask heading, the title linking to the hold
+    assert "Settle a disagreement" in body
+    h = queue(p)[0]
+    assert f'<div class="card" data-card="{h["hold_id"]}">' in body
+    assert (
+        f'<a href="/hold/{h["hold_id"]}" data-open><strong>Label the groups, item A</strong>'
+        in body
+    )
+    assert "run_disagreement" in body and "item A" in body
+    # the board: the held project is active, with the four driver columns
     tables = _tables(body)
-    assert tables[0][0] == ["project", "what", "step", "kind", "item", "waits on", "open for"]
-    assert tables[0][1][:5] == [
-        p.root.name,
-        "Label the groups, item A",
-        "Label the groups",
-        "run_disagreement",
-        "A",
+    assert tables[0][0] == [
+        *["project", "pipeline", "method", "plan", "latest run", "current step"],
+        *["waiting on", "delivered", "for", "elsewhere", "driver", "last call"],
     ]
-    assert tables[-1][0][:4] == ["project", "pipeline", "method", "plan"]
+    assert tables[0][1][0] == p.root.name and "you" in tables[0][1][6]
+    assert "1 active, 0 delivered and idle" in body
 
 
 def test_project_page_names_every_step_by_title_with_status(server: tuple[str, Project]) -> None:

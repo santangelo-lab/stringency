@@ -48,6 +48,7 @@ from markupsafe import Markup
 
 from stringency.board import COLUMNS, project_entry, refresh_if_present, row, sentence
 from stringency.console import (
+    ASK_HEADINGS,
     Registry,
     Watcher,
     ask_of,
@@ -98,29 +99,44 @@ def read_token_file(path: Path) -> str:
 _ENV = Environment(undefined=StrictUndefined, autoescape=True)
 
 _STYLE = """
-body { font-family: system-ui, sans-serif; max-width: 64em; margin: 2em auto; padding: 0 1em; color: #222; }
+:root { --ink: #222; --muted: #666; --line: #ddd; --bg: #fff; --panel: #f6f6f6; --mark: #2f5d9e; --warn: #8a5a00; --err: #8a1f11; --errbg: #fbe9e7; }
+@media (prefers-color-scheme: dark) { :root { --ink: #e6e6e6; --muted: #a0a0a0; --line: #444; --bg: #161616; --panel: #222; --mark: #7fa6e0; --warn: #e0b45a; --err: #f0a090; --errbg: #3a1a14; } }
+body { font-family: system-ui, sans-serif; max-width: 72em; margin: 0 auto; padding: 0 1em 3em; color: var(--ink); background: var(--bg); }
+header.bar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1.2em; padding: 0.8em 0; border-bottom: 1px solid var(--line); margin-bottom: 1.2em; }
+header.bar strong { font-size: 1.1em; }
+header.bar span { color: var(--muted); font-size: 0.9em; }
+a { color: var(--mark); }
 h1 { font-size: 1.2em; font-weight: 600; }
 h2 { font-size: 1em; font-weight: 600; margin-top: 2em; }
 h3 { font-size: 0.95em; font-weight: 600; margin: 1.2em 0 0.4em; }
-.fork { margin-left: 1.5em; }
-.stale { color: #8a5a00; }
-tr.focus td { outline: 2px solid #2f5d9e; }
 table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; padding: 0.3em 0.6em; border-bottom: 1px solid #ddd; vertical-align: top; }
-pre { white-space: pre-wrap; word-break: break-word; background: #f6f6f6; padding: 1em; border: 1px solid #ddd; }
-p.note { color: #555; font-size: 0.9em; }
-p.error { color: #8a1f11; background: #fbe9e7; padding: 0.6em 1em; border: 1px solid #e0b4b4; }
+th, td { text-align: left; padding: 0.3em 0.6em; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; cursor: pointer; }
+pre { white-space: pre-wrap; word-break: break-word; background: var(--panel); padding: 1em; border: 1px solid var(--line); }
+p.note { color: var(--muted); font-size: 0.9em; }
+p.error { color: var(--err); background: var(--errbg); padding: 0.6em 1em; border: 1px solid var(--err); }
 p.crumbs { font-size: 0.9em; }
-fieldset { border: 1px solid #ddd; margin: 1em 0; padding: 0.6em 1em; }
+.tag { display: inline-block; border: 1px solid var(--line); border-radius: 3px; padding: 0 0.4em; font-size: 0.8em; color: var(--muted); margin-left: 0.4em; font-weight: normal; }
+.card { border: 1px solid var(--line); padding: 0.7em 1em; margin: 0.5em 0; }
+.card.focus { outline: 2px solid var(--mark); }
+.card .meta { color: var(--muted); font-size: 0.9em; margin-top: 0.2em; }
+.you { color: var(--warn); font-weight: 600; }
+.stale { color: var(--warn); font-weight: 600; }
+.fork { margin-left: 1.5em; }
+.reason { border-left: 3px solid var(--mark); padding: 0.4em 1em; margin: 0.6em 0; white-space: pre-wrap; }
+details summary { cursor: pointer; color: var(--muted); }
+fieldset { border: 1px solid var(--line); margin: 1em 0; padding: 0.6em 1em; }
 label { display: block; margin: 0.3em 0; }
-textarea, select { font: inherit; width: 100%; max-width: 40em; }
+textarea, select { font: inherit; width: 100%; max-width: 40em; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
 button { font: inherit; padding: 0.4em 1.2em; }
+kbd { font: 0.85em ui-monospace, monospace; border: 1px solid var(--line); border-radius: 3px; padding: 0 0.3em; }
 """
 
 _HEAD = """<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>{{ title }}</title>{% if refresh %}<meta http-equiv="refresh" content="{{ refresh }}">{% endif %}<style>{{ style }}</style><script src="/static/console.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }}</title>{% if refresh %}<meta http-equiv="refresh" content="{{ refresh }}">{% endif %}<style>{{ style }}</style><script src="/static/console.js" defer></script></head>
 <body>
+<header class="bar"><strong><a href="/">stringency console</a></strong><span>{{ bar }}</span></header>
 """
 STATIC_DIR = Path(__file__).with_name("static")
 CSP = (
@@ -135,38 +151,61 @@ _FOOT = """
 
 LANDING_HTML = _ENV.from_string(
     _HEAD
-    + """<h1>Projects</h1>
-<p class="note">Served by stringency review --serve for {{ user }} on {{ host }}{% if read_only %}, read-only{% else %}. A verdict recorded here is recorded as this account's, via web{% endif %}. Read fresh on every load; this page reloads itself every {{ refresh }} seconds.</p>
-<section data-live="needs">
-<h2>Needs you{% if n_holds %} ({{ n_holds }}){% endif %}</h2>
+    + """<section data-live="needs">
+<h2>Needs you{% if n_holds %} <span class="tag">{{ n_holds }} hold{{ "s" if n_holds != 1 }} in {{ n_hold_projects }} project{{ "s" if n_hold_projects != 1 }}</span>{% endif %} <span class="tag"><kbd>j</kbd>/<kbd>k</kbd> move, <kbd>Enter</kbd> open</span></h2>
 {% if n_holds %}
 {% for g in groups if g.cards %}
 <h3>{{ g.heading }}</h3>
-<table>
-<tr><th>project</th><th>what</th><th>step</th><th>kind</th><th>item</th><th>waits on</th><th>open for</th></tr>
 {% for c in g.cards %}
-<tr data-card="{{ c.hold_id }}"><td><a href="{{ c.project_href }}">{{ c.project }}</a></td><td><a href="{{ c.href }}" data-open>{{ c.title }}</a></td><td>{{ c.step }}</td><td>{{ c.kind }}</td><td>{{ c.item }}</td><td>{{ c.waits_on }}</td><td>{{ c.age }}</td></tr>
+<div class="card" data-card="{{ c.hold_id }}">
+<a href="{{ c.href }}" data-open><strong>{{ c.title }}</strong></a> in <strong><a href="{{ c.project_href }}">{{ c.project }}</a></strong>{% if c.item %} <span class="tag">item {{ c.item }}</span>{% endif %}
+<div class="meta">open {{ c.age }} · {{ c.step }} · {{ c.kind }} · waits on {{ c.waits_on }}</div>
+</div>
 {% endfor %}
-</table>
 {% endfor %}
 {% else %}
-<p>No unresolved holds in {{ n_projects }} project(s).</p>
+<p class="note">Nothing waits on a person in {{ n_projects }} project{{ "s" if n_projects != 1 }}.</p>
 {% endif %}
 </section>
 <section data-live="board">
-<h2>Board</h2>
+<h2>Board <span class="tag">{{ active | length }} active, {{ idle | length }} delivered and idle</span></h2>
+{% if active %}
 <table>
 <tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}<th>for</th><th>elsewhere</th><th>driver</th><th>last call</th></tr>
-{% for b in board %}
-<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}<td>{{ b.driver.elapsed }}</td><td>{{ b.driver.elsewhere }}</td><td>{{ b.driver.who }}</td><td>{{ b.driver.last_call_age }}{% if b.driver.stale %} <strong class="stale">stale</strong>{% endif %}</td></tr>
+{% for b in active %}
+<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% elif c == "waiting on" and b.you %}<span class="you">you</span>: {{ b.you }}{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}<td>{{ b.driver.elapsed }}</td><td>{{ b.driver.elsewhere }}</td><td>{{ b.driver.who }}</td><td>{{ b.driver.last_call_age }}{% if b.driver.stale %} <span class="stale">stale</span>{% endif %}</td></tr>
 {% endfor %}
 </table>
-<p class="note">"for": how long the current step has been in its state; "elsewhere": the median time the same step took where it completed, in the projects shown; "stale": no engine call for longer than fifteen minutes and twice that time while the step is the engine's or the operator's.</p>
-<h2>In words</h2>
+{% else %}
+<p class="note">No project is running.</p>
+{% endif %}
+{% if idle %}
+<details>
+<summary>Delivered and idle: {{ idle | length }} project{{ "s" if idle | length != 1 }}</summary>
+<table>
+<tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}<th>for</th><th>elsewhere</th><th>driver</th><th>last call</th></tr>
+{% for b in idle %}
+<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}<td>{{ b.driver.elapsed }}</td><td>{{ b.driver.elsewhere }}</td><td>{{ b.driver.who }}</td><td>{{ b.driver.last_call_age }}</td></tr>
+{% endfor %}
+</table>
+</details>
+{% endif %}
+<p class="note">"for": how long the current step has been in its state; "elsewhere": the median time the same step took where it completed, in the projects shown; "stale": no engine call for longer than fifteen minutes and twice that time while the step is the engine's or the operator's. Click a column header to sort.</p>
+<h2>Delivered in the last week</h2>
+{% if today %}
+<table>
+<tr><th>when</th><th>project</th><th>files</th></tr>
+{% for d in today %}<tr><td>{{ d.when }}</td><td><a href="{{ d.href }}">{{ d.project }}</a></td><td>{{ d.files }}</td></tr>
+{% endfor %}
+</table>
+{% else %}<p class="note">Nothing delivered in the last week.</p>{% endif %}
+<details>
+<summary>In words</summary>
 <ul>
 {% for b in board %}<li>{% if b.href %}<a href="{{ b.href }}">{{ b.name }}</a>{% else %}{{ b.name }}{% endif %}: {{ b.sentence }}</li>
 {% endfor %}
 </ul>
+</details>
 </section>
 """
     + _FOOT
@@ -174,7 +213,7 @@ LANDING_HTML = _ENV.from_string(
 
 PROJECT_HTML = _ENV.from_string(
     _HEAD
-    + """<p class="crumbs"><a href="{{ list_href }}">All projects</a></p>
+    + """<p class="crumbs"><a href="{{ list_href }}">All projects</a> / {{ name }}</p>
 <h1>{{ name }}</h1>
 <section data-live="project">
 <p>{{ sentence }}</p>
@@ -190,12 +229,12 @@ PROJECT_HTML = _ENV.from_string(
 {% else %}<p>No run has started.</p>{% endif %}
 <h2>Needs you</h2>
 {% if holds %}
-<table>
-<tr><th>what</th><th>step</th><th>kind</th><th>item</th><th>waits on</th><th>open for</th></tr>
-{% for r in holds %}
-<tr><td><a href="{{ r.href }}">{{ r.title }}</a></td><td>{{ r.step }}</td><td>{{ r.kind }}</td><td>{{ r.item }}</td><td>{{ r.waits_on }}</td><td>{{ r.age }}</td></tr>
+{% for c in holds %}
+<div class="card" data-card="{{ c.hold_id }}">
+<a href="{{ c.href }}" data-open><strong>{{ c.title }}</strong></a>{% if c.item %} <span class="tag">item {{ c.item }}</span>{% endif %}
+<div class="meta">open {{ c.age }} · {{ c.step }} · {{ c.kind }} · waits on {{ c.waits_on }}</div>
+</div>
 {% endfor %}
-</table>
 {% else %}<p>Nothing waits on a person. The plan is {{ confirm }}.</p>{% endif %}
 <h2>Delivered</h2>
 {% if deliveries %}
@@ -242,12 +281,24 @@ RUN_HTML = _ENV.from_string(
 
 HOLD_HTML = _ENV.from_string(
     _HEAD
-    + """<p class="crumbs"><a href="{{ list_href }}">All projects</a> / <a href="{{ project_href }}">{{ project }}</a></p>
-<h1>Hold {{ hold_id }} ({{ kind }}){% if step_title %} on {{ step_title }}{% endif %}{% if item_id %}, item {{ item_id }}{% endif %}</h1>
-<p class="note">Project {{ project }}. What follows is what stringency review prints at a terminal; the form
-records the same verdicts by the same rules.</p>
+    + """<p class="crumbs"><a href="{{ list_href }}">All projects</a> / <a href="{{ project_href }}">{{ project }}</a> / hold</p>
+<h1>{{ ask_heading }}: {{ card_title }}</h1>
+<p class="note">{{ project }}{% if step_title %} · {{ step_title }}{% endif %}{% if item_id %} · item {{ item_id }}{% endif %} · {{ kind }} hold · open {{ age }}{% if predicate %} · {{ predicate }}{% endif %}. The form records the same verdicts by the same rules as the terminal. <kbd>a</kbd> accept, <kbd>r</kbd> reject, <kbd>d</kbd> defer{% if replicates %}, <kbd>o</kbd> override{% endif %}, <kbd>Ctrl-Enter</kbd> record.</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if decision %}
+<h2>The decision</h2>
+<table>
+<tr><th>parameter</th><th>default</th><th>value</th><th>source</th></tr>
+{% for d in decision %}<tr><td>{{ d.name }}</td><td>{{ d.default }}</td><td>{{ d.value }}</td><td>{{ d.source }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+{% if operator_reason %}
+<h2>The operator's reason</h2>
+<div class="reason">{{ operator_reason }}</div>
+{% endif %}
 {{ view_sections }}
+<h2>The packet, as the terminal prints it</h2>
 <pre>{{ text }}</pre>
 {% if resolved %}
 <p>This hold was resolved by review {{ resolved }}.</p>
@@ -284,7 +335,7 @@ records the same verdicts by the same rules.</p>
 </fieldset>
 {% endif %}
 <fieldset>
-<legend>Reason, in your own words (required for accept on a flag, reject, override). The operator reads it when it resumes: if the verdict needs a next step, say it here.</legend>
+<legend>Your reason (required for accept on a flag, reject, override). The operator reads it when it resumes: if the verdict needs a next step, say it here.</legend>
 <textarea name="reason" rows="4">{{ reason }}</textarea>
 </fieldset>
 <button type="submit">Record verdict</button>
@@ -311,6 +362,39 @@ ERROR_HTML = _ENV.from_string(
 """
     + _FOOT
 )
+
+
+def _decision_rows(ctx: dict[str, Any]) -> list[dict[str, str]]:
+    """The parameters a parameter hold asks about, from its evidence: `decision_points`
+    (default, value, source) or `proposed` (default, proposed)."""
+    evidence = ctx.get("evidence")
+    ev = evidence if isinstance(evidence, dict) else {}
+    rows: list[dict[str, str]] = []
+    points = ev.get("decision_points")
+    if isinstance(points, dict):
+        for name, d in points.items():
+            if isinstance(d, dict):
+                rows.append(
+                    {
+                        "name": str(name),
+                        "default": str(d.get("default", "")),
+                        "value": str(d.get("value", "")),
+                        "source": str(d.get("source", "")),
+                    }
+                )
+    proposed = ev.get("proposed")
+    if isinstance(proposed, dict):
+        for name, d in proposed.items():
+            if isinstance(d, dict):
+                rows.append(
+                    {
+                        "name": str(name),
+                        "default": str(d.get("default", "")),
+                        "value": str(d.get("proposed", "")),
+                        "source": "agent",
+                    }
+                )
+    return rows
 
 
 def _age(created: str | None) -> str:
@@ -368,6 +452,55 @@ def _content_type(name: str, kind: str) -> str:
         return _KIND_TYPES[kind]
     guessed, _ = mimetypes.guess_type(name)
     return guessed or "application/octet-stream"
+
+
+def _is_active(entry: dict[str, Any]) -> bool:
+    """A project is active when something is still to happen: no run yet, a run that is not
+    closed, an open hold, or a completed run not yet delivered."""
+    if "error" in entry:
+        return True
+    if entry.get("holds"):
+        return True
+    run = entry.get("run")
+    if run is None:
+        return entry.get("confirm") != "rejected"
+    if run["status"] not in ("completed", "abandoned"):
+        return True
+    delivered = entry.get("delivered")
+    return run["status"] == "completed" and not (delivered and delivered["run_id"] == run["run_id"])
+
+
+def _asks_you(entry: dict[str, Any], cards: list[dict[str, Any]]) -> str:
+    """What this project's open holds ask, for the board's waiting-on cell."""
+    mine = [c for c in cards if c["project"] == entry["name"]]
+    if not mine:
+        return ""
+    return "; ".join(dict.fromkeys(ASK_HEADINGS[c["group"]].lower() for c in mine))
+
+
+RECENT_DAYS = 7
+
+
+def _delivered_today(entry: dict[str, Any], name: str) -> list[dict[str, Any]]:
+    """The project's latest delivery when it is recent (the last `RECENT_DAYS`), shown in
+    local time."""
+    d = entry.get("delivered")
+    if not d or not d.get("when"):
+        return []
+    try:
+        when = datetime.fromisoformat(str(d["when"]).replace("Z", "+00:00"))
+    except ValueError:
+        return []
+    if (datetime.now(UTC) - when).total_seconds() > RECENT_DAYS * 86400:
+        return []
+    return [
+        {
+            "when": when.astimezone().strftime("%Y-%m-%d %H:%M"),
+            "project": name,
+            "href": f"/run/{d['run_id']}",
+            "files": f"{len(d.get('files') or [])} files",
+        }
+    ]
 
 
 _NO_DRIVER: dict[str, Any] = {
@@ -471,6 +604,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 list_href=self._list_href() if with_link else "",
                 refresh=None,
                 style=_STYLE,
+                bar=self._bar(),
             ),
         )
 
@@ -495,6 +629,14 @@ class ReviewHandler(BaseHTTPRequestHandler):
 
     def _href(self, path: str) -> str:
         return path
+
+    def _bar(self) -> str:
+        who = f"{self.state.user} on {self.state.host}"
+        return (
+            f"read-only for {who}; verdicts are recorded at a terminal or on your own console"
+            if self.state.read_only
+            else f"as {who}; a verdict recorded here is recorded as this account's, via web"
+        )
 
     def _list_href(self) -> str:
         return "/"
@@ -679,6 +821,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 list_href=self._list_href(),
                 refresh=None,
                 style=_STYLE,
+                bar=self._bar(),
             ),
         )
 
@@ -828,12 +971,24 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     "cells": row(entry),
                     "sentence": sentence(entry),
                     "driver": drv,
+                    "active": _is_active(entry),
+                    "you": _asks_you(entry, cards),
+                    "today": _delivered_today(entry, root.name),
                 }
             )
+        active = [b for b in board if b["active"]]
+        idle = [b for b in board if not b["active"]]
+        today = sorted(
+            (d for b in board for d in b["today"]), key=lambda d: d["when"], reverse=True
+        )
         return LANDING_HTML.render(
-            title="stringency projects",
+            title="stringency console",
             groups=group_cards(cards),
             n_holds=len(cards),
+            n_hold_projects=len({c["project"] for c in cards}),
+            active=active,
+            idle=idle,
+            today=today,
             board=board,
             columns=list(COLUMNS),
             n_projects=len(roots),
@@ -842,6 +997,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             read_only=self.state.read_only,
             refresh=REFRESH_SECONDS,
             style=_STYLE,
+            bar=self._bar(),
         )
 
     def _driver(
@@ -868,6 +1024,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             "list_href": self._list_href(),
             "refresh": REFRESH_SECONDS,
             "style": _STYLE,
+            "bar": self._bar(),
         }
         if "error" in entry:
             return PROJECT_HTML.render(
@@ -963,6 +1120,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             project_href=self._project_href(root) or "/",
             refresh=None,
             style=_STYLE,
+            bar=self._bar(),
         )
 
     def _send_file(self, root: Path, run_id: str, name: str) -> None:
@@ -1010,16 +1168,26 @@ class ReviewHandler(BaseHTTPRequestHandler):
             project.pipeline.title(step) if step and project.pipeline.has_step(step) else step
         )
         view_sections = ""
-        if h["kind"] != "confirm":  # the confirm packet is the echo-back already
-            site = Site.load(project.root)
-            try:
+        site = Site.load(project.root)
+        try:
+            skill, _note = load_skill(site)
+            if h["kind"] != "confirm":  # the confirm packet is the echo-back already
                 hp = present_hold(site, h["hold_id"])
-            finally:
-                site.store.close()
-            if hp["sections"]:
-                view_sections = render_html(hp)
+                if hp["sections"]:
+                    view_sections = render_html(hp)
+        finally:
+            site.store.close()
+        ctx = hold_context(h)
+        group = ask_of(h, ctx)
+        title = card_title(h, ctx, group, step_title or "the plan", skill)
         return HOLD_HTML.render(
-            title=f"stringency hold {h['hold_id']}",
+            title=f"stringency console: {title}",
+            ask_heading=ASK_HEADINGS[group],
+            card_title=title,
+            decision=_decision_rows(ctx),
+            operator_reason=view.operator_reason,
+            age=_age(h["created"]),
+            predicate=str(ctx.get("predicate") or ""),
             hold_id=h["hold_id"],
             kind=h["kind"],
             step_title=step_title,
@@ -1041,6 +1209,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             post_href=f"/hold/{h['hold_id']}",
             refresh=None,
             style=_STYLE,
+            bar=self._bar(),
         )
 
 
