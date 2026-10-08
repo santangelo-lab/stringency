@@ -1144,13 +1144,24 @@ after_delivery:            # rendered by `present --run`, in order
     format: {col: percent | int | "<n>f"}   # optional per-column formatting
     path: <key of the list of row dicts>    # json_table only; dotted keys allowed; a dict renders as one row
 never_show: [run ids, hashes, ...]          # echoed as a footer, a rule for the operator
-hold_view:                 # rendered by `present --hold` for the predicate that opened the hold
-  - predicate: <predicate id>
-    step: <step id>        # optional (added 2026-10-07, console): holds on this step only
-    ask: "<phrase>"        # optional (added 2026-10-07, console): the card's title on the inbox
-    source: <path relative to runs/<run>/>
-    kind: table | json_table | jsonl
-    columns: [...]
+hold_view:                 # rendered by `present --hold` (and the console) for the hold's predicate
+  - predicate: <predicate id>   # or omit it: every hold on `step` (an item hold has no predicate)
+    step: <step id>        # optional: this entry applies to holds on this step only
+    ask: "<phrase>"        # optional: the card's title on the console's inbox, in the method's words
+    source: <path relative to runs/<run>/, as <step>/<output>/<file>; or $inputs.<name>/<file>; {item} is the item>
+    kind: table | json_table | jsonl | figure | figures | chart
+    columns: [...]         # table kinds
+    beside: <a second image, shown in a second column>          # figure
+    select: [<file>, ...]  # figures: a subset of the directory's images, in this order
+    x: <column>            # chart: a line of y against x from a table
+    y: <column>
+    mark_param: <parameter>        # chart: a vertical line at the hold's value of this parameter
+    mark_true: [<boolean column>]  # chart: a tick at every row where the column is true
+step_view:                 # the console's project page: what a step shows once it has produced it
+  - step: <step id>
+    title: "..."
+    source: <as above>
+    kind: figure | figures | table | json_table | jsonl
 ```
 
 `table` reads CSV or TSV; `jsonl` reads one JSON object per line (the judgment log

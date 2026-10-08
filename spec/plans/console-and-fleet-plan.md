@@ -19,8 +19,10 @@ DECISIONS-level or below. Section 7 lists the decisions the owner takes before t
 C1 (routes by id, the cookie, several roots with a rescanning registry, the service unit), the C2
 first cut (the inbox grouped by ask with the method's `ask` phrase and `step` selector, the
 driver block, the timeline), the C5 first cut (the `data_version` watcher, `/events`, the JSON
-routes, the vendored script, CSP) and C3 (console mode in the operator skill). Not built: the
-second cut (figures, tables and the chart at the hold, batch cards, the gallery, the history), C4
+routes, the vendored script, CSP) and C3 (console mode in the operator skill). Then (2026-10-08, the owner: "let's work on the figures now"): the figure, figures and chart kinds,
+`beside`, `select`, `step_view`, no-predicate entries and `{item}` built (engine 0.2.10) and the
+`xenium-upstream` skill written for every hold and step (method rc8). Not built: batch cards, the
+gallery, the history, C4
 (the resource cap), `resources_observed`, `wait --json` already prints the reason. Nothing is
 released: the branch merges into `main` and tags `v0.2.8`; the standing unit
 `scripts/stringency-console.service` then runs the shared install. Earlier status: design done and

@@ -39,13 +39,24 @@ after_delivery:            # rendered by `present`, in order
     format: {col: percent | int | "<n>f"}
     path: <key of the list of row dicts>   # json_table only; a dict renders as one row
 never_show: [run ids, hashes, ...]         # echoed as a footer; a rule for the operator
-hold_view:                 # rendered by `present --hold` for the predicate that opened the hold
-  - predicate: <predicate id>
-    step: <step id>        # optional: this entry applies to holds on this step only (console, 2026-10-07)
+hold_view:                 # rendered by `present --hold` (and the console) for the hold's predicate
+  - predicate: <predicate id>   # or omit it: every hold on `step` (an item hold has no predicate)
+    step: <step id>        # optional: this entry applies to holds on this step only
     ask: "<phrase>"        # optional: the card's title on the console's inbox, in the method's words
-    source: <path relative to runs/<run>/>
-    kind: table | json_table | jsonl
-    columns: [...]
+    source: <path relative to runs/<run>/, as <step>/<output>/<file>; or $inputs.<name>/<file>; {item} is the item>
+    kind: table | json_table | jsonl | figure | figures | chart
+    columns: [...]         # table kinds
+    beside: <a second image, shown in a second column>          # figure
+    select: [<file>, ...]  # figures: a subset of the directory's images, in this order
+    x: <column>            # chart: a line of y against x from a table
+    y: <column>
+    mark_param: <parameter>        # chart: a vertical line at the hold's value of this parameter
+    mark_true: [<boolean column>]  # chart: a tick at every row where the column is true
+step_view:                 # the console's project page: what a step shows once it has produced it
+  - step: <step id>
+    title: "..."
+    source: <as above>
+    kind: figure | figures | table | json_table | jsonl
 ```
 
 Rules that follow from the design: a missing or malformed skill, a missing source, or an unknown
@@ -61,6 +72,20 @@ predicate that fires on several steps (`param.agent_proposed` on every decision 
 entry per step with `step:` set, so the elbow table is shown at the clustering hold and not at
 the normalisation hold; `ask:` is the question in the method's words, which the console's inbox
 uses as the card's title ("Approve the number of components and the clustering resolution").
+
+Figures (console, engine 0.2.10): `figure` shows one image, `beside` a second at the same size
+in a second column (this run's batch panel beside the uncorrected one); `figures` shows the
+images of an output directory in the order of its `figures.csv` (`file,what`; the `what` is the
+caption) or `select` names a subset in its own order; `chart` draws a line of one column against
+another from a table and marks the hold's value of `mark_param` (from the hold's
+`decision_points` or `proposed` evidence) and the rows where a `mark_true` column is true, so
+the person sees where thirty-five falls on the elbow before approving it. A source
+`<step>/<output>/<file>` resolves through the step's recorded output directory, so a forked run
+finds what it inherited, and `$inputs.<name>/<file>` reaches a project input. An entry with no
+`predicate` applies to every hold on its `step`, which is how an item hold of a judgment gets
+its figures; `{item}` in the source is the item. The console serves an image only from a
+directory the trace recorded as the step's output, or from a bound input. `step_view` entries
+are per step and show on the project page once the step has produced its outputs.
 
 ## 3. The analysis skill source, `skills/<pipeline>.analyze.yml`
 

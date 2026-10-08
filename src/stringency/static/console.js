@@ -71,6 +71,15 @@
     th.setAttribute("data-sorted", asc ? "asc" : "desc");
   });
 
+  // -- figures: click to see one at its natural size, click again to shrink -----------------
+  document.addEventListener("click", function (e) {
+    var img = e.target.closest && e.target.closest("img.fig");
+    if (!img) return;
+    var on = img.classList.toggle("zoom");
+    var grid = img.closest(".figs");
+    if (grid) grid.classList.toggle("zoomed", on);
+  });
+
   // -- the inbox from the keyboard -----------------------------------------------------------
   var cursor = -1;
   function cards() { return Array.prototype.slice.call(document.querySelectorAll("[data-card]")); }

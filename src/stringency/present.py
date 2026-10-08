@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,9 @@ from stringency.exit_codes import ConfigError
 from stringency.pipelines import Pipeline, find_pipeline, load_pipeline
 from stringency.plain import progress_sentence
 
-KINDS = ("table", "json_table", "jsonl", "text", "file")
+KINDS = ("table", "json_table", "jsonl", "text", "file", "figure", "figures", "chart")
+IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp", ".pdf")
+FIGURES_MANIFEST = "figures.csv"  # `file,what` (or `step,file,what`): the method's captions
 
 
 @dataclass
@@ -163,23 +166,103 @@ def markdown_table(columns: list[str], rows: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
+def inputs_of(project: Site) -> dict[str, Path]:
+    """The bound inputs by name, from `inputs.yml` at the project root."""
+    try:
+        data = yaml.safe_load((project.root / "inputs.yml").read_text())
+    except (OSError, yaml.YAMLError):
+        return {}
+    items = data.get("items") if isinstance(data, dict) else None
+    return {
+        str(it["name"]): Path(str(it["path"]))
+        for it in items or []
+        if isinstance(it, dict) and it.get("name") and it.get("path")
+    }
+
+
+def input_path(project: Site, name: str) -> Path | None:
+    """The bound path of a project input."""
+    return inputs_of(project).get(name)
+
+
+def step_dir(project: Site, run_id: str, step_id: str) -> Path | None:
+    """Where a step's outputs are for this run: `runs/<run>/<step>/` when it ran here, else the
+    directory the `artifacts` table records for the step (a fork inherits the parent run's
+    outputs, and the child's run directory has no copy). Reads: artifacts."""
+    here = project.root / "runs" / run_id / step_id
+    if here.is_dir():
+        return here
+    row = project.store.one(
+        "SELECT path FROM artifacts WHERE run_id = ? AND step_id = ? AND status = 'produced' "
+        "ORDER BY rowid LIMIT 1",
+        (run_id, step_id),
+    )
+    return Path(str(row["path"])).parent if row is not None else None
+
+
 def _resolve(project: Site, run_id: str, source: str, deliver_dir: Path | None) -> Path | None:
-    """A skill source is relative to deliver/<run>/ (preferred) or runs/<run>/ (fallback)."""
+    """A skill source is relative to deliver/<run>/ (preferred) or runs/<run>/ (fallback); a
+    source `<step>/<rest>` also resolves through the step's recorded output directory, so a
+    forked run finds the outputs it inherited; `$inputs.<name>/<rest>` resolves through
+    `inputs.yml`. A `<name>.dir` output directory may be written without its suffix."""
+    if source.startswith("$inputs."):
+        name, _, rest = source[len("$inputs.") :].partition("/")
+        base = input_path(project, name)
+        if base is None:
+            return None
+        target = base / rest if rest else base
+        return target if target.exists() else None
     for base in (deliver_dir, project.root / "runs" / run_id):
-        if base is not None and (base / source).exists():
-            return base / source
+        if base is None:
+            continue
+        for cand in _dir_variants(base / source):
+            if cand.exists():
+                return cand
+    step, _, rest = source.partition("/")
+    base = step_dir(project, run_id, step) if step and rest else None
+    if base is not None:
+        for cand in _dir_variants(base / rest):
+            if cand.exists():
+                return cand
     return None
 
 
+def _dir_variants(path: Path) -> list[Path]:
+    """`<step>/<out>/<file>` written by the method as `<step>/<out>.dir/<file>`: try both."""
+    out = [path]
+    parts = path.parts
+    for i, part in enumerate(parts):
+        if i > 0 and not part.endswith(".dir") and "." not in part:
+            cand = Path(*parts[:i], part + ".dir", *parts[i + 1 :])
+            if cand not in out:
+                out.append(cand)
+    return out
+
+
+def _fill(source: str, hold: dict[str, Any] | None) -> str:
+    """`{item}` and `{step}` in a source, from the hold the view is for."""
+    if not hold:
+        return source
+    return source.replace("{item}", str(hold.get("item_id") or "")).replace(
+        "{step}", str(hold.get("step_id") or "")
+    )
+
+
 def render_items(
-    project: Site, run_id: str, items: list[dict[str, Any]], deliver_dir: Path | None
+    project: Site,
+    run_id: str,
+    items: list[dict[str, Any]],
+    deliver_dir: Path | None,
+    hold: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[str]]:
+    """The skill's items as sections. `hold` (item id, step id, the hold's evidence) fills
+    `{item}` placeholders and gives a `chart` its marked parameter value."""
     sections: list[dict[str, Any]] = []
     files: list[str] = []
     for item in items:
         title = str(item.get("title") or item.get("source") or "")
         kind = str(item.get("kind") or "table")
-        src = str(item.get("source") or "")
+        src = _fill(str(item.get("source") or ""), hold)
         path = _resolve(project, run_id, src, deliver_dir)
         if kind not in KINDS:
             sections.append({"title": title, "kind": kind, "error": f"unknown kind `{kind}`"})
@@ -196,15 +279,50 @@ def render_items(
         if kind == "text":
             sections.append({"title": title, "kind": "text", "text": path.read_text()})
             continue
+        if kind == "figure":
+            beside_src = _fill(str(item.get("beside") or ""), hold)
+            beside = _resolve(project, run_id, beside_src, deliver_dir) if beside_src else None
+            sections.append(
+                {
+                    "title": title,
+                    "kind": "figure",
+                    "path": str(path),
+                    "caption": _caption(path),
+                    "beside": str(beside) if beside else None,
+                    "beside_caption": _caption(beside) if beside else None,
+                    "beside_missing": beside_src if beside_src and beside is None else None,
+                }
+            )
+            continue
+        if kind == "figures":
+            select = item.get("select")
+            wanted = [str(x) for x in select] if isinstance(select, list) else None
+            sections.append(
+                {
+                    "title": title,
+                    "kind": "figures",
+                    "dir": str(path),
+                    "images": _images(path, wanted),
+                }
+            )
+            continue
         try:
             if kind == "table":
                 rows = _rows_from_table(path)
             elif kind == "jsonl":
                 rows = _rows_from_jsonl(path)
+            elif kind == "chart":
+                rows = _rows_from_table(path)
             else:
                 rows = _rows_from_json(path, item.get("path"))
         except (OSError, ValueError, ConfigError) as e:
             sections.append({"title": title, "kind": kind, "error": f"{src}: {e}"})
+            continue
+        if kind == "chart":
+            try:
+                sections.append({"title": title, **chart_section(rows, item, hold)})
+            except ConfigError as e:
+                sections.append({"title": title, "kind": "chart", "error": f"{src}: {e}"})
             continue
         raw_cols = item.get("columns")
         cols: list[str] | None = [str(c) for c in raw_cols] if isinstance(raw_cols, list) else None
@@ -214,6 +332,194 @@ def render_items(
         )
         sections.append({"title": title, "kind": kind, **_table(rows, cols, fmts)})
     return sections, files
+
+
+def _captions(directory: Path) -> dict[str, str]:
+    """The method's captions from `figures.csv` beside the images (`file,what`)."""
+    f = directory / FIGURES_MANIFEST
+    if not f.is_file():
+        return {}
+    try:
+        return {
+            str(r.get("file") or ""): str(r.get("what") or "")
+            for r in csv.DictReader(f.read_text().splitlines())
+        }
+    except (OSError, csv.Error):
+        return {}
+
+
+def _caption(path: Path | None) -> str:
+    if path is None:
+        return ""
+    return _captions(path.parent).get(path.name, "")
+
+
+def _images(directory: Path, select: list[str] | None) -> list[dict[str, str]]:
+    """The images of a figures directory, in the manifest's order (or sorted), each with its
+    caption; `select` names a subset in its own order."""
+    if not directory.is_dir():
+        return []
+    captions = _captions(directory)
+    names = [n for n in captions if (directory / n).is_file()] or sorted(
+        p.name for p in directory.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES
+    )
+    for p in sorted(directory.iterdir()):
+        if p.suffix.lower() in IMAGE_SUFFIXES and p.name not in names:
+            names.append(p.name)
+    if select is not None:
+        names = [n for n in select if n in names]
+    return [
+        {"file": n, "path": str(directory / n), "what": captions.get(n, "")}
+        for n in names
+        if (directory / n).suffix.lower() in IMAGE_SUFFIXES
+    ]
+
+
+def _number(v: Any) -> float | None:
+    try:
+        return float(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _true(v: Any) -> bool:
+    return str(v).strip().lower() in ("true", "1", "yes", "t")
+
+
+def _marked_value(hold: dict[str, Any] | None, param: str) -> Any:
+    """The value of a parameter in the hold's evidence: `decision_points.<p>.value` or
+    `proposed.<p>.proposed`."""
+    ev = (hold or {}).get("evidence")
+    if not isinstance(ev, dict):
+        return None
+    for key, field in (("decision_points", "value"), ("proposed", "proposed")):
+        d = ev.get(key)
+        if isinstance(d, dict) and isinstance(d.get(param), dict):
+            return d[param].get(field)
+    return None
+
+
+def chart_section(
+    rows: list[dict[str, Any]], item: dict[str, Any], hold: dict[str, Any] | None
+) -> dict[str, Any]:
+    """A line of column `y` against column `x`, a vertical mark at the hold's value of
+    `mark_param` (or the entry's `mark_value`), and a tick at every row where a `mark_true`
+    column is true. Nothing is computed from the data beyond reading it."""
+    x, y = str(item.get("x") or ""), str(item.get("y") or "")
+    if not x or not y:
+        raise ConfigError("a chart needs `x` and `y` column names")
+    points: list[list[float]] = []
+    for r in rows:
+        xv, yv = _number(r.get(x)), _number(r.get(y))
+        if xv is not None and yv is not None:
+            points.append([xv, yv])
+    if not points:
+        raise ConfigError(f"no numeric rows for `{x}` and `{y}`")
+    marks: list[dict[str, Any]] = []
+    param = item.get("mark_param")
+    value = _marked_value(hold, str(param)) if param else item.get("mark_value")
+    mv = _number(value)
+    if mv is not None:
+        marks.append({"label": f"{param or 'mark'} = {value}", "x": mv})
+    ticks: list[dict[str, Any]] = []
+    flags = item.get("mark_true")
+    for col in [str(c) for c in flags] if isinstance(flags, list) else []:
+        for r in rows:
+            xv = _number(r.get(x))
+            if xv is not None and _true(r.get(col)):
+                ticks.append({"label": f"{col} at {r.get(x)}", "x": xv})
+    return {"kind": "chart", "x": x, "y": y, "points": points, "marks": marks, "ticks": ticks}
+
+
+def chart_svg(section: dict[str, Any], width: int = 720, height: int = 300) -> str:
+    """An inline SVG of a chart section: axes, the line, the marks and the ticks, nothing else.
+    Escaped text; no script."""
+    from markupsafe import escape
+
+    pts: list[list[float]] = [[float(a), float(b)] for a, b in section["points"]]
+    left, right, top, bottom = 52, 16, 22, 40
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    x0, x1 = min(xs), max(xs)
+    y1 = max(ys)
+    y0 = min(0.0, min(ys))
+    if x1 == x0:
+        x1 = x0 + 1
+    if y1 == y0:
+        y1 = y0 + 1
+
+    def sx(v: float) -> float:
+        return left + (v - x0) / (x1 - x0) * (width - left - right)
+
+    def sy(v: float) -> float:
+        return top + (1 - (v - y0) / (y1 - y0)) * (height - top - bottom)
+
+    out = [
+        f'<svg class="chart" viewBox="0 0 {width} {height}" width="100%" role="img" '
+        f'aria-label="{escape(section["y"])} against {escape(section["x"])}">'
+    ]
+    step = _nice_step((y1 - y0) / 5)
+    v = y0
+    while v <= y1 + 1e-9:
+        out.append(
+            f'<line class="grid" x1="{left}" x2="{width - right}" y1="{sy(v):.1f}" y2="{sy(v):.1f}"/>'
+            f'<text class="muted" x="{left - 8}" y="{sy(v) + 4:.1f}" text-anchor="end">{_short(v)}</text>'
+        )
+        v += step
+    out.append(
+        f'<line class="axis" x1="{left}" x2="{width - right}" y1="{sy(y0):.1f}" y2="{sy(y0):.1f}"/>'
+    )
+    xstep = _nice_step((x1 - x0) / 8)
+    v = x0
+    while v <= x1 + 1e-9:
+        out.append(
+            f'<text class="muted" x="{sx(v):.1f}" y="{height - bottom + 16}" text-anchor="middle">{_short(v)}</text>'
+        )
+        v += xstep
+    out.append(
+        f'<text class="muted" x="{(left + width - right) / 2:.1f}" y="{height - 6}" text-anchor="middle">{escape(section["x"])}</text>'
+    )
+    out.append(f'<text class="muted" x="{left}" y="{top - 8}">{escape(section["y"])}</text>')
+    for m in section["marks"]:
+        mx = sx(m["x"])
+        out.append(
+            f'<line class="mark" x1="{mx:.1f}" x2="{mx:.1f}" y1="{top}" y2="{sy(y0):.1f}"/>'
+            f'<text x="{mx + 6:.1f}" y="{top + 12}">{escape(m["label"])}</text>'
+        )
+    for i, t in enumerate(section["ticks"]):
+        tx = sx(t["x"])
+        ty = top + 34 + 16 * i
+        out.append(
+            f'<line class="tick" x1="{tx:.1f}" x2="{tx:.1f}" y1="{top + 30 + 16 * i}" y2="{sy(y0):.1f}"/>'
+            f'<text class="muted" x="{tx + 5:.1f}" y="{ty}">{escape(t["label"])}</text>'
+        )
+    d = " ".join(
+        f"{'M' if i == 0 else 'L'}{sx(p[0]):.1f} {sy(p[1]):.1f}" for i, p in enumerate(pts)
+    )
+    out.append(f'<path class="series" d="{d}"/>')
+    for p in pts:
+        out.append(
+            f'<circle class="pt" cx="{sx(p[0]):.1f}" cy="{sy(p[1]):.1f}" r="3">'
+            f"<title>{escape(section['x'])} {_short(p[0])}: {escape(section['y'])} {_short(p[1])}</title></circle>"
+        )
+    out.append("</svg>")
+    return "".join(out)
+
+
+def _nice_step(raw: float) -> float:
+    if raw <= 0:
+        return 1.0
+    import math
+
+    mag = float(10 ** math.floor(math.log10(raw)))
+    for m in (1, 2, 5, 10):
+        if raw <= m * mag:
+            return float(m * mag)
+    return 10 * mag
+
+
+def _short(v: float) -> str:
+    return str(int(v)) if float(v).is_integer() else f"{v:g}"
 
 
 def _deliver_dir(project: Site, run_id: str) -> Path | None:
@@ -320,12 +626,54 @@ def present_hold(
             v
             for v in views
             if isinstance(v, dict)
-            and str(v.get("predicate", "")).split("@")[0] == pred_id
+            and (
+                # by predicate, optionally narrowed to a step; or, with no predicate, every
+                # hold on the named step (an item hold has no predicate)
+                (v.get("predicate") and str(v.get("predicate", "")).split("@")[0] == pred_id)
+                or (not v.get("predicate") and v.get("step") == h["step_id"])
+            )
             and v.get("step") in (None, h["step_id"])  # an entry may name the step it is for
+            and not ("{item}" in str(v.get("source", "")) and h["item_id"] is None)
         ]
-        payload["sections"] += render_items(project, h["run_id"], matching, None)[0]
+        hold_info = {
+            "item_id": h["item_id"],
+            "step_id": h["step_id"],
+            "evidence": ctx.get("evidence"),
+        }
+        payload["sections"] += render_items(project, h["run_id"], matching, None, hold_info)[0]
         ns = skill.get("never_show")
         payload["never_show"] = [str(x) for x in ns] if isinstance(ns, list) else []
+    return payload
+
+
+def present_step(
+    project: Site, run_id: str, step_id: str, skills_dir: Path | None = None
+) -> dict[str, Any]:
+    """The method's `step_view` entries for one step of a run (console-and-fleet-plan 3.8):
+    what a person sees of a step outside a hold, once the step has produced it."""
+    skill, note = load_skill(project, skills_dir)
+    payload: dict[str, Any] = {
+        "schema": "stringency.present/1",
+        "kind": "step",
+        "run_id": run_id,
+        "step_id": step_id,
+        "skill": note,
+        "sections": [],
+        "files": [],
+        "never_show": [],
+    }
+    if skill is None:
+        return payload
+    raw = skill.get("step_view")
+    views = (
+        [v for v in raw if isinstance(v, dict) and v.get("step") == step_id]
+        if isinstance(raw, list)
+        else []
+    )
+    if views:
+        payload["sections"] += render_items(project, run_id, views, None)[0]
+    ns = skill.get("never_show")
+    payload["never_show"] = [str(x) for x in ns] if isinstance(ns, list) else []
     return payload
 
 
@@ -345,6 +693,15 @@ SECTIONS_HTML = _HTML_ENV.from_string(
 {% if s.get("error") %}<p class="note">(not shown: {{ s.error }})</p>
 {% elif s.kind == "file" %}<p>file to send: <code>{{ s.path }}</code></p>
 {% elif s.kind == "text" %}<pre>{{ s.text.rstrip() }}</pre>
+{% elif s.kind == "figure" %}<div class="figs{% if s.beside %} pair{% endif %}">
+<figure><img class="fig" src="{{ url(s.path) }}" alt="{{ s.caption or s.title }}"><figcaption>{{ s.caption or s.path.rsplit("/", 1)[-1] }}</figcaption></figure>
+{% if s.beside %}<figure><img class="fig" src="{{ url(s.beside) }}" alt="{{ s.beside_caption or s.beside }}"><figcaption>{{ s.beside_caption or s.beside.rsplit("/", 1)[-1] }}</figcaption></figure>
+{% elif s.beside_missing %}<p class="note">(beside: {{ s.beside_missing }} not found for this run)</p>{% endif %}
+</div>
+{% elif s.kind == "figures" %}{% if s.images %}<div class="figs">
+{% for im in s.images %}<figure><img class="fig" src="{{ url(im.path) }}" alt="{{ im.what or im.file }}"><figcaption>{{ im.what or im.file }}</figcaption></figure>
+{% endfor %}</div>{% else %}<p class="note">(no images in {{ s.dir }})</p>{% endif %}
+{% elif s.kind == "chart" %}{{ svg(s) }}
 {% elif not s.get("columns") %}<p class="note">(empty table)</p>
 {% else %}<table>
 <tr>{% for c in s.columns %}<th>{{ c }}</th>{% endfor %}</tr>
@@ -358,14 +715,19 @@ SECTIONS_HTML = _HTML_ENV.from_string(
 )
 
 
-def render_html(payload: dict[str, Any]) -> str:
+def render_html(payload: dict[str, Any], url_for: Callable[[str], str] | None = None) -> str:
     """The same sections as `render_markdown`, as an HTML fragment (escaped; no script). The
-    page that embeds it adds the heading, the links and the form."""
+    page that embeds it adds the heading, the links and the form, and maps a figure's path on
+    disk to a route it serves (`url_for`; the path itself by default)."""
+    from markupsafe import Markup
+
     return SECTIONS_HTML.render(
         sections=payload["sections"],
         files=payload["files"],
         never_show=payload["never_show"],
         skill=payload["skill"],
+        url=url_for or (lambda p: p),
+        svg=lambda s: Markup(chart_svg(s)),  # noqa: S704 - built from numbers and escaped text
     )
 
 
@@ -397,6 +759,18 @@ def render_markdown(payload: dict[str, Any]) -> str:
             out.append(f"file to send: {s['path']}")
         elif s["kind"] == "text":
             out.append(s["text"].rstrip())
+        elif s["kind"] == "figure":
+            out.append(
+                f"figure: {s['path']}" + (f" (beside: {s['beside']})" if s.get("beside") else "")
+            )
+        elif s["kind"] == "figures":
+            out += [f"- {im['path']}: {im['what']}".rstrip(": ") for im in s["images"]] or [
+                "(no images)"
+            ]
+        elif s["kind"] == "chart":
+            words = [f"{s['y']} against {s['x']}, {len(s['points'])} points"]
+            words += [m["label"] for m in s["marks"]] + [t["label"] for t in s["ticks"]]
+            out.append("chart: " + "; ".join(words))
         else:
             out.append(markdown_table(s["columns"], s["rows"]))
     if payload["kind"] == "run" and not payload["sections"]:

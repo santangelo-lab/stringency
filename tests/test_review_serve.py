@@ -843,3 +843,247 @@ def test_json_routes_and_static_and_csp(server: tuple[str, Project]) -> None:
     assert "operator_reason" in hold and hold["replicates"] and "verdicts" in hold
     assert get(f"{base}/api/nothing?t={TOKEN}")[0] == 404
     assert get(f"{base}/api/fleet")[0] == 403
+
+
+# -- figures at the hold and on the project page (plan 3.8, second cut) --------------------------
+
+_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478"
+    "9c6360000002000154a24f5d0000000049454e44ae426082"
+)
+
+
+def _figure_fixture(p: Project, run_id: str) -> Path:
+    """A figures directory with a manifest, a lone image, an elbow-like table and a
+    reference input directory, in a completed toy run."""
+    step = p.root / "runs" / run_id / "04_compare"
+    figs = step / "cmp_figures.dir"
+    figs.mkdir(exist_ok=True)
+    for name in ("a.png", "b.png", "c.png"):
+        (figs / name).write_bytes(_PNG)
+    (figs / "figures.csv").write_text('file,what\nb.png,"the b plot"\na.png,"the a plot"\n')
+    (figs / "notes.txt").write_text("not an image\n")
+    (step / "lone.png").write_bytes(_PNG)
+    # the directory is a recorded output of the step; the lone image is not
+    p.store.add_artifact(
+        {
+            "run_id": run_id,
+            "step_id": "04_compare",
+            "action_id": None,
+            "path": str(figs),
+            "hash": "0" * 64,
+            "size": 0,
+            "kind": "figures",
+            "name": "cmp_figures",
+        }
+    )
+    (step / "curve.csv").write_text(
+        "component,stdev,knee\n1,5.0,FALSE\n2,3.0,TRUE\n3,2.0,FALSE\n4,1.5,FALSE\n"
+    )
+    ref = p.root.parent / "reference_dir"
+    ref.mkdir(exist_ok=True)
+    (ref / "panel.png").write_bytes(_PNG)
+    return figs
+
+
+def _bind_reference(monkeypatch: pytest.MonkeyPatch, p: Project) -> None:
+    """A reference input bound after init would void the confirmation, so the bound inputs are
+    answered by the reader instead of `inputs.yml`."""
+    ref = p.root.parent / "reference_dir"
+    monkeypatch.setattr("stringency.present.inputs_of", lambda _site: {"ref_panel": ref})
+
+
+def test_figure_kinds_render_and_the_chart_marks_the_held_value(
+    make_project: InitFn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    from stringency.present import Site, present_hold, present_step, render_markdown
+    from tests.test_board_present import _delivered, _skill
+
+    p, run_id, _ = _delivered(make_project)
+    figs = _figure_fixture(p, run_id)
+    _bind_reference(monkeypatch, p)
+    _skill(
+        p,
+        [],
+        hold_view=[
+            {
+                "predicate": "toy.flagged",
+                "step": "04_compare",
+                "ask": "Approve the floor",
+                "source": "04_compare/curve.csv",
+                "kind": "chart",
+                "x": "component",
+                "y": "stdev",
+                "mark_param": "ndim",
+                "mark_true": ["knee"],
+            },
+            {
+                "predicate": "toy.flagged",
+                "source": "04_compare/cmp_figures",
+                "kind": "figures",
+                "select": ["c.png", "a.png"],
+            },
+            {
+                "predicate": "toy.flagged",
+                "source": "04_compare/lone.png",
+                "kind": "figure",
+                "beside": "$inputs.ref_panel/panel.png",
+            },
+            {
+                "predicate": "toy.flagged",
+                "source": "04_compare/lone.png",
+                "kind": "figure",
+                "beside": "$inputs.ref_panel/missing.png",
+            },
+            # no predicate: every hold on the step, with the item in the source
+            {"step": "04_compare", "source": "04_compare/cmp_figures/{item}.png", "kind": "figure"},
+        ],
+    )
+    (p.method_root / "skills" / f"{p.config.pipeline}.yml").write_text(
+        (p.method_root / "skills" / f"{p.config.pipeline}.yml").read_text()
+        + "step_view:\n  - step: 04_compare\n    source: 04_compare/cmp_figures\n    kind: figures\n"
+    )
+    hid = p.store.create_hold(
+        {
+            "run_id": run_id,
+            "step_id": "04_compare",
+            "kind": "flag",
+            "reason": "toy.flagged: something looked off",
+            "waits_on_role": "reviewer",
+            "context_json": json.dumps(
+                {
+                    "predicate": "toy.flagged@1",
+                    "evidence": {"decision_points": {"ndim": {"default": 3, "value": 2}}},
+                }
+            ),
+        }
+    )
+    item = p.store.create_hold(
+        {
+            "run_id": run_id,
+            "step_id": "04_compare",
+            "item_id": "b",
+            "kind": "run_disagreement",
+            "reason": "split",
+            "waits_on_role": "reviewer",
+            "context_json": "{}",
+        }
+    )
+    site = Site.load(p.root)
+    try:
+        hp = present_hold(site, hid)
+        kinds = [s["kind"] for s in hp["sections"]]
+        # the {item} entry applies to item holds only, so the flag hold gets four sections
+        assert kinds == ["chart", "figures", "figure", "figure"]
+        chart = hp["sections"][0]
+        assert chart["points"] == [[1.0, 5.0], [2.0, 3.0], [3.0, 2.0], [4.0, 1.5]]
+        assert chart["marks"] == [{"label": "ndim = 2", "x": 2.0}]
+        assert chart["ticks"] == [{"label": "knee at 2", "x": 2.0}]
+        strip = hp["sections"][1]
+        assert [im["file"] for im in strip["images"]] == ["c.png", "a.png"]
+        assert strip["images"][1]["what"] == "the a plot"
+        pair = hp["sections"][2]
+        assert pair["path"].endswith("lone.png") and pair["beside"].endswith("panel.png")
+        assert hp["sections"][3]["beside"] is None
+        assert hp["sections"][3]["beside_missing"] == "$inputs.ref_panel/missing.png"
+        md = render_markdown(hp)
+        assert "chart: stdev against component, 4 points; ndim = 2; knee at 2" in md
+        assert "figure: " in md and "(beside: " in md
+        # the item hold matches the entry without a predicate, with its item in the source
+        ip = present_hold(site, item)
+        assert [s["kind"] for s in ip["sections"]] == ["figure"]
+        assert ip["sections"][0]["path"] == str(figs / "b.png")
+        # the step view, without a hold: every image in the manifest's order, then the rest
+        sp = present_step(site, run_id, "04_compare")
+        assert [im["file"] for im in sp["sections"][0]["images"]] == ["b.png", "a.png", "c.png"]
+        assert present_step(site, run_id, "01_filter")["sections"] == []
+    finally:
+        site.store.close()
+    for base in _serve(p):
+        status, body = get(f"{base}/hold/{hid}?t={TOKEN}")
+        assert status == 200 and _only_console_script(body)
+        assert "<svg" in body and "ndim = 2" in body and "knee at 2" in body
+        assert body.count('<img class="fig"') == 5
+        assert f'src="/step-file/{run_id}/04_compare/cmp_figures.dir/c.png"' in body
+        assert f'src="/input-file/{p.config.project_id}/ref_panel/panel.png"' in body
+        assert "not found for this run" in body  # the missing beside, named
+        assert "Approve the floor" in body
+        # the images are served; anything outside a recorded output is not
+        with urllib.request.urlopen(
+            f"{base}/step-file/{run_id}/04_compare/cmp_figures.dir/c.png?t={TOKEN}"
+        ) as r:
+            assert r.headers["Content-Type"] == "image/png" and r.read() == _PNG
+        with urllib.request.urlopen(
+            f"{base}/input-file/{p.config.project_id}/ref_panel/panel.png?t={TOKEN}"
+        ) as r:
+            assert r.read() == _PNG
+        assert (
+            get(f"{base}/step-file/{run_id}/04_compare/cmp_figures.dir/notes.txt?t={TOKEN}")[0]
+            == 404
+        )
+        assert (
+            get(f"{base}/step-file/{run_id}/04_compare/lone.png?t={TOKEN}")[0] == 404
+        )  # not recorded
+        assert (
+            get(f"{base}/step-file/{run_id}/04_compare/..%2F..%2Fstringency.yml?t={TOKEN}")[0]
+            == 404
+        )
+        assert (
+            get(f"{base}/step-file/{run_id}/04_compare/cmp_figures.dir/nope.png?t={TOKEN}")[0]
+            == 404
+        )
+        assert get(f"{base}/input-file/{p.config.project_id}/nope/panel.png?t={TOKEN}")[0] == 404
+        assert (
+            get(f"{base}/input-file/{p.config.project_id}/ref_panel/..%2Fx.png?t={TOKEN}")[0] == 404
+        )
+        # the project page shows the step view
+        status, body = get(f"{base}/project/{p.config.project_id}?t={TOKEN}")
+        assert status == 200 and body.count('<img class="fig"') == 3
+        assert "cmp_figures.dir/b.png" in body
+
+
+def test_hold_view_resolves_an_inherited_step_of_a_fork(make_project: InitFn) -> None:
+    from stringency.fork import fork
+    from stringency.present import Site, present_hold, step_dir
+    from tests.test_board_present import _delivered, _skill
+
+    p, run_id, _ = _delivered(make_project)
+    _figure_fixture(p, run_id)
+    child = fork(p, from_run=run_id, at="05_report", sets=[], reason="again")
+    assert not (p.root / "runs" / child.run_id / "04_compare").exists()
+    site = Site.load(p.root)
+    try:
+        assert step_dir(site, child.run_id, "04_compare") == p.root / "runs" / run_id / "04_compare"
+        _skill(
+            p,
+            [],
+            hold_view=[
+                {"step": "05_report", "source": "04_compare/cmp_figures", "kind": "figures"},
+            ],
+        )
+        hid = p.store.create_hold(
+            {
+                "run_id": child.run_id,
+                "step_id": "05_report",
+                "kind": "flag",
+                "reason": "toy.flagged: x",
+                "waits_on_role": "reviewer",
+                "context_json": '{"predicate": "toy.flagged@1"}',
+            }
+        )
+        hp = present_hold(site, hid)
+        assert [im["file"] for im in hp["sections"][0]["images"]] == ["b.png", "a.png", "c.png"]
+    finally:
+        site.store.close()
+    for base in _serve(p):
+        status, body = get(f"{base}/hold/{hid}?t={TOKEN}")
+        assert (
+            status == 200
+            and f'src="/step-file/{child.run_id}/04_compare/cmp_figures.dir/b.png"' in body
+        )
+        with urllib.request.urlopen(
+            f"{base}/step-file/{child.run_id}/04_compare/cmp_figures.dir/b.png?t={TOKEN}"
+        ) as r:
+            assert r.status == 200 and r.read() == _PNG

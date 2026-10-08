@@ -46,6 +46,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from jinja2 import Environment, StrictUndefined
 from markupsafe import Markup
 
+from stringency import present
 from stringency.board import COLUMNS, project_entry, refresh_if_present, row, sentence
 from stringency.console import (
     ASK_HEADINGS,
@@ -61,7 +62,17 @@ from stringency.console import (
     timeline,
 )
 from stringency.exit_codes import ConfigError, RefusedError
-from stringency.present import Site, load_skill, present_hold, present_run, render_html
+from stringency.present import (
+    IMAGE_SUFFIXES,
+    Site,
+    input_path,
+    load_skill,
+    present_hold,
+    present_run,
+    present_step,
+    render_html,
+    step_dir,
+)
 from stringency.project import Project
 from stringency.review import _replicates_for, get_hold, record_review
 from stringency.review_render import render
@@ -73,6 +84,7 @@ DEFAULT_PORT = 8765
 DEFAULT_BIND = "127.0.0.1"
 REFRESH_SECONDS = 60
 COOKIE_PREFIX = "stringency_console_"
+MAX_IMAGE_BYTES = 25 * 1024 * 1024
 READ_ONLY_MESSAGE = (
     "This page is read-only and records no verdict. To record one, start your own page with "
     "scripts/review-page.sh, or run `stringency review --hold <id>` at a terminal in the "
@@ -130,6 +142,21 @@ label { display: block; margin: 0.3em 0; }
 textarea, select { font: inherit; width: 100%; max-width: 40em; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
 button { font: inherit; padding: 0.4em 1.2em; }
 kbd { font: 0.85em ui-monospace, monospace; border: 1px solid var(--line); border-radius: 3px; padding: 0 0.3em; }
+.figs { display: grid; grid-template-columns: repeat(auto-fill, minmax(18em, 1fr)); gap: 1em; align-items: start; }
+.figs.pair { grid-template-columns: 1fr 1fr; }
+.figs.zoomed { display: block; }
+figure { margin: 0; }
+figcaption { color: var(--muted); font-size: 0.85em; margin-top: 0.3em; }
+img.fig { max-width: 100%; height: auto; border: 1px solid var(--line); cursor: zoom-in; background: #fff; }
+img.fig.zoom { cursor: zoom-out; }
+svg.chart text { fill: var(--ink); font-size: 11px; }
+svg.chart .muted { fill: var(--muted); }
+svg.chart .axis { stroke: var(--line); }
+svg.chart .grid { stroke: var(--line); stroke-dasharray: 2 3; }
+svg.chart .series { stroke: var(--mark); fill: none; stroke-width: 2; }
+svg.chart .pt { fill: var(--bg); stroke: var(--mark); stroke-width: 2; }
+svg.chart .mark { stroke: var(--ink); stroke-width: 1.5; }
+svg.chart .tick { stroke: var(--muted); stroke-width: 1.5; }
 """
 
 _HEAD = """<!doctype html>
@@ -227,6 +254,10 @@ PROJECT_HTML = _ENV.from_string(
 {% endfor %}
 </table>
 {% else %}<p>No run has started.</p>{% endif %}
+{% for v in step_views %}
+<h3>{{ v.title }} <span class="tag">{{ v.status }}</span></h3>
+{{ v.html }}
+{% endfor %}
 <h2>Needs you</h2>
 {% if holds %}
 {% for c in holds %}
@@ -722,6 +753,12 @@ class ReviewHandler(BaseHTTPRequestHandler):
             elif parts[0] == "file" and len(parts) == 3:
                 _pid, root = reg.owner_of("run", parts[1])
                 self._send_file(root, parts[1], parts[2])
+            elif parts[0] == "step-file" and len(parts) >= 4:
+                _pid, root = reg.owner_of("run", parts[1])
+                self._send_step_file(root, parts[1], parts[2], parts[3:])
+            elif parts[0] == "input-file" and len(parts) >= 4:
+                root = reg.root_of(parts[1])
+                self._send_input_file(root, parts[2], parts[3:])
             elif parts[0] == "p":
                 self._redirect_legacy(parts, params)
             else:
@@ -1035,6 +1072,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 confirm="",
                 driver=None,
                 timeline=[],
+                step_views=[],
                 **common,
             )
         site = Site.load(root)
@@ -1043,9 +1081,23 @@ class ReviewHandler(BaseHTTPRequestHandler):
             titles = {sid: site.pipeline.title(sid) for sid in site.pipeline.order()}
             runs = timeline(site.store.conn, titles)
             steps: list[dict[str, str]] = []
+            step_views: list[dict[str, Any]] = []
             if entry.get("run"):
                 run_id = entry["run"]["run_id"]
                 statuses = site.step_statuses(run_id)
+                url = self._url_for(site, run_id)
+                for sid in site.pipeline.order():
+                    if statuses.get(sid) not in ("produced", "completed"):
+                        continue
+                    sp = present_step(site, run_id, sid)
+                    if sp["sections"]:
+                        step_views.append(
+                            {
+                                "title": site.pipeline.title(sid),
+                                "status": statuses.get(sid, ""),
+                                "html": Markup(render_html(sp, url)),  # noqa: S704 - escaped
+                            }
+                        )
                 steps = [
                     {
                         "title": site.pipeline.title(s),
@@ -1079,6 +1131,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             confirm=entry.get("confirm", ""),
             driver=drv if drv is not _NO_DRIVER else None,
             timeline=runs,
+            step_views=step_views,
             **common,
         )
 
@@ -1090,6 +1143,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 "SELECT path FROM deliveries WHERE run_id = ? ORDER BY ts DESC, rowid DESC LIMIT 1",
                 (run_id,),
             )
+            sections_html = render_html(payload, self._url_for(site, run_id))
         finally:
             site.store.close()
         summary = ""
@@ -1113,7 +1167,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             title=f"stringency: {site.root.name} results",
             name=site.root.name,
             progress=payload["progress"],
-            sections=Markup(render_html(payload)),  # noqa: S704 - autoescaped template output
+            sections=Markup(sections_html),  # noqa: S704 - autoescaped template output
             summary=summary,
             files=files,
             list_href=self._list_href(),
@@ -1146,6 +1200,88 @@ class ReviewHandler(BaseHTTPRequestHandler):
             raise ConfigError(f"{name} is not a file")
         self._send_bytes(HTTPStatus.OK, target.read_bytes(), listed[name][0], filename=name)
 
+    def _send_step_file(self, root: Path, run_id: str, step_id: str, rel: list[str]) -> None:
+        """One image of a step's recorded outputs (plan 3.8): the file must lie inside a
+        directory the `artifacts` table records for that run and step, or be such an artifact
+        itself; images only; never a path component that climbs."""
+        if any(part in ("", ".", "..") or part.startswith(".") for part in rel):
+            raise ConfigError("no such file")
+        site = Site.load(root)
+        try:
+            base = step_dir(site, run_id, step_id)
+            recorded = [
+                Path(str(r["path"]))
+                for r in site.store.all(
+                    "SELECT path FROM artifacts WHERE run_id = ? AND step_id = ? "
+                    "AND status = 'produced'",
+                    (run_id, step_id),
+                )
+            ]
+        finally:
+            site.store.close()
+        if base is None:
+            raise ConfigError(f"step {step_id} has no outputs in run {run_id}")
+        target = (base / Path(*rel)).resolve()
+        self._send_image(target, allowed_under=recorded)
+
+    def _send_input_file(self, root: Path, name: str, rel: list[str]) -> None:
+        """One image inside a project input bound in `inputs.yml` (a reference directory such
+        as the uncorrected batch evidence)."""
+        if any(part in ("", ".", "..") or part.startswith(".") for part in rel):
+            raise ConfigError("no such file")
+        site = Site.load(root)
+        try:
+            base = input_path(site, name)
+        finally:
+            site.store.close()
+        if base is None:
+            raise ConfigError(f"no input {name}")
+        self._send_image((base / Path(*rel)).resolve(), allowed_under=[base.resolve()])
+
+    def _send_image(self, target: Path, *, allowed_under: list[Path]) -> None:
+        if target.suffix.lower() not in IMAGE_SUFFIXES:
+            raise ConfigError("not an image")
+        if not any(
+            target == a.resolve() or target.is_relative_to(a.resolve()) for a in allowed_under
+        ):
+            raise ConfigError("not a recorded output")
+        if not target.is_file():
+            raise ConfigError("no such file")
+        if target.stat().st_size > MAX_IMAGE_BYTES:
+            raise ConfigError("file too large to serve")
+        ctype, _ = mimetypes.guess_type(target.name)
+        self._send_bytes(
+            HTTPStatus.OK,
+            target.read_bytes(),
+            ctype or "application/octet-stream",
+            cache="private, max-age=3600",
+        )
+
+    def _url_for(self, site: Site, run_id: str) -> Any:
+        """A figure path on disk to the route that serves it: a step's recorded output
+        directory to `/step-file/...`, a project input to `/input-file/...`."""
+        steps: list[tuple[Path, str]] = []
+        for r in site.store.all(
+            "SELECT DISTINCT step_id, path FROM artifacts WHERE run_id = ? AND status = 'produced'",
+            (run_id,),
+        ):
+            steps.append((Path(str(r["path"])).resolve().parent, str(r["step_id"])))
+        inputs = [(path.resolve(), name) for name, path in present.inputs_of(site).items()]
+        pid = self.state.registry.id_of(site.root) or ""
+
+        def url(path: str) -> str:
+            p = Path(path).resolve()
+            for base, step in steps:
+                if p.is_relative_to(base):
+                    return f"/step-file/{run_id}/{step}/{p.relative_to(base).as_posix()}"
+            for base, name in inputs:
+                if p == base or p.is_relative_to(base):
+                    rel = p.relative_to(base).as_posix() if p != base else ""
+                    return f"/input-file/{pid}/{name}/{rel}"
+            return path  # not servable; the page shows where it is
+
+        return url
+
     def _render_hold(
         self,
         project: Project,
@@ -1173,8 +1309,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
             skill, _note = load_skill(site)
             if h["kind"] != "confirm":  # the confirm packet is the echo-back already
                 hp = present_hold(site, h["hold_id"])
-                if hp["sections"]:
-                    view_sections = render_html(hp)
+                if hp["sections"] and h["run_id"]:
+                    view_sections = render_html(hp, self._url_for(site, h["run_id"]))
         finally:
             site.store.close()
         ctx = hold_context(h)
