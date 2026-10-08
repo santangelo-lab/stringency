@@ -200,7 +200,7 @@ LANDING_HTML = _ENV.from_string(
 <table>
 <tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}<th>for</th><th>elsewhere</th><th>driver</th><th>last call</th></tr>
 {% for b in active %}
-<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% elif c == "waiting on" and b.you %}<span class="you">you</span>: {{ b.you }}{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}<td>{{ b.driver.elapsed }}</td><td>{{ b.driver.elsewhere }}</td><td>{{ b.driver.who }}</td><td>{{ b.driver.last_call_age }}{% if b.driver.stale %} <span class="stale">stale</span>{% endif %}</td></tr>
+<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% elif c == "waiting on" and b.you %}<span class="you">you</span>: {{ b.you }}{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}<td>{{ b.driver.elapsed }}</td><td>{{ b.driver.elsewhere }}</td><td>{{ b.driver.who }}</td><td>{{ b.driver.last_call_age }}{% if b.driver.engine == "computing" %} (computing){% endif %}{% if b.driver.stale %} <span class="stale">{% if b.driver.engine == "gone" %}stale: engine gone{% else %}stale{% endif %}</span>{% endif %}</td></tr>
 {% endfor %}
 </table>
 {% else %}
@@ -217,7 +217,7 @@ LANDING_HTML = _ENV.from_string(
 </table>
 </details>
 {% endif %}
-<p class="note">"for": how long the current step has been in its state; "elsewhere": the median time the same step took where it completed, in the projects shown; "stale": no engine call for longer than fifteen minutes and twice that time while the step is the engine's or the operator's. Click a column header to sort.</p>
+<p class="note">"for": how long the current step has been in its state; "elsewhere": the median time the same step took where it completed, in the projects shown; "computing": the engine process running the step is alive on this host, so a long quiet step is not stale; "stale: engine gone": that process ended without recording an outcome; "stale" alone: no engine call for longer than fifteen minutes and twice that time while the step is the operator's or the delegates', or the engine's on a host the console cannot see. Click a column header to sort.</p>
 <h2>Delivered in the last week</h2>
 {% if today %}
 <table>
@@ -245,7 +245,7 @@ PROJECT_HTML = _ENV.from_string(
 <section data-live="project">
 <p>{{ sentence }}</p>
 {% if error %}<p class="error">{{ error }}</p>{% else %}
-{% if driver %}<p class="note">Driver: {{ driver.who }}. Last engine call {{ driver.last_call_age }} ago{% if driver.stale %}, <strong class="stale">stale</strong>{% endif %}.{% if driver.step %} '{{ driver.step }}' has been {{ driver.status }} for {{ driver.elapsed }}{% if driver.elsewhere %}; elsewhere it took {{ driver.elsewhere }}{% endif %}.{% endif %}</p>{% endif %}
+{% if driver %}<p class="note">Driver: {{ driver.who }}. Last engine call {{ driver.last_call_age }} ago{% if driver.engine == "computing" %}; the engine is computing{% endif %}{% if driver.stale %}, <strong class="stale">{% if driver.engine == "gone" %}stale: the engine process is gone{% else %}stale{% endif %}</strong>{% endif %}.{% if driver.step %} '{{ driver.step }}' has been {{ driver.status }} for {{ driver.elapsed }}{% if driver.elsewhere %}; elsewhere it took {{ driver.elsewhere }}{% endif %}.{% endif %}</p>{% endif %}
 <h2>Steps</h2>
 {% if steps %}
 <table>
@@ -540,6 +540,7 @@ _NO_DRIVER: dict[str, Any] = {
     "elsewhere": "",
     "last_call_age": "",
     "stale": False,
+    "engine": "",
     "step": None,
     "status": None,
 }
@@ -1045,7 +1046,9 @@ class ReviewHandler(BaseHTTPRequestHandler):
         run = site.store.one("SELECT * FROM runs WHERE run_id = ?", (entry["run"]["run_id"],))
         if run is None:
             return _NO_DRIVER
-        d = driver(site.store.conn, run, entry.get("step"), site.config.pipeline, refs)
+        d = driver(
+            site.store.conn, run, entry.get("step"), site.config.pipeline, refs, root=site.root
+        )
         who = d["harness"] or "a terminal"
         if d["session"]:
             who += f", {d['session']}"

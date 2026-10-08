@@ -389,7 +389,7 @@ Per project, from the latest run:
 | current step | `steps.status` of the first non-completed step, with its title | "Cluster and embed (running, 4 min)" |
 | the same step elsewhere | `steps.started`/`ended` of completed steps with the same pipeline and step id in the other roots | "liver took 5 min" (the engine does not know cell counts; the method's report does) |
 | waiting on | the board's `_waiting` plus the slot state (6.3) | "the engine", "the operator session", "a slot (320 of 400 GB claimed)", "you" |
-| stale | `running` or `dispatching` or `awaiting_execution` with no event for longer than fifteen minutes and longer than twice the step's duration elsewhere | a mark and the elapsed time |
+| stale | a `running` engine step: its engine process is gone (the mark `runs/<run>/.engine-active.json`, or for older engines a `stringency run` working in the project directory; engine 0.2.12, backlog L15); otherwise `running`, `dispatching` or `awaiting_execution` with no event for longer than fifteen minutes and longer than twice the step's duration elsewhere | "computing" while the process lives; a mark ("engine gone") and the elapsed time |
 
 A stale mark is information, not an action: the console names the remedies as text (resume the
 session in its `screen` window; `stringency abandon --run <id> --reason` at a terminal) and does

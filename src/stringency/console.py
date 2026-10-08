@@ -25,6 +25,7 @@ from typing import Any
 
 import yaml
 
+from stringency.active import engine_alive
 from stringency.board import SKIP_DIRS
 from stringency.exit_codes import ConfigError
 
@@ -356,11 +357,15 @@ def driver(
     refs: dict[tuple[str, str], float],
     *,
     now: datetime | None = None,
+    root: Path | None = None,
 ) -> dict[str, Any]:
     """The driver block of one project's latest run: who operates it, when the engine was last
     called, how long the current step has been going against the same step elsewhere, and
     whether it looks stale. `current` is the board's current-step entry (`step_id`, `title`,
-    `status`) or None. Reads: step_events, run_events, reviews, steps, holds."""
+    `status`) or None. A `running` step whose engine process this host can see (the mark of
+    `stringency.active`, or a `stringency run` in `root`) is never stale while it lives and is
+    stale at once when it is gone; otherwise the time rule applies (backlog L15). Reads:
+    step_events, run_events, reviews, steps, holds; the engine's mark and /proc."""
     now = now or datetime.now(UTC)
     run_id = run["run_id"]
     last = conn.execute(
@@ -383,6 +388,7 @@ def driver(
         "elapsed": "",
         "elsewhere": "",
         "stale": False,
+        "engine": "",
     }
     if current is None:
         return out
@@ -403,7 +409,15 @@ def driver(
     out["elapsed"] = duration_text(elapsed)
     ref = refs.get((pipeline, str(current["step_id"])))
     out["elsewhere"] = duration_text(ref)
-    if current["status"] in WAITING_STATUSES and since_call is not None:
+    alive = (
+        engine_alive(root, run_id, str(current["step_id"]))
+        if root is not None and current["status"] == "running"
+        else None
+    )
+    if alive is not None:
+        out["engine"] = "computing" if alive else "gone"
+        out["stale"] = not alive
+    elif current["status"] in WAITING_STATUSES and since_call is not None:
         limit = max(STALE_FLOOR_SECONDS, 2 * ref if ref else 0)
         out["stale"] = since_call > limit
     return out

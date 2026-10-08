@@ -17,6 +17,7 @@ from typing import Any
 
 from stringency import hashing
 from stringency.actions import Action, build_action, write_action
+from stringency.active import executing
 from stringency.artifacts import record_output, step_outputs
 from stringency.clock import now_iso
 from stringency.executor.base import Executor, Job
@@ -499,7 +500,8 @@ def execute_engine(rc: RunContext, proposal: Proposal) -> StepOutcome:
     transition(store, rc.run_id, action.step_id, StepStatus.RUNNING)
     plan.step_dir.mkdir(parents=True, exist_ok=True)
     blob = script_blob(plan.module)  # hashed before it runs; exec.script_drift compares
-    res = rc.executor.run(job_for(action, plan, script))
+    with executing(rc.project.root, rc.run_id, action.step_id):
+        res = rc.executor.run(job_for(action, plan, script))
     info = ExecInfo(
         runner="engine",
         env_status="verified" if res.env_digest else "as_reported",
