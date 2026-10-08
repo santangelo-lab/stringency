@@ -85,7 +85,10 @@ def test_list_and_hold_page(server: tuple[str, Project]) -> None:
     status, body = get(f"{base}/hold/{h['hold_id']}?t={TOKEN}")
     assert status == 200
     assert "replicate 1: abundant (high)" in body  # the terminal packet, verbatim
-    assert 'name="verdict" value="accept"' in body and 'name="replicate"' in body
+    # an item hold offers the labels the replicates called (L10), the vocabulary below them,
+    # and reject and defer; accept and override are what a chosen label is recorded as
+    assert 'name="choice" value="abundant"' in body and 'name="verdict" value="reject"' in body
+    assert 'name="verdict" value="accept"' not in body and 'name="label"' in body
     assert _only_console_script(body)
 
 
@@ -494,7 +497,7 @@ def test_cookie_set_on_tokened_visit_then_plain_links_work(server: tuple[str, Pr
     assert r.status == 403
     r.read()
     # a wrong cookie is 403; a POST with the cookie alone is accepted by the token check (405 on
-    # a read-only server would come after it; here it reaches the form rules: 400, choose a verdict)
+    # a read-only server would come after it; here it reaches the form rules: 400, choose a label or a verdict)
     conn.request(
         "GET",
         f"/project/{p.config.project_id}",
@@ -514,7 +517,7 @@ def test_cookie_set_on_tokened_visit_then_plain_links_work(server: tuple[str, Pr
         },
     )
     r = conn.getresponse()
-    assert r.status == 400 and "choose a verdict" in r.read().decode()
+    assert r.status == 400 and "choose a label or a verdict" in r.read().decode()
     conn.close()
 
 

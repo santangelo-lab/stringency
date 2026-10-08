@@ -254,6 +254,7 @@ judgment:
   abstain: required
   confidence: ordinal
   considered_set: false           # true for salience-type modules: the engine writes the items table's name, row count and digest into the consensus output as `considered_set`
+  # sign_off: {when: always, labels: [proceed_uncorrected, correct_batch]}   # optional (added 2026-10-08, L10): a person signs off every item's label, agreed or not; `labels` narrows what a person may choose at every item hold of the module
 
 prompt:
   template: prompt.md
@@ -636,6 +637,7 @@ Run status is derived: `held` if any step is held; `blocked` or `failed` if the 
 | `self_uncertain` | a judgment item abstained or reported low confidence | item | accept one replicate's call, override with a correction, or reject the step |
 | `run_disagreement` | replicates diverged on an item | item | accept one call, override, or reject |
 | `confirm` | the init echo-back (2.7), in every profile; also any module that declares `confirm: true` | project or step | accept or reject; a `run` cannot open while the init confirm is unresolved |
+| `sign_off` | an agreed item of a judgment module that declares `judgment.sign_off: {when: always}` (added 2026-10-08, L10): the label is a route the run takes, so a person signs it off | item | accept (the reviewers' label stands) with a reason, override with a label, or reject; waits on the owner; with `labels` declared, only those labels may stand at any item hold of the module |
 
 Every hold records the reviewer role it waits on. `status` shows who is waited on. `run` cannot clear any hold.
 
@@ -653,6 +655,8 @@ Invalid replicates open one hold for the step (kind `run_disagreement`, no item)
 | `override` | a correction, validated against schema and vocabulary at entry, and a reason | hold cleared; consensus takes the correction with `source: override` |
 | `reject` | a reason | attempt closed; a new attempt requires a change to the method or a fork |
 | `defer` | nothing | hold stays; the deferral is recorded so the queue shows it was seen |
+
+A person may name the label instead of the verdict (`review --choose <label>`, and the console's label choice on an item hold; added 2026-10-08, L10): the engine records `accept` with the first replicate that called that label, else `override` with the label as the correction, so the trace keeps the four verdicts and the consensus its `source`.
 
 `reason` is free text in v1. Once the override corpus shows recurring categories, `reason_code` becomes an enum in the method repo's vocabulary and the free text moves to `reason_detail`.
 
@@ -737,6 +741,8 @@ Per item, across the valid replicate outputs:
 | all abstain | hold `self_uncertain` | hold `self_uncertain` |
 | any low confidence, labels agree | logged in the consensus notes (changed 2026-09-23: a hold opened for items every replicate labelled the same, because the confidence criteria push an honest reviewer that lists contradicting cells to `low`; a split is `run_disagreement` regardless) | logged |
 | any invalid replicate | one hold `run_disagreement` for the step; items decided from the valid replicates | the same |
+
+A module that declares `judgment.sign_off: {when: always}` turns every agreed item into a `sign_off` hold (7.2): the consensus stays `unresolved` until a person signs the label off, and then reads `accepted` or `override` like any reviewed item (added 2026-10-08, L10).
 
 There is no majority vote in either setting. Two of three with one dissenter is a hold under `standard`, because the dissent is the information.
 

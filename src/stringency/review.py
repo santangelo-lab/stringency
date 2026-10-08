@@ -59,6 +59,44 @@ def get_hold(project: Project, hold_id: str) -> Any:
     return h
 
 
+def _sign_off_labels(project: Project, h: Any) -> list[str] | None:
+    """The labels a module's `judgment.sign_off.labels` allows at its item holds, or None when it
+    declares none (L10). Reads the bound module's manifest."""
+    module = project.modules.get(h["bound_module_version"]) if h["bound_module_version"] else None
+    j = module.manifest.judgment if module is not None else None
+    return list(j.sign_off.labels) if j and j.sign_off and j.sign_off.labels else None
+
+
+def item_choices(project: Project, h: Any) -> list[str]:
+    """The labels offered first at an item hold: the module's sign-off labels when it declares
+    them (then nothing else may be chosen), else the labels the replicates called. Any other
+    vocabulary label stays reachable as an override. Empty for a step-level hold. Reads the
+    manifest and judgments."""
+    if h["item_id"] is None:
+        return []
+    allowed = _sign_off_labels(project, h)
+    if allowed:
+        return allowed
+    seen: list[str] = []
+    for r in _replicates_for(project, h):
+        if not r["abstain"] and r["label"] is not None and r["label"] not in seen:
+            seen.append(str(r["label"]))
+    return seen
+
+
+def choose(project: Project, h: Any, label: str) -> tuple[str, int | None, dict[str, Any] | None]:
+    """A label chosen at an item hold, as the verdict the trace records (L10): accept with the
+    first replicate that called it, else override with the label as the correction. The
+    console's label choice and `review --choose` both go through here, so a route is recorded
+    the same way whichever surface the person used."""
+    if h["item_id"] is None:
+        raise ConfigError("--choose applies to item holds; a flag is accepted or rejected")
+    for r in _replicates_for(project, h):
+        if not r["abstain"] and r["label"] == label:
+            return "accept", int(r["replicate"]), None
+    return "override", None, {"label": label}
+
+
 def _replicates_for(project: Project, h: Any) -> list[dict[str, Any]]:
     rows = project.store.all(
         "SELECT * FROM judgments WHERE run_id = ? AND step_id = ? AND item_id = ? ORDER BY replicate",
@@ -153,6 +191,9 @@ def record_review(
     is_item = h["item_id"] is not None
     if verdict in ("accept", "reject") and not is_item and not reason:
         raise ConfigError(f"{verdict} needs --reason")
+    if verdict == "accept" and h["kind"] == "sign_off" and not reason:
+        raise ConfigError("signing off a label needs --reason")
+    route_labels = _sign_off_labels(project, h) if is_item else None
     if verdict == "reject" and not reason:
         raise ConfigError("reject needs --reason")
     if verdict == "override":
@@ -163,6 +204,11 @@ def record_review(
         if not correction:
             raise ConfigError("override needs --correction '{\"label\": ...}'")
         _validate_correction(project, h, correction)
+        if route_labels and correction.get("label") not in route_labels:
+            raise ConfigError(
+                f"label {correction.get('label')!r} is not one this module lets a person choose "
+                f"({', '.join(route_labels)})"
+            )
     replicates = _replicates_for(project, h) if is_item else []
     if verdict == "accept" and is_item:
         valid = [r for r in replicates if not r["abstain"]]
@@ -173,6 +219,12 @@ def record_review(
             replicate = valid[0]["replicate"]
         elif not any(r["replicate"] == replicate and not r["abstain"] for r in replicates):
             raise ConfigError(f"replicate {replicate} made no call for item {h['item_id']}")
+        picked = next(r["label"] for r in replicates if r["replicate"] == replicate)
+        if route_labels and picked not in route_labels:
+            raise ConfigError(
+                f"the reviewers' label {picked!r} is not one this module lets a person choose; "
+                f"choose one of {', '.join(route_labels)} (override)"
+            )
 
     review_id = new_id()
     store = project.store

@@ -12,7 +12,7 @@ from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError
 from stringency.notify import notify_after
 from stringency.project import Project
-from stringency.review import get_hold, queue, record_review, show
+from stringency.review import choose, get_hold, queue, record_review, show
 
 
 @handle_errors
@@ -35,6 +35,12 @@ def review(
         None, "--correction", help="override: JSON with label (and ontology_id)"
     ),
     reason: str | None = typer.Option(None, "--reason"),
+    choose_label: str | None = typer.Option(
+        None,
+        "--choose",
+        help="item holds: the label this item takes; recorded as accept when a replicate called "
+        "it, else as override (with --hold and --reason; no --verdict)",
+    ),
     attest: bool = typer.Option(
         False, "--attest", help="relayed: the person confirmed in the conversation"
     ),
@@ -105,6 +111,13 @@ def review(
         )
         return
     project = Project.find()
+    if choose_label is not None:
+        if verdict is not None or correction is not None or replicate is not None:
+            raise ConfigError("--choose stands in for --verdict, --correction and --replicate")
+        if hold is None:
+            raise ConfigError("--choose needs --hold <id>")
+        verdict, replicate, corr_doc = choose(project, get_hold(project, hold), choose_label)
+        correction = json.dumps(corr_doc) if corr_doc else None
     if verdict is None and hold is not None:
         view = show(project, get_hold(project, hold))
         emit({"schema": "stringency.review_queue/1", "holds": [view.to_json()]}, as_json, view.text)

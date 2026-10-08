@@ -75,6 +75,14 @@ def lint_module(
             report.error(
                 where, f"vocabulary {m.vocabulary} is not provided by plugin {plugin.name}"
             )
+        so = m.judgment.sign_off if m.judgment else None
+        vocab = plugin.vocabulary(m.vocabulary) if m.vocabulary else None
+        if so and so.labels and vocab is not None:
+            for label in so.labels:
+                if label not in vocab:
+                    report.error(
+                        where, f"sign_off label {label} is not in vocabulary {m.vocabulary}"
+                    )
 
     for g in m.gates:
         if registry.resolve(g) is None:

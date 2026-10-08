@@ -111,6 +111,7 @@ class HoldView:
     flagged: list[dict[str, Any]] = field(default_factory=list)
     verdicts: list[dict[str, str]] = field(default_factory=list)
     packet: Path | None = None  # the Markdown packet on disk, when one was written
+    choices: list[str] = field(default_factory=list)  # labels a person may choose (item holds)
     operator_reason: str | None = None  # the `propose --reason` text behind the action (L8)
 
     def to_json(self) -> dict[str, Any]:
@@ -134,6 +135,7 @@ class HoldView:
             "verdicts": self.verdicts,
             "packet": str(self.packet) if self.packet else None,
             "operator_reason": self.operator_reason,
+            "choices": self.choices,
             "text": self.text,
         }
 
@@ -327,6 +329,30 @@ def verdicts_for(
                 "effect": "the reading is wrong; the project cannot run until the declarations "
                 "change and a new echo-back is accepted",
                 "command": base.format(verdict="reject") + ' --reason "<why>"',
+            },
+        ]
+    if kind == "sign_off":
+        return [
+            {
+                "verdict": "accept",
+                "effect": "the reviewers' label stands, recorded as source accepted",
+                "command": base.format(verdict="accept") + ' --reason "<why>"',
+            },
+            {
+                "verdict": "override",
+                "effect": "the run takes the label you choose instead, recorded as source override",
+                "command": base.format(verdict="override")
+                + ' --correction \'{"label": "<label>"}\' --reason "<why>"',
+            },
+            {
+                "verdict": "reject",
+                "effect": "the attempt closes; a new attempt needs a change to the method or a fork",
+                "command": base.format(verdict="reject") + ' --reason "<why>"',
+            },
+            {
+                "verdict": "defer",
+                "effect": "the hold stays; the deferral is recorded so the queue shows it was seen",
+                "command": base.format(verdict="defer"),
             },
         ]
     if kind == "flag":
@@ -561,17 +587,22 @@ def render_item(
     module_ref = plan.module.ref if plan else (action.module if action else None)
     tables = tables_seen(plan) if plan else {}
     item = str(h["item_id"])
-    question = (
-        "which replicate's call stands for this item, or none"
-        if h["kind"] == "self_uncertain"
-        else "the replicates split on this item: which call stands, or none"
-    )
+    question = {
+        "self_uncertain": "which replicate's call stands for this item, or none",
+        "sign_off": "the reviewers agreed; which label does this run take",
+    }.get(h["kind"], "the replicates split on this item: which call stands, or none")
     lines = _header(project, h, action, module_ref)
     lines += ["", f"item {item}", f"question: {question}", f"reason: {h['reason']}", ""]
     view = HoldView(h, "", module_ref=module_ref)
     view.evidence_rows = _table_rows(tables, {(name, item) for name in tables})
     lines += _table_lines(view.evidence_rows, "evidence row in") or ["evidence row: none"]
     view.replicates = _replicates(project, h, action.attempt if action else None, tables)
+    from stringency.review import _sign_off_labels, item_choices
+
+    view.choices = item_choices(project, h)
+    restricted = _sign_off_labels(project, h)
+    if restricted:
+        lines += ["", "labels a person may choose: " + ", ".join(restricted)]
     if h["kind"] == "run_disagreement":
         groups: dict[str, list[int]] = {}
         for r in view.replicates:

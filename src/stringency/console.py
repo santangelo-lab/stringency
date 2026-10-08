@@ -183,6 +183,7 @@ ASK_GROUPS: tuple[tuple[str, str], ...] = (
     ("confirm", "Confirm the plan"),
     ("parameters", "Approve the operator's parameters"),
     ("consensus", "Decide on the reviewers' consensus"),
+    ("sign_off", "Sign off the route the reviewers chose"),
     ("disagreement", "Settle a disagreement"),
     ("uncertain", "Decide an uncertain item"),
     ("invalid", "Accept or reject a dispatch with invalid replicates"),
@@ -207,7 +208,7 @@ def ask_of(h: Any, ctx: dict[str, Any]) -> str:
     if kind == "confirm":
         return "confirm"
     if h["item_id"] is not None:
-        return "uncertain" if kind == "self_uncertain" else "disagreement"
+        return {"self_uncertain": "uncertain", "sign_off": "sign_off"}.get(kind, "disagreement")
     if kind == "run_disagreement":
         return "invalid"
     evidence = ctx.get("evidence")
@@ -221,7 +222,8 @@ def ask_of(h: Any, ctx: dict[str, Any]) -> str:
 
 def method_ask(skill: dict[str, Any] | None, predicate: str, step_id: str | None) -> str | None:
     """The `ask` phrase of the delivery skill's `hold_view` entry for this predicate (and step,
-    when the entry names one); None when the method says nothing."""
+    when the entry names one); for a hold with no predicate (an item hold), the entry without a
+    predicate on its step. None when the method says nothing."""
     if not skill:
         return None
     views = skill.get("hold_view")
@@ -233,7 +235,7 @@ def method_ask(skill: dict[str, Any] | None, predicate: str, step_id: str | None
             continue
         if str(v.get("predicate", "")).split("@")[0] != pred_id:
             continue
-        if v.get("step") not in (None, step_id):
+        if v.get("step") not in (None, step_id) or (not pred_id and v.get("step") != step_id):
             continue
         return str(v["ask"])
     return None
@@ -251,7 +253,7 @@ def card_title(h: Any, ctx: dict[str, Any], group: str, step_title: str, skill: 
     """The card's title: the method's `ask` phrase when it gives one, else the engine's words
     built from the step title and the hold's evidence."""
     predicate = str(ctx.get("predicate") or "")
-    phrase = method_ask(skill, predicate, h["step_id"]) if predicate else None
+    phrase = method_ask(skill, predicate, h["step_id"])
     if phrase:
         return phrase
     evidence = ctx.get("evidence")
@@ -264,6 +266,10 @@ def card_title(h: Any, ctx: dict[str, Any], group: str, step_title: str, skill: 
     if group == "consensus":
         label = ev.get("consensus_label")
         return f"{step_title}: the reviewers agreed on {label}" if label else step_title
+    if group == "sign_off":
+        called = [str(x) for x in ctx.get("replicate_labels") or [] if x is not None]
+        agreed = f": the reviewers chose {called[0]}" if called else ""
+        return f"{step_title}, item {h['item_id']}{agreed}"
     if group in ("disagreement", "uncertain"):
         return f"{step_title}, item {h['item_id']}"
     if group == "invalid":

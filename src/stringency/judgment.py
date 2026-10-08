@@ -330,6 +330,11 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
         rule=rule,
         tables=ev.tables,
         invalid_held=bool(step_holds),
+        sign_off_labels=(
+            list(m.judgment.sign_off.labels)
+            if m.judgment and m.judgment.sign_off and m.judgment.sign_off.when == "always"
+            else None
+        ),
     )
     item_holds = step_holds + item_holds
     considered = considered_set_record(m.judgment, ev.items, ev.digests)

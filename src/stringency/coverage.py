@@ -152,6 +152,7 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
                 "agreed": sources.get("agreed", 0),
                 "self_uncertain": kinds.get("self_uncertain", 0),
                 "run_disagreement": kinds.get("run_disagreement", 0),
+                "sign_off": kinds.get("sign_off", 0),
                 "accepted": sources.get("accepted", 0),
                 "override": sources.get("override", 0),
                 "unresolved": sources.get("unresolved", 0),

@@ -125,7 +125,9 @@ def judgments(rc: RunContext, cov: dict[str, Any]) -> list[str]:
         lines.append(
             f"- {title} (step {j['step']}): {_plural(j['items'], 'item')} judged by "
             f"{_plural(j['replicates'], 'independent replicate')}; {_count(j['agreed'])} agreed, "
-            f"{_count(j['self_uncertain'])} self-uncertain, {_count(j['run_disagreement'])} in disagreement; "
+            f"{_count(j['self_uncertain'])} self-uncertain, {_count(j['run_disagreement'])} in disagreement"
+            + (f", {_count(j['sign_off'])} held for sign-off" if j.get("sign_off") else "")
+            + "; "
             f"reviews: {_count(j['accepted'])} accepted, {_count(j['override'])} corrected, "
             f"{_count(j['unresolved'])} unresolved."
         )

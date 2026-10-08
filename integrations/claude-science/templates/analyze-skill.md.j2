@@ -124,7 +124,8 @@ the packet file the message names) and says, in this order and nothing else:
 
 1. Where and what: "The analysis paused at {step title}. The engine is asking: {for a flag, 'is
    this acceptable: ' plus the predicate's reason verbatim; for a confirm, 'does this reading of
-   your experiment match'; for an item hold, 'which of these calls for {item} should stand'}."
+   your experiment match'; for an item hold, 'which of these calls for {item} should stand'; for a
+   sign-off, 'which label {item} takes: {the packet's choices}'}."
 2. The record: the packet's reason and evidence lines verbatim under "What the engine recorded";
    for item holds, each replicate's call, confidence, and rationale verbatim. No summary, no
    reordering.
@@ -135,11 +136,14 @@ the packet file the message names) and says, in this order and nothing else:
 
 Then wait. Accept only a reply containing one listed verdict word and a reason. "Ok", "fine", "go
 ahead" get: "To record this I need one of {verdicts} and your reason in your own words." No verdict
-is inferred from tone. Item holds: accept needs the replicate number the person names; override
-passes the person's label through unchanged.
+is inferred from tone. Item holds: the person may name a label instead of a verdict; record it
+with `--choose {label}` (the engine records accept when a replicate called it, else override), and
+on a sign-off a reason is required. Otherwise accept needs the replicate number the person names
+and override passes the person's label through unchanged.
 
 Then one command: `stringency review --verdict {v} --hold {id} --reason "{their words}"
-[--replicate n | --correction '{"label": ...}'] --attest`, with `STRINGENCY_SESSION_REF` set.
+[--replicate n | --correction '{"label": ...}'] --attest`, or `stringency review --choose {label}
+--hold {id} --reason "{their words}" --attest`, with `STRINGENCY_SESSION_REF` set.
 Report the engine's reply in one sentence. On exit 16 (strict profile refuses relayed review),
 name the two routes the engine allows: the review page, or `stringency review --hold {id}` at a
 terminal in the project directory. Call `run` again only after a verdict was recorded. The operator

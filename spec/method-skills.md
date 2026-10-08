@@ -72,6 +72,8 @@ predicate that fires on several steps (`param.agent_proposed` on every decision 
 entry per step with `step:` set, so the elbow table is shown at the clustering hold and not at
 the normalisation hold; `ask:` is the question in the method's words, which the console's inbox
 uses as the card's title ("Approve the number of components and the clustering resolution").
+An item hold has no predicate; its card takes the `ask:` of the entry without a predicate on its
+step (engine 0.2.14), which is how a method words a sign-off ("Decide the batch route").
 
 Figures (console, engine 0.2.10): `figure` shows one image, `beside` a second at the same size
 in a second column (this run's batch panel beside the uncorrected one); `figures` shows the

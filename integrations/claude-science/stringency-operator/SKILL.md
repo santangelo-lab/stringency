@@ -68,7 +68,7 @@ The container runtime is `apptainer` or `singularity`; the engine finds either. 
 image the project's method manifest names is readable, for example
 `ls -la $(grep -o '/[^ ]*\.sif' <project>/method/envs/manifest.yml)`.
 
-**Which text of this skill to follow.** This text is for engine 0.2.11. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.14. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -180,7 +180,8 @@ the packet file the message names) and says, in this order and nothing else:
 
 1. Where and what: "The analysis paused at {step title}. The engine is asking: {for a flag, 'is
    this acceptable: ' plus the predicate's reason verbatim; for a confirm, 'does this reading of
-   your experiment match'; for an item hold, 'which of these calls for {item} should stand'}."
+   your experiment match'; for an item hold, 'which of these calls for {item} should stand'; for a
+   sign-off, 'which label {item} takes: {the packet's choices}'}."
 2. The record: the packet's reason and evidence lines verbatim under "What the engine recorded";
    for item holds, each replicate's call, confidence, and rationale verbatim. No summary, no
    reordering.
@@ -191,11 +192,14 @@ the packet file the message names) and says, in this order and nothing else:
 
 Then wait. Accept only a reply containing one listed verdict word and a reason. "Ok", "fine", "go
 ahead" get: "To record this I need one of {verdicts} and your reason in your own words." No verdict
-is inferred from tone. Item holds: accept needs the replicate number the person names; override
-passes the person's label through unchanged.
+is inferred from tone. Item holds: the person may name a label instead of a verdict; record it
+with `--choose {label}` (the engine records accept when a replicate called it, else override), and
+on a sign-off a reason is required. Otherwise accept needs the replicate number the person names
+and override passes the person's label through unchanged.
 
 Then one command: `stringency review --verdict {v} --hold {id} --reason "{their words}"
-[--replicate n | --correction '{"label": ...}'] --attest`, with `STRINGENCY_SESSION_REF` set.
+[--replicate n | --correction '{"label": ...}'] --attest`, or `stringency review --choose {label}
+--hold {id} --reason "{their words}" --attest`, with `STRINGENCY_SESSION_REF` set.
 Report the engine's reply in one sentence. On exit 16 (strict profile refuses relayed review),
 name the two routes the engine allows: the review page, or `stringency review --hold {id}` at a
 terminal in the project directory. Call `run` again only after a verdict was recorded. The operator
@@ -217,7 +221,9 @@ predicate's reason verbatim; for a confirm, 'does this reading of your experimen
 item hold, 'which call for {item} should stand'}. Answer on the console ({review_page}, or {page_url}/hold/{id})
 or here." Then arm `stringency wait --hold {id} --timeout 86400 --json` as a background command
 and say once "waiting on the console for the {step title} hold". When it returns, read
-`verdict`, `via` and `reason` and relay them verbatim. The reason is the person's instruction: if
+`verdict`, `via` and `reason` and relay them verbatim; on an item hold also `label`, the label the
+item took, which on a sign-off is the route the run takes (the method's documentation says what
+each route means). The reason is the person's instruction: if
 it names a next step you can take with the verbs you have (a fork with a parameter, a proposal, an
 abandon), take it and say so in one sentence; if it asks for something outside those verbs, say
 what you cannot do and stop. Then `run --json`. If the person answers here instead, follow steps 1

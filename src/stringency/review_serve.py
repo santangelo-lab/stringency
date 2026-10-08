@@ -74,7 +74,7 @@ from stringency.present import (
     step_dir,
 )
 from stringency.project import Project
-from stringency.review import _replicates_for, get_hold, record_review
+from stringency.review import _replicates_for, _sign_off_labels, choose, get_hold, record_review
 from stringency.review_render import render
 from stringency.when import skip_reason
 
@@ -353,13 +353,21 @@ HOLD_HTML = _ENV.from_string(
 <p class="note">{{ read_only_message }}</p>
 {% else %}
 <form method="post" action="{{ post_href }}" data-verdict>
+{% if choices %}
 <fieldset>
-<legend>Verdict</legend>
-{% for v in verdicts %}
-<label><input type="radio" name="verdict" value="{{ v.verdict }}"{% if v.verdict == chosen %} checked{% endif %}> <strong>{{ v.verdict }}</strong>: {{ v.effect }}</label>
+<legend>The label this item takes</legend>
+{% for c in choices %}
+<label><input type="radio" name="choice" value="{{ c.label }}"{% if c.label == chosen_label %} checked{% endif %}> <strong>{{ c.label }}</strong>{% if c.called_by %}: the reviewers' call (replicate {{ c.called_by|join(", ") }}), recorded as accept{% else %}: recorded as override{% endif %}</label>
 {% endfor %}
 </fieldset>
-{% if replicates %}
+{% endif %}
+<fieldset>
+<legend>{% if choices %}Or{% else %}Verdict{% endif %}</legend>
+{% for v in verdicts %}{% if not choices or v.verdict in ("reject", "defer") %}
+<label><input type="radio" name="verdict" value="{{ v.verdict }}"{% if v.verdict == chosen %} checked{% endif %}> <strong>{{ v.verdict }}</strong>: {{ v.effect }}</label>
+{% endif %}{% endfor %}
+</fieldset>
+{% if replicates and not choices %}
 <fieldset>
 <legend>Replicate (accept on an item hold takes one replicate's call)</legend>
 <select name="replicate">
@@ -372,7 +380,7 @@ HOLD_HTML = _ENV.from_string(
 {% endif %}
 {% if vocabulary %}
 <fieldset>
-<legend>Correction (override only): a label from the module's vocabulary</legend>
+<legend>{% if choices %}Or another label from the module's vocabulary (recorded as override){% else %}Correction (override only): a label from the module's vocabulary{% endif %}</legend>
 <select name="label">
 <option value="">choose</option>
 {% for lab in vocabulary %}
@@ -839,9 +847,16 @@ class ReviewHandler(BaseHTTPRequestHandler):
         replicate = int(rep_raw) if rep_raw else None
         label = form.get("label", [""])[0].strip()
         correction = {"label": label} if verdict == "override" and label else None
+        choice = form.get("choice", [""])[0].strip()
         try:
+            if choice and label and choice != label:
+                raise ConfigError("pick one label: from the choices or from the vocabulary")
+            if verdict in ("", "accept", "override") and (choice or (label and not verdict)):
+                # a label chosen on an item hold: the same mapping as `review --choose` (L10);
+                # a vocabulary label picked below the choices counts the same way
+                verdict, replicate, correction = choose(project, h, label or choice)
             if not verdict:
-                raise ConfigError("choose a verdict")
+                raise ConfigError("choose a label or a verdict")
             result = record_review(
                 project,
                 h["hold_id"],
@@ -857,7 +872,14 @@ class ReviewHandler(BaseHTTPRequestHandler):
         except ConfigError as e:
             self._send(
                 HTTPStatus.BAD_REQUEST,
-                self._render_hold(project, h, error=str(e), chosen=verdict, reason=reason or ""),
+                self._render_hold(
+                    project,
+                    h,
+                    error=str(e),
+                    chosen=verdict,
+                    reason=reason or "",
+                    chosen_label=choice,
+                ),
             )
             return
         refresh_if_present(project.root)
@@ -1309,12 +1331,22 @@ class ReviewHandler(BaseHTTPRequestHandler):
         error: str | None = None,
         chosen: str = "",
         reason: str = "",
+        chosen_label: str = "",
     ) -> str:
         view = render(project, h)
         is_item = h["item_id"] is not None
         replicates = _replicates_for(project, h) if is_item else []
+        choices = [
+            {
+                "label": c,
+                "called_by": [
+                    r["replicate"] for r in replicates if not r["abstain"] and r["label"] == c
+                ],
+            }
+            for c in view.choices
+        ]
         vocabulary: list[str] = []
-        if is_item and h["bound_module_version"]:
+        if is_item and h["bound_module_version"] and not _sign_off_labels(project, h):
             module = project.modules.get(h["bound_module_version"])
             if module is not None and module.manifest.vocabulary:
                 vocabulary = list(project.plugin.vocabulary(module.manifest.vocabulary) or ())
@@ -1353,6 +1385,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
             view_sections=Markup(view_sections),  # noqa: S704 - autoescaped template output
             verdicts=view.verdicts,
             replicates=replicates,
+            choices=choices,
+            chosen_label=chosen_label,
             vocabulary=vocabulary,
             chosen=chosen,
             reason=reason,

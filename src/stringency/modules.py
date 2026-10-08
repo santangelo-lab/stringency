@@ -36,6 +36,16 @@ class IOSpec(Frozen):
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
 
+class SignOffSpec(Frozen):
+    """A person signs off every item's label, agreed or not (backlog L10, 2026-10-08): for a
+    judgment whose label is a route the run takes (the batch route), not a description. `labels`
+    narrows what a person may choose, at every item hold of the module; empty means the whole
+    vocabulary."""
+
+    when: Literal["always", "never"] = "never"
+    labels: list[str] = Field(default_factory=list)
+
+
 class JudgmentSpec(Frozen):
     items_from: str
     item_key: str
@@ -45,6 +55,7 @@ class JudgmentSpec(Frozen):
     abstain: Literal["required", "optional"] = "required"
     confidence: Literal["ordinal"] = "ordinal"
     considered_set: bool = False
+    sign_off: SignOffSpec | None = None
 
 
 class PromptSpec(Frozen):

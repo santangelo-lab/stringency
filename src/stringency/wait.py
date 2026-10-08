@@ -42,6 +42,18 @@ class WaitResult:
         }
 
 
+def _settled_label(store: Any, h: Any) -> str | None:
+    """The label an item hold settled its item on (the consensus row), so an operator acting on
+    a route reads it from the payload (L10). None for a step-level hold. Reads: consensus."""
+    if h["item_id"] is None or h["run_id"] is None:
+        return None
+    row = store.one(
+        "SELECT label FROM consensus WHERE run_id = ? AND step_id = ? AND item_id = ?",
+        (h["run_id"], h["step_id"], h["item_id"]),
+    )
+    return str(row["label"]) if row is not None and row["label"] is not None else None
+
+
 def open_read_only(root: Path) -> Store:
     """A read-only connection to the project's trace; no migration, no pragma that writes."""
     path = root / "prov" / "run.db"
@@ -124,6 +136,7 @@ def wait_hold(
             "reviewer": r["reviewer"],
             "via": r["via"],
             "ts": r["ts"],
+            "label": _settled_label(store, h),
         }
         if r is not None
         else None

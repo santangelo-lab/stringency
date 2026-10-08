@@ -61,6 +61,26 @@ def item_judgments(
     return out
 
 
+def sign_off(ic: ItemConsensus, labels: list[str]) -> ItemConsensus:
+    """An agreed item of a module that declares `judgment.sign_off: {when: always}` (L10): the
+    label is a route, so a person signs it off. The item stays unresolved until they do; when
+    the agreed label is not one a person may choose, the reason says so."""
+    if ic.source != "agreed":
+        return ic
+    agreed = ic.label
+    ic.hold_kind = "sign_off"
+    if labels and agreed not in labels:
+        ic.hold_reason = (
+            f"the reviewers agreed on {agreed}, which is not a label a person may sign off; "
+            f"choose one of {', '.join(labels)}"
+        )
+    else:
+        ic.hold_reason = f"the reviewers agreed on {agreed}; a person signs off the label"
+    ic.notes.append(f"agreed on {agreed}; held for sign-off")
+    ic.label, ic.ontology_id, ic.source = None, None, "unresolved"
+    return ic
+
+
 def decide(
     item_id: str, replicates: list[Replicate], rule: AgreementRule, *, invalid_held: bool = False
 ) -> ItemConsensus:
@@ -159,13 +179,17 @@ def settle_items(
     rule: AgreementRule,
     tables: Mapping[str, EvidenceTable],
     invalid_held: bool = False,
+    sign_off_labels: list[str] | None = None,
 ) -> tuple[list[ItemConsensus], list[HoldOutcome]]:
     """Consensus per item; a hold per disagreeing or abstaining item, with rebind of prior
-    verdicts. Writes: consensus, holds."""
+    verdicts. `sign_off_labels` (a list, possibly empty) when the module signs off every item:
+    agreed items hold too, as `sign_off`, waiting on the owner. Writes: consensus, holds."""
     out: list[ItemConsensus] = []
     holds: list[HoldOutcome] = []
     for item in items:
         ic = decide(item, replicates, rule, invalid_held=invalid_held)
+        if sign_off_labels is not None:
+            ic = sign_off(ic, sign_off_labels)
         if ic.hold_kind is not None:
             h = open_hold(
                 store,
@@ -174,7 +198,7 @@ def settle_items(
                     step_id=step_id,
                     kind=ic.hold_kind,
                     reason=ic.hold_reason or ic.hold_kind,
-                    waits_on_role="reviewer",
+                    waits_on_role="owner" if ic.hold_kind == "sign_off" else "reviewer",
                     bound_module_version=module_ref,
                     bound_input_digest=input_digest,
                     bound_params_hash=params_hash,
