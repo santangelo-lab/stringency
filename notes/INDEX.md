@@ -10,8 +10,9 @@ it is the first thing a new session reads.
   `stringency wait`; method `v0.6.0-rc7` skips the batch judgment on a corrected run. Next: lung,
   gut, spleen on 0.2.7 and rc7; the console (part 2) on branch `console`.
 - Lane F F5 done and the liver delivered (`notes/2026-10-07-1100-lane-f-f5-upstream.md`); the console designed, not built, on branch `console`
-  (`notes/2026-10-07-1720-console-plan.md`, `spec/plans/console-and-fleet-plan.md`): the owner's
-  seven decisions in its section 7 come before any build; C1 follows the v0.2.7 merge.
+  (`notes/2026-10-07-1720-console-plan.md`, `spec/plans/console-and-fleet-plan.md`): the owner took
+  its seven decisions the same evening (section 7); next: C1, then the first cut (inbox with the
+  operator's reason, live updates, who is driving), then console mode.
 
 ## Previous state (2026-10-06, afternoon)
 

@@ -15,10 +15,13 @@ F5, `notes/2026-10-07-1100-lane-f-f5-upstream.md`). Two asks from the owner that
 Items marked *design* change design text and need the owner's approval; the rest are
 DECISIONS-level or below. Section 7 lists the decisions the owner takes before the build.
 
-**Status 2026-10-07, late.** Brainstorm fleshed out into a buildable design; nothing built. The
-owner's direction: "I want the new interface to be more interactive than the old board." Part 1
-(engine v0.2.7) is in progress in a parallel session on branch `engine-v0.2.7`; part 2 waits on
-the owner's decisions in section 7. This revision adds the server's shape (section 3.5), the event
+**Status 2026-10-07, evening.** Design done and the owner's seven decisions taken (section 7);
+nothing built. The owner's direction: "I want the new interface to be more interactive than the old
+board." Part 1 (engine v0.2.7) was released the same evening (`notes/2026-10-07-1730-engine-v027.md`:
+L13, L12, L8, `wait`, shared `0.2.7-sc0.4.2`, method rc7), so part 2 can start with C1. The order
+after the decisions: C1, then the first cut of C2 and C5 together (the inbox with the operator's
+reason, live updates, who is driving), C3 console mode, then figures and the chart, batch cards,
+the gallery and the history after a week of use; C4 when the organs need it. This revision adds the server's shape (section 3.5), the event
 stream (3.6), the inbox and its grouping rule (3.7), figures, tables and the elbow chart at the
 hold (3.8), who is driving (3.9), decision history (3.10), the fleet protocol and the resource cap
 (section 6), tests (section 9), and the baseline numbers from the liver trace (section 10). A
@@ -58,12 +61,13 @@ answered in chat, three judgment dispatches re-run on mechanical faults, three r
 
 ## 2. Part 1: the engine release before the next organ
 
-Moved to its own document, `engine-v0.2.7-plan.md` (L13 conditional steps, L12, L8, the `wait`
-verb, release `v0.2.7`, method rc7); a parallel session owns it. The console depends on `wait`
-(section 6.2) and on L8 (the operator's reason on the hold page, section 3.8).
+Moved to its own document, `engine-v0.2.7-plan.md`, and released on 2026-10-07 evening (L13
+conditional steps, L12, L8, the `wait` verb, tag `v0.2.7`, shared `0.2.7-sc0.4.2`, method rc7).
+The console depends on `wait` (section 6.2) and on L8 (the operator's reason on the hold page,
+section 3.8); both exist.
 
-Three small things the console would like from that release, if the session building it has
-room; none blocks it, and each can land in the console branch instead:
+Three small things the console wants that the release did not include; each lands in the console
+branch:
 
 - `review --serve --projects <dir>` repeatable (today `projects_dir` is a single path), so Lyons
   and a second study appear on one console.
@@ -484,25 +488,35 @@ in a minute at the parameter holds; the inbox is the answer to that, and the ema
 A `command` channel that writes a line into the operator session is possible but not planned: the
 operator learns of the verdict from `wait`.
 
-## 7. Decisions for the owner
+## 7. Decisions for the owner (taken 2026-10-07 evening)
+
+The owner's answers are in bold after each item.
 
 1. Fleet model for the next organs: separate sessions in `screen`, or one session with operator
    subagents. Recommendation: separate sessions for lung, gut and spleen now (proven), the
-   subagent model tried on ROSC where there are eleven tissues.
+   subagent model tried on ROSC where there are eleven tissues. **Separate sessions in `screen`.**
 2. The standing console: loopback plus tunnel (recommended) or a fixed lab-network port.
+   **Loopback plus tunnel.**
 3. `wait` as an engine verb (recommended; in the v0.2.7 plan) or a loop in the skill text only.
+   **The engine verb (released in v0.2.7).**
 4. The build route for the interactive console (3.4): progressive enhancement on the existing
    server (recommended first) or a single-page application; and which of the 3.3 interactions come
    first. Recommendation: the inbox with the operator's reason, the figures and the chart at the
    hold, live updates, who is driving; batch cards, the gallery and the history after a week of use.
+   **Progressive enhancement. First cut: the inbox grouped by ask with the operator's reason, and
+   live updates with who is driving. Second cut, after a week of use: figures, tables and the
+   elbow chart at the hold; batch cards; the delivery gallery; decision history.**
 5. The several-reviewers model (section 5). Recommendation: option 1 until a second reviewer
-   exists.
+   exists. **Option 1, one instance per reviewer.**
 6. The delivery-skill additions (3.8): `hold_view` kinds `figure`, `figures` and `chart`, the
    `beside` and `ask` fields; a small amendment to design 14.4 and `method-skills.md`.
    Recommendation: yes; the method already writes these files and the engine only renders them.
+   **Yes, all five.** The `ask` field is part of the first cut (the inbox headings); the figure
+   and chart kinds come with the second.
 7. Console mode for the operator (6.2): the packet, the tables and the verdict move to the console
    and chat keeps one line per hold plus the delivery. Recommendation: yes once the console exists,
-   with the old protocol kept for a session without one.
+   with the old protocol kept for a session without one. **Yes, console mode when a console is
+   configured; the old protocol stays for a session without one.**
 
 Below the contract and decided when built, listed so they are not rediscovered: stable routes by
 id, the token as a cookie, the `data_version` watcher, the step-file route's two conditions, the
@@ -551,15 +565,17 @@ Nothing in part 2 should begin before the owner has taken decisions 1 to 7.
 
 ## 10. Order and measurement
 
+The order after the owner's decisions (2026-10-07 evening):
+
 | step | depends on | estimate |
 |---|---|---|
-| 2.x engine v0.2.7 (parallel session) | nothing | in progress |
-| C1 standing console, stable routes, cookie, several roots | v0.2.7 merged, decision 2 | half a day |
-| C2 inbox, L8 on the page, figures and chart, batch cards, driver block | C1, decision 6 | 1.5 days |
-| C3 operators wait, console-mode skill text | `wait`, C1, decision 7 | half a day |
-| C4 fleet cap, `resources_observed` | C3, decision 1 | 1 day |
-| C5 event stream, JSON routes, the script | C2, decision 4 | 2 to 3 days (route 1), a week (route 2) |
-| gallery, history | C5 | 1 day |
+| engine v0.2.7 | released 2026-10-07 | done |
+| C1 standing console: several roots, stable routes, the cookie, the systemd unit | nothing | half a day |
+| C2 first cut: the inbox grouped by ask with the operator's reason and the `ask` field; the driver block and the timeline | C1 | 1 day |
+| C5 first cut: the event stream, the JSON routes, the script (live updates, keyboard, sorting) | C2 | 2 days |
+| C3 console-mode skill text, `wait` in the loop | C1 | half a day |
+| second cut: figures, tables and the chart at the hold (`figure`, `figures`, `chart`, `beside`); batch cards; the gallery; the history | a week of use | 2 days |
+| C4 fleet cap, `resources_observed` | when the organs need it | 1 day |
 
 Baseline from the liver trace (`upstream_liver`, 2026-10-07, one organ, the owner present in the
 session, every hold relayed in chat): time from `holds.created` to `reviews.ts`.
