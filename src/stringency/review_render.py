@@ -81,6 +81,7 @@ class ReplicateView:
     supporting: list[CitedCell]
     contradicting: list[CitedCell]
     rationale: str
+    item: str | None = None
 
     @property
     def call(self) -> str:
@@ -96,6 +97,7 @@ class ReplicateView:
             "supporting": [c.to_json() for c in self.supporting],
             "contradicting": [c.to_json() for c in self.contradicting],
             "rationale": self.rationale,
+            "item": self.item,
         }
 
 
@@ -215,6 +217,7 @@ def _replicate_view(project: Project, r: Any, tables: dict[str, EvidenceTable]) 
         supporting=[resolve_ref(tables, x) for x in json.loads(r["supporting_json"])],
         contradicting=[resolve_ref(tables, x) for x in json.loads(r["contradicting_json"])],
         rationale=(project.store.message(r["rationale_ref"]) or "") if r["rationale_ref"] else "",
+        item=str(r["item_id"]) if r["item_id"] is not None else None,
     )
 
 
@@ -475,6 +478,25 @@ def render_flag(
             lines += ["", "other evidence:", *_evidence_lines(leftovers)]
     else:
         lines += ["evidence:", *(_evidence_lines(evidence) or [f"{INDENT}none"])]
+        if plan is not None and plan.module.manifest.kind == "judgment":
+            # a flag a plugin raised on a judgment step (the batch route): the person decides
+            # whether to agree with the reviewers, so every reviewer's call is shown (L16)
+            tables = tables_seen(plan)
+            view.replicates = _replicates(project, h, action.attempt if action else None, tables)
+            if view.replicates:
+                lines += ["", "the reviewers' calls:"]
+                for rv in view.replicates:
+                    on = f", item {rv.item}" if rv.item is not None else ""
+                    lines.append(f"{INDENT}replicate {rv.replicate}{on}: {rv.call}")
+                    lines += _replicate_lines(rv, INDENT + INDENT)
+                cited = {
+                    (c.table, c.row)
+                    for rv in view.replicates
+                    for c in rv.supporting + rv.contradicting
+                }
+                view.evidence_rows = _table_rows(tables, cited)
+                if view.evidence_rows:
+                    lines += ["", *_table_lines(view.evidence_rows, "evidence table (rows cited)")]
         if action:
             lines += [""]
             lines += _state_lines(

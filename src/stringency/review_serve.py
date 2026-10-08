@@ -328,6 +328,22 @@ HOLD_HTML = _ENV.from_string(
 <h2>The operator's reason</h2>
 <div class="reason">{{ operator_reason }}</div>
 {% endif %}
+{% if reviewers %}
+<h2>The reviewers</h2>
+{% for r in reviewers %}
+<h3>Replicate {{ r.replicate }}{% if r.item is not none and not item_id %}, item {{ r.item }}{% endif %}: {{ r.call }}</h3>
+<div class="reason">{{ r.rationale or "no rationale recorded" }}</div>
+{% if r.supporting or r.contradicting %}
+<details><summary>cells cited ({{ r.supporting|length }} supporting, {{ r.contradicting|length }} contradicting)</summary>
+<ul>
+{% for c in r.supporting %}<li>supporting: {{ c.line() }}</li>
+{% endfor %}{% for c in r.contradicting %}<li>contradicting: {{ c.line() }}</li>
+{% endfor %}
+</ul>
+</details>
+{% endif %}
+{% endfor %}
+{% endif %}
 {{ view_sections }}
 <h2>The packet, as the terminal prints it</h2>
 <pre>{{ text }}</pre>
@@ -1325,6 +1341,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             card_title=title,
             decision=_decision_rows(ctx),
             operator_reason=view.operator_reason,
+            reviewers=view.replicates,
             age=_age(h["created"]),
             predicate=str(ctx.get("predicate") or ""),
             hold_id=h["hold_id"],
