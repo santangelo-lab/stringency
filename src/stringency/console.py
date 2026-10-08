@@ -11,7 +11,9 @@ read-only connections. Writes nothing.
 
 from __future__ import annotations
 
+import contextlib
 import json
+import queue
 import sqlite3
 import statistics
 import threading
@@ -483,3 +485,167 @@ def timeline(conn: sqlite3.Connection, titles: dict[str, str]) -> list[dict[str,
             }
         )
     return out
+
+
+# -- the event stream (plan 3.6) -----------------------------------------------------------------
+
+POLL_SECONDS = 2.0
+TICK_SECONDS = 30.0
+
+
+def snapshot(conn: sqlite3.Connection) -> dict[str, Any]:
+    """What the console shows of one project, small enough to take on every change: the latest
+    run and its status, its step statuses, the open hold ids, the delivery count. Reads: runs,
+    steps, holds, deliveries."""
+    run = conn.execute(
+        "SELECT run_id, status FROM runs ORDER BY started DESC, rowid DESC LIMIT 1"
+    ).fetchone()
+    steps: dict[str, str] = {}
+    if run is not None:
+        steps = {
+            str(r["step_id"]): str(r["status"])
+            for r in conn.execute(
+                "SELECT step_id, status FROM steps WHERE run_id = ?", (run["run_id"],)
+            )
+        }
+    holds = {
+        str(r["hold_id"])
+        for r in conn.execute(
+            "SELECT hold_id FROM holds WHERE resolved_by_review IS NULL AND resolved_via IS NULL"
+        )
+    }
+    deliveries = conn.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
+    return {
+        "run": (str(run["run_id"]), str(run["status"])) if run is not None else None,
+        "steps": steps,
+        "holds": holds,
+        "deliveries": int(deliveries),
+    }
+
+
+def diff_snapshots(
+    old: dict[str, Any] | None, new: dict[str, Any]
+) -> list[tuple[str, dict[str, Any]]]:
+    """The events between two snapshots, as (name, payload) pairs: `hold_opened`,
+    `hold_resolved`, `run`, `step`, `delivery`. A first snapshot yields a `project` event only,
+    so a console that starts late does not announce every old hold."""
+    if old is None:
+        return [("project", {})]
+    out: list[tuple[str, dict[str, Any]]] = []
+    for hid in sorted(new["holds"] - old["holds"]):
+        out.append(("hold_opened", {"hold_id": hid}))
+    for hid in sorted(old["holds"] - new["holds"]):
+        out.append(("hold_resolved", {"hold_id": hid}))
+    if new["run"] != old["run"]:
+        run_id, status = new["run"] if new["run"] else (None, None)
+        out.append(("run", {"run_id": run_id, "status": status}))
+    if new["run"] and old["run"] and new["run"][0] == old["run"][0]:
+        for sid, status in new["steps"].items():
+            if old["steps"].get(sid) != status:
+                out.append(("step", {"step_id": sid, "status": status}))
+    if new["deliveries"] > old["deliveries"]:
+        out.append(("delivery", {}))
+    return out
+
+
+@dataclass
+class Event:
+    name: str
+    data: dict[str, Any]
+    seq: int = 0
+
+    def sse(self) -> str:
+        return f"id: {self.seq}\nevent: {self.name}\ndata: {json.dumps(self.data)}\n\n"
+
+
+class Watcher(threading.Thread):
+    """One thread per server: keeps a read-only connection per project, polls SQLite's
+    `data_version` (which changes when another connection commits) every `poll_seconds`, diffs
+    a snapshot when it did, and hands the events to every subscribed queue. Sends `tick` every
+    `tick_seconds` so clients know the stream is alive. Reads only."""
+
+    def __init__(
+        self,
+        registry: Registry,
+        *,
+        poll_seconds: float = POLL_SECONDS,
+        tick_seconds: float = TICK_SECONDS,
+    ) -> None:
+        super().__init__(name="stringency-console-watcher", daemon=True)
+        self.registry = registry
+        self.poll_seconds = poll_seconds
+        self.tick_seconds = tick_seconds
+        self._stop = threading.Event()
+        self._lock = threading.Lock()
+        self._subscribers: list[queue.Queue[Event]] = []
+        self._conns: dict[Path, sqlite3.Connection] = {}
+        self._versions: dict[Path, int] = {}
+        self._snapshots: dict[Path, dict[str, Any]] = {}
+        self._seq = 0
+        self._last_tick = time.monotonic()
+
+    def subscribe(self) -> queue.Queue[Event]:
+        q: queue.Queue[Event] = queue.Queue()
+        with self._lock:
+            self._subscribers.append(q)
+        return q
+
+    def unsubscribe(self, q: queue.Queue[Event]) -> None:
+        with self._lock:
+            if q in self._subscribers:
+                self._subscribers.remove(q)
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    @property
+    def stopped(self) -> bool:
+        return self._stop.is_set()
+
+    def publish(self, name: str, data: dict[str, Any]) -> None:
+        with self._lock:
+            self._seq += 1
+            ev = Event(name, data, self._seq)
+            for q in self._subscribers:
+                q.put(ev)
+
+    def poll_once(self) -> None:
+        """One pass over every project; public so tests drive it without the thread."""
+        self.registry.refresh()
+        roots = list(self.registry.roots)
+        for root in list(self._conns):
+            if root not in roots:
+                self._conns.pop(root).close()
+                self._versions.pop(root, None)
+                self._snapshots.pop(root, None)
+        for root in roots:
+            conn = self._conns.get(root)
+            if conn is None:
+                conn = _ro(root)
+                if conn is None:
+                    continue
+                self._conns[root] = conn
+            try:
+                version = int(conn.execute("PRAGMA data_version").fetchone()[0])
+                if root in self._versions and version == self._versions[root]:
+                    continue
+                snap = snapshot(conn)
+            except sqlite3.DatabaseError:
+                continue
+            self._versions[root] = version
+            events = diff_snapshots(self._snapshots.get(root), snap)
+            self._snapshots[root] = snap
+            pid = self.registry.id_of(root) or ""
+            for name, data in events:
+                self.publish(name, {"project_id": pid, "project": root.name, **data})
+        if time.monotonic() - self._last_tick >= self.tick_seconds:
+            self._last_tick = time.monotonic()
+            self.publish("tick", {})
+
+    def run(self) -> None:
+        while not self._stop.is_set():
+            with contextlib.suppress(Exception):  # the watcher outlives one bad pass
+                self.poll_once()
+            self._stop.wait(self.poll_seconds)
+        for conn in self._conns.values():
+            conn.close()

@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import queue
 import secrets
 import sys
 from dataclasses import dataclass
@@ -48,6 +49,7 @@ from markupsafe import Markup
 from stringency.board import COLUMNS, project_entry, refresh_if_present, row, sentence
 from stringency.console import (
     Registry,
+    Watcher,
     ask_of,
     card_title,
     discover,
@@ -102,6 +104,7 @@ h2 { font-size: 1em; font-weight: 600; margin-top: 2em; }
 h3 { font-size: 0.95em; font-weight: 600; margin: 1.2em 0 0.4em; }
 .fork { margin-left: 1.5em; }
 .stale { color: #8a5a00; }
+tr.focus td { outline: 2px solid #2f5d9e; }
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: 0.3em 0.6em; border-bottom: 1px solid #ddd; vertical-align: top; }
 pre { white-space: pre-wrap; word-break: break-word; background: #f6f6f6; padding: 1em; border: 1px solid #ddd; }
@@ -116,9 +119,14 @@ button { font: inherit; padding: 0.4em 1.2em; }
 
 _HEAD = """<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>{{ title }}</title>{% if refresh %}<meta http-equiv="refresh" content="{{ refresh }}">{% endif %}<style>{{ style }}</style></head>
+<head><meta charset="utf-8"><title>{{ title }}</title>{% if refresh %}<meta http-equiv="refresh" content="{{ refresh }}">{% endif %}<style>{{ style }}</style><script src="/static/console.js" defer></script></head>
 <body>
 """
+STATIC_DIR = Path(__file__).with_name("static")
+CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; "
+    "connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
+)
 
 _FOOT = """
 </body>
@@ -129,6 +137,7 @@ LANDING_HTML = _ENV.from_string(
     _HEAD
     + """<h1>Projects</h1>
 <p class="note">Served by stringency review --serve for {{ user }} on {{ host }}{% if read_only %}, read-only{% else %}. A verdict recorded here is recorded as this account's, via web{% endif %}. Read fresh on every load; this page reloads itself every {{ refresh }} seconds.</p>
+<section data-live="needs">
 <h2>Needs you{% if n_holds %} ({{ n_holds }}){% endif %}</h2>
 {% if n_holds %}
 {% for g in groups if g.cards %}
@@ -136,13 +145,15 @@ LANDING_HTML = _ENV.from_string(
 <table>
 <tr><th>project</th><th>what</th><th>step</th><th>kind</th><th>item</th><th>waits on</th><th>open for</th></tr>
 {% for c in g.cards %}
-<tr><td><a href="{{ c.project_href }}">{{ c.project }}</a></td><td><a href="{{ c.href }}">{{ c.title }}</a></td><td>{{ c.step }}</td><td>{{ c.kind }}</td><td>{{ c.item }}</td><td>{{ c.waits_on }}</td><td>{{ c.age }}</td></tr>
+<tr data-card="{{ c.hold_id }}"><td><a href="{{ c.project_href }}">{{ c.project }}</a></td><td><a href="{{ c.href }}" data-open>{{ c.title }}</a></td><td>{{ c.step }}</td><td>{{ c.kind }}</td><td>{{ c.item }}</td><td>{{ c.waits_on }}</td><td>{{ c.age }}</td></tr>
 {% endfor %}
 </table>
 {% endfor %}
 {% else %}
 <p>No unresolved holds in {{ n_projects }} project(s).</p>
 {% endif %}
+</section>
+<section data-live="board">
 <h2>Board</h2>
 <table>
 <tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}<th>for</th><th>elsewhere</th><th>driver</th><th>last call</th></tr>
@@ -156,6 +167,7 @@ LANDING_HTML = _ENV.from_string(
 {% for b in board %}<li>{% if b.href %}<a href="{{ b.href }}">{{ b.name }}</a>{% else %}{{ b.name }}{% endif %}: {{ b.sentence }}</li>
 {% endfor %}
 </ul>
+</section>
 """
     + _FOOT
 )
@@ -164,6 +176,7 @@ PROJECT_HTML = _ENV.from_string(
     _HEAD
     + """<p class="crumbs"><a href="{{ list_href }}">All projects</a></p>
 <h1>{{ name }}</h1>
+<section data-live="project">
 <p>{{ sentence }}</p>
 {% if error %}<p class="error">{{ error }}</p>{% else %}
 {% if driver %}<p class="note">Driver: {{ driver.who }}. Last engine call {{ driver.last_call_age }} ago{% if driver.stale %}, <strong class="stale">stale</strong>{% endif %}.{% if driver.step %} '{{ driver.step }}' has been {{ driver.status }} for {{ driver.elapsed }}{% if driver.elsewhere %}; elsewhere it took {{ driver.elsewhere }}{% endif %}.{% endif %}</p>{% endif %}
@@ -202,6 +215,7 @@ PROJECT_HTML = _ENV.from_string(
 </ul>
 {% endfor %}
 {% endif %}
+</section>
 """
     + _FOOT
 )
@@ -240,7 +254,7 @@ records the same verdicts by the same rules.</p>
 {% elif read_only %}
 <p class="note">{{ read_only_message }}</p>
 {% else %}
-<form method="post" action="{{ post_href }}">
+<form method="post" action="{{ post_href }}" data-verdict>
 <fieldset>
 <legend>Verdict</legend>
 {% for v in verdicts %}
@@ -403,15 +417,29 @@ class ReviewHandler(BaseHTTPRequestHandler):
         return f"{COOKIE_PREFIX}{self.server.server_address[1]}"
 
     def _send(self, status: HTTPStatus, body: str) -> None:
-        self._send_bytes(status, body.encode("utf-8"), "text/html; charset=utf-8")
+        self._send_bytes(status, body.encode("utf-8"), "text/html; charset=utf-8", csp=True)
+
+    def _send_json(self, payload: Any) -> None:
+        self._send_bytes(
+            HTTPStatus.OK, json.dumps(payload, indent=1).encode("utf-8"), "application/json"
+        )
 
     def _send_bytes(
-        self, status: HTTPStatus, data: bytes, content_type: str, filename: str | None = None
+        self,
+        status: HTTPStatus,
+        data: bytes,
+        content_type: str,
+        filename: str | None = None,
+        *,
+        csp: bool = False,
+        cache: str = "no-store",
     ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache)
+        if csp:
+            self.send_header("Content-Security-Policy", CSP)
         if filename is not None:
             self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self._cookie_header()
@@ -529,6 +557,17 @@ class ReviewHandler(BaseHTTPRequestHandler):
         try:
             if not parts:
                 self._send(HTTPStatus.OK, self._render_landing())
+            elif parts == ["static", "console.js"]:
+                self._send_bytes(
+                    HTTPStatus.OK,
+                    (STATIC_DIR / "console.js").read_bytes(),
+                    "text/javascript; charset=utf-8",
+                    cache="private, max-age=300",
+                )
+            elif parts == ["events"]:
+                self._stream_events()
+            elif parts[0] == "api":
+                self._send_json(self._api(parts[1:]))
             elif parts[0] == "project" and len(parts) == 2:
                 self._send(HTTPStatus.OK, self._render_project(reg.root_of(parts[1])))
             elif parts[0] == "hold" and len(parts) == 2:
@@ -642,6 +681,128 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 style=_STYLE,
             ),
         )
+
+    # -- the event stream and the JSON routes (plan 3.5, 3.6) ---------------------------------
+
+    def _stream_events(self) -> None:
+        """Server-sent events until the client goes away: every event the watcher publishes,
+        a comment line every few seconds in between so proxies and the browser keep the
+        connection. The handler's thread is held for the life of the connection."""
+        watcher = self.server.watcher
+        q = watcher.subscribe()
+        try:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Accel-Buffering", "no")
+            self._cookie_header()
+            self.end_headers()
+            self.wfile.write(b": connected\n\n")
+            self.wfile.flush()
+            while not watcher.stopped:
+                try:
+                    ev = q.get(timeout=10.0)
+                except queue.Empty:
+                    self.wfile.write(b": keepalive\n\n")
+                    self.wfile.flush()
+                    continue
+                self.wfile.write(ev.sse().encode("utf-8"))
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
+        finally:
+            watcher.unsubscribe(q)
+
+    def _api(self, parts: list[str]) -> Any:
+        """The pages' data as JSON: `/api/fleet`, `/api/project/<id>`, `/api/hold/<id>`,
+        `/api/run/<id>`. The same readers as the pages; nothing is computed only here."""
+        reg = self.state.registry
+        if parts == ["fleet"]:
+            roots = self.state.roots
+            refs = references(roots)
+            projects: list[dict[str, Any]] = []
+            cards: list[dict[str, Any]] = []
+            for root in roots:
+                entry = project_entry(root)
+                item: dict[str, Any] = {
+                    "project_id": reg.id_of(root),
+                    "name": root.name,
+                    "row": row(entry),
+                    "sentence": sentence(entry),
+                    "driver": _NO_DRIVER,
+                }
+                if "error" not in entry:
+                    site = Site.load(root)
+                    try:
+                        cards += self._cards(root, site)
+                        item["driver"] = self._driver(site, entry, refs)
+                    finally:
+                        site.store.close()
+                else:
+                    item["error"] = entry["error"]
+                projects.append(item)
+            return {
+                "schema": "stringency.console_fleet/1",
+                "projects": projects,
+                "inbox": group_cards(cards),
+            }
+        if len(parts) == 2 and parts[0] == "project":
+            root = reg.root_of(parts[1])
+            site = Site.load(root)
+            try:
+                entry = project_entry(root)
+                titles = {sid: site.pipeline.title(sid) for sid in site.pipeline.order()}
+                return {
+                    "schema": "stringency.console_project/1",
+                    "project_id": parts[1],
+                    "name": root.name,
+                    "row": row(entry),
+                    "sentence": sentence(entry),
+                    "steps": (
+                        [
+                            {"step_id": sid, "title": titles[sid], "status": st}
+                            for sid, st in site.step_statuses(entry["run"]["run_id"]).items()
+                        ]
+                        if entry.get("run")
+                        else []
+                    ),
+                    "driver": self._driver(site, entry, references(self.state.roots)),
+                    "holds": self._cards(root, site),
+                    "timeline": timeline(site.store.conn, titles),
+                }
+            finally:
+                site.store.close()
+        if len(parts) == 2 and parts[0] == "hold":
+            pid, root = reg.owner_of("hold", parts[1])
+            project = Project.load(root)
+            h = get_hold(project, parts[1])
+            view = render(project, h)
+            site = Site.load(root)
+            try:
+                hp = present_hold(site, h["hold_id"]) if h["kind"] != "confirm" else None
+            finally:
+                site.store.close()
+            ctx = hold_context(h)
+            return {
+                "schema": "stringency.console_hold/1",
+                "project_id": pid,
+                "ask": ask_of(h, ctx),
+                **view.to_json(),
+                "sections": hp["sections"] if hp else [],
+                "replicates": _replicates_for(project, h) if h["item_id"] is not None else [],
+            }
+        if len(parts) == 2 and parts[0] == "run":
+            pid, root = reg.owner_of("run", parts[1])
+            site = Site.load(root)
+            try:
+                return {
+                    "schema": "stringency.console_run/1",
+                    "project_id": pid,
+                    **present_run(site, parts[1]),
+                }
+            finally:
+                site.store.close()
+        raise ConfigError("no such route")
 
     # -- rendering ----------------------------------------------------------------------------
 
@@ -887,9 +1048,18 @@ class ReviewHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-    def __init__(self, address: tuple[str, int], state: ServerState) -> None:
+    def __init__(
+        self, address: tuple[str, int], state: ServerState, *, poll_seconds: float | None = None
+    ) -> None:
         super().__init__(address, ReviewHandler)
         self.state = state
+        kw = {"poll_seconds": poll_seconds} if poll_seconds is not None else {}
+        self.watcher = Watcher(state.registry, **kw)
+        self.watcher.start()
+
+    def server_close(self) -> None:
+        self.watcher.stop()
+        super().server_close()
 
 
 def make_server(
@@ -900,6 +1070,7 @@ def make_server(
     token: str | None = None,
     read_only: bool = False,
     projects_dirs: list[Path] | None = None,
+    poll_seconds: float | None = None,
 ) -> ReviewHTTPServer:
     """Build the server without serving (tests bind port 0). Identity is the OS user running it.
     `roots` are served wherever they are; `projects_dirs` are rescanned while the server runs."""
@@ -916,7 +1087,7 @@ def make_server(
         host=socket.gethostname(),
         read_only=read_only,
     )
-    return ReviewHTTPServer((bind, port), state)
+    return ReviewHTTPServer((bind, port), state, poll_seconds=poll_seconds)
 
 
 def serve(

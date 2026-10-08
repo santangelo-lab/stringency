@@ -25,6 +25,11 @@ from tests.test_run import HARNESS, MOCK, cli
 TOKEN = "test-token-not-secret"
 
 
+def _only_console_script(body: str) -> bool:
+    """The page carries one script, the vendored console script, and nothing inline."""
+    return body.count("<script") == 1 and '<script src="/static/console.js" defer></script>' in body
+
+
 @pytest.fixture(autouse=True)
 def _identity(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("stringency.review.current_user", lambda: "tester")
@@ -75,13 +80,13 @@ def test_list_and_hold_page(server: tuple[str, Project]) -> None:
     base, p = server
     status, body = get(f"{base}/?t={TOKEN}")
     assert status == 200
-    assert "Label the groups" in body and "run_disagreement" in body and "<script" not in body
+    assert "Label the groups" in body and "run_disagreement" in body and _only_console_script(body)
     h = queue(p)[0]
     status, body = get(f"{base}/hold/{h['hold_id']}?t={TOKEN}")
     assert status == 200
     assert "replicate 1: abundant (high)" in body  # the terminal packet, verbatim
     assert 'name="verdict" value="accept"' in body and 'name="replicate"' in body
-    assert "<script" not in body
+    assert _only_console_script(body)
 
 
 def test_token_required(server: tuple[str, Project]) -> None:
@@ -298,7 +303,7 @@ def test_landing_has_needs_you_then_the_board_with_sentences(server: tuple[str, 
 
     base, p = server
     status, body = get(f"{base}/?t={TOKEN}")
-    assert status == 200 and "<script" not in body
+    assert status == 200 and _only_console_script(body)
     assert body.index("Needs you") < body.index("Board") < body.index("In words")
     assert sentence(project_entry(p.root)) in html.unescape(body)  # the board's sentence, verbatim
     assert f'href="/project/{p.config.project_id}"' in body and 'content="60"' in body
@@ -317,7 +322,7 @@ def test_landing_has_needs_you_then_the_board_with_sentences(server: tuple[str, 
 def test_project_page_names_every_step_by_title_with_status(server: tuple[str, Project]) -> None:
     base, p = server
     status, body = get(f"{base}/project/{p.config.project_id}?t={TOKEN}")
-    assert status == 200 and "<script" not in body and 'content="60"' in body
+    assert status == 200 and _only_console_script(body) and 'content="60"' in body
     steps = _tables(body)[0][1:]
     assert [s[0] for s in steps] == [p.pipeline.title(s) for s in p.pipeline.order()]
     by = dict(steps)
@@ -335,7 +340,7 @@ def test_run_page_tables_equal_present_rows_and_files_download(make_project: Ini
     _skill(p, [{"title": "The table", "source": table, "kind": "table"}])
     for base in _serve(p):
         status, body = get(f"{base}/run/{run_id}?t={TOKEN}")
-        assert status == 200 and "<script" not in body
+        assert status == 200 and _only_console_script(body)
         site = Site.load(p.root)
         rows = present_rows(site, run_id)
         site.store.close()
@@ -394,7 +399,7 @@ def test_hold_page_shows_hold_view_tables_and_redirect(make_project: InitFn) -> 
     )
     for base in _serve(p):
         status, body = get(f"{base}/hold/{hid}?t={TOKEN}")
-        assert status == 200 and "<script" not in body
+        assert status == 200 and _only_console_script(body)
         assert _tables(body)[0] == [["item", "verdict"], ["g1", "exclude"]]
         assert body.index("<table") < body.index("<pre>")  # the method's table above the packet
         assert "<form" in body
@@ -697,3 +702,137 @@ def test_hold_view_entry_for_another_step_is_not_shown(make_project: InitFn) -> 
         status, body = get(f"{base}/hold/{hid}?t={TOKEN}")
         assert status == 200
         assert len([t for t in _tables(body) if t and t[0] == ["item", "verdict"]]) == 1
+
+
+# -- the console, C5 first cut (plan 3.5, 3.6): the event stream, the JSON routes, the script ----
+
+
+def test_snapshot_diff_names_the_change() -> None:
+    from stringency.console import diff_snapshots
+
+    a = {
+        "run": ("R1", "running"),
+        "steps": {"01": "completed", "02": "running"},
+        "holds": set(),
+        "deliveries": 0,
+    }
+    assert diff_snapshots(None, a) == [("project", {})]
+    b = {
+        "run": ("R1", "held"),
+        "steps": {"01": "completed", "02": "held"},
+        "holds": {"H1"},
+        "deliveries": 0,
+    }
+    assert diff_snapshots(a, b) == [
+        ("hold_opened", {"hold_id": "H1"}),
+        ("run", {"run_id": "R1", "status": "held"}),
+        ("step", {"step_id": "02", "status": "held"}),
+    ]
+    c = {"run": ("R2", "running"), "steps": {"01": "completed"}, "holds": set(), "deliveries": 1}
+    assert diff_snapshots(b, c) == [
+        ("hold_resolved", {"hold_id": "H1"}),
+        ("run", {"run_id": "R2", "status": "running"}),
+        ("delivery", {}),
+    ]
+    assert diff_snapshots(c, c) == []
+
+
+def test_events_stream_follows_the_trace(held: tuple[Project, dict[str, str]]) -> None:
+    import http.client
+    import json
+    import time
+
+    p, _ = held
+    srv = make_server([p.root], port=0, token=TOKEN, poll_seconds=0.2)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        port = srv.server_address[1]
+        time.sleep(0.6)  # the watcher's first pass takes the baseline snapshot
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        conn.request("GET", f"/events?t={TOKEN}")
+        r = conn.getresponse()
+        assert r.status == 200 and r.getheader("Content-Type", "").startswith("text/event-stream")
+        assert r.readline() == b": connected\n"
+
+        def next_event() -> tuple[str, dict[str, str]]:
+            name, data = "", "{}"
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                line = r.readline().decode().rstrip("\n")
+                if line.startswith("event: "):
+                    name = line[7:]
+                elif line.startswith("data: "):
+                    data = line[6:]
+                elif line == "" and name:
+                    return name, json.loads(data)
+            raise AssertionError("no event within 10 s")
+
+        # a hold opened in another process (here: the store) is announced
+        hid = p.store.create_hold(
+            {
+                "run_id": None,
+                "step_id": None,
+                "kind": "confirm",
+                "reason": "test",
+                "waits_on_role": "owner",
+                "context_json": "{}",
+            }
+        )
+        name, data = next_event()
+        assert (name, data["hold_id"], data["project_id"]) == (
+            "hold_opened",
+            hid,
+            p.config.project_id,
+        )
+        # a verdict recorded on the page is announced as the hold's resolution
+        h = next(x for x in queue(p) if x["kind"] == "run_disagreement")
+        status, _ = post(
+            f"http://127.0.0.1:{port}/hold/{h['hold_id']}", t=TOKEN, verdict="accept", replicate="1"
+        )
+        assert status == 200
+        seen = {}
+        for _ in range(3):
+            name, data = next_event()
+            seen[name] = data
+            if "hold_resolved" in seen and "run" in seen:
+                break
+        assert seen["hold_resolved"]["hold_id"] == h["hold_id"]
+        conn.close()
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_json_routes_and_static_and_csp(server: tuple[str, Project]) -> None:
+    import json
+    import urllib.request
+
+    base, p = server
+    with urllib.request.urlopen(f"{base}/?t={TOKEN}") as r:
+        assert r.headers["Content-Security-Policy"].startswith("default-src 'self'")
+    with urllib.request.urlopen(f"{base}/static/console.js?t={TOKEN}") as r:
+        assert r.headers["Content-Type"].startswith("text/javascript")
+        assert b"EventSource" in r.read()
+    status, body = get(f"{base}/api/fleet?t={TOKEN}")
+    fleet = json.loads(body)
+    assert status == 200 and fleet["schema"] == "stringency.console_fleet/1"
+    assert fleet["projects"][0]["project_id"] == p.config.project_id
+    assert fleet["projects"][0]["driver"]["step"] == "Label the groups"
+    groups = {g["key"]: g["cards"] for g in fleet["inbox"]}
+    assert groups["disagreement"][0]["title"] == "Label the groups, item A"
+    status, body = get(f"{base}/api/project/{p.config.project_id}?t={TOKEN}")
+    proj = json.loads(body)
+    assert status == 200 and proj["timeline"][0]["events"][0]["text"].startswith("opened by")
+    assert [s["status"] for s in proj["steps"]][:2] == ["completed", "completed"]
+    h = queue(p)[0]
+    status, body = get(f"{base}/api/hold/{h['hold_id']}?t={TOKEN}")
+    hold = json.loads(body)
+    assert (
+        status == 200
+        and hold["ask"] == "disagreement"
+        and hold["project_id"] == p.config.project_id
+    )
+    assert "operator_reason" in hold and hold["replicates"] and "verdicts" in hold
+    assert get(f"{base}/api/nothing?t={TOKEN}")[0] == 404
+    assert get(f"{base}/api/fleet")[0] == 403
