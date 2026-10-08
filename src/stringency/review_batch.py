@@ -60,7 +60,7 @@ class BatchView:
 
 
 def locate_holds(
-    hold_ids: list[str], projects: list[Path], projects_dir: Path | None
+    hold_ids: list[str], projects: list[Path], projects_dir: list[Path] | Path | None
 ) -> list[BatchMember]:
     """Find each hold among the projects named or discovered. Refuses when a hold is missing,
     resolved, or not a project-level confirm hold: only siblings' echo-backs batch."""

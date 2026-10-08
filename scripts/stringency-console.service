@@ -1,0 +1,39 @@
+# The standing stringency console on PROTSEQ (console-and-fleet-plan.md, C1; owner's decision
+# 2026-10-07: loopback port 8765, reached through a tunnel).
+#
+# A `systemd --user` unit for the reviewer's own account: a verdict recorded on this console is
+# recorded as that account's, via web (design 7.5). Never install it under an account that is not
+# the reviewer's. The read-only page for other readers is scripts/stringency-page.service (8766).
+# The token lives in ~/.config/stringency/console-token (created on first start, mode 600), so the
+# URL is stable across restarts and can go into `page_url` of ~/.config/stringency/notify.yml.
+#
+# Install (as the reviewer, once):
+#     mkdir -p ~/.config/systemd/user
+#     cp scripts/stringency-console.service ~/.config/systemd/user/
+#     systemctl --user daemon-reload
+#     systemctl --user enable --now stringency-console.service
+#     journalctl --user -u stringency-console.service -n 5     # prints the URL with its token
+#     sudo loginctl enable-linger $USER                         # once: keep it running after logout
+#
+# Reach it from a laptop:  ssh -N -L 8765:127.0.0.1:8765 protseq   then open the printed URL once;
+# after that the token is a cookie and plain links work. Add `--projects <dir>` lines for other
+# studies; each is rescanned every thirty seconds. Ports 8000 and 8001 are this machine's Claude
+# Science.
+
+[Unit]
+Description=stringency console (verdicts as this account, loopback 8765)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/data/lab/env/stringency/current/bin/stringency review --serve \
+    --bind 127.0.0.1 --port 8765 \
+    --token-file %h/.config/stringency/console-token \
+    --projects /data/lab/projects
+Restart=on-failure
+RestartSec=10
+UMask=0002
+Environment=STRINGENCY_NOTIFY=0
+
+[Install]
+WantedBy=default.target

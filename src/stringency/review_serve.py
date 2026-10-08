@@ -1,20 +1,26 @@
-"""`stringency review --serve`: the project page and the localhost form for verdicts (design 7.5
-`via: web`, 14.1; `spec/plans/ux-two-audiences.md` section 5.2; `spec/plans/project-page-and-notify.md`
-section 3).
+"""`stringency review --serve`: the console (design 7.5 `via: web`, 14.1;
+`spec/plans/console-and-fleet-plan.md`; before it `spec/archive/project-page-and-notify.md`).
 
 The reviewer starts it under their own account, usually through an SSH tunnel
-(`scripts/review-page.sh`). It shows every discovered project as the board does, one project's
-progress and deliveries, one finished run as `present --run` renders it with its files for
-download, and a hold exactly as `review_render.render` prints it, with the verdict form that
+(`scripts/review-page.sh`) or as a standing `systemd --user` service
+(`scripts/stringency-console.service`). It shows every discovered project as the board does, one
+project's progress and deliveries, one finished run as `present --run` renders it with its files
+for download, and a hold exactly as `review_render.render` prints it, with the verdict form that
 records through `record_review(via_override="web")`, so every rule the terminal path applies
 (identity, profile, required reason, replicate, correction) applies here too. A random token
-printed once at start (or read from `--token-file`) is required on every request; the server
-binds to loopback unless told otherwise. `--read-only` refuses every POST (405) for a standing
-instance that must not record verdicts under the account that started it.
+printed once at start (or read from `--token-file`) is required on every request: in `?t=` on the
+first visit, after which the server sets it as a cookie so links, images and the event stream
+carry none. The server binds to loopback unless told otherwise. `--read-only` refuses every POST
+(405) for a standing instance that must not record verdicts under the account that started it.
+
+Routes are keyed by the trace's own ids (`/project/<project_id>`, `/hold/<hold_id>`,
+`/run/<run_id>`, `/file/<run_id>/<name>`), since the set of projects changes while the console
+runs; the positional `/p/<i>/...` routes of engine 0.2.6 redirect to them. Several `--projects`
+directories may be given; they are rescanned every thirty seconds.
 
 Every number on a page is an engine output: the board's rows and sentences (`board.row`,
 `board.sentence`), `present`'s sections (`present.render_html` over the same rows the markdown
-renderer prints), the packet text. No JavaScript, no agent prose.
+renderer prints), the packet text. No agent prose.
 
 Reads: what `review_render.render`, `review.queue`, `board.project_entry` and `present` read;
 `deliver/<run>/index.json` for the file route. Writes: nothing itself; a POST writes through
@@ -30,6 +36,7 @@ import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from http import HTTPStatus
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -38,7 +45,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 from jinja2 import Environment, StrictUndefined
 from markupsafe import Markup
 
-from stringency.board import COLUMNS, SKIP_DIRS, project_entry, refresh_if_present, row, sentence
+from stringency.board import COLUMNS, project_entry, refresh_if_present, row, sentence
+from stringency.console import Registry, discover
 from stringency.exit_codes import ConfigError, RefusedError
 from stringency.present import Site, present_hold, present_run, render_html
 from stringency.project import Project
@@ -46,47 +54,17 @@ from stringency.review import _replicates_for, get_hold, record_review
 from stringency.review_render import render
 from stringency.when import skip_reason
 
+__all__ = ["discover", "make_server", "read_token_file", "serve"]
+
 DEFAULT_PORT = 8765
 DEFAULT_BIND = "127.0.0.1"
 REFRESH_SECONDS = 60
+COOKIE_PREFIX = "stringency_console_"
 READ_ONLY_MESSAGE = (
     "This page is read-only and records no verdict. To record one, start your own page with "
     "scripts/review-page.sh, or run `stringency review --hold <id>` at a terminal in the "
     "project directory."
 )
-
-
-def _candidates(d: Path) -> list[Path]:
-    """Subdirectories the board would scan: not `superseded/`, `declarations/` or dot-dirs."""
-    return sorted(
-        c
-        for c in d.iterdir()
-        if c.is_dir() and c.name not in SKIP_DIRS and not c.name.startswith(".")
-    )
-
-
-def discover(projects: list[Path], projects_dir: Path | None) -> list[Path]:
-    """Project roots: the ones named, plus every child of `projects_dir` to depth two that holds
-    a `stringency.yml`, skipping the directories the board skips (`superseded/`, `declarations/`,
-    dot-dirs) at both levels. Ordered as given, then by path."""
-    roots: list[Path] = [p.resolve() for p in projects]
-    if projects_dir is not None:
-        base = projects_dir.resolve()
-        found: list[Path] = []
-        for child in _candidates(base) if base.is_dir() else []:
-            if (child / "stringency.yml").exists():
-                found.append(child)
-                continue
-            for grand in _candidates(child):
-                if (grand / "stringency.yml").exists():
-                    found.append(grand)
-        roots += [f for f in found if f not in roots]
-    for r in roots:
-        if not (r / "stringency.yml").exists():
-            raise ConfigError(f"{r} is not a stringency project (no stringency.yml)")
-    if not roots:
-        raise ConfigError("review --serve needs --project <path> or --projects <dir>")
-    return roots
 
 
 def read_token_file(path: Path) -> str:
@@ -156,12 +134,12 @@ LANDING_HTML = _ENV.from_string(
 <table>
 <tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr>
 {% for b in board %}
-<tr>{% for c in columns %}<td>{% if loop.first %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}</tr>
+<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}</tr>
 {% endfor %}
 </table>
 <h2>In words</h2>
 <ul>
-{% for b in board %}<li><a href="{{ b.href }}">{{ b.name }}</a>: {{ b.sentence }}</li>
+{% for b in board %}<li>{% if b.href %}<a href="{{ b.href }}">{{ b.name }}</a>{% else %}{{ b.name }}{% endif %}: {{ b.sentence }}</li>
 {% endfor %}
 </ul>
 """
@@ -240,7 +218,6 @@ records the same verdicts by the same rules.</p>
 <p class="note">{{ read_only_message }}</p>
 {% else %}
 <form method="post" action="{{ post_href }}">
-<input type="hidden" name="t" value="{{ token }}">
 <fieldset>
 <legend>Verdict</legend>
 {% for v in verdicts %}
@@ -270,7 +247,7 @@ records the same verdicts by the same rules.</p>
 </fieldset>
 {% endif %}
 <fieldset>
-<legend>Reason, in your own words (required for accept on a flag, reject, override)</legend>
+<legend>Reason, in your own words (required for accept on a flag, reject, override). The operator reads it when it resumes: if the verdict needs a next step, say it here.</legend>
 <textarea name="reason" rows="4">{{ reason }}</textarea>
 </fieldset>
 <button type="submit">Record verdict</button>
@@ -358,17 +335,23 @@ def _content_type(name: str, kind: str) -> str:
 
 @dataclass
 class ServerState:
-    roots: list[Path]
+    registry: Registry
     token: str
     user: str
     host: str
     read_only: bool = False
+
+    @property
+    def roots(self) -> list[Path]:
+        self.registry.refresh()
+        return self.registry.roots
 
 
 class ReviewHandler(BaseHTTPRequestHandler):
     """One request at a time per thread; each request opens its own `Site` or `Project`."""
 
     server: ReviewHTTPServer
+    _issue_cookie: bool = False
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         sys.stderr.write("review --serve: " + (format % args) + "\n")
@@ -378,6 +361,12 @@ class ReviewHandler(BaseHTTPRequestHandler):
     @property
     def state(self) -> ServerState:
         return self.server.state
+
+    @property
+    def cookie_name(self) -> str:
+        """Per port, since the browser ignores the port when it matches cookies and a read-only
+        instance may run beside this one on the same host."""
+        return f"{COOKIE_PREFIX}{self.server.server_address[1]}"
 
     def _send(self, status: HTTPStatus, body: str) -> None:
         self._send_bytes(status, body.encode("utf-8"), "text/html; charset=utf-8")
@@ -391,14 +380,24 @@ class ReviewHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         if filename is not None:
             self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self._cookie_header()
         self.end_headers()
         self.wfile.write(data)
+
+    def _cookie_header(self) -> None:
+        if self._issue_cookie:
+            self.send_header(
+                "Set-Cookie",
+                f"{self.cookie_name}={self.state.token}; HttpOnly; SameSite=Strict; Path=/",
+            )
+            self._issue_cookie = False
 
     def _redirect(self, location: str) -> None:
         self.send_response(HTTPStatus.FOUND)
         self.send_header("Location", location)
         self.send_header("Content-Length", "0")
         self.send_header("Cache-Control", "no-store")
+        self._cookie_header()
         self.end_headers()
 
     def _error(self, status: HTTPStatus, message: str, *, with_link: bool = True) -> None:
@@ -414,27 +413,35 @@ class ReviewHandler(BaseHTTPRequestHandler):
         )
 
     def _token_ok(self, params: dict[str, list[str]]) -> bool:
+        """The token in `?t=` or a form field, or the cookie this server set on an earlier
+        tokened request. A query token marks the response to carry the cookie."""
         given = params.get("t", [""])[0]
-        return bool(given) and secrets.compare_digest(given, self.state.token)
+        if given and secrets.compare_digest(given, self.state.token):
+            self._issue_cookie = True
+            return True
+        raw = self.headers.get("Cookie")
+        if raw:
+            jar: SimpleCookie = SimpleCookie()
+            try:
+                jar.load(raw)
+            except Exception:  # noqa: BLE001 - a malformed cookie is no cookie
+                return False
+            morsel = jar.get(self.cookie_name)
+            if morsel is not None and secrets.compare_digest(morsel.value, self.state.token):
+                return True
+        return False
 
     def _href(self, path: str) -> str:
-        return f"{path}?t={self.state.token}"
+        return path
 
     def _list_href(self) -> str:
-        return self._href("/")
+        return "/"
 
-    def _root(self, index: int) -> Path:
-        if index < 0 or index >= len(self.state.roots):
-            raise ConfigError(f"no project {index}")
-        return self.state.roots[index]
+    def _project_href(self, root: Path) -> str:
+        pid = self.state.registry.id_of(root)
+        return f"/project/{pid}" if pid else ""
 
-    def _project(self, index: int) -> Project:
-        return Project.load(self._root(index))
-
-    def _site(self, index: int) -> Site:
-        return Site.load(self._root(index))
-
-    def _hold_rows(self, index: int, site: Site) -> list[dict[str, str]]:
+    def _hold_rows(self, root: Path, site: Site) -> list[dict[str, str]]:
         rows: list[dict[str, str]] = []
         for h in site.store.all(_OPEN_HOLDS_SQL):
             step = h["step_id"]
@@ -451,13 +458,13 @@ class ReviewHandler(BaseHTTPRequestHandler):
             rows.append(
                 {
                     "project": site.root.name,
-                    "project_href": self._href(f"/p/{index}"),
+                    "project_href": self._project_href(root),
                     "step": title,
                     "kind": h["kind"],
                     "item": h["item_id"] or "",
                     "waits_on": f"{h['waits_on_role']} {who}",
                     "age": _age(h["created"]),
-                    "href": self._href(f"/p/{index}/hold/{h['hold_id']}"),
+                    "href": f"/hold/{h['hold_id']}",
                 }
             )
         return rows
@@ -475,22 +482,24 @@ class ReviewHandler(BaseHTTPRequestHandler):
             )
             return
         parts = [unquote(p) for p in url.path.split("/") if p]
+        reg = self.state.registry
         try:
             if not parts:
                 self._send(HTTPStatus.OK, self._render_landing())
-            elif len(parts) == 2 and parts[0] in ("hold", "run"):
-                self._redirect_by_id(parts[0], parts[1])
-            elif parts[0] == "p" and len(parts) == 2:
-                self._send(HTTPStatus.OK, self._render_project(int(parts[1])))
-            elif parts[0] == "p" and len(parts) == 4 and parts[2] == "hold":
-                index = int(parts[1])
-                project = self._project(index)
-                h = get_hold(project, parts[3])
-                self._send(HTTPStatus.OK, self._render_hold(index, project, h))
-            elif parts[0] == "p" and len(parts) == 4 and parts[2] == "run":
-                self._send(HTTPStatus.OK, self._render_run(int(parts[1]), parts[3]))
-            elif parts[0] == "p" and len(parts) == 5 and parts[2] == "file":
-                self._send_file(int(parts[1]), parts[3], parts[4])
+            elif parts[0] == "project" and len(parts) == 2:
+                self._send(HTTPStatus.OK, self._render_project(reg.root_of(parts[1])))
+            elif parts[0] == "hold" and len(parts) == 2:
+                _pid, root = reg.owner_of("hold", parts[1])
+                project = Project.load(root)
+                self._send(HTTPStatus.OK, self._render_hold(project, get_hold(project, parts[1])))
+            elif parts[0] == "run" and len(parts) == 2:
+                _pid, root = reg.owner_of("run", parts[1])
+                self._send(HTTPStatus.OK, self._render_run(root, parts[1]))
+            elif parts[0] == "file" and len(parts) == 3:
+                _pid, root = reg.owner_of("run", parts[1])
+                self._send_file(root, parts[1], parts[2])
+            elif parts[0] == "p":
+                self._redirect_legacy(parts)
             else:
                 self._error(HTTPStatus.NOT_FOUND, "no such page")
         except (ConfigError, ValueError) as e:
@@ -498,6 +507,21 @@ class ReviewHandler(BaseHTTPRequestHandler):
         except Exception as e:  # noqa: BLE001 - one request's failure is one error page
             self.log_message("error: %s: %s", type(e).__name__, e)
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, f"{type(e).__name__}: {e}")
+
+    def _redirect_legacy(self, parts: list[str]) -> None:
+        """The `/p/<i>/...` routes of engine 0.2.6 (bookmarks, old notification links): the
+        project at that position today, redirected to its id route."""
+        reg = self.state.registry
+        if len(parts) == 2:
+            self._redirect(self._project_href(reg.root_at(int(parts[1]))) or "/")
+        elif len(parts) == 4 and parts[2] in ("hold", "run"):
+            reg.root_at(int(parts[1]))
+            self._redirect(f"/{parts[2]}/{parts[3]}")
+        elif len(parts) == 5 and parts[2] == "file":
+            reg.root_at(int(parts[1]))
+            self._redirect(f"/file/{parts[3]}/{parts[4]}")
+        else:
+            self._error(HTTPStatus.NOT_FOUND, "no such page")
 
     def do_POST(self) -> None:  # noqa: N802
         url = urlparse(self.path)
@@ -514,13 +538,18 @@ class ReviewHandler(BaseHTTPRequestHandler):
             self._error(HTTPStatus.METHOD_NOT_ALLOWED, READ_ONLY_MESSAGE)
             return
         parts = [unquote(p) for p in url.path.split("/") if p]
-        if not (len(parts) == 4 and parts[0] == "p" and parts[2] == "hold"):
-            self._error(HTTPStatus.NOT_FOUND, "no such page")
-            return
         try:
-            index = int(parts[1])
-            project = self._project(index)
-            h = get_hold(project, parts[3])
+            if len(parts) == 2 and parts[0] == "hold":
+                hold_id = parts[1]
+                _pid, root = self.state.registry.owner_of("hold", hold_id)
+            elif len(parts) == 4 and parts[0] == "p" and parts[2] == "hold":
+                hold_id = parts[3]
+                root = self.state.registry.root_at(int(parts[1]))
+            else:
+                self._error(HTTPStatus.NOT_FOUND, "no such page")
+                return
+            project = Project.load(root)
+            h = get_hold(project, hold_id)
         except (ConfigError, ValueError) as e:
             self._error(HTTPStatus.NOT_FOUND, str(e))
             return
@@ -548,9 +577,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         except ConfigError as e:
             self._send(
                 HTTPStatus.BAD_REQUEST,
-                self._render_hold(
-                    index, project, h, error=str(e), chosen=verdict, reason=reason or ""
-                ),
+                self._render_hold(project, h, error=str(e), chosen=verdict, reason=reason or ""),
             )
             return
         refresh_if_present(project.root)
@@ -564,42 +591,25 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 via=result.via,
                 step_status=result.step_status,
                 run_status=result.run_status,
-                project_href=self._href(f"/p/{index}"),
+                project_href=self._project_href(project.root) or "/",
                 list_href=self._list_href(),
                 refresh=None,
                 style=_STYLE,
             ),
         )
 
-    def _redirect_by_id(self, what: str, ident: str) -> None:
-        """`/hold/<id>` and `/run/<id>` (the routes a notification links to) find the project
-        that holds the id and redirect to its page."""
-        table, column = ("holds", "hold_id") if what == "hold" else ("runs", "run_id")
-        for i, root in enumerate(self.state.roots):
-            try:
-                site = Site.load(root)
-            except Exception:  # noqa: BLE001 - an unreadable project is skipped, not fatal
-                continue
-            try:
-                found = site.store.one(f"SELECT 1 FROM {table} WHERE {column} = ?", (ident,))
-            finally:
-                site.store.close()
-            if found is not None:
-                self._redirect(self._href(f"/p/{i}/{what}/{ident}"))
-                return
-        raise ConfigError(f"no {what} {ident} in {len(self.state.roots)} project(s)")
-
     # -- rendering ----------------------------------------------------------------------------
 
     def _render_landing(self) -> str:
         holds: list[dict[str, str]] = []
         board: list[dict[str, Any]] = []
-        for i, root in enumerate(self.state.roots):
+        roots = self.state.roots
+        for root in roots:
             entry = project_entry(root)
             board.append(
                 {
                     "name": root.name,
-                    "href": self._href(f"/p/{i}"),
+                    "href": self._project_href(root),
                     "cells": row(entry),
                     "sentence": sentence(entry),
                 }
@@ -608,7 +618,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 continue
             site = Site.load(root)
             try:
-                holds += self._hold_rows(i, site)
+                holds += self._hold_rows(root, site)
             finally:
                 site.store.close()
         return LANDING_HTML.render(
@@ -616,7 +626,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             holds=holds,
             board=board,
             columns=list(COLUMNS),
-            n_projects=len(self.state.roots),
+            n_projects=len(roots),
             user=self.state.user,
             host=self.state.host,
             read_only=self.state.read_only,
@@ -624,8 +634,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             style=_STYLE,
         )
 
-    def _render_project(self, index: int) -> str:
-        root = self._root(index)
+    def _render_project(self, root: Path) -> str:
         entry = project_entry(root)
         common = {
             "title": f"stringency: {root.name}",
@@ -656,7 +665,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     }
                     for s in site.pipeline.order()
                 ]
-            holds = self._hold_rows(index, site)
+            holds = self._hold_rows(root, site)
             deliveries: list[dict[str, Any]] = []
             for d in site.store.all(
                 "SELECT run_id, path, ts FROM deliveries ORDER BY ts DESC, rowid DESC"
@@ -667,13 +676,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     files = [f for f in files if not f.endswith(".stringency.json")]
                 except (OSError, ValueError, KeyError):
                     files = []
-                deliveries.append(
-                    {
-                        "when": d["ts"],
-                        "href": self._href(f"/p/{index}/run/{d['run_id']}"),
-                        "files": files,
-                    }
-                )
+                deliveries.append({"when": d["ts"], "href": f"/run/{d['run_id']}", "files": files})
         finally:
             site.store.close()
         return PROJECT_HTML.render(
@@ -685,8 +688,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
             **common,
         )
 
-    def _render_run(self, index: int, run_id: str) -> str:
-        site = self._site(index)
+    def _render_run(self, root: Path, run_id: str) -> str:
+        site = Site.load(root)
         try:
             payload = present_run(site, run_id)
             d = site.store.one(
@@ -709,7 +712,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                         "name": name,
                         "kind": kind,
                         "step": site.pipeline.title(step) if site.pipeline.has_step(step) else "",
-                        "href": self._href(f"/p/{index}/file/{run_id}/{name}"),
+                        "href": f"/file/{run_id}/{name}",
                     }
                 )
         return RUN_HTML.render(
@@ -720,16 +723,16 @@ class ReviewHandler(BaseHTTPRequestHandler):
             summary=summary,
             files=files,
             list_href=self._list_href(),
-            project_href=self._href(f"/p/{index}"),
+            project_href=self._project_href(root) or "/",
             refresh=None,
             style=_STYLE,
         )
 
-    def _send_file(self, index: int, run_id: str, name: str) -> None:
+    def _send_file(self, root: Path, run_id: str, name: str) -> None:
         """One delivered file, only when `index.json` lists its name; never a path."""
         if "/" in name or "\\" in name or name in ("", ".", "..") or name.startswith("."):
             raise ConfigError("no such file")
-        site = self._site(index)
+        site = Site.load(root)
         try:
             d = site.store.one(
                 "SELECT path FROM deliveries WHERE run_id = ? ORDER BY ts DESC, rowid DESC LIMIT 1",
@@ -750,7 +753,6 @@ class ReviewHandler(BaseHTTPRequestHandler):
 
     def _render_hold(
         self,
-        index: int,
         project: Project,
         h: Any,
         *,
@@ -797,10 +799,9 @@ class ReviewHandler(BaseHTTPRequestHandler):
             resolved=h["resolved_by_review"],
             read_only=self.state.read_only,
             read_only_message=READ_ONLY_MESSAGE,
-            token=self.state.token,
             list_href=self._list_href(),
-            project_href=self._href(f"/p/{index}"),
-            post_href=f"/p/{index}/hold/{h['hold_id']}",
+            project_href=self._project_href(project.root) or "/",
+            post_href=f"/hold/{h['hold_id']}",
             refresh=None,
             style=_STYLE,
         )
@@ -822,14 +823,18 @@ def make_server(
     port: int = DEFAULT_PORT,
     token: str | None = None,
     read_only: bool = False,
+    projects_dirs: list[Path] | None = None,
 ) -> ReviewHTTPServer:
-    """Build the server without serving (tests bind port 0). Identity is the OS user running it."""
+    """Build the server without serving (tests bind port 0). Identity is the OS user running it.
+    `roots` are served wherever they are; `projects_dirs` are rescanned while the server runs."""
     import socket
 
     from stringency.review import current_user
 
+    registry = Registry(explicit=list(roots), dirs=list(projects_dirs or []))
+    registry.refresh(force=True)
     state = ServerState(
-        roots=list(roots),
+        registry=registry,
         token=token or secrets.token_urlsafe(24),
         user=current_user(),
         host=socket.gethostname(),
@@ -840,7 +845,7 @@ def make_server(
 
 def serve(
     projects: list[Path],
-    projects_dir: Path | None,
+    projects_dir: list[Path] | Path | None,
     *,
     bind: str = DEFAULT_BIND,
     port: int = DEFAULT_PORT,
@@ -848,13 +853,15 @@ def serve(
     token_file: Path | None = None,
 ) -> None:
     """Print the URL with its token once, then serve until interrupted."""
-    roots = discover(projects, projects_dir)
+    dirs = [projects_dir] if isinstance(projects_dir, Path) else list(projects_dir or [])
     token = read_token_file(token_file) if token_file is not None else None
-    srv = make_server(roots, bind=bind, port=port, token=token, read_only=read_only)
+    srv = make_server(
+        projects, bind=bind, port=port, token=token, read_only=read_only, projects_dirs=dirs
+    )
     host, actual = str(srv.server_address[0]), int(srv.server_address[1])
     mode = "read-only, no verdicts" if read_only else "verdicts recorded here carry via: web"
     print(
-        f"stringency review --serve: {len(roots)} project(s) as {srv.state.user}; "
+        f"stringency review --serve: {len(srv.state.roots)} project(s) as {srv.state.user}; "
         f"open http://{host}:{actual}/?t={srv.state.token}",
         flush=True,
     )

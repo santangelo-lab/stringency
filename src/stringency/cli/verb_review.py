@@ -49,10 +49,10 @@ def review(
     project_paths: list[Path] | None = typer.Option(
         None, "--project", help="--serve: a project to list (repeatable)"
     ),
-    projects_dir: Path | None = typer.Option(
+    projects_dir: list[Path] | None = typer.Option(
         None,
         "--projects",
-        help="--serve, --holds: every project to depth two under this directory",
+        help="--serve, --holds: every project to depth two under this directory (repeatable)",
     ),
     batch_holds: str | None = typer.Option(
         None,
@@ -75,7 +75,7 @@ def review(
 
         ids = [h.strip() for h in batch_holds.split(",") if h.strip()]
         roots = list(project_paths or [])
-        if not roots and projects_dir is None:
+        if not roots and not projects_dir:
             roots = [Project.find().root]
         members = locate_holds(ids, roots, projects_dir)
         batch = batch_view(members)
@@ -98,7 +98,7 @@ def review(
         from stringency.review_serve import serve as serve_page
 
         roots = list(project_paths or [])
-        if not roots and projects_dir is None:
+        if not roots and not projects_dir:
             roots = [Project.find().root]
         serve_page(
             roots, projects_dir, bind=bind, port=port, read_only=read_only, token_file=token_file
