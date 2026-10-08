@@ -205,15 +205,17 @@ mechanics were never hidden from the trace; they were kept out of the chat until
 The `stringency-operator` skill is the authority on every line below; on conflict it wins.
 
 - Engine: `stringency` on the compute host, `bin` directory on PATH via a login shell; identity
-  variables exported in every command string. `review --attest` is refused (exit 16) without
-  `STRINGENCY_SESSION_REF`.
+  variables exported in every command string (in Claude Code the engine reads the version and
+  session id itself). `review --attest` is refused (exit 16) without a session reference. A
+  `wait` only reads: never stop one with `pkill -f`.
 - Declare: `stringency plugins list --json` once; `declare --check <parent>/declarations
   --method {{ method }} --pipeline {{ pipeline }}`; `init <project> --method {{ method }}
   --pipeline {{ pipeline }} --objective ... --design ... --inputs ... --drafted-by agent --brief
   <parent>/brief.md --owner ... --reviewer ...` exits 10 with the confirm hold.
 - Loop: `run --json`; 21 means a ticket (`next --json`, run `operator_line` once as printed,
   `run --json` again); 20 means a judgment dispatch (one fresh delegate per request file, then
-  `run --responses - --json` with the assembled document); 10 means a hold (section 5); 0 with
+  `run --responses - --json --check` first, which files nothing, then `run --responses - --json`
+  with the assembled document); 10 means a hold (section 5); 0 with
   `kind: completed` means done. Pass `--deliver` on the `run` calls after the last dispatch or
   ticket. Exit codes: 0 ok; 10 held; 11 blocked before execution; 12 rejected after; 13 failed;
   14 dirty tree; 15 configuration error; 16 refused; 20 judgment dispatched; 21 ticket issued.

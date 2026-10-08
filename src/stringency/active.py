@@ -33,6 +33,7 @@ def executing(root: Path, run_id: str, step_id: str) -> Iterator[None]:
     p.parent.mkdir(parents=True, exist_ok=True)
     body = {
         "pid": os.getpid(),
+        "start": start_ticks(os.getpid()),
         "host": socket.gethostname(),
         "step_id": step_id,
         "started": datetime.now(UTC).isoformat(),
@@ -56,6 +57,19 @@ def pid_alive(pid: int) -> bool:
     except PermissionError:
         return True  # another account's process: it exists
     return True
+
+
+def start_ticks(pid: int) -> int | None:
+    """The process's start time in clock ticks since boot (/proc/<pid>/stat field 22): with the
+    pid it names one process for good, so a pid reused after the engine exits is told apart."""
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text()
+    except OSError:
+        return None
+    try:  # the command name (field 2) is parenthesised and may hold spaces
+        return int(stat.rsplit(")", 1)[1].split()[19])
+    except (IndexError, ValueError):
+        return None
 
 
 def _cmdline(pid: int) -> list[str] | None:
@@ -108,6 +122,10 @@ def engine_alive(root: Path, run_id: str, step_id: str) -> bool | None:
         pid = mark.get("pid")
         if not isinstance(pid, int) or not pid_alive(pid):
             return False
+        started = mark.get("start")
+        if isinstance(started, int):
+            now = start_ticks(pid)
+            return now is None or now == started
         argv = _cmdline(pid)
         # a reused pid: the process exists but is not a stringency engine
         return argv is None or any("stringency" in a for a in argv)

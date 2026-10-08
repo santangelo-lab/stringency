@@ -10,7 +10,6 @@ from __future__ import annotations
 import fnmatch
 import getpass
 import json
-import os
 import re
 import shutil
 import socket
@@ -43,6 +42,7 @@ from stringency.extract import extract_object
 from stringency.gate import GateResult, evaluate
 from stringency.ids import new_id
 from stringency.modules import ModuleIndex
+from stringency.operator_id import operator_env
 from stringency.pipelines import Pipeline, find_pipeline, load_pipeline
 from stringency.plugins import Plugin, require_plugin
 from stringency.policy import Policy, load_policy
@@ -664,8 +664,8 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         brief_name = "brief.md"
     declarations = Declarations(
         drafted_by=drafted_by,
-        harness=os.environ.get("STRINGENCY_OPERATOR") if req.drafted_by == "agent" else None,
-        session_ref=os.environ.get("STRINGENCY_SESSION_REF") if req.drafted_by == "agent" else None,
+        harness=operator_env()["harness"] if req.drafted_by == "agent" else None,
+        session_ref=operator_env()["session_ref"] if req.drafted_by == "agent" else None,
         brief=brief_name,
     )
     cfg = StringencyConfig(

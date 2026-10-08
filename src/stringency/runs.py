@@ -19,6 +19,7 @@ from stringency.exit_codes import BlockedError, ConfigError, DirtyTreeError, Hel
 from stringency.gate import evaluate
 from stringency.ids import new_id
 from stringency.machine import all_step_status, derive_run_status
+from stringency.operator_id import operator_env
 from stringency.predicates import registry
 from stringency.predicates.context import GateContext
 from stringency.project import Project
@@ -121,14 +122,6 @@ class RunContext:
             output=output,
             policy=self.project.policy,
         )
-
-
-def operator_env() -> dict[str, str | None]:
-    return {
-        "harness": os.environ.get("STRINGENCY_OPERATOR"),
-        "version": os.environ.get("STRINGENCY_OPERATOR_VERSION"),
-        "session_ref": os.environ.get("STRINGENCY_SESSION_REF"),
-    }
 
 
 def latest_run(store: Store) -> Any:

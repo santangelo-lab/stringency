@@ -11,6 +11,7 @@ validates, and proceeds as for a direct invocation.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +65,26 @@ def write_requests(
     )
 
 
+MODEL_ID = re.compile(r"[a-z][a-z0-9]*(?:[-.][a-z0-9]+)+")
+
+
+def model_id(reported: Any) -> str:
+    """The model id a subagent reported, without the prose some add ("claude-opus-5-5 (Opus
+    5.5)", lung 2026-10-08): the first token shaped like an id, else the text as given."""
+    if not reported:
+        return "unknown"
+    text = str(reported).strip()
+    m = MODEL_ID.search(text.lower())
+    return m.group(0) if m else text
+
+
+def _count(v: Any) -> int | None:
+    """A non-negative whole number from the reported usage, else None."""
+    if isinstance(v, bool) or not isinstance(v, int | float) or v < 0:
+        return None
+    return int(v)
+
+
 def read_response(req: Request, dispatch_dir: Path) -> Invocation:
     """Parse one response file. Missing, unparseable, or nonce-mismatched responses are invalid."""
     rp = response_path(dispatch_dir, req.replicate)
@@ -110,7 +131,8 @@ def read_response(req: Request, dispatch_dir: Path) -> Invocation:
             **base,
         )
     reported = data.get("reported") if isinstance(data.get("reported"), dict) else None
-    model = str(reported.get("model")) if reported and reported.get("model") else "unknown"
+    model = model_id(reported.get("model")) if reported else "unknown"
+    usage = reported.get("usage") if reported and isinstance(reported.get("usage"), dict) else {}
     nonce_ok = data.get("nonce") == req.nonce
     structured = data.get("structured") if isinstance(data.get("structured"), dict) else None
     if structured is None:
@@ -124,6 +146,9 @@ def read_response(req: Request, dispatch_dir: Path) -> Invocation:
         text,
         False,  # schema validity is decided by the caller
         model_resolved=model,
+        tokens_in=_count(usage.get("tokens_in")),
+        tokens_out=_count(usage.get("tokens_out")),
+        duration_ms=_count(usage.get("duration_ms")),
         nonce_ok=nonce_ok,
         reported=reported,
         error=None if nonce_ok else "nonce mismatch",

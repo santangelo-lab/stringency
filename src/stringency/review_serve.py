@@ -200,7 +200,7 @@ LANDING_HTML = _ENV.from_string(
 <table>
 <tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}<th>for</th><th>elsewhere</th><th>driver</th><th>last call</th></tr>
 {% for b in active %}
-<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% elif c == "waiting on" and b.you %}<span class="you">you</span>: {{ b.you }}{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}<td>{{ b.driver.elapsed }}</td><td>{{ b.driver.elsewhere }}</td><td>{{ b.driver.who }}</td><td>{{ b.driver.last_call_age }}{% if b.driver.engine == "computing" %} (computing){% endif %}{% if b.driver.stale %} <span class="stale">{% if b.driver.engine == "gone" %}stale: engine gone{% else %}stale{% endif %}</span>{% endif %}</td></tr>
+<tr>{% for c in columns %}<td>{% if loop.first and b.href %}<a href="{{ b.href }}">{{ b.cells[c] }}</a>{% elif c == "waiting on" and b.you %}<span class="you">you</span>: {{ b.you }}{% else %}{{ b.cells[c] }}{% endif %}</td>{% endfor %}<td>{{ b.driver.elapsed }}</td><td>{{ b.driver.elsewhere }}</td><td>{{ b.driver.who }}</td><td>{{ b.driver.last_call_age }}{% if b.driver.engine == "computing" %} <span title="{{ b.driver.progress }}">(computing)</span>{% endif %}{% if b.driver.stale %} <span class="stale">{% if b.driver.engine == "gone" %}stale: engine gone{% else %}stale{% endif %}</span>{% endif %}</td></tr>
 {% endfor %}
 </table>
 {% else %}
@@ -245,7 +245,7 @@ PROJECT_HTML = _ENV.from_string(
 <section data-live="project">
 <p>{{ sentence }}</p>
 {% if error %}<p class="error">{{ error }}</p>{% else %}
-{% if driver %}<p class="note">Driver: {{ driver.who }}. Last engine call {{ driver.last_call_age }} ago{% if driver.engine == "computing" %}; the engine is computing{% endif %}{% if driver.stale %}, <strong class="stale">{% if driver.engine == "gone" %}stale: the engine process is gone{% else %}stale{% endif %}</strong>{% endif %}.{% if driver.step %} '{{ driver.step }}' has been {{ driver.status }} for {{ driver.elapsed }}{% if driver.elsewhere %}; elsewhere it took {{ driver.elsewhere }}{% endif %}.{% endif %}</p>{% endif %}
+{% if driver %}<p class="note">Driver: {{ driver.who }}. Last engine call {{ driver.last_call_age }} ago{% if driver.engine == "computing" %}; the engine is computing{% endif %}{% if driver.stale %}, <strong class="stale">{% if driver.engine == "gone" %}stale: the engine process is gone{% else %}stale{% endif %}</strong>{% endif %}.{% if driver.step %} '{{ driver.step }}' has been {{ driver.status }} for {{ driver.elapsed }}{% if driver.elsewhere %}; elsewhere it took {{ driver.elsewhere }}{% endif %}.{% endif %}{% if driver.progress %} The step last printed: <code>{{ driver.progress }}</code>.{% endif %}</p>{% endif %}
 <h2>Steps</h2>
 {% if steps %}
 <table>
@@ -348,7 +348,12 @@ HOLD_HTML = _ENV.from_string(
 <h2>The packet, as the terminal prints it</h2>
 <pre>{{ text }}</pre>
 {% if resolved %}
+{% if resolution and resolution.verdict %}
+<p>Resolved: <strong>{{ resolution.verdict }}</strong> by {{ resolution.reviewer }} via {{ resolution.via }} on {{ resolution.ts }}{% if resolution.label %}; the item's label is <strong>{{ resolution.label }}</strong>{% endif %}{% if resolution.replicate %} (replicate {{ resolution.replicate }}){% endif %}.</p>
+{% if resolution.reason %}<p>Reason: &ldquo;{{ resolution.reason }}&rdquo;</p>{% endif %}
+{% else %}
 <p>This hold was resolved by review {{ resolved }}.</p>
+{% endif %}
 {% elif read_only %}
 <p class="note">{{ read_only_message }}</p>
 {% else %}
@@ -565,6 +570,7 @@ _NO_DRIVER: dict[str, Any] = {
     "last_call_age": "",
     "stale": False,
     "engine": "",
+    "progress": "",
     "step": None,
     "status": None,
 }
@@ -1392,6 +1398,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             reason=reason,
             error=error,
             resolved=h["resolved_by_review"],
+            resolution=view.resolution,
             read_only=self.state.read_only,
             read_only_message=READ_ONLY_MESSAGE,
             list_href=self._list_href(),

@@ -583,3 +583,83 @@ def test_status_json_carries_plain_and_completed_steps(make_project: InitFn) -> 
     assert cli(p3, "abandon", "--run", run_id, "--reason", "test").exit_code == 0
     st3 = json.loads(cli(p3, "status", "--json").output)
     assert st3["plain"] == "Completed: Filter low-value rows. The run was abandoned."
+
+
+def test_run_responses_check_files_nothing_and_reports_what_filing_would_do(
+    make_project: InitFn, tmp_path: Path
+) -> None:
+    """`run --responses <file> --check` (lung, 2026-10-08: the operator read the engine's gate
+    source to write its own pre-check): the responses are checked as collection checks them and
+    the judgment gates run, but no response file is written and the trace does not change."""
+    answers = harvested_responses(make_project)
+    p, nx = dispatching_project(make_project)
+    doc = tmp_path / "responses.json"
+    doc.write_text(json.dumps(responses_doc(nx, answers)))
+
+    def counts() -> tuple[int, ...]:
+        tables = ("invocations", "judgments", "consensus", "predicate_results", "holds")
+        return tuple(p.store.scalar(f"SELECT COUNT(*) FROM {t}") for t in tables)
+
+    before = counts()
+    r = cli(p, "run", "--responses", str(doc), "--check", "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 0, r.output
+    out = json.loads(r.output)
+    assert out["ok"] is True and out["step_id"] == "03_label"
+    assert [x["valid"] for x in out["replicates"]] == [True, True, True]
+    assert any(c.startswith("judg.evidence_exists@") for c in out["checks"])
+    assert counts() == before
+    ddir = Path(nx["dispatch_dir"])
+    assert list(ddir.glob("resp_*.json")) == []
+    assert p.store.scalar("SELECT status FROM steps WHERE step_id='03_label'") == "dispatching"
+    text = cli(p, "run", "--responses", str(doc), "--check", env=MOCK_DISPATCH).output
+    assert "nothing was filed" in text and "ok: file them" in text
+
+    # a wrong nonce: the replicate is invalid and the check says not ok, still filing nothing
+    bad = responses_doc(nx, answers)
+    bad["responses"][0]["nonce"] = "not-the-nonce"
+    doc.write_text(json.dumps(bad))
+    out = json.loads(
+        cli(p, "run", "--responses", str(doc), "--check", "--json", env=MOCK_DISPATCH).output
+    )
+    assert out["ok"] is False and out["replicates"][0]["valid"] is False
+    assert counts() == before and list(ddir.glob("resp_*.json")) == []
+    # the real filing still works afterwards
+    doc.write_text(json.dumps(responses_doc(nx, answers)))
+    assert cli(p, "run", "--responses", str(doc), env=MOCK_DISPATCH).exit_code == 0
+    # --check alone is refused as a configuration error
+    assert cli(p, "run", "--check", env=MOCK_DISPATCH).exit_code == 15
+
+
+def test_dispatched_judgment_records_its_time_usage_and_a_clean_model_id(
+    make_project: InitFn, tmp_path: Path
+) -> None:
+    """Lung and gut (2026-10-08) recorded no duration for either judgment step, no usage for
+    any reviewer, and one model as "claude-opus-5-5 (Opus 5.5)"."""
+    answers = harvested_responses(make_project)
+    for i, a in enumerate(answers):
+        a["reported"] = {
+            "model": "claude-opus-5-5 (Opus 5.5)",
+            "usage": {
+                "duration_ms": 1000 + i,
+                "tokens_in": 10,
+                "tokens_out": 20,
+                "total_tokens": 30,
+            },
+        }
+    p, nx = dispatching_project(make_project)
+    doc = tmp_path / "responses.json"
+    doc.write_text(json.dumps(responses_doc(nx, answers)))
+    assert cli(p, "run", "--responses", str(doc), env=MOCK_DISPATCH).exit_code == 0
+    rows = p.store.all(
+        "SELECT replicate, model_resolved, duration_ms, tokens_in, tokens_out, reported_json "
+        "FROM invocations WHERE step_id = '03_label' ORDER BY replicate"
+    )
+    assert [r["model_resolved"] for r in rows] == ["claude-opus-5-5"] * 3
+    assert [r["duration_ms"] for r in rows] == [1000, 1001, 1002]
+    assert rows[0]["tokens_in"] == 10 and rows[0]["tokens_out"] == 20
+    assert json.loads(rows[0]["reported_json"])["usage"]["total_tokens"] == 30
+    wall = p.store.scalar(
+        "SELECT e.duration_ms FROM executions e JOIN actions a USING (action_id) "
+        "WHERE a.step_id = '03_label'"
+    )
+    assert wall is not None and wall >= 0

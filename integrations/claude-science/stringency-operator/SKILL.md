@@ -68,7 +68,7 @@ The container runtime is `apptainer` or `singularity`; the engine finds either. 
 image the project's method manifest names is readable, for example
 `ls -la $(grep -o '/[^ ]*\.sif' <project>/method/envs/manifest.yml)`.
 
-**Which text of this skill to follow.** This text is for engine 0.2.14. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.15. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -87,7 +87,9 @@ The app version comes from the session brief, whose `PRE` line carries it (the p
 the brief with `--app-version`, read from the app's own version display). If the brief carries
 none and nothing in your context states the version, write `unknown`. Never guess a value.
 The engine records these when it opens a run and on every relayed review; `review --attest` is
-refused (exit 16) when `STRINGENCY_SESSION_REF` is unset.
+refused (exit 16) when no session reference is known. In Claude Code, which exports its own
+session id and version, set only `STRINGENCY_OPERATOR=claude-code` or nothing at all: from engine
+0.2.15 the engine reads the version and the session id itself. Never invent a session name.
 
 ## 3. Rules
 
@@ -107,6 +109,10 @@ refused (exit 16) when `STRINGENCY_SESSION_REF` is unset.
 6. The `intent=` string of every `call_command` is a sentence from the table in section 4. It
    names the project by its directory name and the step by its title, never a verb, an exit
    code, or a path.
+7. The trace and the project's own files are the record of a run. Do not write a run's
+   progress into notes or memory that belong to another repository (an engine or method
+   checkout) because the session happened to start there; if your working directory is not the
+   project or its parent, say so once to the person.
 
 ## 4. Intents
 
@@ -148,9 +154,15 @@ produce JSON matching its `schema`, copy its `nonce` verbatim into `nonce`, put 
 delegate is available. If you have no delegate tool, answer each request in its own fresh cell
 that reads only that one file, and say so in your report. Then assemble one document,
 `{"step_id": "<the dispatching step>", "responses": [<reply 1>, ..., <reply N>]}` in request
-order, and run `stringency run --responses - --json` with the document on stdin (in mode B, a
-quoted heredoc inside the one `call_command`; or write it to one file outside the project and
-pass the path). The engine files the responses and continues;
+order. When your delegate tool reports a delegate's usage (tokens, duration), add it to that
+reply's `reported` as `usage` (`total_tokens`, `duration_ms`, and `tokens_in` and `tokens_out`
+when given); the engine records it (0.2.15). Before filing, run the same command with `--check`
+(engine 0.2.15): it reads the responses as filing would (nonces, the schema, the judgment gates)
+and says which holds would open, and writes nothing. Do not write your own pre-check from the
+engine's source. If `ok` is false, give the failing request to a fresh delegate; never edit a
+delegate's answer. Then run `stringency run --responses - --json` with the document on stdin (in
+mode B, a quoted heredoc inside the one `call_command`; or write it to one file outside the
+project and pass the path). The engine files the responses and continues;
 it refuses (exit 16) when the step is not dispatching, when the count differs from
 `manifest.json`, or when response files already exist, and in each case nothing is written.
 
@@ -162,7 +174,11 @@ wait is how an answer given elsewhere reaches you. Do not poll `run`. It reads t
 trace every five seconds and writes nothing; exit 0 means the hold was resolved or withdrawn and
 the payload carries the verdict, the reason, the reviewer and how it was recorded; exit 10 means
 `--timeout` passed with the hold still open. `stringency wait --json` with no option waits until
-anything about the latest run changes. Then `stringency run --json` again.
+anything about the latest run changes. A wait only reads, so a second wait on the same hold is
+harmless; never stop one by pattern (`pkill -f "wait --hold ..."` matches the shell that runs it),
+stop its background task by id if you must. A resolved hold shows how it was resolved: `stringency
+review --hold <id> --json` carries `resolution` (verdict, reason, replicate, and the item's label).
+Then `stringency run --json` again.
 
 **Anything else.** Stop and report the `plain` sentence, then the message.
 

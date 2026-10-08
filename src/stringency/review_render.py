@@ -113,6 +113,7 @@ class HoldView:
     packet: Path | None = None  # the Markdown packet on disk, when one was written
     choices: list[str] = field(default_factory=list)  # labels a person may choose (item holds)
     operator_reason: str | None = None  # the `propose --reason` text behind the action (L8)
+    resolution: dict[str, Any] | None = None  # how a resolved hold was resolved
 
     def to_json(self) -> dict[str, Any]:
         h = self.hold
@@ -136,6 +137,7 @@ class HoldView:
             "packet": str(self.packet) if self.packet else None,
             "operator_reason": self.operator_reason,
             "choices": self.choices,
+            "resolution": self.resolution,
             "text": self.text,
         }
 
@@ -400,10 +402,49 @@ def verdicts_for(
     ]
 
 
-def _resolution_lines(h: Any) -> list[str]:
+def resolution(project: Project, h: Any) -> dict[str, Any] | None:
+    """How a resolved hold was resolved: the review's verdict, who, when, the reason, the
+    replicate or correction, and for an item hold the label the item settled on. None while the
+    hold is open. Reads: reviews, consensus."""
     if h["resolved_by_review"] is None:
-        return []
-    return [f"resolved by review {h['resolved_by_review']} via {h['resolved_via']}"]
+        return None
+    from stringency.wait import _settled_label
+
+    r = project.store.one("SELECT * FROM reviews WHERE review_id = ?", (h["resolved_by_review"],))
+    out: dict[str, Any] = {"review_id": h["resolved_by_review"], "via": h["resolved_via"]}
+    if r is not None:
+        out |= {
+            "verdict": r["verdict"],
+            "reviewer": r["reviewer"],
+            "ts": r["ts"],
+            "reason": r["reason"],
+            "replicate": r["chosen_replicate"],
+            "correction": json.loads(r["correction_json"]) if r["correction_json"] else None,
+        }
+    out["label"] = _settled_label(project.store, h)
+    return out
+
+
+def _closing_lines(project: Project, h: Any, verdicts: list[dict[str, str]]) -> list[str]:
+    """The verdict commands while the hold is open; how it was resolved once it is not (an
+    operator asked which replicate stood and read the trace by hand, gut 2026-10-08)."""
+    res = resolution(project, h)
+    if res is None:
+        return _verdict_lines(verdicts)
+    if "verdict" not in res:
+        return [f"resolved by review {res['review_id']} via {res['via']}"]
+    line = f"resolved: {res['verdict']} by {res['reviewer']} via {res['via']} on {res['ts']}"
+    lines = [line]
+    if res["reason"]:
+        lines.append(f'{INDENT}reason: "{res["reason"]}"')
+    if res["replicate"] is not None:
+        lines.append(f"{INDENT}replicate: {res['replicate']}")
+    if res["correction"] is not None:
+        lines.append(f"{INDENT}correction: {json.dumps(res['correction'], sort_keys=True)}")
+    if res["label"] is not None:
+        lines.append(f"{INDENT}the item's label: {res['label']}")
+    lines.append(f"{INDENT}review {res['review_id']}")
+    return lines
 
 
 # -- per hold kind -----------------------------------------------------------------------------
@@ -427,7 +468,7 @@ def render_confirm(project: Project, h: Any) -> HoldView:
         hashes = ctx.get("hashes") or {}
         lines += [f"{INDENT}{name}: {digest}" for name, digest in sorted(hashes.items())]
     verdicts = verdicts_for("confirm", h["hold_id"], None)
-    lines += ["", *_verdict_lines(verdicts), *_resolution_lines(h)]
+    lines += ["", *_closing_lines(project, h, verdicts)]
     return HoldView(h, "\n".join(lines), verdicts=verdicts)
 
 
@@ -534,7 +575,7 @@ def render_flag(
             if phase == "post":
                 lines += _execution_lines(rc, action.action_id)
     view.verdicts = verdicts_for("flag", h["hold_id"], phase)
-    lines += ["", *_verdict_lines(view.verdicts), *_resolution_lines(h)]
+    lines += ["", *_closing_lines(project, h, view.verdicts)]
     view.text = "\n".join(lines)
     return view
 
@@ -617,7 +658,7 @@ def render_item(
         lines.append(f"{INDENT}replicate {r.replicate}: {r.call}")
         lines += _replicate_lines(r, INDENT + INDENT)
     view.verdicts = verdicts_for(h["kind"], h["hold_id"], None)
-    lines += ["", *_verdict_lines(view.verdicts), *_resolution_lines(h)]
+    lines += ["", *_closing_lines(project, h, view.verdicts)]
     view.text = "\n".join(lines)
     return view
 
@@ -643,7 +684,7 @@ def render_step_invalid(
         lines.append(f"{INDENT}replicate {idx}: {errors.get(str(idx)) or 'invalid response'}")
     view = HoldView(h, "", module_ref=module_ref)
     view.verdicts = verdicts_for("run_disagreement", h["hold_id"], "post", item_level=False)
-    lines += ["", *_verdict_lines(view.verdicts), *_resolution_lines(h)]
+    lines += ["", *_closing_lines(project, h, view.verdicts)]
     view.text = "\n".join(lines)
     return view
 
@@ -651,7 +692,7 @@ def render_step_invalid(
 def render(project: Project, h: Any) -> HoldView:
     """Render one hold for the reviewer (design 7.3). Reads: see the module docstring."""
     if h["kind"] == "confirm":
-        return render_confirm(project, h)
+        return _resolved(project, h, render_confirm(project, h))
     rc = load_run(project, h["run_id"])
     action = _latest_action(rc, h["step_id"])
     plan = plan_step(rc, h["step_id"], action.attempt) if action else None
@@ -664,6 +705,14 @@ def render(project: Project, h: Any) -> HoldView:
     paths = packet_paths(project, h)
     if paths is not None and paths[0].exists():
         view.packet = paths[0]
+    return _resolved(project, h, view)
+
+
+def _resolved(project: Project, h: Any, view: HoldView) -> HoldView:
+    """A resolved hold offers no verdicts and carries its resolution."""
+    view.resolution = resolution(project, h)
+    if view.resolution is not None:
+        view.verdicts = []
     return view
 
 

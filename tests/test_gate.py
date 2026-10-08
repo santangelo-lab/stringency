@@ -651,3 +651,18 @@ def test_predecessor_skipped_counts_as_done(project: Project) -> None:
     """L13: a skipped conditional predecessor does not block its successor."""
     ctx = make_ctx(project, "02_summarize", step_status={"01_filter": "skipped"})
     assert _run_one("topo.predecessor_incomplete", ctx) is False
+
+
+def test_intermediate_dropped_ignores_a_later_step_wired_to_an_earlier_producer(
+    project: Project,
+) -> None:
+    """Lyons lung and gut, 2026-10-08: the report read `$steps.04_cluster.batch_evidence` after
+    `05_assess_batch` consumed it, and every run logged a drop. In the toy pipeline 04_compare
+    reads 01_filter's frame after 02_summarize consumed it: nothing is dropped."""
+    ctx = make_ctx(
+        project,
+        "02_summarize",
+        phase="post",
+        output=OutputBundle(outputs={"table": OutputInfo("table", "table", "x", "blake3:00")}),
+    )
+    assert not _run_one("repro.intermediate_dropped", ctx)

@@ -367,6 +367,21 @@ def file_responses(rc: RunContext, doc: Any) -> Path:
     nonce check are unchanged). Refuses (exit 16) when no step is dispatching, when the document
     names another step, when the count differs from `manifest.json`, or when response files
     already exist. Writes: `runs/<run>/<step>/dispatch/resp_N.json` only; nothing in the trace."""
+    ddir, paths = dispatch_target(rc, doc)
+    existing = [p.name for p in paths if p.exists()]
+    if existing:
+        raise RefusedError(
+            f"response file(s) already present in {ddir}: {', '.join(existing)}; run again to collect them"
+        )
+    for path, response in zip(paths, doc["responses"], strict=True):
+        path.write_text(json.dumps(response, indent=2) + "\n")
+    return ddir
+
+
+def dispatch_target(rc: RunContext, doc: Any) -> tuple[Path, list[Path]]:
+    """The dispatching step's directory and its response paths, after checking that `doc` is
+    `{step_id, responses: [...]}` for that step with one response per request. Reads the trace
+    and `manifest.json`; writes nothing."""
     if not isinstance(doc, dict) or not isinstance(doc.get("responses"), list):
         raise ConfigError("--responses expects a JSON object with step_id and a responses list")
     nx = next_step(rc)
@@ -389,15 +404,7 @@ def file_responses(rc: RunContext, doc: Any) -> Path:
         raise RefusedError(
             f"--responses carries {got} response(s); manifest.json for {step_id} expects {expected}"
         )
-    paths = [Path(p) for p in manifest["responses"]]
-    existing = [p.name for p in paths if p.exists()]
-    if existing:
-        raise RefusedError(
-            f"response file(s) already present in {ddir}: {', '.join(existing)}; run again to collect them"
-        )
-    for path, response in zip(paths, doc["responses"], strict=True):
-        path.write_text(json.dumps(response, indent=2) + "\n")
-    return ddir
+    return ddir, [Path(p) for p in manifest["responses"]]
 
 
 def resume_dispatching(rc: RunContext, step_id: str) -> StepOutcome:

@@ -13,3 +13,4 @@ htmlcov/
 run.db
 run.db-wal
 run.db-shm
+.venv-test/

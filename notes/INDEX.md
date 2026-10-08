@@ -3,7 +3,14 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-07, evening)
+## Current state (2026-10-08, afternoon)
+
+- Lung and gut delivered in console mode; engine `v0.2.15` (L14 to L22), plugin singlecell
+  `0.5.0` (`cell_types_mouse@2`), method `v0.6.0-rc10` (parallel clustering, @2, the batch
+  confound first) (`notes/2026-10-08-1311-lung-gut-and-v0215.md`). Not installed until the owner
+  installs `0.2.15-sc0.5.0`. Next: spleen on rc10; then batch cards, gallery, history, the cap.
+
+## Earlier state (2026-10-07, evening)
 
 - Engine v0.2.7 (`notes/2026-10-07-1730-engine-v027.md`): main reconciled with `v0.2.6`; L13
   conditional steps (`when:`, `skipped`), L12 evidence keys, L8 the operator's reason at the hold,
@@ -133,6 +140,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-08-1311-lung-gut-and-v0215.md` — lung and gut in console mode; engine 0.2.11 to 0.2.15 (L10, L14 to L22), plugin 0.5.0 (`cell_types_mouse@2`, ids checked), method rc9 and rc10 (parallel clustering, the batch confound first).
 - `2026-10-07-2300-console-build.md` — Lane H: the console built and released (v0.2.8 first cut, v0.2.9 restyle, v0.2.10 figures at the hold; method rc8 names the figures), running as `stringency-console.service`; the plan's section 8 is the pick-up guide.
 - `2026-10-07-1720-console-plan.md` — Lane H: `console-and-fleet-plan.md` fleshed out into a design, the owner's seven decisions taken, and the first cut BUILT the same night (C1 routes by id and cookie, C2 inbox by ask and driver block and timeline, C5 event stream and page script, C3 console mode in the skill; branch `console`, not merged) (routes by id, event stream on `data_version`, inbox by ask with batch cards, `hold_view` figure and chart kinds, who is driving, console-mode hold protocol, the slot cap); mockup `spec/plans/mockups/console-mockup.html`; seven owner decisions; branch `console`, no engine code touched.
 - `2026-10-07-1730-engine-v027.md` — engine v0.2.7: v0.2.6 merged into main; L13 conditional steps (`when:`, `pending -> skipped`, design 3.1 and 7.1); L12 evidence-table keys as read; L8 the operator's reason in the flag packet; `stringency wait`; the operator skill arms `wait`; method rc7 (`when:` on `05_assess_batch`, report 0.1.2).

@@ -20,6 +20,7 @@ from stringency.clock import now_iso
 from stringency.exit_codes import ConfigError, RefusedError
 from stringency.ids import new_id
 from stringency.machine import StepStatus, step_status, transition
+from stringency.operator_id import operator_env
 from stringency.project import Project
 from stringency.review_render import HoldView, render
 from stringency.runs import RunContext, load_run
@@ -171,7 +172,7 @@ def record_review(
         raise RefusedError(
             f"profile {project.config.profile} does not accept relayed review (--attest); review at a terminal"
         )
-    if via == "relayed" and not os.environ.get("STRINGENCY_SESSION_REF"):
+    if via == "relayed" and not operator_env()["session_ref"]:
         raise RefusedError(
             "--attest needs STRINGENCY_SESSION_REF set to the operator's session reference; "
             "a relayed verdict names the session it came from (design 7.5)"
@@ -240,8 +241,8 @@ def record_review(
                 "reviewer": user,
                 "host": socket.gethostname(),
                 "via": via,
-                "operator_session_ref": os.environ.get("STRINGENCY_SESSION_REF"),
-                "operator_harness": os.environ.get("STRINGENCY_OPERATOR"),
+                "operator_session_ref": operator_env()["session_ref"],
+                "operator_harness": operator_env()["harness"],
                 "ts": now_iso(),
                 "verdict": verdict,
                 "correction_json": correction,

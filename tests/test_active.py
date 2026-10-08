@@ -26,6 +26,7 @@ def test_mark_lives_for_the_block_and_names_this_process(tmp_path: Path) -> None
     with active.executing(tmp_path, "R1", "02_summarize"):
         mark = json.loads(p.read_text())
         assert mark["step_id"] == "02_summarize" and mark["host"] == socket.gethostname()
+        assert mark["start"] == active.start_ticks(active.os.getpid())
         assert active.engine_alive(tmp_path, "R1", "02_summarize") is True
     assert not p.exists()
     with pytest.raises(RuntimeError), active.executing(tmp_path, "R1", "02_summarize"):
@@ -40,12 +41,26 @@ def test_engine_run_leaves_no_mark(make_project: InitFn) -> None:
     assert not list((p.root / "runs").rglob(active.MARK))
 
 
-def _write_mark(root: Path, run_id: str, pid: int, host: str | None = None) -> None:
+def _write_mark(
+    root: Path, run_id: str, pid: int, host: str | None = None, start: int | None = None
+) -> None:
     m = active.mark_path(root, run_id)
     m.parent.mkdir(parents=True, exist_ok=True)
-    m.write_text(
-        json.dumps({"pid": pid, "host": host or socket.gethostname(), "step_id": "02_summarize"})
-    )
+    body = {"pid": pid, "host": host or socket.gethostname(), "step_id": "02_summarize"}
+    body["start"] = start if start is not None else active.start_ticks(pid)
+    m.write_text(json.dumps(body))
+
+
+def test_a_reused_pid_is_not_the_engine(tmp_path: Path) -> None:
+    """The mark names the pid and its start time; a live process with that pid but another
+    start time took the pid after the engine exited."""
+    me = active.os.getpid()
+    mine = active.start_ticks(me)
+    assert isinstance(mine, int)
+    _write_mark(tmp_path, "R1", me)
+    assert active.engine_alive(tmp_path, "R1", "02_summarize") is True
+    _write_mark(tmp_path, "R1", me, start=mine + 1)
+    assert active.engine_alive(tmp_path, "R1", "02_summarize") is False
 
 
 def test_driver_reads_the_mark_not_the_clock(make_project: InitFn) -> None:
@@ -60,6 +75,12 @@ def test_driver_reads_the_mark_not_the_clock(make_project: InitFn) -> None:
     _write_mark(p.root, rid, active.os.getpid())
     d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=hours_later, root=p.root)
     assert d["engine"] == "computing" and not d["stale"]
+    # the step's last printed line answers "still running?"
+    out = p.root / "runs" / rid / "02_summarize" / "stdout.txt"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("neighbours on pca dims 1:35, k 20\n10:26:01 clustering at 0.2, 0.4\n\n")
+    d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=datetime.now(UTC), root=p.root)
+    assert d["progress"].startswith("10:26:01 clustering at 0.2, 0.4 (")
 
     # gone: stale at once, whatever the clock says
     dead = subprocess.Popen([sys.executable, "-c", "pass"])

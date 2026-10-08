@@ -99,7 +99,11 @@ def input_digest_mismatch(ctx: GateContext) -> Verdict:
     id="repro.intermediate_dropped", version=1, scope=["*"], phase="post", default=Disposition.FLAG
 )
 def intermediate_dropped(ctx: GateContext) -> Verdict:
-    """The step consumed an object type, produced none, and a later step needs one."""
+    """The step consumed an object type, produced none, and a later step needs one from it: an
+    input of that type wired to this step. A later step wired to an earlier producer
+    (`$steps.04_cluster.batch_evidence` read by the report after `05_assess_batch` consumed
+    it) still has its object, so nothing was dropped (Lyons lung and gut, 2026-10-08, where
+    every run logged the drop twice)."""
     m = ctx.project.module_for(ctx.action.module)
     if m is None or not ctx.project.pipeline.has_step(ctx.action.step_id):
         return Verdict(False)
@@ -111,8 +115,16 @@ def intermediate_dropped(ctx: GateContext) -> Verdict:
         return Verdict(False)
     later_needs: list[str] = []
     for sid in ctx.project.pipeline.downstream(ctx.action.step_id):
-        later = ctx.project.module_for(ctx.project.pipeline.step(sid).module)
-        if later and any(i.type in dropped for i in later.inputs.values()):
+        decl = ctx.project.pipeline.step(sid)
+        later = ctx.project.module_for(decl.module)
+        if later is None:
+            continue
+        refs = decl.refs()
+        if any(
+            i.type in dropped
+            and any(r.kind == "steps" and r.name == ctx.action.step_id for r in refs.get(n, []))
+            for n, i in later.inputs.items()
+        ):
             later_needs.append(sid)
     if later_needs:
         return Verdict(

@@ -355,6 +355,33 @@ def references(roots: list[Path]) -> dict[tuple[str, str], float]:
     return {k: statistics.median(v) for k, v in samples.items()}
 
 
+PROGRESS_CHARS = 160
+
+
+def step_progress(root: Path, run_id: str, step_id: str, now: datetime) -> str:
+    """The last line the running step's script printed and how long ago, so "still running?"
+    has an answer on the page (lung and gut, 2026-10-08, both asked at eighteen minutes into
+    clustering). Reads `runs/<run>/<step>/stdout.txt`; empty when there is none."""
+    path = root / "runs" / run_id / step_id / "stdout.txt"
+    try:
+        with path.open("rb") as f:
+            f.seek(0, 2)
+            size = f.tell()
+            f.seek(max(0, size - 4096))
+            tail = f.read().decode(errors="replace")
+        mtime = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+    except OSError:
+        return ""
+    lines = [ln.strip() for ln in tail.splitlines() if ln.strip()]
+    if not lines:
+        return ""
+    last = lines[-1]
+    if len(last) > PROGRESS_CHARS:
+        last = last[: PROGRESS_CHARS - 1] + "\u2026"
+    age = duration_text(max(0.0, (now - mtime).total_seconds()))
+    return f"{last} ({age} ago)" if age else last
+
+
 def driver(
     conn: sqlite3.Connection,
     run: Any,
@@ -395,6 +422,7 @@ def driver(
         "elsewhere": "",
         "stale": False,
         "engine": "",
+        "progress": "",
     }
     if current is None:
         return out
@@ -426,6 +454,8 @@ def driver(
     elif current["status"] in WAITING_STATUSES and since_call is not None:
         limit = max(STALE_FLOOR_SECONDS, 2 * ref if ref else 0)
         out["stale"] = since_call > limit
+    if root is not None and current["status"] == "running":
+        out["progress"] = step_progress(root, run_id, str(current["step_id"]), now)
     return out
 
 

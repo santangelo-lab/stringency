@@ -54,6 +54,14 @@ def _no_user_notify(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
 
 
+@pytest.fixture(autouse=True)
+def _no_operator_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The engine takes the operator's identity from Claude Code's environment when it runs
+    inside one; a test run from a Claude Code shell must not record that session."""
+    for k in ("CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_EXECPATH"):
+        monkeypatch.delenv(k, raising=False)
+
+
 @pytest.fixture
 def method_repo(tmp_path: Path) -> MethodRepo:
     dest = tmp_path / "method-src"

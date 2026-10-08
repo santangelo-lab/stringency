@@ -13,10 +13,11 @@ from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.deliver import deliver as do_deliver
 from stringency.exit_codes import ConfigError
+from stringency.judgment import check_responses, check_text
 from stringency.notify import notify_after
 from stringency.project import Project
 from stringency.runloop import Next, file_responses, run_loop
-from stringency.runs import open_or_resume
+from stringency.runs import RunContext, latest_run, load_run, open_or_resume
 
 
 def completed_line(nx: Next) -> str:
@@ -35,6 +36,14 @@ def read_responses(source: str) -> Any:
         raise ConfigError(f"--responses: not JSON ({e})") from None
 
 
+def _latest(project: Project) -> RunContext:
+    """The latest run, loaded without opening or resuming it (the check writes nothing)."""
+    row = latest_run(project.store)
+    if row is None:
+        raise ConfigError("no run to check responses against")
+    return load_run(project, row["run_id"])
+
+
 @handle_errors
 def run(
     until: str | None = typer.Option(None, "--until", help="stop after this step"),
@@ -50,9 +59,20 @@ def run(
     deliver: bool = typer.Option(
         False, "--deliver", help="deliver in this invocation when the run completes"
     ),
+    check: bool = typer.Option(
+        False,
+        "--check",
+        help="with --responses: check the responses as filing would, and file nothing",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Project.find()
+    if check:
+        if responses is None:
+            raise ConfigError("--check needs --responses <file>")
+        res = check_responses(_latest(project), read_responses(responses))
+        emit({"schema": "stringency.response_check/1", **res}, as_json, check_text(res))
+        return
     rc = open_or_resume(project, allow_dirty=allow_dirty, new=new)
     human_prefix = ""
     if responses is not None:

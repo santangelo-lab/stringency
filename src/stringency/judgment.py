@@ -11,8 +11,10 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -81,14 +83,20 @@ class Evidence:
     digests: dict[str, str]
 
 
-def prepare_evidence(rc: RunContext, plan: StepPlan) -> Evidence:
+def prepare_evidence(rc: RunContext, plan: StepPlan, *, run_pre: bool = True) -> Evidence:
     """Evidence tables from the declared `judgment.evidence` inputs, after running `pre.*`
-    engine-side when the module has one (design 3.5 step 2)."""
+    engine-side when the module has one (design 3.5 step 2). `run_pre=False` reads the evidence
+    the pre-script already wrote (the response check runs nothing)."""
     m = plan.module.manifest
     assert m.judgment is not None
     paths: dict[str, Path] = {k: v.path for k, v in plan.inputs.items() if not v.many}
     script = plan.module.entry_script
-    if script is not None:
+    if script is not None and not run_pre:
+        for n in m.judgment.evidence:
+            cand = plan.step_dir / "evidence" / f"{n}.tsv"
+            if cand.exists():
+                paths[n] = cand
+    elif script is not None:
         ev_dir = plan.step_dir / "evidence"
         ev_dir.mkdir(parents=True, exist_ok=True)
         job = Job(
@@ -261,13 +269,16 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
                 message=f"dispatching: {len(requests)} request(s) in {dispatch_dir}; have one fresh subagent answer each, then run again",
             )
         transition(store, rc.run_id, action.step_id, StepStatus.RUNNING)
+        t0 = time.monotonic()
         replicates = run_direct(harness, requests, schema, sampling)
+        duration_ms: int | None = int((time.monotonic() - t0) * 1000)
     else:
         if not request_path(dispatch_dir, requests[0].replicate).exists():
             raise ConfigError(
                 f"step {action.step_id} is dispatching but {dispatch_dir} has no request files"
             )
         replicates = collect_dispatch(harness, requests, schema, dispatch_dir)
+        duration_ms = dispatch_wall_ms(store, rc.run_id, action.step_id)
         transition(store, rc.run_id, action.step_id, StepStatus.RUNNING)
 
     record_invocations(
@@ -353,6 +364,7 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
         env_status="verified" if rc.env_digests.get(m.env) else "as_reported",
         command=f"harness:{harness.kind}",
         exit_code=0,
+        duration_ms=duration_ms,
         observed={
             "replicates": len(replicates),
             "valid": sum(1 for r in replicates if r.valid),
@@ -370,6 +382,168 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
     return finish(
         rc, action, plan, produced, info, bundle_extra=bundle_extra, extra_holds=item_holds
     )
+
+
+def dispatch_wall_ms(store: Store, run_id: str, step_id: str) -> int | None:
+    """Wall time from the step's latest move to `dispatching` until now (the collection): the
+    reviewers' time plus the operator's, the judgment step's duration when it is dispatched
+    (lung and gut, 2026-10-08, recorded none). Reads: step_events."""
+    ts = store.scalar(
+        "SELECT ts FROM step_events WHERE run_id = ? AND step_id = ? "
+        "AND event = 'status:dispatching' ORDER BY seq DESC LIMIT 1",
+        (run_id, step_id),
+    )
+    if not ts:
+        return None
+    started = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    return max(0, int((datetime.now(UTC) - started).total_seconds() * 1000))
+
+
+def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
+    """`run --responses <file> --check`: what filing these responses would do, without filing
+    them. Each response is read and checked as collection reads it (the nonce, the response
+    schema), the items are decided as consensus decides them, and the judgment gates (`judg.*`)
+    are evaluated on the result. An operator no longer has to read the engine's source to
+    pre-check its reviewers (lung, 2026-10-08). Reads: the trace, the dispatch directory, the
+    step's evidence. Writes nothing: no trace row, no file in the dispatch directory, and the
+    pre-script is not run again; a module's `post.*` is not run, so the gates see the raw
+    replicates (the result says so)."""
+    from stringency.consensus import decide, sign_off
+    from stringency.gate import in_scope_specs
+    from stringency.harness.subagent import response_path
+    from stringency.runloop import dispatch_target
+
+    ddir, _ = dispatch_target(rc, doc)
+    step_id = str(json.loads((ddir / "manifest.json").read_text())["step_id"])
+    row = rc.store.one(
+        "SELECT * FROM actions WHERE run_id=? AND step_id=? ORDER BY attempt DESC, rowid DESC LIMIT 1",
+        (rc.run_id, step_id),
+    )
+    if row is None:
+        raise ConfigError(f"step {step_id} has no action")
+    action = action_from_row(row)
+    plan = plan_step(rc, step_id, action.attempt)
+    m = plan.module.manifest
+    if m.judgment is None or m.prompt is None:
+        raise ConfigError(f"module {plan.module.ref} is not a judgment module")
+    ev = prepare_evidence(rc, plan, run_pre=False)
+    template_rel = str((plan.module.path / m.prompt.template).relative_to(rc.project.method_root))
+    prompt = render(
+        plan.module.prompt_template or "", m.prompt.vars, prompt_values(rc, plan, ev)
+    ) + evidence_suffix(rc.project.policy.confidence_criteria)
+    schema = wrap_schema(plan.module.output_schema or {}, m.judgment.batching)
+    requests = build_requests(action.action_id, prompt, schema, ev, plan, template_rel)
+    harness = harness_for(rc, m.model)
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        for req, response in zip(requests, doc["responses"], strict=True):
+            response_path(Path(td), req.replicate).write_text(json.dumps(response))
+        replicates = collect_dispatch(harness, requests, schema, Path(td))
+    rule = rc.project.policy.agreement_rule(rc.project.config.profile)
+    invalid = [r.index for r in replicates if not r.valid]
+    invalid_held = bool(invalid) and "any_invalid" in set(rule.hold_on)
+    labels = (
+        list(m.judgment.sign_off.labels)
+        if m.judgment.sign_off and m.judgment.sign_off.when == "always"
+        else None
+    )
+    items = []
+    for item in ev.items:
+        ic = decide(item, replicates, rule, invalid_held=invalid_held)
+        items.append(sign_off(ic, labels) if labels is not None else ic)
+    bundle = OutputBundle(
+        outputs={},
+        replicates=tuple(r.structured or {} for r in replicates),
+        replicate_valid=tuple(r.valid for r in replicates),
+        items=tuple(ev.items),
+        consensus=tuple(i.to_json() for i in items),
+        evidence_tables=ev.tables,
+        considered_set=considered_set_record(m.judgment, ev.items, ev.digests),
+    )
+    ctx = rc.gate_context("post", action, rc.current_state(), bundle)
+    specs = [
+        sp
+        for sp in in_scope_specs(
+            registry, "post", operation=action.operation, module=m, runner="engine"
+        )
+        if sp.id.startswith("judg.")
+    ]
+    gate = evaluate(
+        ctx,
+        registry=registry,
+        store=None,
+        policy_digest=rc.policy_digest,
+        module=m,
+        runner="engine",
+        only=specs,
+    )
+    fired = [
+        {
+            "predicate": f"{g.spec.id}@{g.spec.version}",
+            "disposition": str(g.effective),
+            "reason": g.verdict.reason,
+        }
+        for g in gate.records
+        if g.verdict.fired
+    ]
+    holds = [
+        {"item_id": i.item_id, "kind": i.hold_kind, "reason": i.hold_reason}
+        for i in items
+        if i.hold_kind is not None
+    ]
+    if invalid_held:
+        holds.insert(
+            0, {"item_id": None, "kind": "run_disagreement", "reason": "invalid replicates"}
+        )
+    ok = not invalid and not gate.blocked
+    return {
+        "step_id": step_id,
+        "ok": ok,
+        "replicates": [
+            {
+                "replicate": r.index,
+                "valid": r.valid,
+                "error": r.invocations[-1].error if r.invocations and not r.valid else None,
+            }
+            for r in replicates
+        ],
+        "checks": [f"{g.spec.id}@{g.spec.version}" for g in gate.records],
+        "fired": fired,
+        "would_hold": holds,
+        "post_script_skipped": plan.module.post_script is not None,
+    }
+
+
+def check_text(res: dict[str, Any]) -> str:
+    """The check's result in sentences, for the terminal."""
+    lines = [
+        f"checked {len(res['replicates'])} response(s) for {res['step_id']}; nothing was filed",
+    ]
+    for r in res["replicates"]:
+        state = "valid" if r["valid"] else f"invalid: {r['error']}"
+        lines.append(f"  replicate {r['replicate']}: {state}")
+    blocks = [f for f in res["fired"] if f["disposition"] == "block"]
+    others = [f for f in res["fired"] if f["disposition"] != "block"]
+    lines.append(f"{len(res['checks'])} judgment check(s) evaluated")
+    lines += [f"  would block: {f['predicate']}: {f['reason']}" for f in blocks]
+    lines += [f"  would {f['disposition']}: {f['predicate']}: {f['reason']}" for f in others]
+    if res["would_hold"]:
+        lines.append(f"{len(res['would_hold'])} hold(s) would open:")
+        lines += [
+            f"  {h['kind']}"
+            + (f" on item {h['item_id']}" if h["item_id"] else "")
+            + f": {h['reason']}"
+            for h in res["would_hold"]
+        ]
+    if res["post_script_skipped"]:
+        lines.append("the module's post-script was not run; the gates saw the raw replicates")
+    lines.append(
+        "ok: file them with `stringency run --responses <file>`"
+        if res["ok"]
+        else "not ok: filing these would close the attempt or hold on invalid replicates"
+    )
+    return "\n".join(lines)
 
 
 def run_post(rc: RunContext, plan: StepPlan, replicates: list[Replicate]) -> list[Replicate]:

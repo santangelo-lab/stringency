@@ -554,7 +554,7 @@ Domain-free, live in the engine, apply to every plugin.
 | `repro.env_unpinned` | pre | * | the executor cannot report an environment digest for the module's env | block, invariant |
 | `repro.seed_unset` | pre | modules with `stochastic: true` | `seed_param` is missing or null in the action | block, invariant |
 | `repro.input_digest_mismatch` | run open, pre | * | an input's current hash differs from the recorded hash | block, invariant |
-| `repro.intermediate_dropped` | post | * | a step consumed an object, retained no object output, and a later step needs one | flag |
+| `repro.intermediate_dropped` | post | * | a step consumed an object, retained no object output, and a later step needs one from it (an input of that type wired to this step) | flag |
 | `out.schema_conformance` | post | * | an output declared with a schema fails validation | block |
 | `judg.evidence_exists` | post | judgment | a non-abstained item has zero supporting refs, or a ref does not resolve to a cell of the declared evidence | block |
 | `judg.vocabulary_resolves` | post | judgment | a label is not in the module's declared vocabulary | block |
@@ -1093,7 +1093,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 |---|---|---|---|---|
 | `init <path>` | `--method <git-url>@<tag> --pipeline <name> --mode --profile --owner --reviewer --objective <file> --design <file> --inputs <file> [--judgment-harness api] [--executor apptainer] [--drafted-by person\|agent] [--brief <file>]` | binds; refuses open+strict; runs lint | opens the project record | none |
 | `declare <dir>` | `--check --method <git-url>@<tag> --pipeline <name> [--objective --design --inputs] [--profile] [--executor] [--json]` | every `init` check, in a temporary directory | none; prints the echo-back | none |
-| `run` | `[--until <step>] [--allow-dirty "<reason>"] [--new] [--json] [--responses <file\|->] [--deliver]` | evaluates predicates; halts on hold or block; `--responses` files dispatch responses from one document; `--deliver` delivers on completion | writes everything | triggers replicates |
+| `run` | `[--until <step>] [--allow-dirty "<reason>"] [--new] [--json] [--responses <file\|->] [--check] [--deliver]` | evaluates predicates; halts on hold or block; `--responses` files dispatch responses from one document; with `--check` it only reports what filing them would do (validity, the `judg.*` gates, the holds that would open) and writes nothing; `--deliver` delivers on completion | writes everything (nothing with `--check`) | triggers replicates |
 | `next` | `[--json]` | reports the next step with its plan template (operation, parameter schema with defaults and ranges, vocabulary, declared outputs, expected evidence), or the current hold | reads | none |
 | `propose <step>` | `[--set k=v]… [--reason "<txt>"] [--json]` | constructs the Action from defaults plus proposed values; runs the pre-gate; issues a ticket on pass | writes the action and verdicts | none |
 | `submit <ticket>` | `--outputs name=path… [--evidence path]… [--command "<string>"] [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |

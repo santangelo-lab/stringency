@@ -160,13 +160,25 @@ def test_review_hold_shows_one_hold(make_project: InitFn) -> None:
     assert view["evidence_rows"]["summary"]["A"]["group"] == "A"
     r = cli(p, "review", "--hold", "01NOSUCHHOLD00000000000000")
     assert r.exit_code == 15
+    # once resolved, the hold names the replicate that stood and the item's label
+    r = cli(p, "review", "--verdict", "accept", "--hold", h["hold_id"], "--replicate", "1")
+    assert r.exit_code == 0, r.output
+    view = json.loads(cli(p, "review", "--hold", h["hold_id"], "--json").output)["holds"][0]
+    res = view["resolution"]
+    assert res["verdict"] == "accept" and res["replicate"] == 1 and res["label"] is not None
+    text = cli(p, "review", "--hold", h["hold_id"]).output
+    assert f"the item's label: {res['label']}" in text and "replicate: 1" in text
 
 
 def test_review_hold_shows_resolved_hold(project: Project) -> None:
     h = project.confirm_hold()
     accept_hold(project.store, h["hold_id"])
     r = cli(project, "review", "--hold", h["hold_id"])
-    assert r.exit_code == 0 and "resolved by review" in r.output and "via tty" in r.output
+    assert r.exit_code == 0 and "resolved: accept by tester via tty" in r.output
+    assert 'reason: "ok"' in r.output and "stringency review --verdict" not in r.output
+    view = json.loads(cli(project, "review", "--hold", h["hold_id"], "--json").output)["holds"][0]
+    assert view["verdicts"] == [] and view["resolution"]["verdict"] == "accept"
+    assert view["resolution"]["reason"] == "ok" and view["resolution"]["label"] is None
 
 
 def test_run_hold_message_names_hold_and_command(make_project: InitFn) -> None:

@@ -1,3 +1,3 @@
 """stringency: admissibility gates and provenance for agent-assisted analysis pipelines."""
 
-__version__ = "0.2.14"
+__version__ = "0.2.15"
