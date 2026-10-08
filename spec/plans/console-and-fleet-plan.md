@@ -289,14 +289,19 @@ become two cards.
 
 ### 3.8 Figures, tables and the chart at the hold
 
-Today a hold shows the method's `hold_view` tables (kinds `table`, `json_table`, `jsonl`) above
-the packet, and the file route serves delivered files only. Three additions to the delivery skill
-schema (design 14.4 and `spec/method-skills.md` section 2; *design*, small, decision 6), all
-rendered by the engine with no plugin loaded:
+Which figures matter is specific to the method, the pipeline and the step (owner, 2026-10-07
+evening: "we should have a system in the methods that calls out which go to the console"). That
+system is the delivery skill, `skills/<pipeline>.yml` in the method repository (design 14.4): the
+method names what a person sees, the engine renders it and loads no plugin. Today its `hold_view`
+list names tables (kinds `table`, `json_table`, `jsonl`) for the predicate that opened a hold, and
+the file route serves delivered files only. The additions below keep that division: the method
+calls out the figures, per step, and the engine serves only what is called out. Four additions to
+the schema (design 14.4 and `spec/method-skills.md` section 2; *design*, small, decision 6):
 
 ```yaml
 hold_view:
   - predicate: param.agent_proposed
+    step: 04_cluster              # new: this entry applies to holds on this step only
     ask: "Approve the number of components and the clustering resolution"
     source: 03_reduce/elbow_table.csv
     kind: chart
@@ -326,6 +331,25 @@ hold_view:
   the heuristics put at sixteen. The engine knows nothing of elbows: it draws a column against a
   column and marks a parameter.
 - `ask`: the method's phrase for the inbox heading (3.7).
+- `step`: an optional step id on any `hold_view` entry. Today entries match by predicate alone, and
+  `param.agent_proposed` fires on three steps of `xenium-upstream`, so the elbow entry would be
+  looked for on the normalisation hold as well (it degrades with a note, but the note is noise).
+  With `step` the method says which figures belong to which decision. Without it, the entry
+  applies to every step as today.
+- `step_view`: a new list beside `hold_view`, keyed by step id, naming the figures and tables the
+  project page shows for that step once it has produced them, hold or no hold: the clustree and the
+  UMAP strip for `04_cluster`, the dot plot for `06_markers`. Same kinds as `hold_view`. This is
+  what makes the console useful between holds, when the person wants to see what a running organ
+  has done so far without asking the operator.
+
+```yaml
+step_view:
+  - step: 04_cluster
+    title: "Clusters at every resolution, and the embedding"
+    source: 04_cluster/cluster_figures
+    kind: figures
+    select: ["clustree.png", "umap_clusters.png", "umap_by_timepoint_h.png"]
+```
 
 The step-file route serves a file only when (a) a `hold_view` entry for that hold's predicate
 resolves to it, or (b) it lies inside a directory the `artifacts` table records for that run and
@@ -512,7 +536,10 @@ The owner's answers are in bold after each item.
    `beside` and `ask` fields; a small amendment to design 14.4 and `method-skills.md`.
    Recommendation: yes; the method already writes these files and the engine only renders them.
    **Yes, all five.** The `ask` field is part of the first cut (the inbox headings); the figure
-   and chart kinds come with the second.
+   and chart kinds come with the second. Added after the decision, from the owner's remark that
+   the figures are specific to the method, the pipeline and the step: `step` on a `hold_view`
+   entry and a `step_view` list for figures shown outside a hold (3.8); both belong to the same
+   amendment and the second cut.
 7. Console mode for the operator (6.2): the packet, the tables and the verdict move to the console
    and chat keeps one line per hold plus the delivery. Recommendation: yes once the console exists,
    with the old protocol kept for a session without one. **Yes, console mode when a console is
