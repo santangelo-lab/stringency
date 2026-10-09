@@ -36,11 +36,20 @@ class RunContext:
     executor: Executor
     env_digests: dict[str, str | None]
     policy_digest: str
-    input_digests_now: dict[str, str]
     git_dirty: bool = False
     allow_dirty_reason: str | None = None
     operator: dict[str, str | None] = field(default_factory=dict)
     script_blobs: dict[str, str] = field(default_factory=dict)  # module ref -> hash at open
+    # hashed on first read, not at load: a read-only view (a hold page, `review --hold`) never
+    # reads it, and hashing every declared input took 55 s on a large project (backlog L23)
+    _input_digests: dict[str, str] | None = field(default=None, repr=False)
+
+    @property
+    def input_digests_now(self) -> dict[str, str]:
+        """The declared inputs' hashes now, computed once per context on first read."""
+        if self._input_digests is None:
+            self._input_digests = self.project.input_digests_now()
+        return self._input_digests
 
     @property
     def store(self) -> Store:
@@ -184,7 +193,6 @@ def _context_for(project: Project, run_row: Any, *, executor_kind: str | None = 
         executor=executor,
         env_digests=env_digests,
         policy_digest=run_row["policy_digest"],
-        input_digests_now=project.input_digests_now(),
         git_dirty=bool(run_row["git_dirty"]),
         allow_dirty_reason=run_row["allow_dirty_reason"],
         operator=operator_env(),
@@ -246,7 +254,6 @@ def open_run(
         executor=executor,
         env_digests=env_digests,
         policy_digest=policy_digest,
-        input_digests_now=project.input_digests_now(),
         git_dirty=dirty,
         allow_dirty_reason=allow_dirty,
         operator=operator_env(),

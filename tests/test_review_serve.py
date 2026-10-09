@@ -1090,3 +1090,24 @@ def test_hold_view_resolves_an_inherited_step_of_a_fork(make_project: InitFn) ->
             f"{base}/step-file/{child.run_id}/04_compare/cmp_figures.dir/b.png?t={TOKEN}"
         ) as r:
             assert r.status == 200 and r.read() == _PNG
+
+
+def test_hold_page_reads_no_input_file(
+    server: tuple[str, Project], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A hold page, the list and `review --hold` only read the trace: no declared input is
+    hashed (backlog L23, 55 s per page on a project with large region bundles)."""
+    from stringency import hashing
+
+    def refuse(path: Path) -> str:
+        raise AssertionError(f"a read-only view hashed {path}")
+
+    monkeypatch.setattr(hashing, "hash_path", refuse)
+    base, p = server
+    h = queue(p)[0]
+    assert get(f"{base}/?t={TOKEN}")[0] == 200
+    status, body = get(f"{base}/hold/{h['hold_id']}?t={TOKEN}")
+    assert status == 200 and "replicate 1: abundant (high)" in body
+    assert "replicate 1: abundant (high)" in render(p, h).text
+    r = cli(p, "review", "--hold", h["hold_id"])
+    assert r.exit_code == 0, r.output
