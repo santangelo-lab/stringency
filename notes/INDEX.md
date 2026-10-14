@@ -8,6 +8,9 @@ it is the first thing a new session reads.
 - Engine `v0.2.16` installed as `0.2.16-sc0.5.0` (`current`); `main` pushed and clean. Method
   `v0.6.0-rc13` tagged on `main` 2026-10-14, not yet run under the engine. Lyons v2: `qc_all` and
   all four `upstream_*` organs delivered (2026-10-08 to 2026-10-12).
+- W5 done 2026-10-14 (`notes/2026-10-15-0130-guides-w5.md`): `docs/install.md`, `docs/onboarding.md`,
+  `docs/method-author.md`; the historical host notes archived; the skills and briefs name the shared
+  install and `probe`. Next: W6 (the Xenium analysis skill).
 - Engine `v0.2.20` (W4, L7: the method checkout bound read-only into every engine-run step; method
   rc15 drops its `rlib/` and `qc_plots.py` copies; `notes/2026-10-15-0030-method-bind-v0220.md`).
   Next: W5 (install and onboarding guides).
@@ -168,6 +171,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-15-0130-guides-w5.md` — W5, backlog L33: the three guides under `docs/`, the Claude Science notes trimmed and corrected, the host notes archived, the method-repo template's hook, CI and example skill.
 - `2026-10-15-0030-method-bind-v0220.md` — engine 0.2.20, backlog L7 (roadmap W4): `Job.ro_bind_paths`, the method checkout bound read-only; method rc15 sources `modules/_rlib` and `modules/_pylib` with no copies.
 - `2026-10-14-2330-compat-plugin-and-method.md` — W3 closed: singlecell 0.5.1 (coords_missing@2 on every region, declared and inherited decision points, CI, institutional marks) and method rc14 (`requires`, group bands from the job's design, CI, the organ hold view); the combination checked on PROTSEQ and recorded in `compat/known-good.yml`.
 - `2026-10-14-2200-compat-engine-v0219.md` — engine 0.2.19, backlog L28 to L31 (roadmap W3, engine half): `requires` checked by lint, declare, init and run open; the installed plugins in `stringency.yml`, the captures event, the delivery and the coverage line; `stringency probe`; images resolved by name through `$STRINGENCY_IMAGES` and `~/.config/stringency/config.yml`; `install.sh` derives its label; `compat/known-good.yml` and the compat workflow.

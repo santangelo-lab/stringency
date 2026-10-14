@@ -10,7 +10,7 @@ needed is correctness, integration reliability, maintainability and UX, not a re
 work is eight items, W0 to W7, named in the lane paragraphs below; their file-level detail is in
 `notes/2026-10-14-1500-plan-refresh-and-review.md`, and the backlog rows they close are the record.
 
-**Status 2026-10-14.** Written. W0 (this refresh), W1 (fork inheritance, engine v0.2.17, L27) and W2 (declared parameters, the commented CSV, the hold-view filter; v0.2.18, L24 to L26) and W3 (`requires`, plugins in provenance, `probe`, images by name; v0.2.19, L28 to L31; plugin 0.5.1; method rc14; CI in all three repositories) and W4 (the method checkout bound read-only, v0.2.20, L7; the method's copies gone in rc15) done the same day. Next: W5.
+**Status 2026-10-14.** Written. W0 (this refresh), W1 (fork inheritance, engine v0.2.17, L27) and W2 (declared parameters, the commented CSV, the hold-view filter; v0.2.18, L24 to L26) and W3 (`requires`, plugins in provenance, `probe`, images by name; v0.2.19, L28 to L31; plugin 0.5.1; method rc14; CI in all three repositories) W4 (the method checkout bound read-only, v0.2.20, L7; the method's copies gone in rc15) and W5 (the three guides, the archive of the host notes, the skills' lookup; L33) done the same day. Next: W6.
 
 ## How the plans are kept
 
@@ -35,7 +35,7 @@ delivered on rc12 and rc12.1 (2026-10-08 to 2026-10-12).
 |---|---|---|---|
 | A engine | open; W1 to W4 done (v0.2.17 to v0.2.20; not yet installed) | this file; `backlog.md` | `confirm-once.md` (L5, L6) when the owner asks; the engine side of W6 (the template's decision-point section) |
 | I integration and CI | W3 done 2026-10-14 (engine v0.2.19, plugin 0.5.1, method rc14; `compat/known-good.yml` row) | this file | the owner's push, the plugin's `uv lock` and tag, the install `0.2.19-sc0.5.1`; then the lane keeps `known-good.yml` current and adds the synthetic upstream run (W6) to CI's institutional list |
-| E skills and onboarding | open | this file; `ux-two-audiences.md` (history) | W5 one install guide, one onboarding guide, the operator skill's engine lookup; W6 the Xenium analysis skill with a synthetic end-to-end run and an acceptance run by a non-developer |
+| E skills and onboarding | W5 done 2026-10-14 (`docs/install.md`, `docs/onboarding.md`, `docs/method-author.md`); W6 next | this file; `ux-two-audiences.md` (history) | W6 the Xenium analysis skill (decision points in the template and the operator skill, `skills/xenium-upstream.analyze.yml`), a synthetic end-to-end run of `xenium-upstream`, and an acceptance run by a non-developer; republish the operator, declare and analysis skills after it |
 | F spatial method, Lyons CLP | active; F6 delivered 2026-10-12; rc14 and rc15 tagged 2026-10-14 (W3, W4) | `spatial-method-plan.md`; method `PLAN.md` | the first engine run on rc15 (which holds rc13's resolution step, `requires`, the group bands and the shared code); F7 the owner reads `cell_types_mouse@2`; F9 niches |
 | H console | released (v0.2.8 to v0.2.16), second cut unscheduled | `console-and-fleet-plan.md` "What is open" | batch cards (L6), the delivery gallery, the decision history, the resource cap, when the owner asks |
 | J harness flexibility | **proposed**, waiting on the owner | this file (W7 in the working plan) | H1 a survey of Codex CLI on PROTSEQ once the owner has it logged in; then the operator skills split into a harness-neutral core, and the `openai-compatible` and `command` judgment adapters |
