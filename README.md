@@ -32,15 +32,18 @@ The science is still yours.
 
 ## Design
 
-The engine is domain-free. Domain knowledge (state extractors, predicates, vocabularies) lives in
-plugins registered under the `stringency.plugins` entry point group. `plugins/stringency-toy` is the
-reference plugin and the one the test suite uses; `stringency-singlecell` (separate repository) is
-the plugin for application 1.
+<p align="center">
+  <img src="docs/simple_diagram.png" width="820"
+       alt="Diagram titled “How Stringency works.” A human directs an AI operator, which delegates step-specific judgments to independent AI judgment agents. The operator interacts with the engine, and the judgment agents send their judgments to it. Methods define the analysis plan; plugins provide domain tools and rules. The engine checks each step, validates judgments, and records the process to support validation, reproducibility, and provenance. It pauses for human review when needed and delivers results with an auditable history. Robot icons identify the AI operator and judgment agents.">
+</p>
 
-The spec is `spec/stringency-design.md`; `spec/README.md` maps the rest of that directory. The
-motivation, and the twelve constraints the design answers to, is `spec/commandments.md`. Choices
-made where the design is silent are in `spec/DECISIONS.md`; contract deviations, if any, in
-`spec/DEVIATIONS.md`. Current plans are in `spec/plans/`, starting with `roadmap-2026-09.md`.
+A human sets the scientific goal and directs an AI operator, which runs the analysis and delegates step-specific judgments to independent judgment agents. The engine checks each proposed step, validates outputs and judgments, and pauses when a human decision is required. It records the actions, evidence, and decisions behind the results.
+
+**Methods define the analysis plan; plugins supply domain knowledge; the engine enforces the rules.** Method repositories contain versioned pipelines, module code, parameters, prompts, policies, and environment specifications. Plugins provide domain tools and contracts, including state extractors, predicates, schemas, and vocabularies. The engine remains domain-free, so the same execution, validation, and provenance machinery can support different scientific domains.
+
+Results are delivered with an auditable history: what ran, what was checked, what the agents judged, and what a person decided. Versioned methods, hashed inputs, recorded environments, and explicit review decisions support reproducibility and make limitations visible.
+
+The architecture is specified in `spec/stringency-design.md`; `spec/README.md` guides readers through the supporting documents. The motivation and twelve design constraints are in `spec/commandments.md`, implementation decisions in `spec/DECISIONS.md`, and contract deviations in `spec/DEVIATIONS.md`. Current plans live in `spec/plans/`.
 
 ### More Climbing Analogies
 
