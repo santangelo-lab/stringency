@@ -4,25 +4,33 @@ What each file is, and how much weight it carries.
 
 ## The spec
 
-| file | state (2026-10-06) | what |
+| file | state (2026-10-14) | what |
 |---|---|---|
-| `roadmap-2026-09.md` | current | the plan approved 2026-09-14 and the lanes it became; its first section, "Where things stand", is the one-page state of every lane with pointers; the rest is the approved detail with per-lane status |
-| `spatial-method-plan.md` | **active (Lane F)** | the spatial method after QC with Lyons CLP as the pilot: sections 1 to 4 phase 0 (done 2026-10-06), sections 5 to 7 the downstream pilot re-planned for R, section 8 every owner decision (12 to 15 open) |
-| `console-and-fleet-plan.md` | **designed, not built (Lane H)** | the console: `review --serve` grown into one place for every run and every hold (inbox by ask, figures and the elbow chart at the hold, who is driving, an event stream), the console-mode hold protocol, the fleet's resource cap; seven owner decisions in section 7; mockup in `plans/mockups/` |
-| `backlog.md` | current | open items not in a lane (K, L series), the measurement table |
-| `ux-two-audiences.md` | open, small (Lane E) | Track 1 in detail; built through 1h; section 8's amendments applied; the status line says what remains |
-| `judge-sources-plan.md` | proposed (Lane G) | judgment agents from many sources: the `openai-compatible` adapter, the Qwen3 evaluation, judge identity, a panel specification (*design*), the operator fallback, a `/data/protect` routing rule; seven owner decisions in section 6 |
-| `confirm-once.md` | proposed (Lane A) | why the owner was asked five times on 2026-10-06 to confirm one design and sixteen times to approve one parameter set, and five rules to make a chained study one acceptance (wider inheritance, study-level design acceptance, re-declaration, accept-once for identical flags, say so in advance); four owner decisions |
-| `egress-and-remeasurement.md` | unscheduled | data egress classes and judgment re-measurement endpoints borrowed from ClawBio; backlog L1 to L4 |
+| `stringency-design.md` | the spec | the design; frozen contracts are `module-contract.md`, `predicate-contract.md`, `trace-schema.md`; `commandments.md` is the source of the constraints; `DECISIONS.md` and `DEVIATIONS.md` are the ledgers; `method-skills.md` is the page for the two skill files a method carries |
+
+## Plans (`plans/`)
+
+| file | state (2026-10-14) | what |
+|---|---|---|
+| `roadmap-2026-10.md` | **current** | the one-page state of every lane (A engine, I integration and CI, E skills and onboarding, F spatial method, H console, J harnesses, G judge sources, B bulk, egress) with its plan document and next step; how the plans are kept; the design amendment texts awaiting the owner; written from the code review of 2026-10-14 and the owner's asks |
+| `backlog.md` | current | open items not owned by a lane (A5, E2, G2, J1, J2, K3 to K6, L1 to L7, L9, L11, L24 to L34, H5), the measurement table; done rows are in `archive/backlog-done.md` |
+| `spatial-method-plan.md` | **active (Lane F)** | the spatial method after QC with Lyons CLP as the pilot: phase 0 as run, `xenium-upstream` as designed through rc10, every owner decision (1 to 25; 21 to 25 are Lyons v2 with ROSC controls); the method's `PLAN.md` is current for rc11 to rc13 |
+| `console-and-fleet-plan.md` | released (v0.2.8 to v0.2.16); second cut unscheduled (Lane H) | the console: its design as decided 2026-10-07, "What is open" at the top (batch cards, gallery, history, the resource cap), section 8 the pick-up guide; mockup in `plans/mockups/` |
+| `confirm-once.md` | proposed (Lane A, after W1 to W4) | why one design was confirmed five times and one parameter set sixteen; five rules to make a chained study one acceptance; L5, L6; four owner decisions |
+| `judge-sources-plan.md` | proposed (Lane G; S1 and S2 moved to Lane J) | judgment agents from many sources: judge identity, a panel specification (*design*), the operator fallback, a `/data/protect` routing rule; seven owner decisions in section 6 |
+| `egress-and-remeasurement.md` | unscheduled | data egress classes and judgment re-measurement borrowed from ClawBio; backlog L1 to L4 (L3 moves with Lane J) |
+| `ux-two-audiences.md` | history of Track 1 (Lane E); its rules still bind the skills | the two audiences, the hold protocol, the analysis-skill rules; built in full; superseded as a work list by the roadmap's W5 and W6 |
 | `bulkrna-plan.md` | dormant (Lane B) | Track 2 in detail, kept as written since 2026-09-23 |
 
 Every live plan opens with a dated **Status** line; a document without one has not been reviewed
-since 2026-10-06.
+since 2026-10-14. Lane state is written in `roadmap-2026-10.md` only.
 
 ## Archive (`archive/`)
 
 Finished or superseded documents, kept because the notes and the trace cite them. Each opens with
 a line saying why it was archived and where its live successor is. Nothing in `archive/` is an
-instruction to a session. Moved there on 2026-10-06: `app1-spatial-qc-plan.md` (Track 3, Lane C,
-closed), `lane-c-day1-2026-09-17.md` (its day log), `project-page-and-notify.md` (Track 1h, built),
+instruction to a session. Moved there on 2026-10-14: `roadmap-2026-09.md` (the approved plan of
+2026-09-14 and its lanes' history), `engine-v0.2.7-plan.md` (built 2026-10-07), `backlog-done.md`
+(the closed backlog rows). On 2026-10-06: `app1-spatial-qc-plan.md` (Track 3, Lane C, closed),
+`lane-c-day1-2026-09-17.md` (its day log), `project-page-and-notify.md` (Track 1h, built),
 `declarations-and-objectives.md` (design note, built; H5 in the backlog).

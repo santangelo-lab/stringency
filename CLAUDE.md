@@ -7,7 +7,7 @@ Read `spec/stringency-design.md` first; it is the spec. `spec/README.md` says wh
 `spec/` is. The frozen contracts are `spec/module-contract.md`, `spec/predicate-contract.md`, and
 `spec/trace-schema.md`; `spec/commandments.md` is the source of the constraints; `spec/DECISIONS.md`
 and `spec/DEVIATIONS.md` are the ledgers. Current plans live in `spec/plans/` (start with
-`roadmap-2026-09.md`; `backlog.md` holds the open items); finished or superseded plans are in
+`roadmap-2026-10.md`; `backlog.md` holds the open items); finished or superseded plans are in
 `spec/archive/` and are history, not instructions. `integrations/claude-science/README.md` is a
 working note.
 

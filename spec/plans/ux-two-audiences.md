@@ -1,10 +1,10 @@
 # Two audiences: the analyst and the operator
 
-Working note, not the spec. Roadmap Track 1 (`spec/plans/roadmap-2026-09.md`). Proposes changes to design
+Working note, not the spec. Roadmap Track 1 (`spec/archive/roadmap-2026-09.md`; Lane E in `spec/plans/roadmap-2026-10.md`). Proposes changes to design
 7.5, 10.4, 12.1, 14.1, and 17; the amendment texts are in section 8 and need the owner's approval
 before build. Everything else here is DECISIONS-level or skill text.
 
-**Status 2026-10-06.** Track 1 items 1a to 1h are built (1h 2026-09-23, `spec/archive/project-page-and-notify.md`). Open under Lane E: three analysis-skill template fixes and a re-tag, a toy run by someone other than the owner, and the measurement rows in `backlog.md`; the first spatial analysis skill is Lane F session F11. Section 8's amendments were approved and applied 2026-09-15.
+**Status 2026-10-14.** Track 1 built in full (1a to 1h). Lane E's remainder (the template fixes, the toy run by someone other than the owner, the measurement rows) is superseded by `roadmap-2026-10.md` W5 and W6: the first real analysis skill is `stringency-analyze-xenium-upstream`, and its acceptance run by a non-developer is the measurement this note asked for. Kept as the record of Track 1's reasoning; sections 4 and 5.1 remain the rules the skills follow.
 
 ## 1. The problem
 

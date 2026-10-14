@@ -1,5 +1,7 @@
 # Engine v0.2.7: the changes the first upstream run demands (2026-10-07)
 
+**Archived 2026-10-14.** Built in full on 2026-10-07 (engine v0.2.7: L13 conditional steps, L12, L8, `wait`; `notes/2026-10-07-1730-engine-v027.md`). Kept because the console plan and the notes cite its section numbers. Successor for engine work: `spec/plans/roadmap-2026-10.md`, Lane A.
+
 Working note, not the spec. Part 1 of the owner's two asks of 2026-10-07 evening ("Before we run on
 the other Lyons CLP data I want to update the engine with the one correction route we found here");
 part 2, the console, is `console-and-fleet-plan.md`. Items marked *design* change design text and

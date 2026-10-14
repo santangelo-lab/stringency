@@ -1,11 +1,11 @@
 # Bulk RNA-seq: plugin and method plan
 
-Working note, not the spec. Roadmap Track 2 (`spec/plans/roadmap-2026-09.md`). Two new repositories:
+Working note, not the spec. Roadmap Track 2 (`spec/archive/roadmap-2026-09.md`; Lane B in `spec/plans/roadmap-2026-10.md`). Two new repositories:
 `stringency-bulkrna` (the plugin) and `stringency-plasmidsaurusRNAseq-method` (the method). Decided by the
 owner on 2026-09-14: counts first, alignment second; this is the first real plugin; it must be
 runnable by a non-computational lab member through an analysis skill.
 
-**Status 2026-10-06.** Dormant since 2026-09-23 by the owner's decision (roadmap Lane B); kept as written, nothing built beyond the engine prerequisites that Lane A delivered. Not a current instruction.
+**Status 2026-10-14.** Dormant since 2026-09-23 by the owner's decision (`roadmap-2026-10.md` Lane B); kept as written, nothing built beyond the engine prerequisites that Lane A delivered. Not a current instruction.
 
 ## 1. Data and reference
 

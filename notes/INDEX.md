@@ -3,7 +3,18 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-09)
+## Current state (2026-10-14)
+
+- Engine `v0.2.16` installed as `0.2.16-sc0.5.0` (`current`); `main` pushed and clean. Method
+  `v0.6.0-rc13` tagged on `main` 2026-10-14, not yet run under the engine. Lyons v2: `qc_all` and
+  all four `upstream_*` organs delivered (2026-10-08 to 2026-10-12).
+- The plans refreshed and the code review of 2026-10-14 folded in
+  (`notes/2026-10-14-1500-plan-refresh-and-review.md`): read `spec/plans/roadmap-2026-10.md` first;
+  its lane table is the state; the approved work is W1 to W6 in order (fork inheritance L27 first),
+  W7 (Codex as a harness) waits on the owner. Backlog L28 to L34 are the review's items; done rows
+  are in `spec/archive/backlog-done.md`.
+
+## Earlier state (2026-10-09)
 
 - Engine `v0.2.16` (L23: a console hold page hashes no input; was 55 s on `qc_all`), tagged locally, not
   installed (installed: `0.2.15-sc0.5.0`, the v2 spleen run is on it) (`notes/2026-10-09-1600-hold-page-speed-v0216.md`).
@@ -146,6 +157,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-14-1500-plan-refresh-and-review.md` — W0: `roadmap-2026-10.md` written and the 2026-09 roadmap archived, the backlog split into open and done, every plan's status to 2026-10-14, Lyons v2 as spatial-plan decisions 21 to 25, the code review's items as L28 to L34 and method PLAN 5.12 to 5.17, the file-level shape of W1 to W7.
 - `2026-10-09-1600-hold-page-speed-v0216.md` — engine 0.2.16, backlog L23: a console hold page hashes no input (55 s per page on `qc_all`); not installed.
 - `2026-10-08-1311-lung-gut-and-v0215.md` — lung and gut in console mode; engine 0.2.11 to 0.2.15 (L10, L14 to L22), plugin 0.5.0 (`cell_types_mouse@2`, ids checked), method rc9 and rc10 (parallel clustering, the batch confound first).
 - `2026-10-07-2300-console-build.md` — Lane H: the console built and released (v0.2.8 first cut, v0.2.9 restyle, v0.2.10 figures at the hold; method rc8 names the figures), running as `stringency-console.service`; the plan's section 8 is the pick-up guide.

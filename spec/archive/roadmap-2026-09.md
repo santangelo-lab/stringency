@@ -1,5 +1,7 @@
 # stringency: roadmap after the Phase A exit (2026-09-14)
 
+**Archived 2026-10-14.** The plan approved 2026-09-14 and its lanes A to H, kept whole because the notes and the per-lane status paragraphs cite it. Its "Where things stand" table stopped at 2026-10-06. Successor: `spec/plans/roadmap-2026-10.md`, written the day the Xenium method had taken Lyons CLP v2 from QC to annotated cells; lane letters A, B, E, F, G, H keep their meaning there.
+
 Working note, not the spec. Approved by the owner on 2026-09-14. Detail per track: `spec/plans/ux-two-audiences.md`
 (Track 1), `spec/plans/bulkrna-plan.md` (Track 2), `spec/archive/app1-spatial-qc-plan.md` (Track 3). Track 0 was done the
 same day; see `notes/2026-09-14-1600-track0-and-roadmap.md`. The current state is the next section;

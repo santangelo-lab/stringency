@@ -15,28 +15,25 @@ F5, `notes/2026-10-07-1100-lane-f-f5-upstream.md`). Two asks from the owner that
 Items marked *design* change design text and need the owner's approval; the rest are
 DECISIONS-level or below. Section 7 lists the decisions the owner takes before the build.
 
-**Status 2026-10-08, night.** Built on branch `console` the same night the decisions were taken:
-C1 (routes by id, the cookie, several roots with a rescanning registry, the service unit), the C2
-first cut (the inbox grouped by ask with the method's `ask` phrase and `step` selector, the
-driver block, the timeline), the C5 first cut (the `data_version` watcher, `/events`, the JSON
-routes, the vendored script, CSP) and C3 (console mode in the operator skill). Then (2026-10-08, the owner: "let's work on the figures now"): the figure, figures and chart kinds,
-`beside`, `select`, `step_view`, no-predicate entries and `{item}` built (engine 0.2.10) and the
-`xenium-upstream` skill written for every hold and step (method rc8). Not built: batch cards, the
-gallery, the history, C4
-(the resource cap), `resources_observed`, `wait --json` already prints the reason. Nothing is
-released: the branch merges into `main` and tags `v0.2.8`; the standing unit
-`scripts/stringency-console.service` then runs the shared install. Earlier status: design done and
-the owner's seven decisions taken (section 7) on 2026-10-07 evening. The owner's direction: "I want the new interface to be more interactive than the old
-board." Part 1 (engine v0.2.7) was released the same evening (`notes/2026-10-07-1730-engine-v027.md`:
-L13, L12, L8, `wait`, shared `0.2.7-sc0.4.2`, method rc7), so part 2 can start with C1. The order
-after the decisions: C1, then the first cut of C2 and C5 together (the inbox with the operator's
-reason, live updates, who is driving), C3 console mode, then figures and the chart, batch cards,
-the gallery and the history after a week of use; C4 when the organs need it. This revision adds the server's shape (section 3.5), the event
-stream (3.6), the inbox and its grouping rule (3.7), figures, tables and the elbow chart at the
-hold (3.8), who is driving (3.9), decision history (3.10), the fleet protocol and the resource cap
-(section 6), tests (section 9), and the baseline numbers from the liver trace (section 10). A
-static mockup of the three main views, filled from the liver trace, is
-`spec/plans/mockups/console-mockup.html` (open it in a browser; it is a picture, not the product).
+**Status 2026-10-14.** Released and running. `v0.2.8` (C1, C2, C3 and the C5 first cut), `v0.2.9` (the restyle), `v0.2.10` (figures and the elbow chart at the hold), then the fixes the first console runs asked for, `v0.2.11` to `v0.2.16` (backlog L14 to L23: an operator always waits at a hold, the stale mark asks whether the engine is alive, every reviewer at a hold, the sign-off hold, the running step's progress line, a hold page hashes no input). The shared install `0.2.16-sc0.5.0` runs `stringency-console.service` on loopback 8765 with a drop-in adding `v2_rosc_controls` as a second root; lung, gut and spleen (Lyons v2) were driven through it, 2026-10-08 to 2026-10-12. What remains is the block "What is open" below; sections 1 to 7 are the design as decided on 2026-10-07, section 8 the pick-up guide. The build's history is in `notes/2026-10-07-2300-console-build.md` and `notes/2026-10-08-1311-lung-gut-and-v0215.md`.
+
+## What is open (2026-10-14)
+
+Second cut, unscheduled until the owner asks for it (roadmap-2026-10 Lane H), in the order decided:
+
+1. Batch cards (backlog L6, section 3.7): identical parameter holds across sibling projects as
+   one card, recorded through `review_batch` with `reason_code: batch`; `review --holds` extended
+   to flag holds.
+2. The delivery gallery on the run page (the report's `figures.csv`, the summary beside it) and
+   the decision history page (`reviews` joined to `holds` across roots, `status --overrides` per
+   module at the top).
+3. C4, the resource cap (section 6.3): `STRINGENCY_SLOTS`, `capacity.yml`, `slot:waiting` and
+   `slot:acquired` step events, the console cell; `resources_observed` in
+   `executions.observed_params_json` to size it.
+4. The section 10 measurement (hold-to-verdict per ask, relayed holds, session switches) on the
+   lung, gut and spleen traces was never written up.
+
+Known rough edges are in section 8.6.
 
 ## 1. What already exists, and what the day showed
 
@@ -71,7 +68,7 @@ answered in chat, three judgment dispatches re-run on mechanical faults, three r
 
 ## 2. Part 1: the engine release before the next organ
 
-Moved to its own document, `engine-v0.2.7-plan.md`, and released on 2026-10-07 evening (L13
+Moved to its own document, `spec/archive/engine-v0.2.7-plan.md`, and released on 2026-10-07 evening (L13
 conditional steps, L12, L8, the `wait` verb, tag `v0.2.7`, shared `0.2.7-sc0.4.2`, method rc7).
 The console depends on `wait` (section 6.2) and on L8 (the operator's reason on the hold page,
 section 3.8); both exist.
@@ -632,22 +629,9 @@ release (section 8.3).
   publish-skills.md`), so Claude Science sessions know console mode; a Claude Code session
   reads the skill from the repository.
 
-### 8.5 What is not built, in the order decided
+### 8.5 What is not built
 
-1. The first real use: lung on `xenium-upstream` rc8 with the operator in console mode, and the
-   measurement of section 10 (hold-to-verdict per ask, relayed holds, session switches). What
-   chafes goes into `backlog.md` before gut and spleen.
-2. Batch cards (L6, section 3.7): identical parameter holds across sibling projects as one card,
-   recorded through `review_batch` with `reason_code: batch`; `review --holds` extended to flag
-   holds.
-3. The delivery gallery on the run page (the report's `figures.csv`, the summary beside it) and
-   the decision history page (`reviews` joined to `holds` across roots, with `status
-   --overrides` per module at the top).
-4. C4, the resource cap (section 6.3), when gut and spleen run together: `STRINGENCY_SLOTS`,
-   `capacity.yml`, `slot:waiting`/`slot:acquired` step events, the console cell; and
-   `resources_observed` in `executions.observed_params_json` from the first lung run to size it.
-5. The two asks of the engine that were deferred: `wait --json` already prints the reason;
-   `resources_observed` is item 4.
+Moved to "What is open" at the top of this file (2026-10-14).
 
 ### 8.6 Known rough edges
 

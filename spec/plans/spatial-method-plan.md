@@ -9,7 +9,7 @@ items this plan absorbs. All eleven decisions of section 8 were taken by the own
 F0 to F3 ran the same day (phase 0 complete). Decision 1 chose R with the ROSC code, so sections
 5 to 7 were rewritten for R the same evening and decisions 12 to 15 taken; F4 is next.
 
-**Status 2026-10-07.** Sections 1 to 4 are the plan as drafted and, for phase 0, as run (F0 to F3 done 2026-10-06; the record is `/lab/projects/Lyons_CLP/PROGRESS.md` and `notes/2026-10-06-1345-lane-f-phase0.md`). Sections 5 to 7 are current: the downstream pilot re-planned for R (2026-10-06) and, on 2026-10-07, phases 2 and 3 folded into ONE pipeline `xenium-upstream` (merge to annotation) at the owner's request, with sign-off and batch-correction mechanics in section 5.1. Section 8 carries every owner decision: fifteen taken 2026-10-06, 16 to 18 taken 2026-10-07. F4 done 2026-10-06; F5 done 2026-10-07 (the upstream pipeline built, decisions 16 to 20 taken, liver delivered on `v0.6.0-rc6`); F6 next.
+**Status 2026-10-14.** F6 delivered 2026-10-12: all four organs annotated under `xenium-upstream`, as Lyons CLP v2 with ROSC untreated controls (`/lab/projects/Lyons_CLP/v2_rosc_controls/`, its `PROGRESS.md`; decisions 21 to 25 in section 8, taken 2026-10-08 to 2026-10-12): `qc_all` on `xenium-qc-tma` (method rc11, one QC project for sixteen regions against thirty-three for v1), the organs on rc12 (liver, lung, gut) and rc12.1 (spleen, Leiden), the resolution chosen after clustering by an operator review in scratch and a fork at `04_cluster`. rc13 makes that choice a step (`05_select_resolution`; method `PLAN.md` 5.10, `docs/resolution-selection-plan.md`), tagged 2026-10-14 and not yet run under the engine. Sections 1 to 4 are phase 0 as run; sections 5 to 7 describe `xenium-upstream` as built through rc10 and are behind rc11 to rc13 on the controls, the QC bundling and the resolution step (the method's `PLAN.md` section 5 is current for those). Next: the first run on rc13; F7 (the owner reads `cell_types_mouse@2`); F9. Engine items this lane filed since 2026-10-07 are L14 to L27 (`backlog.md`, `spec/archive/backlog-done.md`); the engine-side work the code review of 2026-10-14 raised is scheduled in `roadmap-2026-10.md`. Earlier status: `notes/2026-10-07-1100-lane-f-f5-upstream.md`.
 
 ## 1. Where this sits
 
@@ -403,7 +403,7 @@ parameter holds. The plugin half of F4 and the image half can run in parallel.
   the order of tens of GB in R; the resources block says 128 GB for `reduce-cluster` on spleen and
   64 GB elsewhere, within the shared machine's 500 GB.
 
-## 8. Decisions for the owner (fifteen taken 2026-10-06; 16 to 20 taken 2026-10-07)
+## 8. Decisions for the owner (fifteen taken 2026-10-06; 16 to 20 taken 2026-10-07; 21 to 25 taken 2026-10-08 to 2026-10-12)
 
 1. **Language.** Decided 2026-10-06, against the recommendation: **R, reusing the ROSC_MTA2
    code as designed for that project** rather than writing new Python ("I'd rather use that than
@@ -503,6 +503,37 @@ Raised by the re-plan for R (section 5, 2026-10-06), to decide before F4:
     uncorrected run; a corrected run skips it, the report's Batch decision section is the readout.
     The engine cannot skip a step on a prior step's parameter today (backlog L13, the next Lane A
     item); until it can, the operator answers the redundant hold with the owner's words.
+
+21. **Untreated controls from ROSC, as Lyons CLP v2.** Decided 2026-10-08 (the PI asked for a
+    view of what differs from baseline): the lab's ROSC study (RO against SC Cre-LNP in Ai14 mice;
+    its "Control" mice untreated; the same `mMulti_100g` panel) supplies two control punches per
+    tissue from the archive copy; v2 lives in `Lyons_CLP/v2_rosc_controls/` and v1 stays in place
+    marked superseded; the ROSC route arm is ignored and the two controls per tissue are equivalent
+    replicates with neutral ids (`ctrl-1`, `ctrl-2`; the original id kept as `source_punch`); ROSC's
+    archived Proseg output is reused for lung and small intestine; the known limits (two controls at
+    one time point, a different strain and study, Cre probe background, a different Proseg revision,
+    a slide correction pulls the controls toward CLP) are written into the v2 README and every report.
+22. **QC in one project.** Decided 2026-10-08: the QC modules loop over regions inside one project
+    (`xenium-qc-tma`, method rc11): five projects for v2 against thirty-three for v1's QC; the
+    thresholds are a per-organ table confirmed at init; the reporter probes (`Cre-mRNA`,
+    `aNLuc-mRNA`, `tdTomato-ai14-mRNA`) are excluded from variable features; the organ of an upstream
+    project is a proposed parameter signed off at a hold (until engine L24); batch correction stays
+    allowed.
+23. **Fix and redo on the time-point bug.** Decided 2026-10-08 (night): the engine writes the job's
+    design with sorted keys, so the R modules' "first multi-level factor" was `condition`, and the
+    rc11 liver and lung batch evidence grouped Control against CLP; rc12 names the factor
+    (`timepoint_factor`); the rc11 upstream projects moved to `superseded/` and were re-created on
+    rc12 rather than forked.
+24. **The resolution is chosen after clustering.** Decided 2026-10-09: from the clustree and the
+    per-resolution evidence, proposed with a justification and approved at a hold, not fixed before
+    clustering from the elbow alone. Interim on rc12: an operator review in scratch, then
+    `fork --at 04_cluster --set resolution` (liver 0.6, lung 0.4 kept, gut 0.6; the forks exposed
+    engine L27). Long term: rc13's `05_select_resolution` (method `PLAN.md` 5.10).
+25. **Leiden for the spleen.** Decided 2026-10-10 to 2026-10-12: Seurat's Louvain ran more than
+    sixteen hours on 1.57 M cells without finishing a resolution; option B, `cluster_method:
+    igraph_leiden` (rc12.1, merged into rc13), recommended above about 600,000 cells; the Louvain
+    run abandoned; spleen delivered at resolution 0.6 with ndim 40. The batch route on all four
+    organs was `proceed_uncorrected`, each with the owner's reason in `v2_rosc_controls/PROGRESS.md`.
 
 ## 9. Risks
 

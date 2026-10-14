@@ -8,7 +8,7 @@ This document specifies every component of the `stringency` engine to the level 
 
 It defers: open and staged modes (schema reservations only), application 2, the openai-compatible harness, the re-audit path, and a Nextflow executor. Section 17 lists each with the trigger that would pull it forward.
 
-Reading order for Claude Code: this document, then the current plan in `plans/roadmap-2026-09.md` (the Phase A build plan is in `archive/`). The implementation plan is background. The Commandments and the git note are the source of the constraints and should be read once.
+Reading order for Claude Code: this document, then the current plan in `plans/roadmap-2026-10.md` (the Phase A build plan is in `archive/`). The implementation plan is background. The Commandments and the git note are the source of the constraints and should be read once.
 
 ## 1. Objects
 
