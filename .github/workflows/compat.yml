@@ -35,14 +35,18 @@ jobs:
             "git+https://github.com/santangelo-lab/stringency-plugins@${plugin##*@}#subdirectory=plugins/${plugin%%@*}"
           .compat/bin/stringency plugins list
           .compat/bin/stringency probe --json || true
+      # the method may be a private repository (the lab's is); then its lint and skill check
+      # stay institutional and this job says so rather than failing
       - run: |
           method="${{ steps.combo.outputs.method }}"
-          .compat/bin/stringency lint "https://github.com/santangelo-lab/${method%%@*}@${method##*@}"
-      - run: |
-          method="${{ steps.combo.outputs.method }}"
-          git clone --depth 1 --branch "${method##*@}" "https://github.com/santangelo-lab/${method%%@*}" .method
+          url="https://github.com/santangelo-lab/${method%%@*}"
+          if ! git ls-remote --exit-code "$url" "refs/tags/${method##*@}" >/dev/null 2>&1; then
+            echo "method $method is not readable anonymously (a private repository): lint and the skill check run on the workstation, not here"
+            exit 0
+          fi
+          .compat/bin/stringency lint "${url}@${method##*@}"
+          git clone --depth 1 --branch "${method##*@}" "$url" .method
           for f in .method/skills/*.analyze.yml; do
             [ -e "$f" ] || continue
-            pipeline=$(basename "$f" .analyze.yml)
-            .compat/bin/python integrations/claude-science/render_skill.py .method --pipeline "$pipeline" --check
+            .compat/bin/python integrations/claude-science/render_skill.py .method --pipeline "$(basename "$f" .analyze.yml)" --check
           done
