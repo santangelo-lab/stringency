@@ -3,7 +3,16 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-14)
+## Current state (2026-10-15)
+
+- Everything pushed; CI green in all three repositories and the compat workflow green; the plugins
+  repository public; `0.2.21-sc0.5.1` installed on the workstation, `probe` ready
+  (`notes/2026-10-15-1000-install-for-people-and-ci.md`). The install for people (README message,
+  `scripts/bootstrap.sh`, the person's sections) and the site-neutral repository (the lab's pages in
+  `~/mytools/stringency/stringency-lab/`) are from the same day. Open: the owner's republish, the
+  amendments, the rc16 real-data run, W6's acceptance run; W7 waits.
+
+## Earlier state (2026-10-14)
 
 - Engine `v0.2.16` installed as `0.2.16-sc0.5.0` (`current`); `main` pushed and clean. Method
   `v0.6.0-rc13` tagged on `main` 2026-10-14, not yet run under the engine. Lyons v2: `qc_all` and
@@ -174,6 +183,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-15-1000-install-for-people-and-ci.md` — the install for people (README message, bootstrap, the guides' two halves), the site-neutral repository and the lab directory, engine 0.2.21, the first CI runs and their five fixes, the install of `0.2.21-sc0.5.1`.
 - `2026-10-15-0300-xenium-analysis-skill-w6.md` — W6, backlog L32: `decisions:` in the analysis-skill source and the operator skill's section 9; the Xenium analysis skill (rc16); the synthetic two-slide upstream run through the engine, which found the plugin extractor's partial match.
 - `2026-10-15-0130-guides-w5.md` — W5, backlog L33: the three guides under `docs/`, the Claude Science notes trimmed and corrected, the host notes archived, the method-repo template's hook, CI and example skill.
 - `2026-10-15-0030-method-bind-v0220.md` — engine 0.2.20, backlog L7 (roadmap W4): `Job.ro_bind_paths`, the method checkout bound read-only; method rc15 sources `modules/_rlib` and `modules/_pylib` with no copies.
