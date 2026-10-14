@@ -128,7 +128,8 @@ row names the item.
 5. **10.1 and 10.2 Harnesses (J, W7).** Drafted after the H1 survey; waits.
 6. **DEVIATIONS, `judgment.sign_off`** (engine 0.2.14): still "Awaiting acknowledgement by Jim".
 
-Also the owner's: Codex CLI logged in on PROTSEQ for H1; installing each engine release and
+The owner's recurring jobs, with the commands, are `docs/maintainer.md` (its "Pending now" block is
+the current list). Also the owner's: Codex CLI logged in on PROTSEQ for H1; installing each engine release and
 restarting the console; republishing the operator, declare and analysis skills to Claude Science
 after W5 and W6; the rc13 run on real data before W6's acceptance test, and the tester for it;
 K6 tag cleanup and the toy method's GitHub remote.

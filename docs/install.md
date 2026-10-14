@@ -128,6 +128,8 @@ the skills from the repositories directly.
 
 ## Adding a version
 
+The owner's one-page checklist for this and the other recurring jobs is `docs/maintainer.md`.
+
 Install again with the new sources (above); the label changes, `current` moves, nothing is
 deleted. Then restart any standing console service so it serves the new engine. Every run
 records the engine and plugin versions it ran under, so an older project is reproduced by

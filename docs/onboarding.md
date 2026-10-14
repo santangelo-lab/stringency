@@ -16,13 +16,12 @@ For a lab member who will run an analysis under stringency on a machine that is 
        export PATH=/data/lab/env/stringency/current/bin:$PATH
 
    Test from the laptop: `ssh protseq 'bash -lc "stringency probe"'` ends with `ready`.
-4. **An AI session of their own.** Either a Claude Science instance (the member's own, so every
-   command runs as them and every verdict is recorded against their account) with the host as an
-   SSH compute provider, the project area as a data root, and the skills published
-   (`integrations/claude-science/publish-skills.md`); or Claude Code run on the host under their
-   account, which reads the skills from the repositories. The operator skill and the declare
-   skill are the engine's; each method carries its analysis skill, the entry point a person loads
-   by describing their experiment.
+4. **An AI session of their own.** Either Claude Code run on the host under their account, which
+   needs nothing more (it reads the skills beside the engine), or their own Claude Science
+   instance, where three one-time steps remain: add the host as an SSH compute provider under
+   the alias, set the project area as a data root, and paste the skill-publishing message from
+   `integrations/claude-science/publish-skills.md` into a session. Their own instance, not a
+   shared one, so every command runs as them and every verdict is recorded against their account.
 5. **The console.** Holds are answered on the console (`stringency review --serve`, started by
    the member under their own account, or the standing service with its tunnel,
    `scripts/review-page.sh protseq`) or in the chat; both are recorded, as `via: web` and
@@ -41,6 +40,8 @@ For a lab member who will run an analysis under stringency on a machine that is 
 
 ## What to expect
 
+To start an analysis you open a session and describe the experiment; the method's analysis
+skill takes it from there (`integrations/claude-science/new-project.md`, "For a person").
 You describe the experiment in your own words, point at the data, and answer a few plain
 questions. The assistant drafts the three declaration files, shows you an echo of what it
 understood, and waits for your yes before anything runs. From then on it runs the pipeline and

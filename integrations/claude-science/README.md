@@ -1,8 +1,11 @@
 # Claude Science integration
 
 What a Claude Science session needs to drive a stringency project, and how to set one up.
-`new-project.md` is the step-by-step checklist; `render_brief.py` produces the two texts a
-project needs; `examples/toy-cs/` shows a completed run.
+A person reads two short sections: `new-project.md` "For a person" (the three one-time steps in
+the instance, then describing an experiment to start an analysis) and `publish-skills.md` "For
+a person" (one message to paste). Everything else here is for the AI: the operator's checklist in
+`new-project.md`, `render_brief.py` for the two texts a project needs, `examples/toy-cs/` for a
+completed run.
 
 ## Files
 

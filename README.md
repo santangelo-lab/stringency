@@ -104,7 +104,9 @@ else set up, read `docs/onboarding.md` instead: it is one group membership, one 
 AI session of your own.
 
 **If you are the AI** doing the install, `docs/install.md` is yours: what gets installed where,
-the container images, the console, and how to check your work.
+the container images, the console, and how to check your work. **If you maintain the lab's
+install,** `docs/maintainer.md` is the one page of recurring jobs: release, install, restart,
+republish.
 
 ## Develop
 
@@ -168,7 +170,7 @@ src/stringency/         the engine (no biology imports; CI checks)
 plugins/stringency-toy/ reference plugin, its method repo, fixtures
 templates/method-repo/  what a new method repository starts from
 integrations/           Claude Science: skill, brief renderer, setup checklist, example run
-docs/                   the guides: install, onboarding, method author; README assets
+docs/                   the guides: install, onboarding, method author, maintainer; README assets
 compat/                 known-good combinations of engine, plugin and method
 spec/                   design, build plan, contracts, decisions
 notes/                  session notes; read INDEX.md first

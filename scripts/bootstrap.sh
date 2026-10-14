@@ -67,12 +67,14 @@ git clone --quiet --branch "$engine" --depth 1 "$repo" "$work/engine"
 pname=${plugin%%@*}; ptag=${plugin##*@}
 "$work/engine/scripts/install.sh" --prefix "$prefix" --source "$work/engine" \
   --plugin "git+https://github.com/santangelo-lab/stringency-plugins@${ptag}#subdirectory=plugins/${pname}" --no-toy
-cat <<MSG
+if "$prefix/current/bin/stringency" probe >/dev/null 2>&1; then ready="run \`stringency probe\` again any time"; else ready="this engine predates \`probe\` (0.2.19); \`stringency plugins list\` shows what is installed"; fi
+cat <<'MSG'
 
 installed. Next:
-  1. put the engine on your PATH, in ~/.profile:   export PATH=$prefix/current/bin:\$PATH
+  1. put the engine on your PATH, in ~/.profile:   export PATH=<prefix>/current/bin:$PATH
   2. a container runtime (apptainer) for production runs; `stringency probe` says whether one is found
   3. the method's images where the site keeps them, named in ~/.config/stringency/config.yml as images_root
   4. `stringency probe --method <method url>@<tag>` ends with "ready" when a project on that method can run here
 docs/install.md in the engine repository explains each.
 MSG
+echo "  (<prefix> is $prefix; $ready)"

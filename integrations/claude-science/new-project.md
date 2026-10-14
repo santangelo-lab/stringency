@@ -1,9 +1,34 @@
-# New Claude Science project for a stringency run (compute over SSH)
+# Running an analysis from Claude Science
 
-Time to first `run`: about ten minutes once the workstation is prepared. Nothing in this mode
-runs in the Claude Science sandbox, so no directory grants are needed.
+## For a person
 
-## On the workstation, once
+Once, with the help of whoever set the machine up (`docs/onboarding.md`): your account in the
+lab group, an SSH alias to the workstation, and the PATH line. Then, in your own Claude Science
+instance, once:
+
+1. Add the workstation as an SSH compute provider under your alias (Customize, compute). Every
+   command then runs on the workstation as you.
+2. Set the project area (on the lab's machine `/data/lab/projects`) as a data root, so reading
+   results there does not raise a card each time.
+3. Paste the skill-publishing message from `publish-skills.md` into a session. The session
+   publishes the engine's skills and each method's analysis skill; you get a list back.
+
+Per analysis, nothing to set up. Open a session and describe the experiment in your words: what
+the data is and where it is, what you want out of it, and the organ or the groups if the method
+asks. The method's analysis skill (for Xenium, `stringency-analyze-xenium-upstream`) loads from
+that description. It asks you a few plain questions one at a time, shows you the engine's reading
+of your experiment and waits for your yes, then runs the pipeline and reports progress in
+sentences. When the run needs a decision it stops and tells you what it is asking and the
+choices; you answer in the chat or on the console. At the end you get the deliverables, a methods
+paragraph, a coverage report and a one-page summary.
+
+If the method has no analysis skill yet, say "set up a stringency project for <pipeline> on
+<data>" instead; the session follows the operator checklist below and still presents every
+decision to you the same way.
+
+## For the AI (the operator's checklist)
+
+### On the workstation, once
 
 1. Engine installed (`docs/install.md`). Check with `stringency probe --method <url>@<tag>`,
    which also checks the method's `requires` and images. On PROTSEQ the install is shared at
@@ -18,7 +43,7 @@ runs in the Claude Science sandbox, so no directory grants are needed.
    `stringency-declare` skill, which checks them with `declare --check` and shows you the
    echo-back before `init`.
 
-## In Claude Science, once per instance
+### In Claude Science, once per instance
 
 5. Add the workstation as an SSH compute provider under its SSH alias (Customize, compute).
    Set the project area, for example `/data/lab/projects/<area>`, as a data root so file
@@ -26,7 +51,7 @@ runs in the Claude Science sandbox, so no directory grants are needed.
 6. Publish the skills if the instance does not have them (`publish-skills.md`): the operator and
    declare skills, and the analysis skill of each method the person will use.
 
-## Per project
+### Per project
 
 7. Render the two texts on the workstation. For a project that `init` has not created yet:
 
@@ -52,7 +77,7 @@ runs in the Claude Science sandbox, so no directory grants are needed.
     reports the run completed and delivered, the deliverables are in `<project>/deliver/<run_id>/`,
     and `summary.md` there is the page written for you.
 
-## What to expect
+### What to expect
 
 The measurement table in `spec/plans/backlog.md` has one row per measured run: the toy took 25
 authorization points on 2026-09-08 and 7 turns in 15 minutes through its analysis skill on
