@@ -87,7 +87,26 @@ TMA method) exist and have taken a study from QC to annotated cells; `compat/kno
 the engine, plugin and method versions that ran together. Guides: `docs/install.md` (setting up a
 machine), `docs/onboarding.md` (joining one), `docs/method-author.md` (writing a method).
 
-## Quickstart
+## Install
+
+**If you are a person,** do not follow a checklist. Open Claude Code, Codex, or any AI that can run
+commands on the machine the data lives on, and paste this:
+
+> Install stringency on this machine: run
+> `curl -LsSf https://raw.githubusercontent.com/santangelo-lab/stringency/main/scripts/bootstrap.sh | bash`,
+> then follow `docs/install.md` in the stringency repository for the rest, and tell me when
+> `stringency probe` ends with "ready" or what stands in the way.
+
+That installs a known-good engine and plugin, puts the skills the AI needs beside them, and ends
+with a report of what is there and what is missing. On a shared machine add `--prefix` with the
+group's directory (`bash -s -- --prefix /data/lab/env/stringency`). To join a machine someone
+else set up, read `docs/onboarding.md` instead: it is one group membership, one PATH line, and an
+AI session of your own.
+
+**If you are the AI** doing the install, `docs/install.md` is yours: what gets installed where,
+the container images, the console, and how to check your work.
+
+## Develop
 
 ```
 uv sync --all-groups
@@ -116,7 +135,8 @@ in design 14.2. Every verb takes `--json`.
 ## Claude Science setup
 
 The general setup is `docs/install.md` and `docs/onboarding.md`; this section is the Claude
-Science-specific part.
+Science-specific part. The skills a session needs are published by pasting one message into a
+session (`integrations/claude-science/publish-skills.md`, "For a person").
 
 >[!Note]
 >I'm working on making stringency accessible to many different kind of operators through different AI harnesses. The one I'm using at the moment is Claude Science so here I'm including specific details for it. Hopefully more to come soon!
@@ -132,7 +152,7 @@ container runtime, and the session reaches it as an SSH compute provider. The fu
    `integrations/claude-science/hosts/protseq-lab.md`); `stringency probe --method <url>@<tag>`
    confirms the method's images and versions are there.
 2. In Claude Science, once per instance: add the workstation as an SSH compute provider, set the
-   project area as a data root, publish the skills (`integrations/claude-science/publish-skills.md`).
+   project area as a data root, paste the publish message (`integrations/claude-science/publish-skills.md`).
 3. Per project: render the agent context and the session brief from the project with
    `integrations/claude-science/render_brief.py`, paste the context into the project's Agent
    Context, paste the brief as the first message, and accept the confirm hold at your terminal

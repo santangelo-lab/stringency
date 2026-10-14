@@ -1,7 +1,23 @@
 # Publishing the stringency skills to a Claude Science instance
 
 Skills are per instance, so each person publishes them once in their own instance and republishes
-when a skill changes. Four today:
+when a skill changes. A person does not run the cell below; they paste one message.
+
+## For a person
+
+In a Claude Science session that has the workstation as a compute host (on the lab's machine,
+`protseq`), paste:
+
+> Publish the stringency skills into this instance. On the compute host `protseq` the current
+> texts are the directories under `/data/lab/env/stringency/current/skills/` (one `SKILL.md` each)
+> and, for each method, `skills/stringency-analyze-*/SKILL.md` in the method repository at its
+> tag (the Xenium method is `https://github.com/santangelo-lab/stringency-xenium-method`, tag
+> `v0.6.0-rc16`). Download each file, publish it under its directory name with
+> `host.skills.edit` and `host.skills.publish`, overwriting an older copy, and tell me the name
+> and the "for engine" line of each skill you published.
+
+The session does the rest. Repeat it after an engine release or a method tag; the reply names
+what was published. Four skills today:
 
 | skill | source | who uses it |
 |---|---|---|
@@ -10,9 +26,9 @@ when a skill changes. Four today:
 | `stringency-analyze-<name>` | `skills/stringency-analyze-<name>/SKILL.md` in the method repo, rendered by `integrations/claude-science/render_skill.py` from `skills/<pipeline>.analyze.yml` (Track 1d, built 2026-09-23) | a lab member, as the entry point for one analysis |
 | `stringency-analyze-toy-compare` | `skills/stringency-analyze-toy-compare/SKILL.md` in `stringency-toy-method` at `v0.1.5` (on PROTSEQ: `~/mytools/stringency/stringency-toy-method`) | the first instance, on the toy `toy-engine` pipeline; the Track 1 acceptance test runs through it |
 
-## The cell
+## What the session runs
 
-In a session with `protseq` as a compute host, for each skill, in a `repl` cell:
+For each skill, in a `repl` cell (the AI's reference; a person pastes the message above):
 
     t = c.download("/data/lab/env/stringency/current/skills/<skill>/SKILL.md")   # or any host path holding the file
     content = open(t["local_path"]).read()

@@ -1,8 +1,33 @@
 # Installing stringency
 
-For whoever sets up a machine so that others can run analyses on it. A person joining a machine
-that is already set up reads `docs/onboarding.md`; a method author reads `docs/method-author.md`.
-The lab's own machine is described in `integrations/claude-science/hosts/protseq-lab.md`.
+Two readers. A person sets a machine up by asking an AI; the AI follows the second half of this
+page. A person joining a machine that is already set up reads `docs/onboarding.md`; a method
+author reads `docs/method-author.md`. The lab's own machine is described in
+`integrations/claude-science/hosts/protseq-lab.md`.
+
+## For a person
+
+Open Claude Code, Codex, or any AI that can run commands on the machine the data lives on, and
+paste the message in the README's "Install" section. It asks the AI to run one bootstrap command
+and then to follow the rest of this page. You will be asked for three things only when they are
+needed: where the install should go on a shared machine, a container runtime if the machine has
+none (that needs an administrator), and where the container images should live. The install is
+done when the AI reports that `stringency probe` ends with "ready".
+
+What you get: the `stringency` command on your PATH, the skills your AI follows beside it, and a
+report of what is installed. Nothing in the install touches data.
+
+## For the AI doing the install
+
+Work through the sections below in order; each ends with how to check it. Report to the person
+in sentences, and ask only when a choice is theirs (the prefix on a shared machine, the images
+directory). The bootstrap does the first two sections:
+
+    curl -LsSf https://raw.githubusercontent.com/santangelo-lab/stringency/main/scripts/bootstrap.sh | bash -s -- [--prefix DIR]
+
+It installs `uv` and Python 3.12 when missing, reads `compat/known-good.yml`, installs that
+engine and plugin into `<prefix>/versions/<label>/`, copies the skills beside them, and runs
+`stringency probe`. The rest of this page says what it did and what remains.
 
 ## What gets installed, and where
 
@@ -28,7 +53,7 @@ Install one of those unless you are developing.
 - A group that every user of the machine belongs to, so projects and the install are readable by
   all of them. On the lab's machine that is an Active Directory group; see the host note.
 
-## Install
+## Install by hand (what the bootstrap runs)
 
 From a checkout of this repository, as the user who will own the install, with `umask 002` when
 others must read it:
@@ -64,7 +89,7 @@ source definition and build date. Set `images_root` once per user:
 Images come from the method repository's container builds (the Xenium method publishes to GHCR
 and the method's `envs/README.md` says how to pull one by digest and convert it to a SIF).
 
-## Check the install
+## Check the install (the exit criterion)
 
     stringency probe --method <method checkout or url@tag>
 

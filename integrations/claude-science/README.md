@@ -35,23 +35,14 @@ SSH compute provider, which runs commands on the workstation as the user, outsid
 The session itself can be on the workstation or on a laptop; the trace and deliverables are
 written on the workstation either way.
 
-## Operator skill
+## The skills
 
-`stringency-operator/SKILL.md` is a Claude Science skill: how to find the engine, the operator's
-rules, and the run loop. Publish it once per Claude Science instance. In a session, grant this
-repository (or copy the file into a granted directory), then in a `repl` cell:
-
-    content = open("<granted path>/integrations/claude-science/stringency-operator/SKILL.md").read()
-    host.skills.edit("stringency-operator", "SKILL.md", content)
-    host.skills.publish("stringency-operator")
-
-Or from a compute host, without a grant: `t = c.download("<host path>/SKILL.md")` returns a
-transfer dict, and `open(t["local_path"]).read()` is the content. Every unrestricted agent profile
-then sees the skill through discovery, and a session that mentions stringency loads it. To
-replace a published skill, `host.skills.edit` needs the current body as `old_string` (it creates
-a file only when none exists), then `publish(name, overwrite=True)`. The same steps publish
-`stringency-declare`. `publish-skills.md` has the table and the republish rule; the operator
-skill changes with the engine (last for 0.2.19: `probe`, forks, declared parameters).
+`stringency-operator/SKILL.md` (find the engine, the rules, the run loop, the hold protocol) and
+`stringency-declare/SKILL.md` (draft the declarations) are the engine's skills; each method
+carries its analysis skills. A person publishes them into their own instance by pasting the
+message in `publish-skills.md` ("For a person") into a session with the workstation as a compute
+host; the session downloads the current texts from `<prefix>/current/skills/` on the host and
+publishes them. Republish after an engine release or a method tag.
 
 Session test 3.4 of `spec/plans/ux-two-audiences.md`, measured 2026-09-15 on PROTSEQ: delegate
 downloads of request files and the operator's downloads of delivered files raise one card each
