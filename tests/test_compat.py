@@ -193,3 +193,23 @@ def test_probe_reports_the_install_and_checks_a_method(
     assert r.exit_code == 1, r.output
     assert "FAIL image toy-py:" in r.output and "toy-py-0.1.0.sif not found" in r.output
     assert "not ready: " in r.output
+
+
+def test_probe_skills_check_reads_the_version_and_accepts_an_older_skill(tmp_path: Path) -> None:
+    from stringency.probe import _skill_engine, skills_check
+
+    skill = tmp_path / "SKILL.md"
+    skill.write_text(
+        "# operator\n\n**Which text of this skill to follow.** This text is for engine 0.2.19. "
+        "The engine\ninstalls its own copy.\n"
+    )
+    assert (
+        _skill_engine(skill) == "0.2.19"
+    )  # the whole version, not the digits before the first dot
+    assert skills_check(
+        skill, "0.2.19", "0.2.20"
+    ).ok  # a skill for an older engine drives a newer one
+    assert skills_check(skill, "0.2.20", "0.2.20").ok
+    c = skills_check(skill, "0.3.0", "0.2.20")
+    assert not c.ok and "newer than this engine" in c.detail
+    assert not skills_check(skill, None, "0.2.20").ok

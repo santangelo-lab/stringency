@@ -17,8 +17,8 @@ the engine's interpreter so jinja2 and pyyaml are present:
 
 from __future__ import annotations
 
-import os
 import argparse
+import os
 import sys
 from pathlib import Path
 

@@ -163,9 +163,17 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
         "steps": [{"id": k, "title": v} for k, v in steps.items()],
         "deliverables": [{"name": k, "sentence": v} for k, v in deliverables.items()],
         "after_delivery_titles": after_delivery_titles,
-        "declared": [{**d, "title": steps.get(d["step"], d["step"])} for d in decisions if d["how"] == "declared"],
+        "declared": [
+            {**d, "title": steps.get(d["step"], d["step"])}
+            for d in decisions
+            if d["how"] == "declared"
+        ],
         "proposed": [
-            {**d, "title": steps.get(d["step"], d["step"]), "after_title": steps.get(d["after"], d["after"])}
+            {
+                **d,
+                "title": steps.get(d["step"], d["step"]),
+                "after_title": steps.get(d["after"], d["after"]),
+            }
             for d in decisions
             if d["how"] == "proposed"
         ],
@@ -206,26 +214,43 @@ def _decisions(value: Any, steps: dict[str, str], problems: Problems) -> list[di
         if not isinstance(ask, str) or not ask.strip():
             problems.add(f"{where}: `ask` must be the question in the person's words")
             continue
-        evidence = _str_list(d.get("evidence"), f"{where}.evidence", problems) if "evidence" in d else []
+        evidence = (
+            _str_list(d.get("evidence"), f"{where}.evidence", problems) if "evidence" in d else []
+        )
         after = d.get("after")
         if how == "proposed":
             if not isinstance(after, str) or after not in steps:
-                problems.add(f"{where}: a proposed decision needs `after`, the step whose outputs it is proposed from")
+                problems.add(
+                    f"{where}: a proposed decision needs `after`, the step whose outputs it is proposed from"
+                )
                 continue
             if order.index(after) >= order.index(step):
                 problems.add(f"{where}: `after` ({after}) must come before `step` ({step})")
                 continue
             if not evidence:
-                problems.add(f"{where}: a proposed decision names the `evidence` the operator reads")
+                problems.add(
+                    f"{where}: a proposed decision names the `evidence` the operator reads"
+                )
                 continue
         elif after is not None or evidence:
             problems.add(f"{where}: a declared decision takes no `after` or `evidence`")
             continue
-        out.append({"step": step, "param": param.strip(), "how": how, "ask": ask.strip(), "evidence": evidence, "after": after})
+        out.append(
+            {
+                "step": step,
+                "param": param.strip(),
+                "how": how,
+                "ask": ask.strip(),
+                "evidence": evidence,
+                "after": after,
+            }
+        )
     return out
 
 
-def _cross_check_decisions(root: Path, pipeline: str, decisions: list[dict[str, Any]], problems: Problems) -> None:
+def _cross_check_decisions(
+    root: Path, pipeline: str, decisions: list[dict[str, Any]], problems: Problems
+) -> None:
     """Each decision's parameter is a decision point of the step's module (or, failing a
     `decision_points` list, a parameter the pipeline declares for the step)."""
     pfile = root / "pipelines" / f"{pipeline}.yml"
@@ -245,7 +270,9 @@ def _cross_check_decisions(root: Path, pipeline: str, decisions: list[dict[str, 
             m = _read_yaml(mfile)
             if isinstance(m, dict) and isinstance(m.get("decision_points"), list):
                 points = [str(x) for x in m["decision_points"]]
-        declared = set(points) | set((s.get("params") or {}).keys() if isinstance(s.get("params"), dict) else [])
+        declared = set(points) | set(
+            (s.get("params") or {}).keys() if isinstance(s.get("params"), dict) else []
+        )
         if d["param"] not in declared:
             problems.add(
                 f"decisions: {d['step']}.{d['param']} is neither a decision point of its module nor a parameter the pipeline declares"

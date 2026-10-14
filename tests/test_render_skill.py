@@ -109,7 +109,12 @@ def test_decisions_render_and_are_checked(tmp_path):
     repo = _toy_repo(tmp_path)
     data = _toy_analyze()
     data["decisions"] = [
-        {"step": "01_filter", "param": "min_value", "how": "declared", "ask": "What is the smallest value to keep?"},
+        {
+            "step": "01_filter",
+            "param": "min_value",
+            "how": "declared",
+            "ask": "What is the smallest value to keep?",
+        },
         {
             "step": "04_compare",
             "param": "correction",
@@ -124,15 +129,55 @@ def test_decisions_render_and_are_checked(tmp_path):
     ctx, problems = rs.validate(yaml.safe_load(src.read_text()), src, repo)
     assert not problems, problems
     out = rs.render(ctx)
-    assert "- What is the smallest value to keep? (`01_filter.min_value`, the step \"Filter low-value rows\")" in out
-    assert "- Which correction should the comparison use?: `04_compare.correction` (the step \"Compare the groups\"), proposed after \"Summarize each group\" from 02_summarize.summary." in out
+    assert (
+        '- What is the smallest value to keep? (`01_filter.min_value`, the step "Filter low-value rows")'
+        in out
+    )
+    assert (
+        '- Which correction should the comparison use?: `04_compare.correction` (the step "Compare the groups"), proposed after "Summarize each group" from 02_summarize.summary.'
+        in out
+    )
     for bad, fragment in [
         ({"step": "09_nope", "param": "x", "how": "declared", "ask": "?"}, "step ids"),
-        ({"step": "01_filter", "param": "max_value", "how": "declared", "ask": "?"}, "neither a decision point"),
-        ({"step": "01_filter", "param": "min_value", "how": "guessed", "ask": "?"}, "`how` must be"),
-        ({"step": "04_compare", "param": "correction", "how": "proposed", "ask": "?", "after": "05_report", "evidence": ["x"]}, "must come before"),
-        ({"step": "04_compare", "param": "correction", "how": "proposed", "ask": "?", "after": "02_summarize"}, "names the `evidence`"),
-        ({"step": "01_filter", "param": "min_value", "how": "declared", "ask": "?", "after": "02_summarize"}, "takes no `after`"),
+        (
+            {"step": "01_filter", "param": "max_value", "how": "declared", "ask": "?"},
+            "neither a decision point",
+        ),
+        (
+            {"step": "01_filter", "param": "min_value", "how": "guessed", "ask": "?"},
+            "`how` must be",
+        ),
+        (
+            {
+                "step": "04_compare",
+                "param": "correction",
+                "how": "proposed",
+                "ask": "?",
+                "after": "05_report",
+                "evidence": ["x"],
+            },
+            "must come before",
+        ),
+        (
+            {
+                "step": "04_compare",
+                "param": "correction",
+                "how": "proposed",
+                "ask": "?",
+                "after": "02_summarize",
+            },
+            "names the `evidence`",
+        ),
+        (
+            {
+                "step": "01_filter",
+                "param": "min_value",
+                "how": "declared",
+                "ask": "?",
+                "after": "02_summarize",
+            },
+            "takes no `after`",
+        ),
     ]:
         data["decisions"] = [bad]
         src.write_text(yaml.safe_dump(data))

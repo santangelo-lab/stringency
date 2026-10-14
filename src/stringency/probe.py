@@ -22,7 +22,7 @@ from stringency.executor.apptainer import find_binary, resolve_image, sha256_fil
 from stringency.operator_exec.envcheck import load_env_manifest
 from stringency.plugins import installed_plugin_versions
 from stringency.policy import load_policy
-from stringency.versions import check_requires
+from stringency.versions import check_requires, compare
 
 
 @dataclass
@@ -59,15 +59,7 @@ def probe(method: str | None = None, *, hash_images: bool = True) -> dict[str, A
     if skill is None:
         checks.append(Check("skills", None, "no skills installed beside this engine (a checkout)"))
     else:
-        same = skills["for_engine"] == __version__
-        checks.append(
-            Check(
-                "skills",
-                same,
-                f"operator skill for engine {skills['for_engine'] or 'unknown'} at {skill}"
-                + ("" if same else f"; the engine is {__version__}"),
-            )
-        )
+        checks.append(skills_check(skill, skills["for_engine"], __version__))
     site = {
         "images_root": str(siteconfig.images_root()) if siteconfig.images_root() else None,
         "STRINGENCY_IMAGES": os.environ.get("STRINGENCY_IMAGES"),
@@ -206,10 +198,27 @@ def _skill_path() -> Path | None:
 
 
 def _skill_engine(path: Path | None) -> str | None:
+    """The engine version the installed operator skill says it is for ("This text is for engine
+    0.2.19."), or None when the line is absent."""
     if path is None:
         return None
-    m = re.search(r"This text is for engine (\S+?)\.", path.read_text())
+    m = re.search(r"This text is for engine (\d+(?:\.\d+)+)", path.read_text())
     return m.group(1) if m else None
+
+
+def skills_check(path: Path, for_engine: str | None, engine: str) -> Check:
+    """The skill is written for an engine no newer than this one: the text changes only when a
+    verb, a flag or the hold protocol does, so a skill for 0.2.19 drives 0.2.20. A skill for a
+    newer engine than the one installed, or one with no version line, fails the check."""
+    if for_engine is None:
+        return Check("skills", False, f"operator skill at {path} names no engine version")
+    ok = compare(for_engine, engine) <= 0
+    return Check(
+        "skills",
+        ok,
+        f"operator skill for engine {for_engine} at {path}"
+        + ("" if ok else f"; newer than this engine, {engine}"),
+    )
 
 
 def render(payload: dict[str, Any]) -> str:
