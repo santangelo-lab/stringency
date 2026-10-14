@@ -42,9 +42,8 @@ at the end, `summary.md`; show me a code, an id, or a path only when I ask.
 {% endif %}
 ## Phase 0: probe, then stop
 
-    sx("id; hostname; which stringency apptainer singularity; stringency plugins list | head -1; "
-{% for i in images %}       "ls -la {{ i }}; apptainer exec --containall {{ i }} python3 -c 'import sys; print(sys.version)'; "
-{% endfor %}       "true", intent="Check that the analysis engine and its software image are ready on {{ provider }}.")
+    sx("id; hostname; stringency probe{% if bound %} --method {{ project }}/method{% endif %} --no-hash",
+       intent="Check that the analysis engine and its software image are ready on {{ provider }}.")
 
 Report the output and wait.
 {% if not bound and declare %}

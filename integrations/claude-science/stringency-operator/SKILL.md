@@ -48,13 +48,19 @@ executor is `apptainer`, which is the production default.
 In mode A, run this in bash first. It prints the path in use or tells you to stop.
 
     STRINGENCY_BIN=$(command -v stringency || true)
-    for d in "${STRINGENCY_HOME:-}/bin" /usr/local/lib/stringency/current/bin /opt/stringency/current/bin; do
+    for d in "${STRINGENCY_HOME:-}/bin" /data/lab/env/stringency/current/bin /usr/local/lib/stringency/current/bin /opt/stringency/current/bin; do
       [ -z "$STRINGENCY_BIN" ] && [ -x "$d/stringency" ] && STRINGENCY_BIN="$d/stringency"
     done
     if [ -n "$STRINGENCY_BIN" ]; then
-      export PATH="$(dirname "$STRINGENCY_BIN"):$PATH"; stringency plugins list
+      export PATH="$(dirname "$STRINGENCY_BIN"):$PATH"; stringency probe --method <project>/method --no-hash
     else
       echo "no stringency install found"; fi
+
+`probe` (engine 0.2.19) prints one line per check: the engine and its path, every plugin and
+version, the skills installed beside the engine, the container runtime, and for the project's
+method its `requires` against what is installed and every image its manifest names. `ready` on
+the last line means go on; `not ready` names the failing check, and you stop and report it. On an
+engine before 0.2.19 run `stringency plugins list` and `ls -la` on each image instead.
 
 In mode B, run the same lookup through `call_command` on the host.
 
@@ -64,11 +70,10 @@ using the tag the user names. If that fails for network or access reasons, stop 
 to run `scripts/install.sh` from the engine repository on this machine. Do not build the engine
 any other way and do not reimplement any of its behavior in Python.
 
-The container runtime is `apptainer` or `singularity`; the engine finds either. Confirm the
-image the project's method manifest names is readable, for example
-`ls -la $(grep -o '/[^ ]*\.sif' <project>/method/envs/manifest.yml)`.
+The container runtime is `apptainer` or `singularity`; the engine finds either, and `probe`
+reports which and whether every image the project's method names is present and readable.
 
-**Which text of this skill to follow.** This text is for engine 0.2.15. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.19. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the

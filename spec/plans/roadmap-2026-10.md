@@ -10,7 +10,7 @@ needed is correctness, integration reliability, maintainability and UX, not a re
 work is eight items, W0 to W7, named in the lane paragraphs below; their file-level detail is in
 `notes/2026-10-14-1500-plan-refresh-and-review.md`, and the backlog rows they close are the record.
 
-**Status 2026-10-14.** Written. W0 (this refresh), W1 (fork inheritance, engine v0.2.17, L27) and W2 (declared parameters, the commented CSV, the hold-view filter; v0.2.18, L24 to L26) done the same day. Next: W3.
+**Status 2026-10-14.** Written. W0 (this refresh), W1 (fork inheritance, engine v0.2.17, L27) and W2 (declared parameters, the commented CSV, the hold-view filter; v0.2.18, L24 to L26) and W3's engine half (`requires`, plugins in provenance, `probe`, images by name; v0.2.19, L28 to L31) done the same day. Next: W3's plugin and method halves (plugin 0.5.1, method rc14).
 
 ## How the plans are kept
 
@@ -33,8 +33,8 @@ delivered on rc12 and rc12.1 (2026-10-08 to 2026-10-12).
 
 | lane | state | plan | next |
 |---|---|---|---|
-| A engine | open; W1 and W2 done (v0.2.17, v0.2.18; not yet installed) | this file; `backlog.md` | W4 shared method code in the container (L7); then `confirm-once.md` (L5, L6) |
-| I integration and CI | **new**, not started | this file | W3: `requires` between method, plugin and engine; plugin identity in provenance; `stringency probe`; image root; CI on the plugin and method repositories; a known-good table |
+| A engine | open; W1, W2 and W3's engine half done (v0.2.17 to v0.2.19; not yet installed) | this file; `backlog.md` | W4 shared method code in the container (L7); then `confirm-once.md` (L5, L6) |
+| I integration and CI | engine half done (v0.2.19); plugin and method halves next | this file | W3: plugin 0.5.1 (CI, `VERSION` test, `spatial.coords_missing@2`, `sc.decision_unreviewed` on `declared` and `inherited`) and method rc14 (`requires`, group bands from the job's design, CI, the organ hold view) |
 | E skills and onboarding | open | this file; `ux-two-audiences.md` (history) | W5 one install guide, one onboarding guide, the operator skill's engine lookup; W6 the Xenium analysis skill with a synthetic end-to-end run and an acceptance run by a non-developer |
 | F spatial method, Lyons CLP | active; F6 delivered 2026-10-12 | `spatial-method-plan.md`; method `PLAN.md` | the first engine run on rc13 (resolution chosen after clustering); F7 the owner reads `cell_types_mouse@2`; method items 5.9 (outlier group bands) and 5.7 (coords on every region) in W3; F9 niches |
 | H console | released (v0.2.8 to v0.2.16), second cut unscheduled | `console-and-fleet-plan.md` "What is open" | batch cards (L6), the delivery gallery, the decision history, the resource cap, when the owner asks |
@@ -114,12 +114,12 @@ row names the item.
    `--set` overrides only what it names (`fork`); a parameter neither inherited nor set takes its
    default. `fork` lists every re-run step's parameters with their source, and `fork --check` lists
    them without opening a run."
-3. **14.1 Verbs (W1, W3).** `fork` row gains `[--check]`. New row: `probe` with
+3. **14.1 Verbs (W1, W3).** Applied 2026-10-14 with the builds (the owner chose the verb in the planning session). `fork` row gains `[--check]`. New row: `probe` with
    `[--method <path|url@tag>] [--json]`: the engine version and install path, each plugin and
    version, the container runtime, and with `--method` each manifest image resolved and verified,
    the method's `requires` against what is installed, and the installed skills' version; exit 0
    when every check passes, 1 otherwise; reads only.
-4. **10.3 Execution families (L7, L31; W3, W4).** Add: "An engine-run step also sees the project's
+4. **10.3 Execution families (L7, L31; W3, W4).** The image sentence applied 2026-10-14 with W3; the read-only bind waits for W4. Add: "An engine-run step also sees the project's
    `method/` checkout, bound read-only, so shared code beside the modules is reachable; the checkout
    is at a recorded SHA and checked for dirtiness at run open, so that code is pinned as the module
    scripts are." And: "An `image` in the environment manifest may be a bare file name, resolved

@@ -959,7 +959,7 @@ ExecResult: exit_code, stdout_path, stderr_path, duration_ms, env_digest
 
 `local`: a subprocess in the current environment. `env_digest` is the hash of a `uv.lock` or `renv.lock` in the module's env directory; with neither present the executor reports no digest and `repro.env_unpinned` fires. Development, tests, and extractors during development.
 
-`apptainer`: `apptainer exec --containall --bind <paths> <image.sif> <command>`. `env_digest` is the SIF digest recorded in the environment manifest, verified against the file at run open. Production for engine-run steps, state extractors, and judgment evidence generation.
+`apptainer`: `apptainer exec --containall --bind <paths> <image.sif> <command>`. `env_digest` is the SIF digest recorded in the environment manifest, verified against the file at run open. Production for engine-run steps, state extractors, and judgment evidence generation. An `image` in the environment manifest is an absolute path used as given, or a file name or relative path resolved against `$STRINGENCY_IMAGES`, then `images_root` in the user's `~/.config/stringency/config.yml`, then the method checkout and its `envs/` directory (added 2026-10-14, backlog L31), so a method names its images portably and a site says where it keeps them.
 
 Extractors and judgment `pre.*` scripts always use the engine runner, because the state every gate reads and the evidence every judge sees must be produced by committed code the engine executed rather than by the party being gated.
 
@@ -1108,6 +1108,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `board <root>` | `[--write] [--json]` | none | reads every project under `<root>` (one level; skips `superseded/`, `declarations/`): plan status, latest run and step, open holds and who they wait on, latest delivery's files; `--write` rewrites `<root>/STATUS.md`, which `init`, `run`, `propose`, `submit`, `review`, `deliver` and `abandon` refresh when it exists | none |
 | `present` | `[--run <id>] [--hold <id>] [--skills-dir <dir>] [--json]` | none | reads the run's delivery or the hold and renders what the method's delivery skill (14.4) says a person should see; the engine default is the progress sentence and the deliverables | none |
 | `lint` | `<path>` or `<repo-or-url>@<tag>` | static checks on a module directory or a method repo; a tagged spec is cloned into a temporary directory first | none | none |
+| `probe` | `[--method <path\|url@tag>] [--no-hash] [--json]` | none; reads only | reports the engine version and path, every plugin and version, the container runtime, the skills installed beside the engine, and with `--method` the method's `requires` against what is installed and every image its environment manifest names (resolved, present, readable, hashing to the manifest's sha256 unless `--no-hash`); exit 0 when every check passes, 1 otherwise (added 2026-10-14, backlog L30) | none |
 | `controls run` | `[--module <name>]` | real gates on a single module | writes controls_runs | metrics and regression diff |
 | `policy show` | `[--profile]` | prints resolved dispositions | none | none |
 | `plugins list` | | | | |

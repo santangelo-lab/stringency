@@ -9,8 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from stringency import __version__
 from stringency.config import Design
 from stringency.controls import load_control
+from stringency.executor.apptainer import resolve_image
 from stringency.exit_codes import ConfigError
 from stringency.gate import in_scope_specs
 from stringency.modules import Module, ModuleIndex, load_module
@@ -20,6 +22,7 @@ from stringency.policy import Policy, load_policy
 from stringency.predicates import registry
 from stringency.prompting import check_vars
 from stringency.schemas import includes_base_judgment, schema_is_valid, validate
+from stringency.versions import check_requires
 
 
 @dataclass
@@ -353,6 +356,17 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
             report.errors.append(str(e))
     else:
         report.warnings.append(f"{path}: no policy.yml")
+    if policy is not None:
+        # what the method needs against what is installed here (backlog L28)
+        if policy.requires is None:
+            report.warn(
+                str(path / "policy.yml"),
+                "no `requires` (the engine and plugin versions this method needs)",
+            )
+        else:
+            installed = {n: pl.version for n, pl in plugins.items()}
+            for problem in check_requires(policy.requires, __version__, installed):
+                report.error(str(path / "policy.yml"), f"requires: {problem}")
 
     try:
         modules = ModuleIndex(path)
@@ -415,8 +429,10 @@ def _lint_env_manifest(path: Path, modules: ModuleIndex, report: LintReport) -> 
         if sha is not None and not re.fullmatch(r"[0-9a-f]{64}", str(sha)):
             report.error(where, "sha256 must be 64 lowercase hex characters")
         image = spec.get("image")
-        if image and not Path(str(image)).exists():
-            report.warn(where, f"image {image} is not on this machine")
+        if image:
+            resolved = resolve_image(str(image), path / "envs")
+            if not resolved.exists():
+                report.warn(where, f"image {image} is not on this machine (looked for {resolved})")
     for env in sorted(envs_used):
         if env not in entries:
             report.error(str(mf), f"module env {env} has no entry in environments")

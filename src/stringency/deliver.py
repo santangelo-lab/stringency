@@ -24,7 +24,7 @@ from stringency.ids import new_id
 from stringency.methods import methods_paragraph
 from stringency.predicates import registry
 from stringency.predicates.context import OutputBundle
-from stringency.runs import RunContext
+from stringency.runs import RunContext, captured_plugins
 from stringency.summary import render_summary
 
 
@@ -147,6 +147,7 @@ def deliver(rc: RunContext, include: list[str] | None = None) -> Delivery:
         "run_id": rc.run_id,
         "project_id": project.config.project_id,
         "engine_version": __version__,
+        "plugins": captured_plugins(store, rc.run_id),
         "delivered": now_iso(),
         "files": files,
         "coverage": {"file": "coverage.md", "blake3": hashing.hash_text(coverage_text)},

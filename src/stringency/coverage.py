@@ -13,7 +13,7 @@ from typing import Any
 from stringency import __version__
 from stringency.gate import in_scope_specs
 from stringency.predicates import registry
-from stringency.runs import RunContext
+from stringency.runs import RunContext, captured_plugins
 from stringency.when import skip_reason
 
 
@@ -209,6 +209,7 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
         "policy_version": run["policy_version"],
         "policy_digest": run["policy_digest"],
         "stringency_version": __version__,
+        "plugins": captured_plugins(store, rc.run_id),
         "method_sha": run["git_sha"],
         "method_dirty": bool(run["git_dirty"]),
         "steps": {
@@ -265,7 +266,13 @@ def render_coverage(d: dict[str, Any]) -> str:
     lines = [
         "stringency coverage report",
         f"run {d['run_id']} | project {d['project_id']} | pipeline {d['pipeline']} | mode {d['mode']} | profile {d['profile']}",
-        f"policy {d['policy_version']} (blake3:{d['policy_digest'][:12]}) | stringency {d['stringency_version']} | method {d['method_sha'][:12]} ({'dirty' if d['method_dirty'] else 'clean'})",
+        f"policy {d['policy_version']} (blake3:{d['policy_digest'][:12]}) | stringency {d['stringency_version']}"
+        + (
+            " with " + ", ".join(f"{k} {v}" for k, v in sorted(d["plugins"].items()))
+            if d.get("plugins")
+            else ""
+        )
+        + f" | method {d['method_sha'][:12]} ({'dirty' if d['method_dirty'] else 'clean'})",
         "",
         f"steps: {s['declared']} declared, {s['completed']} completed, {s['held']} held, {s['blocked']} blocked, {s['rejected']} rejected, {s['failed']} failed"
         + (f", {s['skipped']} skipped" if s.get("skipped") else ""),

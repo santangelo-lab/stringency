@@ -1,5 +1,10 @@
 policy: 1
 version: 0.1.0
+# what this method needs installed; checked by lint, declare --check, init and run open (engine 0.2.19)
+requires:
+  engine: '>=0.2.19'
+  # plugins:
+  #   stringency-<domain>: '>=<version>'   # the plugin this method's pipelines name as their domain
 invariant: [repro.*, topo.*]
 profiles:
   strict:

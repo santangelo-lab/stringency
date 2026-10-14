@@ -5,6 +5,9 @@
 #   scripts/install.sh [--prefix DIR] [--source PATH|URL] [--plugin PATH|URL]... [--label NAME]
 #                      [--link-bin DIR] [--no-toy]
 #
+# --label defaults to <engine version>-<plugin short name><plugin version>... (0.2.19-sc0.5.1),
+# read from each source's pyproject or @ref before installing; the script ends with `probe`.
+#
 # Defaults: --prefix /usr/local/lib/stringency; --source is this checkout; the toy plugin from
 # the same checkout is installed unless --no-toy; --label is the source's version (or the @ref of
 # a git URL); --link-bin /usr/local/bin when that directory is writable.
@@ -50,17 +53,38 @@ for cand in /usr/bin/python3 /usr/local/bin/python3 "$(command -v python3 || tru
 done
 [ -n "$python" ] || { echo "no python3 >= 3.12 found (set STRINGENCY_PYTHON)" >&2; exit 1; }
 
-if [ -z "$label" ]; then
-  if [ -d "$source" ]; then
-    label=$(sed -n 's/^version = "\(.*\)"/\1/p' "$source/pyproject.toml" | head -1)
-  else
-    label=${source##*@}
-  fi
-  [ -n "$label" ] || { echo "cannot infer --label from $source" >&2; exit 1; }
-fi
 if [ $toy -eq 1 ]; then
   if [ -d "$source" ]; then plugins+=("$source/plugins/stringency-toy")
   else plugins+=("${source%%@*}@${source##*@}#subdirectory=plugins/stringency-toy") ; fi
+fi
+
+# The label names the engine version and, after it, each plugin's version (`0.2.19-sc0.5.1`:
+# `sc` for stringency-singlecell, the package name's last word for any other; the toy is not
+# named). Each version comes from the pyproject of a path or the @ref of a git URL, before
+# anything is installed; `probe` prints what was installed at the end, so the two can be compared.
+version_of() {  # <path or url@ref> -> the version without a leading v
+  local src=$1 v
+  if [ -d "${src%%#*}" ] && [ -f "${src%%#*}/pyproject.toml" ]; then
+    v=$(sed -n 's/^version = "\(.*\)"/\1/p' "${src%%#*}/pyproject.toml" | head -1)
+  elif [ -d "$src" ] && [ -f "$src/pyproject.toml" ]; then
+    v=$(sed -n 's/^version = "\(.*\)"/\1/p' "$src/pyproject.toml" | head -1)
+  else
+    v=${src##*@}; v=${v%%#*}
+  fi
+  echo "${v#v}"
+}
+if [ -z "$label" ]; then
+  label=$(version_of "$source")
+  [ -n "$label" ] || { echo "cannot infer --label from $source" >&2; exit 1; }
+  for pl in "${plugins[@]}"; do
+    case "$pl" in
+      *stringency-toy*) continue ;;
+      *stringency-singlecell*) short=sc ;;
+      *) short=$(basename "${pl%%@*}" | sed 's/^stringency-//; s/#.*//') ;;
+    esac
+    pv=$(version_of "$pl")
+    [ -n "$pv" ] && label="$label-$short$pv"
+  done
 fi
 
 venv=$prefix/versions/$label
@@ -90,8 +114,8 @@ fi
 
 echo "installed stringency $label at $venv (python: $python)"
 echo "current -> $(readlink "$prefix/current")"
-"$venv/bin/stringency" plugins list | sed 's/^/  /'
-echo "images directory: $prefix/envs"
+"$venv/bin/stringency" probe | sed 's/^/  /' || true
+echo "images: name them in a method's envs/manifest.yml by file name and set images_root in ~/.config/stringency/config.yml or STRINGENCY_IMAGES (engine 0.2.19); $prefix/envs is one place to keep them"
 if ! command -v stringency >/dev/null 2>&1; then
   echo "not on PATH; agents find it at $prefix/current/bin/stringency, or add: export PATH=$prefix/current/bin:\$PATH"
 fi

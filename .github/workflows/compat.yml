@@ -1,0 +1,48 @@
+name: compat
+# The latest known-good combination (compat/known-good.yml) on a bare runner: install this
+# checkout and the plugin at its tag, lint the method at its tag (its `requires` is checked
+# against what is installed), check its analysis skills, and probe. Container runs are
+# institutional and are not attempted here.
+on:
+  push:
+    tags: ["v*"]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+jobs:
+  compat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - id: combo
+        run: |
+          uv run --with pyyaml python - <<'PY' >> "$GITHUB_OUTPUT"
+          import yaml
+          doc = yaml.safe_load(open("compat/known-good.yml"))
+          rows = [c for c in doc["combinations"] if c.get("date") != "pending"]
+          c = rows[-1]
+          for name, tag in c["plugins"].items():
+              print(f"plugin={name}@{tag}")
+          for name, tag in c["methods"].items():
+              print(f"method={name}@{tag}")
+          PY
+      - run: |
+          uv venv .compat --python 3.12
+          plugin="${{ steps.combo.outputs.plugin }}"
+          uv pip install --python .compat/bin/python --no-sources . \
+            "git+https://github.com/santangelo-lab/stringency-plugins@${plugin##*@}#subdirectory=plugins/${plugin%%@*}"
+          .compat/bin/stringency plugins list
+          .compat/bin/stringency probe --json || true
+      - run: |
+          method="${{ steps.combo.outputs.method }}"
+          .compat/bin/stringency lint "https://github.com/santangelo-lab/${method%%@*}@${method##*@}"
+      - run: |
+          method="${{ steps.combo.outputs.method }}"
+          git clone --depth 1 --branch "${method##*@}" "https://github.com/santangelo-lab/${method%%@*}" .method
+          for f in .method/skills/*.analyze.yml; do
+            [ -e "$f" ] || continue
+            pipeline=$(basename "$f" .analyze.yml)
+            .compat/bin/python integrations/claude-science/render_skill.py .method --pipeline "$pipeline" --check
+          done

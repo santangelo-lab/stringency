@@ -74,6 +74,11 @@ def run(
         emit({"schema": "stringency.response_check/1", **res}, as_json, check_text(res))
         return
     rc = open_or_resume(project, allow_dirty=allow_dirty, new=new)
+    for c in rc.plugin_changes:
+        sys.stderr.write(
+            f"note: plugin {c['plugin']} is {c['now'] or 'not installed'} now; it was "
+            f"{c['at_init']} when the project was initialised (recorded in the run's captures)\n"
+        )
     human_prefix = ""
     if responses is not None:
         ddir = file_responses(rc, read_responses(responses))

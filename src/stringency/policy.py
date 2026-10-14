@@ -13,6 +13,7 @@ from stringency.config import load_yaml
 from stringency.exit_codes import ConfigError
 from stringency.predicates.context import Disposition
 from stringency.predicates.registry import PredicateSpec, Registry
+from stringency.versions import Requires
 
 
 class ProfilePolicy(BaseModel):
@@ -76,6 +77,7 @@ class Policy(BaseModel):
         default_factory=lambda: dict(DEFAULT_CRITERIA)
     )
     agreement: dict[str, AgreementRule] = Field(default_factory=lambda: dict(DEFAULT_AGREEMENT))
+    requires: Requires | None = None  # the engine and plugin versions this method needs (L28)
     raw: dict[str, Any] = Field(default_factory=dict, exclude=True)
 
     @model_validator(mode="after")

@@ -6,6 +6,7 @@ row, the executor, the environment digests resolved at open, and the policy dige
 
 from __future__ import annotations
 
+import json
 import os
 import socket
 from dataclasses import dataclass, field
@@ -20,10 +21,12 @@ from stringency.gate import evaluate
 from stringency.ids import new_id
 from stringency.machine import all_step_status, derive_run_status
 from stringency.operator_id import operator_env
+from stringency.plugins import installed_plugin_versions
 from stringency.predicates import registry
 from stringency.predicates.context import GateContext
 from stringency.project import Project
 from stringency.state import ObjectState, State, latest_state, store_snapshot
+from stringency.versions import check_requires
 
 OPEN_STATUSES = ("running", "held", "blocked", "failed")
 CLOSED_STATUSES = ("completed", "abandoned")
@@ -40,6 +43,8 @@ class RunContext:
     allow_dirty_reason: str | None = None
     operator: dict[str, str | None] = field(default_factory=dict)
     script_blobs: dict[str, str] = field(default_factory=dict)  # module ref -> hash at open
+    # plugins whose installed version differs from the one recorded at init (L29); set at open
+    plugin_changes: list[dict[str, Any]] = field(default_factory=list)
     # hashed on first read, not at load: a read-only view (a hold page, `review --hold`) never
     # reads it, and hashing every declared input took 55 s on a large project (backlog L23)
     _input_digests: dict[str, str] | None = field(default=None, repr=False)
@@ -204,6 +209,21 @@ def _context_for(project: Project, run_row: Any, *, executor_kind: str | None = 
     )
 
 
+def captured_plugins(store: Store, run_id: str) -> dict[str, str]:
+    """The plugins installed when the run opened, from its `captures` event (backlog L29); {}
+    for a run opened by an engine before 0.2.19. Reads: run_events."""
+    row = store.one(
+        "SELECT payload_json FROM run_events WHERE run_id = ? AND event = 'captures' "
+        "ORDER BY seq DESC LIMIT 1",
+        (run_id,),
+    )
+    if row is None:
+        return {}
+    payload = json.loads(row["payload_json"] or "{}")
+    plugins = payload.get("plugins")
+    return {str(k): str(v) for k, v in plugins.items()} if isinstance(plugins, dict) else {}
+
+
 def _digest_or_none(executor: Executor, env: str) -> str | None:
     try:
         return executor.env_digest(env)
@@ -242,8 +262,23 @@ def open_run(
     delta: dict[str, Any] | None = None,
     kind: str = "run",
 ) -> RunContext:
-    """Open a new run with every capture in design 9.1."""
+    """Open a new run with every capture in design 9.1. Refuses (exit 15) when the installed
+    engine or plugins no longer satisfy the method's `requires` (backlog L28)."""
     require_confirmed(project)
+    installed = installed_plugin_versions()
+    if project.policy.requires is not None:
+        problems = check_requires(project.policy.requires, __version__, installed)
+        if problems:
+            raise ConfigError(
+                "the method's policy requires: "
+                + "; ".join(problems)
+                + "; this install cannot run it"
+            )
+    plugin_changes = [
+        {"plugin": name, "at_init": version, "now": installed.get(name)}
+        for name, version in project.config.plugins.items()
+        if installed.get(name) != version
+    ]
     store = project.store
     dirty = git.is_dirty(project.method_root)
     sha = git.head_sha(project.method_root)
@@ -262,6 +297,7 @@ def open_run(
         allow_dirty_reason=allow_dirty,
         operator=operator_env(),
         script_blobs=script_blobs,
+        plugin_changes=plugin_changes,
     )
     # run-open gate: repro.dirty_tree, repro.input_digest_mismatch
     action = Action(
@@ -330,6 +366,8 @@ def open_run(
                 "env_digests": env_digests,
                 "script_blobs": script_blobs,
                 "executor": executor.kind,
+                "plugins": installed,
+                "plugin_changes": plugin_changes,
                 "method": {
                     "repo": project.config.method.repo,
                     "tag": project.config.method.tag,

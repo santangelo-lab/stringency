@@ -7,7 +7,7 @@ import json
 from typing import Any
 
 from stringency import __version__
-from stringency.runs import RunContext
+from stringency.runs import RunContext, captured_plugins
 from stringency.steps import action_from_row
 from stringency.when import skip_reason
 
@@ -15,8 +15,10 @@ from stringency.when import skip_reason
 def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
     store, run, project = rc.store, rc.run, rc.project
     sentences: list[str] = []
+    plugin_version = captured_plugins(store, rc.run_id).get(project.plugin.name)
+    with_plugin = f" (plugin {project.plugin.name} {plugin_version})" if plugin_version else ""
     sentences.append(
-        f"Analysis was run with stringency {__version__} using the {project.pipeline.name} pipeline "
+        f"Analysis was run with stringency {__version__}{with_plugin} using the {project.pipeline.name} pipeline "
         f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile "
         f"and policy {run['policy_version']}."
     )

@@ -68,6 +68,7 @@ class StringencyConfig(Strict):
     policy: str = "method/policy.yml"
     splits: dict[str, Any] | None = None
     declarations: Declarations | None = None
+    plugins: dict[str, str] = Field(default_factory=dict)  # installed at init, by name (L29)
 
     @model_validator(mode="after")
     def _refuse_open_strict(self) -> StringencyConfig:

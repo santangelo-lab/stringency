@@ -126,6 +126,38 @@ def sha256_file(path: Path) -> str:
 CANDIDATE_BINARIES = ("apptainer", "singularity")
 
 
+def image_candidates(image: str, envs_root: Path) -> list[Path]:
+    """Where an environment manifest's `image` may be (design 10.3, backlog L31): an absolute
+    path as given; a bare name or relative path under `$STRINGENCY_IMAGES`, then under the
+    user's `images_root` (`~/.config/stringency/config.yml`), then in the method checkout (where
+    a relative path pointed before 0.2.19) and its `envs/` directory."""
+    from stringency import siteconfig
+
+    p = Path(image)
+    if p.is_absolute():
+        return [p]
+    out: list[Path] = []
+    env_root = os.environ.get("STRINGENCY_IMAGES")
+    if env_root:
+        out.append(Path(env_root) / p)
+    site = siteconfig.images_root()
+    if site is not None:
+        out.append(site / p)
+    out.append(envs_root.parent / p)
+    out.append(envs_root / p)
+    return out
+
+
+def resolve_image(image: str, envs_root: Path) -> Path:
+    """The first candidate that exists, else the first candidate (so a message names where the
+    image was looked for)."""
+    candidates = image_candidates(image, envs_root)
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]
+
+
 def find_binary() -> str:
     """`STRINGENCY_APPTAINER_BIN` if set, else the first of apptainer, singularity on PATH,
     else `apptainer` so the failure names the expected tool."""
@@ -154,10 +186,7 @@ class ApptainerExecutor:
         image = entry.get("image")
         if not image:
             return None
-        p = Path(str(image))
-        if not p.is_absolute():
-            p = self.envs_root.parent / p
-        return p
+        return resolve_image(str(image), self.envs_root)
 
     def env_digest(self, env_name: str) -> str | None:
         """The manifest's sha256 for the env, only when the SIF on disk hashes to it."""

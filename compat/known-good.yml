@@ -1,0 +1,22 @@
+# Combinations of engine, plugins and method that ran together (backlog L28; roadmap W3). The
+# install guide quotes this table and .github/workflows/compat.yml checks the latest row on a
+# bare runner (lint and the skill check; container runs stay institutional and are named under
+# `evidence`). Add a row when a combination delivers a real project or passes the synthetic runs.
+known_good: 1
+combinations:
+  - engine: v0.2.16
+    plugins:
+      stringency-singlecell: v0.5.0
+    methods:
+      stringency-xenium-method: v0.6.0-rc12
+    date: 2026-10-12
+    host: PROTSEQ
+    evidence: Lyons CLP v2 qc_all and the four upstream organs delivered (rc12, rc12.1 for the spleen); rc13 lints clean under 0.2.16
+  - engine: v0.2.19
+    plugins:
+      stringency-singlecell: v0.5.1
+    methods:
+      stringency-xenium-method: v0.6.0-rc14
+    date: pending
+    host: PROTSEQ
+    evidence: pending; the first combination with `requires` on both sides and CI in all three repositories

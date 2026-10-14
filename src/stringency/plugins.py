@@ -93,6 +93,12 @@ def load_plugins(*, refresh: bool = False) -> dict[str, Plugin]:
     return found
 
 
+def installed_plugin_versions() -> dict[str, str]:
+    """Every installed plugin's version by name: what the trace records at init and at run open
+    (backlog L29) and what `requires` is checked against."""
+    return {n: p.version for n, p in load_plugins().items()}
+
+
 def require_plugin(name: str) -> Plugin:
     plugins = load_plugins()
     if name not in plugins:

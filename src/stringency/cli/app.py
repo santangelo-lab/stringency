@@ -18,6 +18,7 @@ from stringency.cli import (
     verb_plugins,
     verb_policy,
     verb_present,
+    verb_probe,
     verb_propose,
     verb_review,
     verb_run,
@@ -49,6 +50,7 @@ app.command("fork")(verb_fork.fork)
 app.command("abandon")(verb_abandon.abandon)
 app.command("wait")(verb_wait.wait)
 app.command("lint")(verb_lint.lint)
+app.command("probe")(verb_probe.probe)
 app.add_typer(verb_controls.app, name="controls")
 app.add_typer(verb_policy.app, name="policy")
 app.add_typer(verb_plugins.app, name="plugins")

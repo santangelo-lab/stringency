@@ -44,12 +44,13 @@ from stringency.ids import new_id
 from stringency.modules import ModuleIndex
 from stringency.operator_id import operator_env
 from stringency.pipelines import Pipeline, find_pipeline, load_pipeline
-from stringency.plugins import Plugin, require_plugin
+from stringency.plugins import Plugin, installed_plugin_versions, require_plugin
 from stringency.policy import Policy, load_policy
 from stringency.predicates import registry
 from stringency.predicates.context import GateContext, ProjectConfig
 from stringency.schemas import validate
 from stringency.state import ObjectState, State
+from stringency.versions import check_requires
 
 DECLARATIONS = ("design.yml", "objective.yml", "inputs.yml")
 
@@ -661,7 +662,11 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
     policy_path = root / "method" / "policy.yml"
     if not policy_path.exists():
         raise ConfigError("method repo has no policy.yml")
-    load_policy(policy_path)
+    method_policy = load_policy(policy_path)
+    if method_policy.requires is not None:
+        problems = check_requires(method_policy.requires, __version__, installed_plugin_versions())
+        if problems:
+            raise ConfigError("the method's policy requires: " + "; ".join(problems))
 
     owner = req.owner or getpass.getuser()
     reviewer = req.reviewer or owner
@@ -698,6 +703,7 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         execution=req.execution,
         executor=req.executor,
         declarations=declarations,
+        plugins=installed_plugin_versions(),
     )
     dump_yaml(cfg.model_dump(mode="json"), root / "stringency.yml")
 
