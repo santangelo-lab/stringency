@@ -491,7 +491,13 @@ def timeline(conn: sqlite3.Connection, titles: dict[str, str]) -> list[dict[str,
             elif ev == "fork":
                 at = titles.get(str(payload.get("at")), str(payload.get("at")))
                 delta = payload.get("delta") or {}
-                words = ", ".join(f"{k}={v}" for k, v in delta.items()) if delta else "no change"
+                words = (
+                    ", ".join(
+                        f"{s}.{k}={v}" for s, ps in delta.items() for k, v in (ps or {}).items()
+                    )
+                    if delta
+                    else "no change"
+                )
                 why = f': "{payload["reason"]}"' if payload.get("reason") else ""
                 entries.append((e["ts"], f"forked at '{at}' with {words}{why}"))
             elif ev.startswith("status:"):

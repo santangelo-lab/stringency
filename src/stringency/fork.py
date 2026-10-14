@@ -1,10 +1,13 @@
 """`fork` (design 2.6): a child run that inherits inputs and every completed step before
 `--at`, applies declared parameter changes, and leaves the parent untouched. A step the parent
-skipped before `--at` is inherited as skipped (L13).
+skipped before `--at` is inherited as skipped (L13). A step the child re-runs starts from the
+parameters its nearest ancestor admitted for it (`inherited_params`), `--set` overriding only
+what it names (L27: the Lyons v2 spleen fork of 2026-10-12 ran at the pipeline defaults).
 
 Reads: runs, steps, artifacts, state_snapshots, actions. Writes: runs, steps (inherited ones
 as completed), artifacts (rows pointing at the parent's files), state_snapshots (history
-entries marked inherited), run_events.
+entries marked inherited), run_events (the `fork` event carries what each re-run step will run
+with, as `params`).
 """
 
 from __future__ import annotations
@@ -12,11 +15,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from stringency.actions import coerce_value
+from stringency.actions import build_action, coerce_value
+from stringency.db.store import Store
 from stringency.exit_codes import ConfigError
 from stringency.project import Project
 from stringency.runs import RunContext, load_run, open_run
 from stringency.state import State, StepRecord, store_snapshot
+
+ParamTable = dict[str, dict[str, dict[str, Any]]]  # step -> param -> {value, source}
 
 
 def parse_delta(sets: list[str], pipeline_order: list[str], at: str) -> dict[str, dict[str, Any]]:
@@ -37,19 +43,109 @@ def parse_delta(sets: list[str], pipeline_order: list[str], at: str) -> dict[str
     return out
 
 
-def fork(project: Project, *, from_run: str, at: str, sets: list[str], reason: str) -> RunContext:
+def ancestor_params(store: Store, run_id: str, step_id: str) -> dict[str, tuple[Any, str]] | None:
+    """What the nearest run in the chain starting at `run_id` (itself, then its parent, and so
+    on) admitted for `step_id`, as name -> (value, label for the child): `default` where that
+    run took the default, else `inherited`. None when no run in the chain completed the step.
+    Reads: runs, steps, actions."""
+    rid: str | None = run_id
+    while rid:
+        status = store.scalar(
+            "SELECT status FROM steps WHERE run_id = ? AND step_id = ?", (rid, step_id)
+        )
+        if status == "completed":
+            row = store.one(
+                "SELECT params_json, param_source_json FROM actions WHERE run_id = ? AND step_id = ? "
+                "ORDER BY attempt DESC, rowid DESC LIMIT 1",
+                (rid, step_id),
+            )
+            if row is not None:  # a step inherited as completed has no action; walk on
+                params = json.loads(row["params_json"])
+                src = json.loads(row["param_source_json"] or "{}")
+                return {
+                    k: (v, "default" if src.get(k, "default") == "default" else "inherited")
+                    for k, v in params.items()
+                }
+        rid = store.scalar("SELECT parent_run_id FROM runs WHERE run_id = ?", (rid,))
+    return None
+
+
+def inherited_for(rc: RunContext, step_id: str) -> dict[str, tuple[Any, str]] | None:
+    """The parameters a forked run's step starts from (design 2.6), or None when the run is not a
+    fork or no ancestor completed the step. Reads: runs, steps, actions."""
+    parent = rc.run["parent_run_id"]
+    if not parent:
+        return None
+    return ancestor_params(rc.store, parent, step_id)
+
+
+def resolved_params(
+    project: Project, from_run: str, at: str, delta: dict[str, dict[str, Any]]
+) -> ParamTable:
+    """What every step from `at` on will run with in a fork of `from_run`: the same merge
+    `build_action` makes when the step is proposed (the ancestor's admitted values, the delta over
+    them, defaults for the rest), without writing anything. Reads: runs, steps, actions."""
+    order = project.pipeline.order()
+    out: ParamTable = {}
+    for sid in order[order.index(at) :]:
+        step = project.pipeline.step(sid)
+        module = project.modules.require(step.module)
+        action = build_action(
+            run_id="preview",
+            step=step,
+            module=module,
+            attempt=0,
+            input_digests={},
+            proposed=delta.get(sid) or None,
+            source_label="fork",
+            inherited=ancestor_params(project.store, from_run, sid),
+        )
+        out[sid] = {
+            k: {"value": v, "source": action.param_source.get(k, "default")}
+            for k, v in action.parameters.items()
+        }
+    return out
+
+
+def render_params(table: ParamTable) -> str:
+    lines = []
+    for sid, params in table.items():
+        if not params:
+            lines.append(f"  {sid}: no parameters")
+        for k, d in params.items():
+            lines.append(f"  {sid}.{k} = {d['value']!r}  [{d['source']}]")
+    return "\n".join(lines)
+
+
+def check(project: Project, *, from_run: str, at: str, sets: list[str]) -> ParamTable:
+    """`fork --check`: the validation `fork` does and the parameter table it would record, with
+    no run opened. Reads only."""
+    _, _, delta = _prepare(project, from_run, at, sets)
+    return resolved_params(project, from_run, at, delta)
+
+
+def _prepare(
+    project: Project, from_run: str, at: str, sets: list[str]
+) -> tuple[RunContext, list[str], dict[str, dict[str, Any]]]:
     parent = load_run(project, from_run)
     order = project.pipeline.order()
     if at not in order:
         raise ConfigError(f"no step {at} in pipeline {project.pipeline.name}")
     delta = parse_delta(sets, order, at)
     statuses = parent.step_status()
-    inherit = [s for s in order[: order.index(at)]]
-    for s in inherit:
+    for s in order[: order.index(at)]:
         if statuses.get(s) not in ("completed", "skipped"):
             raise ConfigError(
                 f"cannot fork at {at}: step {s} is {statuses.get(s)} in run {from_run}, not completed"
             )
+    return parent, order, delta
+
+
+def fork(project: Project, *, from_run: str, at: str, sets: list[str], reason: str) -> RunContext:
+    parent, order, delta = _prepare(project, from_run, at, sets)
+    statuses = parent.step_status()
+    inherit = [s for s in order[: order.index(at)]]
+    params = resolved_params(project, from_run, at, delta)
     child = open_run(
         project,
         parent_run_id=from_run,
@@ -130,7 +226,14 @@ def fork(project: Project, *, from_run: str, at: str, sets: list[str], reason: s
         store.run_event(
             child.run_id,
             "fork",
-            {"from": from_run, "at": at, "inherited": inherit, "delta": delta, "reason": reason},
+            {
+                "from": from_run,
+                "at": at,
+                "inherited": inherit,
+                "delta": delta,
+                "params": params,
+                "reason": reason,
+            },
         )
     return child
 

@@ -96,8 +96,8 @@ class RunContext:
                 )
         return out
 
-    def delta_for(self, step_id: str) -> dict[str, Any]:
-        """Parameter changes a fork declared for `step_id` (design 2.6), or {}."""
+    def delta_for_all(self) -> dict[str, dict[str, Any]]:
+        """Every parameter change a fork declared, by step (design 2.6), or {}."""
         import json
 
         raw = self.run["delta_json"]
@@ -105,7 +105,11 @@ class RunContext:
             return {}
         delta = json.loads(raw)
         params = delta.get("params", {}) if isinstance(delta, dict) else {}
-        return dict(params.get(step_id, {}))
+        return {k: dict(v) for k, v in params.items()}
+
+    def delta_for(self, step_id: str) -> dict[str, Any]:
+        """Parameter changes a fork declared for `step_id` (design 2.6), or {}."""
+        return self.delta_for_all().get(step_id, {})
 
     def project_config(self) -> Any:
         return self.project.project_config(

@@ -10,7 +10,7 @@ needed is correctness, integration reliability, maintainability and UX, not a re
 work is eight items, W0 to W7, named in the lane paragraphs below; their file-level detail is in
 `notes/2026-10-14-1500-plan-refresh-and-review.md`, and the backlog rows they close are the record.
 
-**Status 2026-10-14.** Written. W0 (this refresh) done the same day. Next: W1.
+**Status 2026-10-14.** Written. W0 (this refresh) and W1 (fork inheritance, engine v0.2.17, L27) done the same day. Next: W2.
 
 ## How the plans are kept
 
@@ -33,7 +33,7 @@ delivered on rc12 and rc12.1 (2026-10-08 to 2026-10-12).
 
 | lane | state | plan | next |
 |---|---|---|---|
-| A engine | open | this file; `backlog.md` | W1 fork inherits its parent's parameters (L27); W2 parameters at init and the hold view (L24 to L26); W4 shared method code in the container (L7); then `confirm-once.md` (L5, L6) |
+| A engine | open; W1 done (v0.2.17, not yet installed) | this file; `backlog.md` | W2 parameters at init and the hold view (L24 to L26); W4 shared method code in the container (L7); then `confirm-once.md` (L5, L6) |
 | I integration and CI | **new**, not started | this file | W3: `requires` between method, plugin and engine; plugin identity in provenance; `stringency probe`; image root; CI on the plugin and method repositories; a known-good table |
 | E skills and onboarding | open | this file; `ux-two-audiences.md` (history) | W5 one install guide, one onboarding guide, the operator skill's engine lookup; W6 the Xenium analysis skill with a synthetic end-to-end run and an acceptance run by a non-developer |
 | F spatial method, Lyons CLP | active; F6 delivered 2026-10-12 | `spatial-method-plan.md`; method `PLAN.md` | the first engine run on rc13 (resolution chosen after clustering); F7 the owner reads `cell_types_mouse@2`; method items 5.9 (outlier group bands) and 5.7 (coords on every region) in W3; F9 niches |
@@ -109,7 +109,7 @@ row names the item.
    declared', and the confirm hold covers them as it covers the rest of the file. A declared value
    is recorded with `param_source: declared`; it opens no `param.agent_proposed` hold, and
    `param.locked_changed` and `param.out_of_range` apply to it as to any value."
-2. **2.6 Runs and forks (L27, W1).** Add: "For every step it re-runs, a fork inherits the
+2. **2.6 Runs and forks (L27, W1).** Applied 2026-10-14 with the build on the owner's "continue on"; say so if it should read differently. Add: "For every step it re-runs, a fork inherits the
    parameters its parent admitted (through forks of forks), recorded with `param_source: inherited`;
    `--set` overrides only what it names (`fork`); a parameter neither inherited nor set takes its
    default. `fork` lists every re-run step's parameters with their source, and `fork --check` lists

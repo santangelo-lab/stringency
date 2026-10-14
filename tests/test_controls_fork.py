@@ -213,3 +213,198 @@ def test_fork_validation(cproject: Project) -> None:
     nx = run_loop(child)
     assert nx.kind == "blocked" and "param.out_of_range" in nx.message
     assert load_run(cproject, child.run_id).run["status"] == "blocked"
+
+
+# -- a fork inherits its parent's admitted parameters (design 2.6, backlog L27) ---------------
+
+
+@pytest.fixture
+def reviewer(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("stringency.review.detect_via", lambda: "tty")
+    monkeypatch.setattr("stringency.review.current_user", lambda: "tester")
+
+
+def _proposed_parent(p: Project) -> str:
+    """A completed run whose 01_filter ran with min_value 9, proposed by the operator and
+    accepted by a person at the `param.agent_proposed` hold (the Lyons v2 spleen's ndim and
+    cluster_method, in toy form). Every value below 10 in the toy table is below 8, so the
+    filtered table and the judgment are the same as at the default."""
+    from stringency.review import record_review
+
+    r = cli(p, "propose", "01_filter", "--set", "min_value=9", "--reason", "nine", "--json")
+    assert r.exit_code == 10, r.output
+    run_id = json.loads(r.output)["run_id"]
+    hold = p.store.one(
+        "SELECT hold_id FROM holds WHERE run_id=? AND resolved_by_review IS NULL AND resolved_via IS NULL",
+        (run_id,),
+    )
+    record_review(p, hold["hold_id"], "accept", reason="nine is right for this table")
+    r = cli(p, "run", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    return run_id
+
+
+def _action(p: Project, run_id: str, step_id: str) -> dict[str, object]:
+    row = p.store.one(
+        "SELECT * FROM actions WHERE run_id=? AND step_id=? ORDER BY attempt DESC, rowid DESC LIMIT 1",
+        (run_id, step_id),
+    )
+    assert row is not None, (run_id, step_id)
+    return {
+        "params": json.loads(row["params_json"]),
+        "source": json.loads(row["param_source_json"]),
+        "proposed_by": row["proposed_by"],
+    }
+
+
+def _holds(p: Project, run_id: str, step_id: str) -> int:
+    n = p.store.scalar("SELECT COUNT(*) FROM holds WHERE run_id=? AND step_id=?", (run_id, step_id))
+    return int(n or 0)
+
+
+def test_fork_inherits_the_parents_admitted_parameters(cproject: Project, reviewer: None) -> None:
+    parent = _proposed_parent(cproject)
+    r = cli(
+        cproject,
+        "fork",
+        "--from",
+        parent,
+        "--at",
+        "01_filter",
+        "--set",
+        "04_compare.correction=bonferroni",
+        "--reason",
+        "compare corrections at the accepted filter",
+        "--json",
+    )
+    assert r.exit_code == 0, r.output
+    out = json.loads(r.output)
+    child = out["run_id"]
+    # the fork says what each re-run step will run with and where each value comes from
+    assert out["params"]["01_filter"] == {"min_value": {"value": 9, "source": "inherited"}}
+    assert out["params"]["04_compare"] == {
+        "replicate_unit": {"value": "unit", "source": "default"},
+        "correction": {"value": "bonferroni", "source": "fork"},
+    }
+    assert list(out["params"]) == cproject.pipeline.order()
+    ev = cproject.store.one(
+        "SELECT payload_json FROM run_events WHERE run_id=? AND event='fork'", (child,)
+    )
+    assert json.loads(ev["payload_json"])["params"] == out["params"]
+    # the child runs to completion: the inherited value is neither reset to its default nor
+    # asked again (it is not the agent's proposal in this run)
+    r = cli(cproject, "run", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    a = _action(cproject, child, "01_filter")
+    assert a == {
+        "params": {"min_value": 9},
+        "source": {"min_value": "inherited"},
+        "proposed_by": "inherited",
+    }
+    assert _holds(cproject, child, "01_filter") == 0
+    a = _action(cproject, child, "04_compare")
+    assert a["params"] == {"replicate_unit": "unit", "correction": "bonferroni"}
+    assert a["source"] == {"replicate_unit": "default", "correction": "fork"}
+    assert a["proposed_by"] == "fork"
+    # the console's timeline names the fork's change as step.param=value
+    from stringency.console import timeline
+
+    titles = {s: cproject.pipeline.title(s) for s in cproject.pipeline.order()}
+    texts = [e["text"] for run in timeline(cproject.store.conn, titles) for e in run["events"]]
+    assert any("with 04_compare.correction=bonferroni" in t for t in texts), texts
+
+
+def test_fork_inherits_through_a_parent_that_inherited(cproject: Project, reviewer: None) -> None:
+    from stringency.fork import resolved_params
+
+    parent = _proposed_parent(cproject)
+    child = fork(
+        cproject,
+        from_run=parent,
+        at="04_compare",
+        sets=["04_compare.correction=bonferroni"],
+        reason="corrections",
+    )
+    assert run_loop(child).kind == "completed"
+    # the child inherited 01_filter as completed and holds no action for it ...
+    assert (
+        cproject.store.scalar(
+            "SELECT COUNT(*) FROM actions WHERE run_id=? AND step_id='01_filter'", (child.run_id,)
+        )
+        == 0
+    )
+    # ... so a fork of the child at 01_filter reaches through it to the parent's value, and
+    # takes the child's own fork decision at 04_compare as inherited
+    table = resolved_params(cproject, child.run_id, "01_filter", {})
+    assert table["01_filter"] == {"min_value": {"value": 9, "source": "inherited"}}
+    assert table["04_compare"]["correction"] == {"value": "bonferroni", "source": "inherited"}
+    grand = fork(cproject, from_run=child.run_id, at="01_filter", sets=[], reason="all again")
+    assert run_loop(grand).kind == "completed"
+    assert _action(cproject, grand.run_id, "01_filter")["params"] == {"min_value": 9}
+    a = _action(cproject, grand.run_id, "04_compare")
+    assert a["params"] == {"replicate_unit": "unit", "correction": "bonferroni"}
+    assert a["source"] == {"replicate_unit": "default", "correction": "inherited"}
+    assert a["proposed_by"] == "inherited"
+    assert _holds(cproject, grand.run_id, "01_filter") == 0
+
+
+def test_fork_check_lists_parameters_and_opens_no_run(cproject: Project, reviewer: None) -> None:
+    parent = _proposed_parent(cproject)
+    runs_before = cproject.store.scalar("SELECT COUNT(*) FROM runs")
+    args = [
+        "fork",
+        "--from",
+        parent,
+        "--at",
+        "01_filter",
+        "--set",
+        "04_compare.correction=bonferroni",
+        "--check",
+    ]
+    r = cli(cproject, *args, "--json")
+    assert r.exit_code == 0, r.output
+    out = json.loads(r.output)
+    assert out["check"] is True and "run_id" not in out
+    assert list(out["params"]) == cproject.pipeline.order()
+    assert out["params"]["01_filter"] == {"min_value": {"value": 9, "source": "inherited"}}
+    assert out["params"]["04_compare"]["correction"] == {"value": "bonferroni", "source": "fork"}
+    r = cli(cproject, *args)
+    assert "01_filter.min_value = 9  [inherited]" in r.output, r.output
+    assert "04_compare.correction = 'bonferroni'  [fork]" in r.output
+    assert cproject.store.scalar("SELECT COUNT(*) FROM runs") == runs_before
+    # --check validates as fork does, and needs no reason
+    r = cli(
+        cproject,
+        "fork",
+        "--from",
+        parent,
+        "--at",
+        "03_label",
+        "--set",
+        "01_filter.min_value=5",
+        "--check",
+    )
+    assert r.exit_code != 0 and "before --at" in r.output
+
+
+def test_propose_in_a_fork_starts_from_the_inherited_values(
+    cproject: Project, reviewer: None
+) -> None:
+    parent = _proposed_parent(cproject)
+    child = fork(
+        cproject,
+        from_run=parent,
+        at="01_filter",
+        sets=["04_compare.correction=bonferroni"],
+        reason="by hand",
+    )
+    # the operator proposes 01_filter by hand without naming min_value: the parent's nine stands
+    r = cli(cproject, "propose", "01_filter", "--json")
+    assert r.exit_code == 0, r.output
+    assert _action(cproject, child.run_id, "01_filter")["source"] == {"min_value": "inherited"}
+    assert _holds(cproject, child.run_id, "01_filter") == 0
+    r = cli(cproject, "run", "--until", "04_compare", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    # and a proposal at the fork's own step takes the fork's value as given
+    a = _action(cproject, child.run_id, "04_compare")
+    assert a["params"]["correction"] == "bonferroni" and a["source"]["correction"] == "fork"

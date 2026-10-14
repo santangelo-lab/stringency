@@ -8,6 +8,7 @@ from stringency.actions import coerce_value
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError, Exit
+from stringency.fork import inherited_for
 from stringency.machine import StepStatus
 from stringency.operator_exec.tickets import job_spec, render_job_spec
 from stringency.project import Project
@@ -44,7 +45,11 @@ def propose(
 ) -> None:
     project = Project.find()
     rc = open_or_resume(project, new=new)
-    prop = do_propose(rc, step, parse_sets(sets), rationale=reason)
+    # in a fork, an operator's proposal starts from what the parent admitted and the fork's own
+    # --set delta (design 2.6); --set here overrides both
+    inherited = inherited_for(rc, step) or {}
+    inherited.update({k: (v, "fork") for k, v in rc.delta_for(step).items()})
+    prop = do_propose(rc, step, parse_sets(sets), rationale=reason, inherited=inherited or None)
     if prop.status == StepStatus.AWAITING_EXECUTION:
         spec = job_spec(prop, rc.env_digests.get(prop.plan.module.manifest.env), rc.executor)
         emit(

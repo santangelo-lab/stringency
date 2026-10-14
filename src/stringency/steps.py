@@ -227,10 +227,12 @@ def propose(
     proposed: dict[str, Any] | None = None,
     rationale: str | None = None,
     source: str = "agent",
+    inherited: dict[str, tuple[Any, str]] | None = None,
 ) -> Proposal:
     """Construct the Action, write it, run the pre-gate, and settle the step as admissible,
     held, or blocked (design 3.4 step 1, 7.1). For operator-run steps an admissible action
-    becomes a ticket and the step awaits execution.
+    becomes a ticket and the step awaits execution. `inherited` is a forked run's starting
+    point for the step (`fork.inherited_for`), below `proposed` and above the defaults.
 
     Writes: actions, messages (rationale), predicate_results, steps, step_events, holds.
     """
@@ -266,6 +268,7 @@ def propose(
         proposed=proposed,
         rationale_ref=rationale_ref,
         source_label=source,
+        inherited=inherited,
     )
     if plan.runner == "operator":
         action = action.with_ticket(action.action_id)

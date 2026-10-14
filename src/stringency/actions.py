@@ -25,11 +25,11 @@ class Action:
     operation: str
     module: str
     parameters: dict[str, Any]
-    param_source: dict[str, str]  # per parameter: default | agent | fork (a fork's --set delta)
+    param_source: dict[str, str]  # per parameter: default | agent | fork | inherited (design 2.6)
     inputs: dict[str, str]  # input name -> blake3:<hex>
     input_digest: str
     params_hash: str
-    proposed_by: str  # pipeline | agent
+    proposed_by: str  # pipeline | agent | fork | inherited
     rationale_ref: str | None = None
     ticket: str | None = None
     proposed_at: str = field(default_factory=now_iso)
@@ -66,37 +66,57 @@ def build_action(
     proposed: dict[str, Any] | None = None,
     rationale_ref: str | None = None,
     source_label: str = "agent",
+    inherited: dict[str, tuple[Any, str]] | None = None,
 ) -> Action:
-    """Merge committed defaults with proposed values (design 3.1, 5).
+    """Merge committed defaults with proposed and inherited values (design 2.6, 3.1, 5).
 
-    Every declared pipeline parameter takes its default unless a value was proposed; a proposed
-    value is recorded with its source: `agent` (the operator's proposal, which
-    `param.agent_proposed` puts before a person) or `fork` (a person's `fork --set` delta, made
-    with a reason on the run row). Undeclared proposals are kept in `parameters` so
-    `param.undeclared` can see them.
+    Every declared pipeline parameter takes its default unless a value was proposed or
+    inherited. A proposed value is recorded with its source: `agent` (the operator's proposal,
+    which `param.agent_proposed` puts before a person) or `fork` (a person's `fork --set` delta,
+    made with a reason on the run row). `inherited` is what a forked run's ancestor admitted for
+    the step, as name -> (value, label) from `fork.inherited_params`: a value the ancestor took at
+    its default keeps the label `default`, any other is `inherited`, and a proposed value
+    overrides it (backlog L27: the Lyons v2 spleen fork ran at the pipeline defaults). Undeclared
+    proposals are kept in `parameters` so `param.undeclared` can see them.
     """
     proposed = dict(proposed or {})
+    carried = dict(inherited or {})
     params: dict[str, Any] = {}
     source: dict[str, str] = {}
-    for name, decl in step.params.items():
+
+    def take(name: str) -> bool:
         if name in proposed:
             params[name] = proposed.pop(name)
             source[name] = source_label
-        else:
+            return True
+        if name in carried:
+            params[name], source[name] = carried.pop(name)
+            return True
+        return False
+
+    for name, decl in step.params.items():
+        if not take(name):
             params[name] = decl.default
             source[name] = "default"
     # module schema defaults for params the pipeline did not mention
     for name, schema in module.declared_params.items():
-        if name not in params:
-            if name in proposed:
-                params[name] = proposed.pop(name)
-                source[name] = source_label
-            elif isinstance(schema, dict) and "default" in schema:
-                params[name] = schema["default"]
-                source[name] = "default"
+        if (
+            name not in params
+            and not take(name)
+            and isinstance(schema, dict)
+            and "default" in schema
+        ):
+            params[name] = schema["default"]
+            source[name] = "default"
     for name, value in proposed.items():  # undeclared anywhere: recorded, then blocked by gate
         params[name] = value
         source[name] = source_label
+    if any(v == source_label for v in source.values()) and source_label != "default":
+        proposed_by = source_label
+    elif any(v not in ("default",) for v in source.values()):
+        proposed_by = "inherited"
+    else:
+        proposed_by = "pipeline"
     prefixed = {
         k: hashing.prefixed(hashing.strip_prefix(v)) for k, v in sorted(input_digests.items())
     }
@@ -112,7 +132,7 @@ def build_action(
         inputs=prefixed,
         input_digest=hashing.prefixed(hashing.hash_json(prefixed)),
         params_hash=hashing.prefixed(hashing.hash_json(params)),
-        proposed_by=source_label if any(v != "default" for v in source.values()) else "pipeline",
+        proposed_by=proposed_by,
         rationale_ref=rationale_ref,
     )
 

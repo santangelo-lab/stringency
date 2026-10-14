@@ -271,4 +271,4 @@ mean in `skills/<pipeline>.yml`; the engine renders it. The operator relays, nev
 
 Only when the user asks. Before the step's ticket exists, `stringency propose <step> --set k=v
 --reason "<why>"`; the pre-gate runs and a ticket is issued or the proposal is blocked with the
-predicate named. Never edit job.json to use a value the ticket did not admit.
+predicate named. Never edit job.json to use a value the ticket did not admit. A fork starts every step it re-runs from the parameters its parent ran with (engine 0.2.17): `--set` only what should change, and read the table `fork` prints (or run `fork --check` first) to see every value and whether it is inherited, set, or a default.
