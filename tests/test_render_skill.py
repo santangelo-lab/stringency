@@ -89,6 +89,57 @@ def test_hold_protocol_verbatim_from_operator_skill():
     assert protocol in _norm(_render_example())
 
 
+def _decision_text() -> str:
+    """Section 9 of the operator skill, its first paragraph (the shared text)."""
+    text = OPERATOR.read_text()
+    start = text.index("## 9. Decision points")
+    start = text.index("\n", start) + 1
+    end = text.index("A method's analysis skill lists", start)
+    return _norm(text[start:end])
+
+
+def test_decision_point_text_verbatim_from_operator_skill():
+    shared = _decision_text()
+    assert shared.startswith("Some steps take a parameter nobody can set")
+    assert shared.endswith("the two must not drift.")
+    assert shared in _norm(_render_example())
+
+
+def test_decisions_render_and_are_checked(tmp_path):
+    repo = _toy_repo(tmp_path)
+    data = _toy_analyze()
+    data["decisions"] = [
+        {"step": "01_filter", "param": "min_value", "how": "declared", "ask": "What is the smallest value to keep?"},
+        {
+            "step": "04_compare",
+            "param": "correction",
+            "how": "proposed",
+            "ask": "Which correction should the comparison use?",
+            "after": "02_summarize",
+            "evidence": ["02_summarize.summary"],
+        },
+    ]
+    src = repo / "skills" / "toy-engine.analyze.yml"
+    src.write_text(yaml.safe_dump(data))
+    ctx, problems = rs.validate(yaml.safe_load(src.read_text()), src, repo)
+    assert not problems, problems
+    out = rs.render(ctx)
+    assert "- What is the smallest value to keep? (`01_filter.min_value`, the step \"Filter low-value rows\")" in out
+    assert "- Which correction should the comparison use?: `04_compare.correction` (the step \"Compare the groups\"), proposed after \"Summarize each group\" from 02_summarize.summary." in out
+    for bad, fragment in [
+        ({"step": "09_nope", "param": "x", "how": "declared", "ask": "?"}, "step ids"),
+        ({"step": "01_filter", "param": "max_value", "how": "declared", "ask": "?"}, "neither a decision point"),
+        ({"step": "01_filter", "param": "min_value", "how": "guessed", "ask": "?"}, "`how` must be"),
+        ({"step": "04_compare", "param": "correction", "how": "proposed", "ask": "?", "after": "05_report", "evidence": ["x"]}, "must come before"),
+        ({"step": "04_compare", "param": "correction", "how": "proposed", "ask": "?", "after": "02_summarize"}, "names the `evidence`"),
+        ({"step": "01_filter", "param": "min_value", "how": "declared", "ask": "?", "after": "02_summarize"}, "takes no `after`"),
+    ]:
+        data["decisions"] = [bad]
+        src.write_text(yaml.safe_dump(data))
+        _, problems = rs.validate(yaml.safe_load(src.read_text()), src, repo)
+        assert any(fragment in p for p in problems), (bad, problems)
+
+
 def test_operator_skill_named_as_authority():
     out = _render_example()
     assert "the operator skill is right" in out
@@ -104,6 +155,7 @@ def _toy_repo(tmp_path: Path) -> Path:
 
 def _toy_analyze() -> dict:
     data = yaml.safe_load(EXAMPLE.read_text())
+    data.pop("decisions", None)  # the example's decision names its own pipeline's step
     data.update(
         pipeline="toy-engine",
         name="toy-compare",

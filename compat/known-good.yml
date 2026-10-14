@@ -28,3 +28,11 @@ combinations:
     date: 2026-10-14
     host: PROTSEQ
     evidence: rc15 keeps the shared R and Python code once (modules/_rlib, modules/_pylib) and relies on the engine's read-only bind of the method checkout; on PROTSEQ with the engine and plugin checkouts, `lint` clean, `tests/run_r.sh` (merge and normalise inside xenium-r sourcing modules/_rlib) and `controls/synthetic_run.sh` (xenium-qc-tma through the engine, qc-cells importing modules/_pylib inside the container) passed; tags local when written
+  - engine: v0.2.20
+    plugins:
+      stringency-singlecell: v0.5.1
+    methods:
+      stringency-xenium-method: v0.6.0-rc16
+    date: 2026-10-14
+    host: PROTSEQ
+    evidence: controls/synthetic_upstream.sh passed under the engine with the checkouts at the tags: a two-slide synthetic study through xenium-qc-tma and xenium-upstream (the organ declared in objective.yml params, ndim and the resolution proposed and approved, the batch judgment signed off and the annotation on the mock harness, delivered and presented); the run found and the plugin fixed extract_seurat.R's partial match on clustering_grid

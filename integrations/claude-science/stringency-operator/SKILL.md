@@ -276,3 +276,19 @@ mean in `skills/<pipeline>.yml`; the engine renders it. The operator relays, nev
 Only when the user asks. Before the step's ticket exists, `stringency propose <step> --set k=v
 --reason "<why>"`; the pre-gate runs and a ticket is issued or the proposal is blocked with the
 predicate named. Never edit job.json to use a value the ticket did not admit. A fork starts every step it re-runs from the parameters its parent ran with (engine 0.2.17): `--set` only what should change, and read the table `fork` prints (or run `fork --check` first) to see every value and whether it is inherited, set, or a default. A parameter the objective declares (`params:` in `objective.yml`, engine 0.2.18) is taken as given when the step runs and needs no proposal; a `--set` that departs from it is your proposal and is asked.
+
+## 9. Decision points
+
+Some steps take a parameter nobody can set before the run has produced the evidence for it: the
+step's default is `unset` or a sign-off is required, and the operator proposes the value. Run
+`stringency run --until <the step before>` so the evidence exists, read the evidence the method
+names (`present` shows it; never compute from it), then `stringency propose <step> --set
+<parameter>=<value> --reason "<why, citing the evidence by table and row>"`. The proposal opens a
+hold the person answers by the hold protocol: your reason is what they read, so it must be one
+they could check against the tables. You never proceed on your own proposal, never propose a
+value the evidence does not name, and never change a parameter nobody asked about. Then `run`
+again. This text is section 9 of the `stringency-operator` skill; the two must not drift.
+
+A method's analysis skill lists which steps of its pipeline are proposed this way and from which
+evidence (`skills/<pipeline>.analyze.yml` `decisions:`); a parameter the person settles before
+the run is declared in `objective.yml` `params:` instead and is never proposed (section 8).

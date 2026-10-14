@@ -111,10 +111,12 @@ are per step and show on the project page once the step has produced its outputs
 | `deliverables` | output name to one sentence saying what the person receives; names are module outputs |
 | `asks` | the declare questions this pipeline always needs, in lay words, asked one at a time in this order |
 | `defaults_to_say` | plugin default key to its lay phrase; the skill reads the value from `plugins list --json` and says it aloud before the echo-back |
+| `decisions` | optional; the decision points a person settles, each `{step, param, how, ask, evidence, after}`. `how: declared`: asked before the echo-back and written to `objective.yml` `params:` (engine 0.2.18), never proposed. `how: proposed`: the operator proposes it after the step `after` has run, from the `evidence` named (sources as in the delivery skill), and the person approves it at the hold; the rendered skill lists them and carries the operator skill's section 9 verbatim (2026-10-14, backlog L32). `--check` requires the parameter to be a decision point of the step's module or a parameter the pipeline declares |
 
 What the template supplies and the source must not: the two-audiences preamble, the nine body
 rules of `spec/plans/ux-two-audiences.md` section 4, the hold protocol (section 5.1 there, section
-6 of the operator skill, the two kept identical by `tests/test_render_skill.py`), the walk-through
+6 of the operator skill) and the decision-point text (section 9 of the operator skill), the two
+kept identical by `tests/test_render_skill.py`, the walk-through
 (engine and identity; the asks; declare, echo-back, yes, `init`, confirm hold; run and `plain`;
 holds; `present` and the three-part report from `summary.md`; interpretation labelled; mechanics
 on request) and the mechanics appendix.

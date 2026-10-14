@@ -44,7 +44,8 @@ REQUIRED = {
     "asks": list,
     "defaults_to_say": dict,
 }
-OPTIONAL = {"name": str, "summary": str}
+OPTIONAL = {"name": str, "summary": str, "decisions": list}
+HOW = ("declared", "proposed")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
@@ -122,10 +123,12 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
     deliverables = _str_map(data["deliverables"], "deliverables", problems, allow_empty=False)
     asks = _str_list(data["asks"], "asks", problems)
     defaults = _str_map(data["defaults_to_say"], "defaults_to_say", problems, allow_empty=True)
+    decisions = _decisions(data.get("decisions"), steps, problems)
 
     after_delivery_titles: list[str] = []
     if method_root is not None:
         _cross_check(method_root, pipeline, data["question"], steps, deliverables, problems)
+        _cross_check_decisions(method_root, pipeline, decisions, problems)
         delivery = method_root / "skills" / f"{pipeline}.yml"
         if delivery.exists():
             try:
@@ -160,8 +163,93 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
         "steps": [{"id": k, "title": v} for k, v in steps.items()],
         "deliverables": [{"name": k, "sentence": v} for k, v in deliverables.items()],
         "after_delivery_titles": after_delivery_titles,
+        "declared": [{**d, "title": steps.get(d["step"], d["step"])} for d in decisions if d["how"] == "declared"],
+        "proposed": [
+            {**d, "title": steps.get(d["step"], d["step"]), "after_title": steps.get(d["after"], d["after"])}
+            for d in decisions
+            if d["how"] == "proposed"
+        ],
     }
     return ctx, problems
+
+
+def _decisions(value: Any, steps: dict[str, str], problems: Problems) -> list[dict[str, Any]]:
+    """`decisions`: the decision points a person settles, each `{step, param, how, ask,
+    evidence?, after?}`. `how: declared` is asked before the echo-back and written to
+    `objective.yml` `params:` (engine 0.2.18); `how: proposed` is proposed by the operator after
+    `after` has run, from the evidence named, and approved at the hold (engine 0.2.19 skills)."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        problems.add("decisions: a list is required")
+        return []
+    out: list[dict[str, Any]] = []
+    order = list(steps)
+    for i, d in enumerate(value, 1):
+        where = f"decisions[{i}]"
+        if not isinstance(d, dict):
+            problems.add(f"{where}: must be a mapping")
+            continue
+        for key in d:
+            if key not in ("step", "param", "how", "ask", "evidence", "after"):
+                problems.add(f"{where}: unknown key `{key}`")
+        step, param, how, ask = d.get("step"), d.get("param"), d.get("how"), d.get("ask")
+        if not isinstance(step, str) or step not in steps:
+            problems.add(f"{where}: `step` must be one of the pipeline's step ids (got {step!r})")
+            continue
+        if not isinstance(param, str) or not param.strip():
+            problems.add(f"{where}: `param` must name the parameter")
+            continue
+        if how not in HOW:
+            problems.add(f"{where}: `how` must be one of {', '.join(HOW)} (got {how!r})")
+            continue
+        if not isinstance(ask, str) or not ask.strip():
+            problems.add(f"{where}: `ask` must be the question in the person's words")
+            continue
+        evidence = _str_list(d.get("evidence"), f"{where}.evidence", problems) if "evidence" in d else []
+        after = d.get("after")
+        if how == "proposed":
+            if not isinstance(after, str) or after not in steps:
+                problems.add(f"{where}: a proposed decision needs `after`, the step whose outputs it is proposed from")
+                continue
+            if order.index(after) >= order.index(step):
+                problems.add(f"{where}: `after` ({after}) must come before `step` ({step})")
+                continue
+            if not evidence:
+                problems.add(f"{where}: a proposed decision names the `evidence` the operator reads")
+                continue
+        elif after is not None or evidence:
+            problems.add(f"{where}: a declared decision takes no `after` or `evidence`")
+            continue
+        out.append({"step": step, "param": param.strip(), "how": how, "ask": ask.strip(), "evidence": evidence, "after": after})
+    return out
+
+
+def _cross_check_decisions(root: Path, pipeline: str, decisions: list[dict[str, Any]], problems: Problems) -> None:
+    """Each decision's parameter is a decision point of the step's module (or, failing a
+    `decision_points` list, a parameter the pipeline declares for the step)."""
+    pfile = root / "pipelines" / f"{pipeline}.yml"
+    if not decisions or not pfile.exists():
+        return
+    p = _read_yaml(pfile)
+    if not isinstance(p, dict) or not isinstance(p.get("steps"), list):
+        return
+    by_id = {str(s.get("id")): s for s in p["steps"] if isinstance(s, dict)}
+    for d in decisions:
+        s = by_id.get(d["step"])
+        if s is None or not s.get("module"):
+            continue
+        mfile = root / "modules" / str(s["module"]).split("@")[0] / "module.yml"
+        points: list[str] = []
+        if mfile.exists():
+            m = _read_yaml(mfile)
+            if isinstance(m, dict) and isinstance(m.get("decision_points"), list):
+                points = [str(x) for x in m["decision_points"]]
+        declared = set(points) | set((s.get("params") or {}).keys() if isinstance(s.get("params"), dict) else [])
+        if d["param"] not in declared:
+            problems.add(
+                f"decisions: {d['step']}.{d['param']} is neither a decision point of its module nor a parameter the pipeline declares"
+            )
 
 
 def _cross_check(

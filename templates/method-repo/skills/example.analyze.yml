@@ -32,3 +32,9 @@ asks:
   - Do you want the report as well as the comparison table?
 defaults_to_say:
   min_n_per_group: the smallest number of replicate units a group needs for the comparison
+# optional: the decision points a person settles (spec/method-skills.md section 3)
+decisions:
+  - step: 01_import
+    param: delimiter
+    how: declared        # asked before the echo-back, written to objective.yml params:
+    ask: Which character separates the columns of the file?

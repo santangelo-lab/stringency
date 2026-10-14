@@ -47,3 +47,8 @@ The routing test set for the description: twenty positive and ten negative phras
 the intended outcome (`analyze`, `declare-only`, `operator-only`, `none`). Run by hand in a
 Claude Science session after each revision of the description until a skill evaluation tool is
 confirmed there; record the results in `<pipeline>.phrasings.results.md`.
+
+`decisions:` in the `.analyze.yml` names the decision points a person settles: `how: declared`
+ones are asked before the echo-back and written to `objective.yml` `params:`; `how: proposed` ones
+the operator proposes after the named step from the named evidence, and the person approves at
+the hold. `--check` requires each to be a decision point of its module.

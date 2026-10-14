@@ -70,6 +70,16 @@ what you took from where.
 {{ loop.index }}. {{ a }}
 {% endfor %}
 
+{% if declared %}
+These answers are parameters the pipeline takes as declared (engine 0.2.18): write each into
+`objective.yml` under `params:` as `{step: {parameter: value}}`, exactly as the person said it,
+so the echo-back shows it and the confirm covers it, and no proposal hold opens for it later:
+
+{% for d in declared %}
+- {{ d.ask }} (`{{ d.step }}.{{ d.param }}`, the step "{{ d.title }}")
+{% endfor %}
+
+{% endif %}
 {% if defaults_to_say %}
 The plugin publishes defaults for values the person may not mention. Read each from
 `stringency plugins list --json` (`defaults`) and say it aloud before the echo-back, in this form,
@@ -116,6 +126,27 @@ The steps of this pipeline, by the titles the engine uses:
 Between calls, say nothing about the state of the run. Do not say "still running", do not
 estimate time, do not describe a step as done, skipped, or satisfied unless `completed_steps` or
 `plain` says so.
+
+### Decisions the operator proposes
+
+Some steps take a parameter nobody can set before the run has produced the evidence for it: the
+step's default is `unset` or a sign-off is required, and the operator proposes the value. Run
+`stringency run --until <the step before>` so the evidence exists, read the evidence the method
+names (`present` shows it; never compute from it), then `stringency propose <step> --set
+<parameter>=<value> --reason "<why, citing the evidence by table and row>"`. The proposal opens a
+hold the person answers by the hold protocol: your reason is what they read, so it must be one
+they could check against the tables. You never proceed on your own proposal, never propose a
+value the evidence does not name, and never change a parameter nobody asked about. Then `run`
+again. This text is section 9 of the `stringency-operator` skill; the two must not drift.
+
+{% if proposed %}
+The decisions of this pipeline the operator proposes, in order:
+
+{% for d in proposed %}
+- {{ d.ask }}: `{{ d.step }}.{{ d.param }}` (the step "{{ d.title }}"), proposed after "{{ d.after_title }}" from {{ d.evidence | join(', ') }}.
+{% endfor %}
+
+{% endif %}
 
 ## 5. Holds
 

@@ -8,6 +8,9 @@ it is the first thing a new session reads.
 - Engine `v0.2.16` installed as `0.2.16-sc0.5.0` (`current`); `main` pushed and clean. Method
   `v0.6.0-rc13` tagged on `main` 2026-10-14, not yet run under the engine. Lyons v2: `qc_all` and
   all four `upstream_*` organs delivered (2026-10-08 to 2026-10-12).
+- W6 built 2026-10-14 (`notes/2026-10-15-0300-xenium-analysis-skill-w6.md`): decision points in the skills,
+  `stringency-analyze-xenium-upstream` (method rc16), `controls/synthetic_upstream.sh` passing under the
+  engine; open: the acceptance run by a non-developer. W7 (Codex) waits on the owner.
 - W5 done 2026-10-14 (`notes/2026-10-15-0130-guides-w5.md`): `docs/install.md`, `docs/onboarding.md`,
   `docs/method-author.md`; the historical host notes archived; the skills and briefs name the shared
   install and `probe`. Next: W6 (the Xenium analysis skill).
@@ -171,6 +174,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-15-0300-xenium-analysis-skill-w6.md` — W6, backlog L32: `decisions:` in the analysis-skill source and the operator skill's section 9; the Xenium analysis skill (rc16); the synthetic two-slide upstream run through the engine, which found the plugin extractor's partial match.
 - `2026-10-15-0130-guides-w5.md` — W5, backlog L33: the three guides under `docs/`, the Claude Science notes trimmed and corrected, the host notes archived, the method-repo template's hook, CI and example skill.
 - `2026-10-15-0030-method-bind-v0220.md` — engine 0.2.20, backlog L7 (roadmap W4): `Job.ro_bind_paths`, the method checkout bound read-only; method rc15 sources `modules/_rlib` and `modules/_pylib` with no copies.
 - `2026-10-14-2330-compat-plugin-and-method.md` — W3 closed: singlecell 0.5.1 (coords_missing@2 on every region, declared and inherited decision points, CI, institutional marks) and method rc14 (`requires`, group bands from the job's design, CI, the organ hold view); the combination checked on PROTSEQ and recorded in `compat/known-good.yml`.
