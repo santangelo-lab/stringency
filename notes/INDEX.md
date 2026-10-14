@@ -8,9 +8,10 @@ it is the first thing a new session reads.
 - Engine `v0.2.16` installed as `0.2.16-sc0.5.0` (`current`); `main` pushed and clean. Method
   `v0.6.0-rc13` tagged on `main` 2026-10-14, not yet run under the engine. Lyons v2: `qc_all` and
   all four `upstream_*` organs delivered (2026-10-08 to 2026-10-12).
-- Engine `v0.2.19` (W3's engine half, L28 to L31: `requires` in policy.yml, plugins in provenance,
-  `stringency probe`, images by name; `notes/2026-10-14-2200-compat-engine-v0219.md`). Next: W3's
-  plugin half (0.5.1) and method half (rc14), then W4.
+- W3 closed: engine `v0.2.19` (L28 to L31; `notes/2026-10-14-2200-compat-engine-v0219.md`), plugin
+  singlecell 0.5.1 and method `v0.6.0-rc14` with `requires` on both sides, CI in all three repositories
+  (`notes/2026-10-14-2330-compat-plugin-and-method.md`); the combination checked on PROTSEQ. Engine
+  tags local, plugin tag after `uv lock` once the engine is pushed. Next: W4.
 - Engine `v0.2.18` (W2, L24 to L26: `objective.yml` `params:`, `present` skips `#` lines, `hold_view`
   `where:`; `notes/2026-10-14-2000-declared-params-v0218.md`) and `v0.2.17` (W1, L27: a fork inherits
   its parent's admitted parameters, `fork --check`; `notes/2026-10-14-1800-fork-inherits-v0217.md`),
@@ -164,6 +165,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-14-2330-compat-plugin-and-method.md` — W3 closed: singlecell 0.5.1 (coords_missing@2 on every region, declared and inherited decision points, CI, institutional marks) and method rc14 (`requires`, group bands from the job's design, CI, the organ hold view); the combination checked on PROTSEQ and recorded in `compat/known-good.yml`.
 - `2026-10-14-2200-compat-engine-v0219.md` — engine 0.2.19, backlog L28 to L31 (roadmap W3, engine half): `requires` checked by lint, declare, init and run open; the installed plugins in `stringency.yml`, the captures event, the delivery and the coverage line; `stringency probe`; images resolved by name through `$STRINGENCY_IMAGES` and `~/.config/stringency/config.yml`; `install.sh` derives its label; `compat/known-good.yml` and the compat workflow.
 - `2026-10-14-2000-declared-params-v0218.md` — engine 0.2.18, backlog L24 to L26 (roadmap W2): parameters declared in `objective.yml` are echoed, taken as given and never proposed; `present` reads a commented CSV from its header; a hold view filters a table by the proposed parameter.
 - `2026-10-14-1800-fork-inherits-v0217.md` — engine 0.2.17, backlog L27 (roadmap W1): a fork inherits the parameters its ancestor admitted, `--set` overrides only what it names, `fork` lists every value with its source, `fork --check` opens nothing; design 2.6 and 14.1.
