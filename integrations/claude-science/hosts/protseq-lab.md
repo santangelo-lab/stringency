@@ -2,17 +2,16 @@
 
 What a person or an agent needs to know about running stringency on PROTSEQ once the engine is
 shared (roadmap Track 1f, Lane D item 3, installed 2026-09-23). Machine context for agents is
-`~/.claude/CLAUDE.md` on the host; this note covers only the stringency layer. History:
-`protseq-setup.md` (the per-user setup of 2026-09-14), `protseq-shared-install.md` (how the
-shared install was made and how a version is added).
+`~/.claude/CLAUDE.md` on the host; this note covers only the stringency layer. The general guides
+are `docs/install.md` and `docs/onboarding.md`; history is under `archive/`.
 
 ## Paths
 
 | what | where | notes |
 |---|---|---|
 | engine | `/data/lab/env/stringency/current/bin/stringency` | `current` is a symlink into `versions/<label>/`; every run records the engine version |
-| engine versions | `/data/lab/env/stringency/versions/<label>/` | one venv per label, never deleted or overwritten; `envs/` beside them is unused |
-| container images | `/data/lab/env/images/<name>-<version>.sif` | pinned by sha256 in `MANIFEST.md` there and in each method's `envs/manifest.yml`; never overwrite a file, a new build gets a new name |
+| engine versions | `/data/lab/env/stringency/versions/<label>/` | one venv per label (`0.2.20-sc0.5.1`: engine, then plugin), never deleted or overwritten; the operator and declare skills under `skills/` beside each |
+| container images | `/data/lab/env/images/<name>-<version>.sif` | pinned by sha256 in `MANIFEST.md` there and in each method's `envs/manifest.yml`; never overwrite a file, a new build gets a new name; `images_root: /data/lab/env/images` in each user's `~/.config/stringency/config.yml` lets a manifest name an image by file name (engine 0.2.19) |
 | projects | `/data/lab/projects/<project>/` (`/lab/projects/...`) | project directories are engine-managed; `stringency board /lab/projects/<area>` writes the area's `STATUS.md` |
 | raw data | `/lab/raw/` | group-readable, not group-writable |
 | references | `/lab/ref/` | one canonical set; the outlier reference table lives here |
@@ -40,14 +39,13 @@ agree.
 
 Only a maintainer does this, from an engine checkout, with `umask 002`:
 
-    scripts/install.sh --prefix /data/lab/env/stringency --source <engine ref> \
-      --plugin <plugin ref> --label <label>
+    scripts/install.sh --prefix /data/lab/env/stringency --source <engine ref> --plugin <plugin ref> --no-toy
 
-`current` moves to the new label; the old version stays for runs that cite it. If a plugin comes
-from the `stringency-plugins` workspace and the engine ref is not the GitHub one its
-`tool.uv.sources` pins, install with `uv pip install --no-sources` into the venv the script
-created (see `protseq-shared-install.md`, step 2, for the exact recovery). Everyone's PATH
-follows `current` with no change on their side.
+The label is derived from the sources (`--label` overrides it), the script passes `--no-sources`
+to `uv pip install` so the plugin workspace's pin of the engine does not fight the ref given,
+`current` moves to the new label, the old version stays for runs that cite it, and `probe` prints
+what was installed. Restart `stringency-console.service` afterwards. Everyone's PATH follows
+`current` with no change on their side.
 
 ## Claude Science
 

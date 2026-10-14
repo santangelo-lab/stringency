@@ -1,5 +1,7 @@
 # PROTSEQ exit run through Claude Science: the walkthrough
 
+**Archived 2026-10-14.** the Phase A exit walkthrough of 2026-09-14 on a per-user engine; the current checklist is `new-project.md`. History, not instructions; paths in it are of their day.
+
 The second half of the Phase A exit (build plan, "Phase A exit"), on PROTSEQ, with the two
 additions from `spec/plans/declarations-and-objectives.md` step 3: the agent drafts the declarations
 from your brief and a sample manifest, and the work is two chained projects so `derived_from` is

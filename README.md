@@ -82,7 +82,10 @@ the code exists to fill it correctly.
 
 Early. Initial build out for the engine is done, but I'm still actively working on plugins, and methods for real data analysis pipelines. 
 
-At the moment the API is not stable and the only published plugin is the toy one.
+The API is not stable yet. One real plugin (`stringency-singlecell`) and one real method (the Xenium
+TMA method) exist and have taken a study from QC to annotated cells; `compat/known-good.yml` lists
+the engine, plugin and method versions that ran together. Guides: `docs/install.md` (setting up a
+machine), `docs/onboarding.md` (joining one), `docs/method-author.md` (writing a method).
 
 ## Quickstart
 
@@ -112,6 +115,9 @@ in design 14.2. Every verb takes `--json`.
 
 ## Claude Science setup
 
+The general setup is `docs/install.md` and `docs/onboarding.md`; this section is the Claude
+Science-specific part.
+
 >[!Note]
 >I'm working on making stringency accessible to many different kind of operators through different AI harnesses. The one I'm using at the moment is Claude Science so here I'm including specific details for it. Hopefully more to come soon!
 
@@ -123,11 +129,10 @@ container runtime, and the session reaches it as an SSH compute provider. The fu
 
 1. On the workstation, once: `scripts/install.sh --prefix <shared dir>` puts a versioned engine
    under `<shared dir>/current/bin` (on PROTSEQ, `/data/lab/env/stringency`; see
-   `integrations/claude-science/hosts/protseq-lab.md`). Container images live where the method
-   manifest says.
+   `integrations/claude-science/hosts/protseq-lab.md`); `stringency probe --method <url>@<tag>`
+   confirms the method's images and versions are there.
 2. In Claude Science, once per instance: add the workstation as an SSH compute provider, set the
-   project area as a data root, publish the `stringency-operator` skill
-   (`integrations/claude-science/stringency-operator/SKILL.md`).
+   project area as a data root, publish the skills (`integrations/claude-science/publish-skills.md`).
 3. Per project: render the agent context and the session brief from the project with
    `integrations/claude-science/render_brief.py`, paste the context into the project's Agent
    Context, paste the brief as the first message, and accept the confirm hold at your terminal
@@ -143,7 +148,8 @@ src/stringency/         the engine (no biology imports; CI checks)
 plugins/stringency-toy/ reference plugin, its method repo, fixtures
 templates/method-repo/  what a new method repository starts from
 integrations/           Claude Science: skill, brief renderer, setup checklist, example run
-docs/                   README assets
+docs/                   the guides: install, onboarding, method author; README assets
+compat/                 known-good combinations of engine, plugin and method
 spec/                   design, build plan, contracts, decisions
 notes/                  session notes; read INDEX.md first
 tests/                  one file per milestone area; mock harness and local executor only

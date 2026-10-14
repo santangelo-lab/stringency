@@ -1,5 +1,7 @@
 # PROTSEQ test drive of the Track 1b flags and the Track 1c skill
 
+**Archived 2026-10-14.** the 2026-09-15 toy drive that measured 17 cards; the row is in the backlog's measurement table. History, not instructions; paths in it are of their day.
+
 One toy project, `toy-compare` on the `toy-engine` pipeline, driven from a Claude Science session
 with PROTSEQ as the `protseq` SSH compute provider, as on 2026-09-14. The point is to see the new
 engine flags and the rewritten operator skill in use and to count approval cards against the

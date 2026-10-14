@@ -34,13 +34,12 @@ and the container runtime is registered as an SSH compute provider. Every string
 there through the compute connection from a `repl` cell:
 
     c = host.compute.create("<provider>")
-    r = c.call_command("export PATH=/usr/local/lib/stringency/current/bin:$PATH; cd <project>; stringency run --json",
+    r = c.call_command("export PATH=/data/lab/env/stringency/current/bin:$PATH; cd <project>; stringency run --json",
                        intent="Run the next analysis steps of <project> until something needs you.", login_shell=True)
     r.exit_code, r.stdout, r.stderr
 
-The engine path above is the machine-wide default; when the session brief's `PRE` line names
-another path (a shared install such as `/data/lab/env/stringency/current/bin`, or a per-user one),
-the brief wins. Files the loop reads come back with `c.download(<abs path>)`, which returns a
+The engine path above is the lab's shared install; when the session brief's `PRE` line names
+another path (`docs/install.md` says where an install goes), the brief wins. Files the loop reads come back with `c.download(<abs path>)`, which returns a
 transfer dict whose `local_path` is the copy. Run each engine command as its own `call_command`,
 so its output is read before the next one is issued. This is the mode for any project whose
 executor is `apptainer`, which is the production default.

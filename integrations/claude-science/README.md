@@ -9,39 +9,22 @@ project needs; `examples/toy-cs/` shows a completed run.
 | path | what |
 |---|---|
 | `new-project.md` | checklist: workstation once, app instance once, per project |
+| `publish-skills.md` | the cell that publishes the engine and analysis skills into an instance, and when to republish |
+| `onboarding.md` | moved to `docs/onboarding.md`; the PROTSEQ specifics are `hosts/protseq-lab.md` |
+| `hosts/protseq-lab.md` | the lab's host: paths, group, ports, caps; `hosts/archive/` holds the setup and test notes of September 2026 |
 | `render_brief.py`, `templates/` | render the session brief and the agent context from a project's `stringency.yml` |
 | `stringency-operator/SKILL.md` | the skill: find the engine, the rules, the run loop, in two modes |
 | `agent-context.md` | generic agent context; prefer the rendered one |
 | `stringency-declare/SKILL.md` | drafts the three declaration files from a brief and a sample manifest, checks them with `declare --check`, runs `init --drafted-by agent` |
 | `render_skill.py`, `templates/analyze-skill.md.j2` | render a method repository's `skills/<pipeline>.analyze.yml` to its analysis skill `skills/stringency-analyze-<name>/SKILL.md` (design 10.4); `--check` validates against the pipeline and modules |
-| `hosts/protseq-session-tests.md` | the two Claude Science session tests (UX note 3.4) and the measured toy run through the analysis skill, as a checklist for the owner |
 | `examples/toy-cs/` | the 2026-09-08 exit run: brief, context, agent reports, deliverables |
 
 ## Machine install
 
-Run once per workstation, from a checkout of this repository:
-
-    scripts/install.sh
-
-It creates `/usr/local/lib/stringency/versions/<version>/` (a venv with the engine and the toy
-plugin), points `/usr/local/lib/stringency/current` at it, links `/usr/local/bin/stringency`
-when that directory is writable, and creates `/usr/local/lib/stringency/envs/` for container
-images. `/usr/local` is visible inside the Claude Science sandbox, which does not mount home
-directories, so this is the location the operator skill looks in. Re-run with a new checkout to
-add a version; `current` moves. Add `--plugin <path-or-url>` for further plugins.
-
-Container images referenced by method manifests should live at a path that is the same on every
-machine that will run the method, for example `/usr/local/lib/stringency/envs/<name>.sif`.
-
-The machine-wide location matters only when the engine runs inside the sandbox (mode A). A
-compute host reached over SSH (mode B) runs the engine as your own user, so a per-user install
-needs no sudo:
-
-    scripts/install.sh --prefix ~/.local/lib/stringency
-
-and the brief's `PRE` line then puts `~/.local/lib/stringency/current/bin` on the PATH
-(`render_brief.py --engine-bin`, or edit the line). Images can live under
-`~/.local/lib/stringency/envs/` as long as the method manifest names that path on every host.
+`docs/install.md`. The engine is installed once per machine (on PROTSEQ, shared at
+`/data/lab/env/stringency`), images live where the site's `images_root` says, and
+`stringency probe` reports what is there. A session reaches the engine over SSH (mode B), so no
+machine-wide location inside the sandbox is needed.
 
 ## Where the session runs
 
@@ -67,9 +50,8 @@ transfer dict, and `open(t["local_path"]).read()` is the content. Every unrestri
 then sees the skill through discovery, and a session that mentions stringency loads it. To
 replace a published skill, `host.skills.edit` needs the current body as `old_string` (it creates
 a file only when none exists), then `publish(name, overwrite=True)`. The same steps publish
-`stringency-declare`. Both were published this way on 2026-09-14. The operator skill was revised
-2026-09-15 (Track 1c): the intent table, the hold protocol, `operator_line`, `run --responses`,
-`run --deliver`, `plain`, `summary.md`; republish it on each instance.
+`stringency-declare`. `publish-skills.md` has the table and the republish rule; the operator
+skill changes with the engine (last for 0.2.19: `probe`, forks, declared parameters).
 
 Session test 3.4 of `spec/plans/ux-two-audiences.md`, measured 2026-09-15 on PROTSEQ: delegate
 downloads of request files and the operator's downloads of delivered files raise one card each
@@ -83,7 +65,7 @@ analysis skill (section D of the same checklist) gives the count under those gra
 
 ## Rendering the brief and context
 
-    /usr/local/lib/stringency/current/bin/python integrations/claude-science/render_brief.py <project> --provider <alias> [--context]
+    <engine bin>/python integrations/claude-science/render_brief.py <project> --provider <alias> [--context]
 
 Bound project: reads `stringency.yml` and the method manifest. Unbound: add `--method <url>@<tag>
 --pipeline <name>`, and the brief includes the init phase. `--app-version` fills the operator

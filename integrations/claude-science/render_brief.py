@@ -13,7 +13,7 @@ then includes the init phase and expects the declaration files in the parent dir
 from the person's brief and a sample manifest. --image names a container image the probe should
 check when the project is unbound (bound projects read the method manifest). Run with
 the engine's interpreter so jinja2 and pyyaml are present:
-`/usr/local/lib/stringency/current/bin/python render_brief.py ...`."""
+`<engine bin>/python render_brief.py ...` (the interpreter beside the `stringency` verb)."""
 
 from __future__ import annotations
 

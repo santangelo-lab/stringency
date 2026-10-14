@@ -1,0 +1,19 @@
+# The delivery skill of one pipeline (design 14.4; spec/method-skills.md): what a person sees after a
+# delivery and at each hold. Rename to <pipeline>.yml. Every source is a delivered file, a step
+# output (<step>/<output>/<file>) or a project input ($inputs.<name>/<file>).
+skill: 1
+pipeline: example-pipeline
+after_delivery:
+  - title: "Rows kept after filtering"
+    source: 01_filter.filtered.csv
+    kind: table
+    columns: [row_id, group, value]
+never_show: [run ids, hashes]
+hold_view:
+  - predicate: param.agent_proposed
+    step: 01_filter
+    ask: "Approve the filter threshold"
+    source: $inputs.groups/groups.csv
+    kind: table
+    where: {column: group, equals: $param.group}   # keep the rows the proposed value selects
+step_view: []

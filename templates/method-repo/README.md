@@ -11,10 +11,15 @@ policy.yml                  dispositions per profile, ranges, criteria (design 6
 envs/manifest.yml           environment names -> lockfile or SIF image and sha256 (design 10.3)
 envs/<name>/uv.lock         lockfile for the local executor
 controls/fixtures/          fixtures identified by hash (design 11)
-skills/<pipeline>.yml       what a person sees after delivery and at a hold (design 14.4)
+skills/<pipeline>.yml       what a person sees after delivery and at a hold (design 14.4); skills/example.yml
 skills/<pipeline>.analyze.yml  source of the analysis skill, rendered to skills/stringency-analyze-<name>/SKILL.md (spec/method-skills.md)
 notes/YYYY-MM-DD-hhmm-<slug>.md   one small file per session (Commandment 2)
 ```
 
-Install the pre-commit hook (`pre-commit install`) so `stringency lint` runs on every commit and
-data files, `run.db`, and files over 10 MB are refused.
+`policy.yml` `requires:` names the engine and plugin versions the method needs; `lint`, `init` and
+run open check it. Shared code goes once under `modules/_rlib/` or `modules/_pylib/` (the engine
+binds the checkout read-only into every step). Install the pre-commit hook (`pre-commit install`,
+`.pre-commit-config.yaml`) so `stringency lint` runs on every commit and data files, `run.db` and
+files over 10 MB are refused; `.github/workflows/ci.yml` runs lint and the skill check on a bare
+runner. The worked example is the toy method in the engine repository,
+`plugins/stringency-toy/method`; the guide is `docs/method-author.md`.

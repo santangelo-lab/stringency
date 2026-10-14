@@ -1,5 +1,7 @@
 # PROTSEQ: tooling for the stringency exit run
 
+**Archived 2026-10-14.** the per-user setup of 2026-09-14, superseded by the shared install (`docs/install.md`, `hosts/protseq-lab.md`). History, not instructions; paths in it are of their day.
+
 Instructions for an agent working on PROTSEQ (`BMESANT-PROTseq`, Ubuntu 24.04, 88 cores,
 502 GB RAM, `/data` 137 TB free) as user `jrrose5`. The goal is a machine on which the toy
 pipeline can run under the apptainer executor from a Claude Science session, the same way it

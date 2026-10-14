@@ -5,11 +5,12 @@ runs in the Claude Science sandbox, so no directory grants are needed.
 
 ## On the workstation, once
 
-1. Engine installed: `scripts/install.sh` from a checkout (see the integration README). Check
-   with `stringency plugins list`. On PROTSEQ the install is shared at
-   `/data/lab/env/stringency/current/bin` (`hosts/protseq-lab.md`, `hosts/protseq-shared-install.md`).
-2. Container runtime present (`apptainer` or `singularity`) and the method's images at the paths
-   its `envs/manifest.yml` names.
+1. Engine installed (`docs/install.md`). Check with `stringency probe --method <url>@<tag>`,
+   which also checks the method's `requires` and images. On PROTSEQ the install is shared at
+   `/data/lab/env/stringency/current/bin` (`hosts/protseq-lab.md`).
+2. Container runtime present (`apptainer` or `singularity`) and the method's images where the
+   site keeps them (`images_root` in `~/.config/stringency/config.yml`, or the paths the
+   manifest names).
 3. The method repository reachable by git URL from the workstation, tagged.
 4. Data on the array, and the three declaration files (`objective.yml`, `design.yml`,
    `inputs.yml`) in the project's parent directory. `inputs.yml` carries the blake3 of each input.
@@ -20,20 +21,20 @@ runs in the Claude Science sandbox, so no directory grants are needed.
 ## In Claude Science, once per instance
 
 5. Add the workstation as an SSH compute provider under its SSH alias (Customize, compute).
-   Set the project area, for example `/data-raid/Projects/<you>/<area>`, as a data root so file
+   Set the project area, for example `/data/lab/projects/<area>`, as a data root so file
    downloads inside it do not each raise an approval card.
-6. Publish the `stringency-operator` skill if the instance does not have it (README, "Operator
-   skill").
+6. Publish the skills if the instance does not have them (`publish-skills.md`): the operator and
+   declare skills, and the analysis skill of each method the person will use.
 
 ## Per project
 
 7. Render the two texts on the workstation. For a project that `init` has not created yet:
 
-        /usr/local/lib/stringency/current/bin/python integrations/claude-science/render_brief.py \
-            /data-raid/Projects/<you>/<area>/<project> --provider <alias> \
+        $(dirname "$(readlink -f "$(command -v stringency)")")/python integrations/claude-science/render_brief.py \
+            /data/lab/projects/<area>/<project> --provider <alias> \
             --method <url>@<tag> --pipeline <name> > brief.md
-        /usr/local/lib/stringency/current/bin/python integrations/claude-science/render_brief.py \
-            /data-raid/Projects/<you>/<area>/<project> --provider <alias> \
+        $(dirname "$(readlink -f "$(command -v stringency)")")/python integrations/claude-science/render_brief.py \
+            /data/lab/projects/<area>/<project> --provider <alias> \
             --method <url>@<tag> --pipeline <name> --context > context.md
 
    For a project already bound, drop `--method` and `--pipeline`; the renderer reads
@@ -53,7 +54,8 @@ runs in the Claude Science sandbox, so no directory grants are needed.
 
 ## What to expect
 
-The toy pipeline (five steps, one judgment) took 25 authorization points in this mode on
-2026-09-08: 19 commands, 3 request downloads by delegates, 3 deliverable downloads. Two holds
-needed the owner: the init confirm and one predicate flag. `examples/toy-cs/` has the texts as
-used and the agent's reports.
+The measurement table in `spec/plans/backlog.md` has one row per measured run: the toy took 25
+authorization points on 2026-09-08 and 7 turns in 15 minutes through its analysis skill on
+2026-09-23 under a project-scoped command grant; the Lyons CLP chain of 2026-10-06 ran eleven
+projects with 31 holds in under three hours. `examples/toy-cs/` has the texts of the first run and
+the agent's reports.

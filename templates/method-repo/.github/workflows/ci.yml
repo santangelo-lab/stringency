@@ -1,0 +1,39 @@
+name: ci
+# On a bare runner: lint under the engine and plugin the method's policy.yml `requires` names,
+# the analysis-skill check, and the unit tests that need no container. Container runs stay on
+# the workstation; say which in the README's Develop section.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - id: req
+        run: |
+          uv run --with pyyaml python - <<'PY' >> "$GITHUB_OUTPUT"
+          import re, yaml
+          req = yaml.safe_load(open("policy.yml"))["requires"]
+          low = lambda spec: re.search(r">=\s*([0-9][^,\s]*)", spec).group(1)
+          print("engine=v" + low(req["engine"]))
+          for name, spec in (req.get("plugins") or {}).items():
+              print(f"plugin={name}@v{low(spec)}")
+          PY
+      - run: |
+          uv venv .ci --python 3.12
+          plugin="${{ steps.req.outputs.plugin }}"
+          uv pip install --python .ci/bin/python --no-sources \
+            "git+https://github.com/santangelo-lab/stringency@${{ steps.req.outputs.engine }}" \
+            ${plugin:+"git+https://github.com/santangelo-lab/stringency-plugins@${plugin##*@}#subdirectory=plugins/${plugin%%@*}"}
+      - run: .ci/bin/stringency lint .
+      - run: |
+          git clone --depth 1 --branch "${{ steps.req.outputs.engine }}" https://github.com/santangelo-lab/stringency .engine
+          for f in skills/*.analyze.yml; do
+            [ -e "$f" ] || continue
+            .ci/bin/python .engine/integrations/claude-science/render_skill.py . --pipeline "$(basename "$f" .analyze.yml)" --check
+          done

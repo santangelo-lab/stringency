@@ -1,5 +1,7 @@
 # PROTSEQ: shared engine install (roadmap Lane D item 3, Track 1f)
 
+**Archived 2026-10-14.** how the shared install was first made on 2026-09-23 and its `--no-sources` recovery; `install.sh` now derives the label and `docs/install.md` is the guide. History, not instructions; paths in it are of their day.
+
 Step-by-step for the owner or an agent working as `jrrose5` on PROTSEQ. Goal: one engine that
 every lab member on this machine runs, at `/data/lab/env/stringency`, pinned to the version the
 Lyons CLP runs used; a PATH line per user; the onboarding notes. New runs use it in place of the

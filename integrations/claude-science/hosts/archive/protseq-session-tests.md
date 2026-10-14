@@ -1,5 +1,7 @@
 # PROTSEQ: the two Claude Science session tests and the measured toy run (Track 1g, UX note 3.4)
 
+**Archived 2026-10-14.** the owner's checklists for the 2026-09-23 session tests and the measured toy run; their results are in the UX plan and the backlog's measurement table. History, not instructions; paths in it are of their day.
+
 A checklist the owner runs in the Claude Science desktop app on the MacBook, with `protseq` as
 the SSH compute provider. Approval cards are visible only in the app, so an agent at a terminal
 cannot run this. Written 2026-09-23 by the Lane E session; results go into
