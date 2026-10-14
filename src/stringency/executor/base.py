@@ -14,6 +14,9 @@ class Job:
     env_name: str
     cwd: Path
     bind_paths: Sequence[Path] = ()
+    # bound read-only (design 10.3, 2026-10-14): the project's method checkout, so a module
+    # reaches the shared code beside the modules; a read-write bind nested under one is dropped
+    ro_bind_paths: Sequence[Path] = ()
     stdin_json: Mapping[str, Any] | None = None
     timeout: float | None = None
     resources: Mapping[str, Any] = field(default_factory=dict)

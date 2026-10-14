@@ -195,6 +195,7 @@ def run_generator(project: Project, spec: ControlSpec, fixture: Path, out_dir: P
             command=interpreter_for(tool.script),
             env_name=tool.env or (project.env_names()[0] if project.env_names() else "default"),
             cwd=out_dir,
+            ro_bind_paths=[project.method_root],
             stdin_json={
                 "inputs": {"input": str(fixture)},
                 "params": spec.generator.params,

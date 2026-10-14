@@ -637,3 +637,74 @@ def test_ticket_step_dir_holds_tmp(rc: RunContext) -> None:
     prop = propose(rc, "01_filter")
     assert prop.status == StepStatus.AWAITING_EXECUTION
     assert (prop.plan.step_dir / "tmp").is_dir()
+
+
+def test_engine_step_sees_shared_code_beside_the_modules(
+    tmp_path: Path, declarations: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A module imports a file from `modules/_shared/` (the method's `_rlib` and `_pylib`), which
+    the executor reaches because the method checkout is bound (design 10.3, L7). Under the local
+    executor the path is simply there; the job carries the read-only bind the apptainer executor
+    turns into `--bind <method>:<method>:ro`."""
+    import shutil
+
+    from stringency import git
+    from stringency.project import InitRequest, init_project
+    from stringency.runloop import run_loop
+    from stringency.runs import open_run
+    from stringency.steps import job_for, plan_step
+    from stringency_toy import METHOD_TEMPLATE
+    from tests.conftest import accept_hold
+    from tests.test_run import HARNESS
+
+    src = tmp_path / "method-shared"
+    shutil.copytree(METHOD_TEMPLATE, src)
+    (src / "modules" / "_shared").mkdir()
+    (src / "modules" / "_shared" / "toy_shared.py").write_text(
+        "THRESHOLD_NOTE = 'shared code reached'\n"
+    )
+    pre = src / "modules" / "filter-rows" / "pre.py"
+    pre.write_text(
+        pre.read_text().replace(
+            "job = json.load(sys.stdin)\n",
+            "from pathlib import Path\n"
+            "sys.path.insert(0, str(Path(__file__).resolve().parent.parent / '_shared'))\n"
+            "import toy_shared\n"
+            "job = json.load(sys.stdin)\n"
+            "print(toy_shared.THRESHOLD_NOTE)\n",
+        )
+    )
+    git.init_repo(src)
+    git.commit_all(src, "shared code beside the modules")
+    git.tag(src, "v0.1.0")
+    p = init_project(
+        InitRequest(
+            path=tmp_path / "proj-shared",
+            method=f"{src}@v0.1.0",
+            pipeline="toy-engine",
+            objective=declarations["objective.yml"],
+            design=declarations["design.yml"],
+            inputs=declarations["inputs.yml"],
+            owner="tester",
+            reviewer="tester",
+            judgment_harness="mock",
+            execution="engine",
+            executor="local",
+        )
+    )
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+    monkeypatch.setenv("STRINGENCY_MOCK_FIXTURE", str(HARNESS / "unanimous.yml"))
+    monkeypatch.setenv("STRINGENCY_MOCK_FAMILY", "direct")
+    rc = open_run(p)
+    plan = plan_step(rc, "01_filter", 1)
+    from stringency.actions import build_action
+
+    action = build_action(
+        run_id=rc.run_id, step=plan.step, module=plan.module, attempt=1, input_digests={}
+    )
+    job = job_for(action, plan, plan.module.entry_script)  # type: ignore[arg-type]
+    assert [Path(x) for x in job.ro_bind_paths] == [p.method_root]
+    nx = run_loop(rc)
+    assert nx.kind == "completed", nx.message
+    log = (p.root / "runs" / rc.run_id / "01_filter" / "stdout.txt").read_text()
+    assert "shared code reached" in log

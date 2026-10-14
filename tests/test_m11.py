@@ -160,6 +160,54 @@ def test_apptainer_binds_script_inputs_and_cwd(tmp_path: Path) -> None:
     assert f"--bind {work / 'tmp'}:/tmp" in res.command and (work / "tmp").is_dir()
 
 
+def test_apptainer_binds_the_method_checkout_read_only(tmp_path: Path) -> None:
+    """Design 10.3 (2026-10-14, backlog L7): the method checkout is bound read-only, so a module
+    reaches the shared code beside it; the module directory's own bind is nested and dropped;
+    a read-only bind under a kept read-write one adds nothing."""
+    from stringency.executor.apptainer import bind_set
+
+    method = tmp_path / "proj" / "method"
+    script = method / "modules" / "normalize" / "pre.R"
+    script.parent.mkdir(parents=True)
+    script.write_text("")
+    (method / "modules" / "_rlib").mkdir()
+    work = tmp_path / "proj" / "runs" / "R" / "02"
+    work.mkdir(parents=True)
+    job = Job(
+        command=["Rscript", str(script)],
+        env_name="xenium-r",
+        cwd=work,
+        bind_paths=[work],
+        ro_bind_paths=[method],
+    )
+    binds = bind_set(job)
+    assert f"{method.resolve()}:{method.resolve()}:ro" in binds
+    assert str(script.parent.resolve()) not in binds and len(binds) == 2
+    # the whole project bound read-write (an input at its root): the read-only bind is redundant
+    job = Job(
+        command=["Rscript", str(script)],
+        env_name="xenium-r",
+        cwd=work,
+        bind_paths=[tmp_path / "proj"],
+        ro_bind_paths=[method],
+    )
+    assert bind_set(job) == [str((tmp_path / "proj").resolve())]
+    # a symlinked name is aliased read-only as well
+    link = tmp_path / "lab"
+    link.symlink_to(tmp_path / "proj", target_is_directory=True)
+    job = Job(
+        command=["Rscript", "/nonexistent/x.R"],
+        env_name="e",
+        cwd=work,
+        ro_bind_paths=[link / "method"],
+    )
+    binds = bind_set(job)
+    assert (
+        f"{method.resolve()}:{link / 'method'}:ro" in binds
+        and f"{method.resolve()}:{method.resolve()}:ro" in binds
+    )
+
+
 def test_apptainer_binds_symlinked_names_as_aliases(tmp_path: Path) -> None:
     """An input named through a symlink (`/lab/...` for `/data/lab/...`) is bound at its
     resolved location and again at the name the job used, so the argument the module receives

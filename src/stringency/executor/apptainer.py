@@ -12,7 +12,9 @@ environment variable `STRINGENCY_APPTAINER_BIN` overrides both. The command reco
 `--containall` hides the host filesystem, so the executor binds everything the job refers to:
 the declared `bind_paths`, the working directory, the directory of every existing absolute
 path in the command (the script), and the directory of every existing absolute path among the
-strings in `stdin_json` (inputs and outputs). Binds nested under another bind are dropped.
+strings in `stdin_json` (inputs and outputs), and `ro_bind_paths` read-only (the project's
+method checkout, so shared code beside the modules is reachable; design 10.3, 2026-10-14).
+Binds nested under another bind are dropped.
 """
 
 from __future__ import annotations
@@ -93,26 +95,42 @@ def bind_set(job: Job) -> list[str]:
     if job.stdin_json is not None:
         for p in _paths_in(dict(job.stdin_json)):
             named.add(p if p.is_dir() else p.parent)
-    # container path -> host path; the identity mapping plus one alias per symlinked name
-    mappings: dict[Path, Path] = {}
-    for d in named:
+    # container path -> (host path, read-only); the identity mapping plus one alias per
+    # symlinked name. Read-only binds (the method checkout) come first in the order, so a
+    # read-write bind nested under one (the module directory) is dropped and the module sees its
+    # own files read-only; a read-only bind nested under a kept read-write one is redundant.
+    mappings: dict[Path, tuple[Path, bool]] = {}
+
+    def add(d: Path, ro: bool) -> None:
         host = d.resolve()
         if _is_system(host):
-            continue
-        mappings[host] = host
-        if d.is_absolute() and d != host:
-            mappings[d] = host
+            return
+        if host not in mappings or not ro:
+            mappings[host] = (host, ro and mappings.get(host, (host, True))[1])
+        if d.is_absolute() and d != host and (d not in mappings or not ro):
+            mappings[d] = (host, ro and mappings.get(d, (host, True))[1])
+
+    for d in job.ro_bind_paths:
+        add(Path(d), True)
+    for d in named:
+        add(d, False)
     ordered = sorted(mappings, key=lambda c: (len(c.parts), str(c)))
-    kept: dict[Path, Path] = {}
+    kept: dict[Path, tuple[Path, bool]] = {}
     for c in ordered:
-        host = mappings[c]
+        host, ro = mappings[c]
         redundant = any(
             (c == kc or kc in c.parents) and kh / c.relative_to(kc) == host
-            for kc, kh in kept.items()
+            for kc, (kh, _) in kept.items()
         )
         if not redundant:
-            kept[c] = host
-    return sorted(str(h) if c == h else f"{h}:{c}" for c, h in kept.items())
+            kept[c] = (host, ro)
+    out = []
+    for c, (h, ro) in kept.items():
+        if ro:
+            out.append(f"{h}:{c}:ro")
+        else:
+            out.append(str(h) if c == h else f"{h}:{c}")
+    return sorted(out)
 
 
 def sha256_file(path: Path) -> str:

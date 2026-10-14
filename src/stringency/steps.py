@@ -423,6 +423,7 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
         env_name=m.env,
         cwd=plan.step_dir,
         bind_paths=[p.parent for ri in plan.inputs.values() for p in ri.paths] + [plan.step_dir],
+        ro_bind_paths=[plan.module.path.parent.parent],  # the method checkout (design 10.3)
         stdin_json={
             "inputs": {k: v.job_value() for k, v in plan.inputs.items()},
             "params": action.parameters,

@@ -103,6 +103,7 @@ def prepare_evidence(rc: RunContext, plan: StepPlan, *, run_pre: bool = True) ->
             command=interpreter_for(script),
             env_name=m.env,
             cwd=plan.step_dir,
+            ro_bind_paths=[rc.project.method_root],
             stdin_json={
                 "inputs": {k: str(v) for k, v in paths.items()},
                 "params": {},
@@ -561,6 +562,7 @@ def run_post(rc: RunContext, plan: StepPlan, replicates: list[Replicate]) -> lis
             command=interpreter_for(script),
             env_name=plan.module.manifest.env,
             cwd=plan.step_dir,
+            ro_bind_paths=[rc.project.method_root],
             stdin_json=payload,
             stdout_path=plan.step_dir / "post.stdout",
             stderr_path=plan.step_dir / "post.stderr",
