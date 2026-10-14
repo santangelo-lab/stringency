@@ -46,6 +46,7 @@ hold_view:                 # rendered by `present --hold` (and the console) for 
     source: <path relative to runs/<run>/, as <step>/<output>/<file>; or $inputs.<name>/<file>; {item} is the item>
     kind: table | json_table | jsonl | figure | figures | chart
     columns: [...]         # table kinds
+    where: {column: <col>, equals: <value or $param.<parameter>>}  # table kinds: keep the rows whose column equals the value; $param.<p> is the hold's proposed value of p
     beside: <a second image, shown in a second column>          # figure
     select: [<file>, ...]  # figures: a subset of the directory's images, in this order
     x: <column>            # chart: a line of y against x from a table
@@ -73,7 +74,11 @@ entry per step with `step:` set, so the elbow table is shown at the clustering h
 the normalisation hold; `ask:` is the question in the method's words, which the console's inbox
 uses as the card's title ("Approve the number of components and the clustering resolution").
 An item hold has no predicate; its card takes the `ask:` of the entry without a predicate on its
-step (engine 0.2.14), which is how a method words a sign-off ("Decide the batch route").
+step (engine 0.2.14), which is how a method words a sign-off ("Decide the batch route"). A table
+entry's `where:` keeps the rows whose column equals a value, and `$param.<name>` makes that value
+the one the hold proposes (engine 0.2.18), so an organ sign-off shows the punches the proposed
+organ keeps; a hold that proposes no such value shows every row with a note saying so. A table
+whose file opens with `#` comment lines is read from its header line (engine 0.2.18).
 
 Figures (console, engine 0.2.10): `figure` shows one image, `beside` a second at the same size
 in a second column (this run's batch panel beside the uncorrected one); `figures` shows the

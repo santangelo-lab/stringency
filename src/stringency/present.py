@@ -111,15 +111,23 @@ def _fmt(value: Any, spec: str | None) -> str:
     return str(value)
 
 
+def _data_lines(text: str) -> list[str]:
+    """The lines of a delimited file without its leading `#` comment lines (a draft file opens
+    with one; read as the header it drew fifty blank rows, backlog L25)."""
+    lines = text.splitlines()
+    while lines and lines[0].startswith("#"):
+        lines.pop(0)
+    return lines
+
+
 def _rows_from_table(path: Path) -> list[dict[str, Any]]:
-    text = path.read_text()
+    lines = _data_lines(path.read_text())
     delim = (
         "\t"
-        if path.suffix.lower() in (".tsv", ".tab")
-        or ("\t" in text.splitlines()[0] if text else False)
+        if path.suffix.lower() in (".tsv", ".tab") or ("\t" in lines[0] if lines else False)
         else ","
     )
-    return [dict(r) for r in csv.DictReader(text.splitlines(), delimiter=delim)]
+    return [dict(r) for r in csv.DictReader(lines, delimiter=delim)]
 
 
 def _rows_from_json(path: Path, key: str | None) -> list[dict[str, Any]]:
@@ -318,6 +326,10 @@ def render_items(
         except (OSError, ValueError, ConfigError) as e:
             sections.append({"title": title, "kind": kind, "error": f"{src}: {e}"})
             continue
+        note: str | None = None
+        where = item.get("where")
+        if isinstance(where, dict) and where.get("column"):
+            rows, note = _where(rows, where, hold)
         if kind == "chart":
             try:
                 sections.append({"title": title, **chart_section(rows, item, hold)})
@@ -330,8 +342,33 @@ def render_items(
         fmts: dict[str, str] = (
             {str(k): str(v) for k, v in raw_fmt.items()} if isinstance(raw_fmt, dict) else {}
         )
-        sections.append({"title": title, "kind": kind, **_table(rows, cols, fmts)})
+        section = {"title": title, "kind": kind, **_table(rows, cols, fmts)}
+        if note:
+            section["note"] = note
+        sections.append(section)
     return sections, files
+
+
+def _where(
+    rows: list[dict[str, Any]], where: dict[str, Any], hold: dict[str, Any] | None
+) -> tuple[list[dict[str, Any]], str | None]:
+    """`where: {column, equals}` on a table entry keeps the rows whose column equals the value;
+    `equals: $param.<name>` is the hold's proposed value of that parameter, so a sign-off shows
+    the rows the proposed value keeps (backlog L26). When this hold proposes no such value every
+    row is kept and the section says so."""
+    col = str(where["column"])
+    eq = where.get("equals")
+    if isinstance(eq, str) and eq.startswith("$param."):
+        name = eq[len("$param.") :]
+        value = _marked_value(hold, name)
+        if value is None:
+            return (
+                rows,
+                f"where {col} = {eq}: this hold proposes no value for {name}; every row is shown",
+            )
+    else:
+        value = eq
+    return [r for r in rows if str(r.get(col)) == str(value)], None
 
 
 def _captions(directory: Path) -> dict[str, str]:
@@ -342,7 +379,7 @@ def _captions(directory: Path) -> dict[str, str]:
     try:
         return {
             str(r.get("file") or ""): str(r.get("what") or "")
-            for r in csv.DictReader(f.read_text().splitlines())
+            for r in csv.DictReader(_data_lines(f.read_text()))
         }
     except (OSError, csv.Error):
         return {}
@@ -690,6 +727,7 @@ _HTML_ENV = Environment(undefined=StrictUndefined, autoescape=True)
 SECTIONS_HTML = _HTML_ENV.from_string(
     """{% for s in sections %}
 <h2>{{ s.title }}</h2>
+{% if s.get("note") %}<p class="note">({{ s.note }})</p>{% endif %}
 {% if s.get("error") %}<p class="note">(not shown: {{ s.error }})</p>
 {% elif s.kind == "file" %}<p>file to send: <code>{{ s.path }}</code></p>
 {% elif s.kind == "text" %}<pre>{{ s.text.rstrip() }}</pre>
@@ -753,6 +791,8 @@ def render_markdown(payload: dict[str, Any]) -> str:
         out.append("")
         out.append(f"### {s['title']}")
         out.append("")
+        if s.get("note"):
+            out.append(f"({s['note']})")
         if "error" in s:
             out.append(f"(not shown: {s['error']})")
         elif s["kind"] == "file":

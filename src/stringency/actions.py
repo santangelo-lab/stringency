@@ -29,7 +29,7 @@ class Action:
     inputs: dict[str, str]  # input name -> blake3:<hex>
     input_digest: str
     params_hash: str
-    proposed_by: str  # pipeline | agent | fork | inherited
+    proposed_by: str  # pipeline | agent | fork | inherited | declared
     rationale_ref: str | None = None
     ticket: str | None = None
     proposed_at: str = field(default_factory=now_iso)
@@ -111,10 +111,13 @@ def build_action(
     for name, value in proposed.items():  # undeclared anywhere: recorded, then blocked by gate
         params[name] = value
         source[name] = source_label
-    if any(v == source_label for v in source.values()) and source_label != "default":
+    labels = {v for v in source.values() if v != "default"}
+    if source_label in labels:
         proposed_by = source_label
-    elif any(v not in ("default",) for v in source.values()):
+    elif "inherited" in labels:
         proposed_by = "inherited"
+    elif "declared" in labels:
+        proposed_by = "declared"
     else:
         proposed_by = "pipeline"
     prefixed = {

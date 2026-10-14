@@ -8,9 +8,10 @@ it is the first thing a new session reads.
 - Engine `v0.2.16` installed as `0.2.16-sc0.5.0` (`current`); `main` pushed and clean. Method
   `v0.6.0-rc13` tagged on `main` 2026-10-14, not yet run under the engine. Lyons v2: `qc_all` and
   all four `upstream_*` organs delivered (2026-10-08 to 2026-10-12).
-- Engine `v0.2.17` (W1, L27: a fork inherits its parent's admitted parameters; `fork --check`;
-  `notes/2026-10-14-1800-fork-inherits-v0217.md`), tagged locally, not installed, not pushed.
-  Checked on the Lyons v2 spleen run. Next: W2.
+- Engine `v0.2.18` (W2, L24 to L26: `objective.yml` `params:`, `present` skips `#` lines, `hold_view`
+  `where:`; `notes/2026-10-14-2000-declared-params-v0218.md`) and `v0.2.17` (W1, L27: a fork inherits
+  its parent's admitted parameters, `fork --check`; `notes/2026-10-14-1800-fork-inherits-v0217.md`),
+  both tagged locally, not installed, not pushed. Next: W3 (compatibility and CI).
 - The plans refreshed and the code review of 2026-10-14 folded in
   (`notes/2026-10-14-1500-plan-refresh-and-review.md`): read `spec/plans/roadmap-2026-10.md` first;
   its lane table is the state; the approved work is W1 to W6 in order (fork inheritance L27 first),
@@ -160,6 +161,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-14-2000-declared-params-v0218.md` — engine 0.2.18, backlog L24 to L26 (roadmap W2): parameters declared in `objective.yml` are echoed, taken as given and never proposed; `present` reads a commented CSV from its header; a hold view filters a table by the proposed parameter.
 - `2026-10-14-1800-fork-inherits-v0217.md` — engine 0.2.17, backlog L27 (roadmap W1): a fork inherits the parameters its ancestor admitted, `--set` overrides only what it names, `fork` lists every value with its source, `fork --check` opens nothing; design 2.6 and 14.1.
 - `2026-10-14-1500-plan-refresh-and-review.md` — W0: `roadmap-2026-10.md` written and the 2026-09 roadmap archived, the backlog split into open and done, every plan's status to 2026-10-14, Lyons v2 as spatial-plan decisions 21 to 25, the code review's items as L28 to L34 and method PLAN 5.12 to 5.17, the file-level shape of W1 to W7.
 - `2026-10-09-1600-hold-page-speed-v0216.md` — engine 0.2.16, backlog L23: a console hold page hashes no input (55 s per page on `qc_all`); not installed.

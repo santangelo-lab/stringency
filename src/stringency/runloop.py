@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 
 from stringency.exit_codes import ConfigError, Exit, RefusedError
-from stringency.fork import inherited_for
 from stringency.gate import GateResult
 from stringency.holds import open_holds
 from stringency.machine import DONE, StepStatus, transition
@@ -30,6 +29,7 @@ from stringency.steps import (
     plan_step,
     propose,
     resume_after_hold,
+    starting_params,
 )
 from stringency.when import skip_decision
 
@@ -330,13 +330,14 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
         if st == StepStatus.PENDING:
             delta = rc.delta_for(sid)
             # a fork's --set values are a person's decision, recorded with a reason on the run;
-            # every other parameter of a re-run step is what the parent admitted (design 2.6)
+            # every other parameter starts from the objective's declared value or what a fork's
+            # parent admitted (design 2.5, 2.6)
             proposal = propose(
                 rc,
                 sid,
                 delta or None,
                 source="fork" if delta else "agent",
-                inherited=inherited_for(rc, sid),
+                inherited=starting_params(rc, sid),
             )
         elif st == StepStatus.ADMISSIBLE:
             proposal = resume_after_hold(rc, sid)

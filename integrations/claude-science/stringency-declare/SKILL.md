@@ -85,6 +85,7 @@ plugin's `design_schema` names them):
     min_n_per_group: <the person's number, else the plugin default>
     deliverables: [<output names the pipeline produces>]
     domain: {}
+    params: {<step id>: {<parameter>: <value>}}                     # optional, engine 0.2.18
 
 `inputs.yml`: one item per file the person named, plus the manifest (section 2). `name` is the
 handle the pipeline's first step binds (read `pipelines/<name>.yml`: `inputs: {object:
@@ -109,7 +110,12 @@ plugin's published default, and say so), `deliverables` (what the person asked t
 exactly as the producing module declares them: read `modules/<module>/module.yml` `outputs:` for
 each step of the pipeline and enumerate the names; a `$steps.<id>.<name>` reference in the
 pipeline is a consumer, not the list of what exists, and a report step's outputs count too),
-`domain: {}` unless the plugin's documentation names domain fields the person supplied.
+`domain: {}` unless the plugin's documentation names domain fields the person supplied. `params`
+(optional): a parameter the person fixed in their own words for a step of the pipeline, such as
+the organ of an upstream project; name the step id and the parameter as the pipeline or the
+module declares them (`declare --check` refuses any other). The echo-back lists it and the
+confirm covers it; the step then takes it as given, and no proposal hold opens for it. Never
+write a value the person did not give.
 
 Ambiguities to ask about rather than resolve: "compare A, B, and C" (pairwise or one omnibus
 contrast); whether replicate means sample or a grouping of samples; whether a column is biology

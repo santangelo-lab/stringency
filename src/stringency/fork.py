@@ -43,10 +43,17 @@ def parse_delta(sets: list[str], pipeline_order: list[str], at: str) -> dict[str
     return out
 
 
+def _child_label(parent_label: str) -> str:
+    """A value the ancestor took at its default stays `default`, one the objective declared stays
+    `declared`; any other (`agent`, `fork`, `inherited`) becomes `inherited`."""
+    return parent_label if parent_label in ("default", "declared") else "inherited"
+
+
 def ancestor_params(store: Store, run_id: str, step_id: str) -> dict[str, tuple[Any, str]] | None:
     """What the nearest run in the chain starting at `run_id` (itself, then its parent, and so
     on) admitted for `step_id`, as name -> (value, label for the child): `default` where that
-    run took the default, else `inherited`. None when no run in the chain completed the step.
+    run took the default, `declared` where the objective declared it, else `inherited`. None
+    when no run in the chain completed the step.
     Reads: runs, steps, actions."""
     rid: str | None = run_id
     while rid:
@@ -62,10 +69,7 @@ def ancestor_params(store: Store, run_id: str, step_id: str) -> dict[str, tuple[
             if row is not None:  # a step inherited as completed has no action; walk on
                 params = json.loads(row["params_json"])
                 src = json.loads(row["param_source_json"] or "{}")
-                return {
-                    k: (v, "default" if src.get(k, "default") == "default" else "inherited")
-                    for k, v in params.items()
-                }
+                return {k: (v, _child_label(src.get(k, "default"))) for k, v in params.items()}
         rid = store.scalar("SELECT parent_run_id FROM runs WHERE run_id = ?", (rid,))
     return None
 

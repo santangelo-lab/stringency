@@ -221,6 +221,20 @@ def plan_step(rc: RunContext, step_id: str, attempt: int) -> StepPlan:
 # -- propose: action + pre-gate ----------------------------------------------------------
 
 
+def starting_params(rc: RunContext, step_id: str) -> dict[str, tuple[Any, str]] | None:
+    """What a step's proposal starts from, below the operator's own values (design 2.5, 2.6):
+    the objective's declared parameters for the step (`declared`), overlaid by what a fork's
+    ancestor admitted (`fork.inherited_for`). None when there is neither.
+    Reads: runs, steps, actions."""
+    from stringency.fork import inherited_for
+
+    out: dict[str, tuple[Any, str]] = {
+        k: (v, "declared") for k, v in (rc.project.objective.params.get(step_id) or {}).items()
+    }
+    out.update(inherited_for(rc, step_id) or {})
+    return out or None
+
+
 def propose(
     rc: RunContext,
     step_id: str,

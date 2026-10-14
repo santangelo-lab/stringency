@@ -340,6 +340,8 @@ class Project:
         `design.yml` and `prov/run.db` (runs, holds, reviews)."""
         if not self.inputs.items:
             return None
+        if self.objective.params:
+            return None  # a declared parameter is a decision this owner must see (2026-10-14)
         my_design = hashing.hash_file(self.root / "design.yml")
         my_major = self._major(self.config.method.tag)
         upstreams: list[dict[str, Any]] = []
@@ -636,6 +638,21 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
             raise ConfigError(
                 f"module {m.ref} belongs to domain {m.manifest.domain}, pipeline is {pipeline.domain}"
             )
+
+    # declared parameters (design 2.5): every step and parameter must exist; the value itself is
+    # gated when the step runs (param.out_of_range, param.locked_changed)
+    for sid, values in objective.params.items():
+        if not pipeline.has_step(sid):
+            raise ConfigError(f"objective params: no step {sid} in pipeline {pipeline.name}")
+        if not isinstance(values, dict):
+            raise ConfigError(
+                f"objective params for {sid}: expected a mapping of parameter to value"
+            )
+        step_decl = pipeline.step(sid)
+        declared = set(step_decl.params) | set(modules.require(step_decl.module).declared_params)
+        for name in values:
+            if name not in declared:
+                raise ConfigError(f"objective params: step {sid} declares no parameter {name}")
 
     report = lint_path(root / "method")
     if not report.ok:

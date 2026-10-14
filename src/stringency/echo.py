@@ -44,6 +44,15 @@ def generic_echo(
     lines.append(contrast_sentence(objective).capitalize() + ".")
     if objective.deliverables:
         lines.append(f"Deliverables: {', '.join(objective.deliverables)}.")
+    if objective.params:
+        parts = [
+            f"{sid}: " + ", ".join(f"{k} = {v}" for k, v in vals.items())
+            for sid, vals in objective.params.items()
+        ]
+        lines.append(
+            "Parameters declared, taken as given when the step runs and not proposed by the "
+            "agent: " + "; ".join(parts) + "."
+        )
     if design.holdout:
         lines.append(f"{len(design.holdout)} held-out fixture(s) no run may touch.")
     return "\n".join(lines)

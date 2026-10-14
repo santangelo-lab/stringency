@@ -166,6 +166,10 @@ class Objective(Lenient):
     min_n_per_group: int = 0
     deliverables: list[str] = Field(default_factory=list)
     domain: dict[str, Any] = Field(default_factory=dict)
+    params: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    """Parameters declared before the run, by step (design 2.5, 2026-10-14): `init` checks each
+    against the pipeline and the module schema, the echo-back lists them, and a step takes them
+    with `param_source: declared`, so no `param.agent_proposed` hold opens for them."""
 
     @model_validator(mode="after")
     def _contrast_shape(self) -> Objective:

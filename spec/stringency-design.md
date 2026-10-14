@@ -141,6 +141,8 @@ domain: {}
 
 Every predicate receives the objective. The forward-feasibility predicate (6.5) compares `counts_per_group` in the state against `min_n_per_group` for every level of every contrast.
 
+An objective may carry `params: {<step>: {<parameter>: <value>}}`, values declared before the run for parameters the pipeline declares (added 2026-10-14, backlog L24). `init` and `declare --check` refuse a step or parameter the pipeline does not declare; the echo-back lists the values under "Parameters declared", and the confirm hold covers them as it covers the rest of the file. When the step runs the value is recorded with `param_source: declared`: it is not the agent's proposal, so it opens no `param.agent_proposed` hold, and `param.locked_changed` and `param.out_of_range` apply to it as to any value. A proposal that departs from a declared value is the agent's and is asked. A project whose objective declares parameters does not inherit its confirmation (2.7): a declared parameter is a decision this project's owner must see.
+
 ### 2.6 Runs and forks
 
 A run is one attempt at the bound pipeline. `run` is idempotent: it resumes the project's latest open run, opens the first run, and refuses (exit 16) when the latest run is closed; `run --new` opens the next one, so a `run` typed after the final submit cannot start a second attempt by accident. Runs close as `completed`, `failed`, or `abandoned` (`stringency abandon --reason "…"`).

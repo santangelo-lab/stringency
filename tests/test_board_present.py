@@ -202,3 +202,76 @@ def test_present_hold_shows_review_commands_and_matching_view(make_project: Init
     ] == [["g1", "exclude"]]
     md = render_markdown(payload)
     assert "waits for" in md and "Evidence: n=1" in md and "--verdict reject" in md
+
+
+def test_present_skips_a_tables_leading_comment_lines(make_project: InitFn) -> None:
+    """Backlog L25: the draft exclusion file opens with a `# draft written by ...` line, which was
+    read as the header and drew fifty blank rows."""
+    p, run_id, d = _delivered(make_project)
+    (p.root / "runs" / run_id / "draft.csv").write_text(
+        "# draft written by exclusion-proposal 0.2.1; complete the excluded column\n"
+        "punch_id,excluded,reason\n24-2-Gut-A,true,most of punch lost\n48-1-Liver,false,\n"
+    )
+    skills = _skill(p, [{"title": "The draft", "source": "draft.csv", "kind": "table"}])
+    payload = present_run(Site.load(p.root), None, skills)
+    s = payload["sections"][0]
+    assert s["columns"] == ["punch_id", "excluded", "reason"]
+    assert s["rows"] == [["24-2-Gut-A", "true", "most of punch lost"], ["48-1-Liver", "false", ""]]
+
+
+def test_hold_view_where_filters_a_table_by_the_proposed_parameter(make_project: InitFn) -> None:
+    """Backlog L26: the organ sign-off shows the punches the proposed organ keeps."""
+    p, run_id, d = _delivered(make_project)
+    (p.root / "runs" / run_id / "punches.csv").write_text(
+        "punch_id,organ,animal\n6-1-Liver,liver,6-1\n6-1-Lung,lung,6-1\n24-1-Liver,liver,24-1\n"
+    )
+    skills = _skill(
+        p,
+        [],
+        hold_view=[
+            {
+                "predicate": "param.agent_proposed",
+                "source": "punches.csv",
+                "kind": "table",
+                "where": {"column": "organ", "equals": "$param.organ"},
+            },
+            {
+                "predicate": "param.agent_proposed",
+                "source": "punches.csv",
+                "kind": "table",
+                "where": {"column": "animal", "equals": "6-1"},
+            },
+            {
+                "predicate": "param.agent_proposed",
+                "source": "punches.csv",
+                "kind": "table",
+                "where": {"column": "organ", "equals": "$param.ndim"},
+            },
+        ],
+    )
+    hid = p.store.create_hold(
+        {
+            "run_id": run_id,
+            "step_id": "04_compare",
+            "kind": "flag",
+            "reason": "param.agent_proposed: the agent chose organ",
+            "waits_on_role": "reviewer",
+            "context_json": json.dumps(
+                {
+                    "predicate": "param.agent_proposed@1",
+                    "evidence": {"proposed": {"organ": {"default": "unset", "proposed": "liver"}}},
+                }
+            ),
+        }
+    )
+    hp = present_hold(Site.load(p.root), hid, skills)
+    by_param, literal, missing = hp["sections"]
+    assert by_param["rows"] == [["6-1-Liver", "liver", "6-1"], ["24-1-Liver", "liver", "24-1"]]
+    assert "note" not in by_param
+    assert literal["rows"] == [["6-1-Liver", "liver", "6-1"], ["6-1-Lung", "lung", "6-1"]]
+    assert len(missing["rows"]) == 3 and "proposes no value for ndim" in missing["note"]
+    text = render_markdown(hp)
+    assert (
+        "(where organ = $param.ndim: this hold proposes no value for ndim; every row is shown)"
+        in text
+    )
