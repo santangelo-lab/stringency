@@ -218,9 +218,13 @@ def test_probe_skills_check_reads_the_version_and_accepts_an_older_skill(tmp_pat
 def test_known_good_table_parses_and_has_the_shape_the_bootstrap_reads() -> None:
     import yaml as _yaml
 
-    doc = _yaml.safe_load((Path(__file__).resolve().parents[1] / "compat" / "known-good.yml").read_text())
+    doc = _yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "compat" / "known-good.yml").read_text()
+    )
     rows = doc["combinations"]
-    assert rows and all({"engine", "plugins", "methods", "date", "host", "evidence"} <= set(r) for r in rows)
+    assert rows and all(
+        {"engine", "plugins", "methods", "date", "host", "evidence"} <= set(r) for r in rows
+    )
     dated = [r for r in rows if r["date"] != "pending"]
     assert dated and all(r["engine"].startswith("v") for r in dated)
     assert all(v.startswith("v") for r in dated for v in r["plugins"].values())
