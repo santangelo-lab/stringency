@@ -2,7 +2,7 @@
 `--at`, applies declared parameter changes, and leaves the parent untouched. A step the parent
 skipped before `--at` is inherited as skipped (L13). A step the child re-runs starts from the
 parameters its nearest ancestor admitted for it (`inherited_params`), `--set` overriding only
-what it names (L27: the Lyons v2 spleen fork of 2026-10-12 ran at the pipeline defaults).
+what it names (L27: the pilot's spleen fork of 2026-10-12 ran at the pipeline defaults).
 
 Reads: runs, steps, artifacts, state_snapshots, actions. Writes: runs, steps (inherited ones
 as completed), artifacts (rows pointing at the parent's files), state_snapshots (history

@@ -99,16 +99,15 @@ commands on the machine the data lives on, and paste this:
 
 That installs a known-good engine and plugin, puts the skills the AI needs beside them, and ends
 with a report of what is there and what is missing. On a shared machine add `--prefix` with the
-group's directory (`bash -s -- --prefix /data/lab/env/stringency`). To join a machine someone
+group's directory (`bash -s -- --prefix <prefix>`). To join a machine someone
 else set up, read `docs/onboarding.md` instead: it is one group membership, one PATH line, and an
 AI session of your own.
 
 **If you are the AI** doing the install, `docs/install.md` is yours: what gets installed where,
-the container images, the console, and how to check your work. **If you maintain the lab's
-install,** `docs/maintainer.md` is the one page of recurring jobs: release, install, restart,
-republish.
+the container images, the console, and how to check your work. **If you maintain an
+install,** `docs/release.md` is the one page of recurring jobs: release, install, restart, republish.
 
-## Develop
+## Develop the engine
 
 ```
 uv sync --all-groups
@@ -116,6 +115,12 @@ uv run pytest
 uv run stringency --help
 uv run stringency plugins list
 ```
+
+That runs the tests and the toy plugin with the local executor; nothing else is needed on a
+developer's machine. The checks CI runs are `uv run ruff check . && uv run ruff format --check . &&
+uv run mypy && scripts/check_no_biology.sh`.
+
+## The CLI in brief
 
 A project is bound with `init`, its echo-back accepted with `review`, and then driven by `run`:
 
@@ -150,9 +155,8 @@ container runtime, and the session reaches it as an SSH compute provider. The fu
 `integrations/claude-science/new-project.md`; in outline:
 
 1. On the workstation, once: `scripts/install.sh --prefix <shared dir>` puts a versioned engine
-   under `<shared dir>/current/bin` (on PROTSEQ, `/data/lab/env/stringency`; see
-   `integrations/claude-science/hosts/protseq-lab.md`); `stringency probe --method <url>@<tag>`
-   confirms the method's images and versions are there.
+   under `<shared dir>/current/bin`; `stringency probe --method <url>@<tag>` confirms the method's
+   images and versions are there.
 2. In Claude Science, once per instance: add the workstation as an SSH compute provider, set the
    project area as a data root, paste the publish message (`integrations/claude-science/publish-skills.md`).
 3. Per project: render the agent context and the session brief from the project with
@@ -160,8 +164,6 @@ container runtime, and the session reaches it as an SSH compute provider. The fu
    Context, paste the brief as the first message, and accept the confirm hold at your terminal
    when the agent reports it. Every later hold comes back to you the same way.
 
-`integrations/claude-science/examples/toy-cs/` holds a completed run: the texts as used, the
-agent's reports for each phase, and the delivered coverage report and methods paragraph.
 
 ## Layout
 
@@ -169,8 +171,8 @@ agent's reports for each phase, and the delivered coverage report and methods pa
 src/stringency/         the engine (no biology imports; CI checks)
 plugins/stringency-toy/ reference plugin, its method repo, fixtures
 templates/method-repo/  what a new method repository starts from
-integrations/           Claude Science: skill, brief renderer, setup checklist, example run
-docs/                   the guides: install, onboarding, method author, maintainer; README assets
+integrations/           Claude Science: the skills, the brief renderer, the setup checklist
+docs/                   the guides: install, onboarding, method author, release; README assets
 compat/                 known-good combinations of engine, plugin and method
 spec/                   design, build plan, contracts, decisions
 notes/                  session notes; read INDEX.md first

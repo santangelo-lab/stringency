@@ -1,8 +1,0 @@
-{
-  "labels": {
-    "A": "abundant",
-    "B": "sparse",
-    "C": "variable"
-  },
-  "source": "consensus"
-}

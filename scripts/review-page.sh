@@ -13,7 +13,7 @@
 # `<projects dir>` is walked two levels deep; add `--project <path>` for a deeper one.
 set -euo pipefail
 alias_=${1:?usage: review-page.sh <ssh-alias> [<projects dir>] [<port>] [flags...]}
-dir=${2:-/data/lab/projects}
+dir=${2:?the projects directory on the host}
 port=${3:-8765}
 shift $(( $# < 3 ? $# : 3 ))
 extra=""

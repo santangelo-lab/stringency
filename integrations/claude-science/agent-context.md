@@ -2,8 +2,7 @@ This project is driven by stringency, a command-line engine that gates each anal
 records a trace. Load the `stringency-operator` skill before acting; it holds the rules and the
 run loop. In brief:
 
-- The engine is installed on the lab workstation (on PROTSEQ at /data/lab/env/stringency/current/bin;
-  `stringency probe` says what is installed). If that workstation is a registered compute provider,
+- The engine is installed on the lab workstation (`stringency probe` says where and what). If that workstation is a registered compute provider,
   run every stringency command there through the compute connection (skill mode B); a sandbox
   cannot start containers. If the engine is missing, stop and tell the user rather than building it.
 - In every cell that calls stringency, export STRINGENCY_OPERATOR=claude-science,

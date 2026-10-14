@@ -5,11 +5,11 @@ when a skill changes. A person does not run the cell below; they paste one messa
 
 ## For a person
 
-In a Claude Science session that has the workstation as a compute host (on the lab's machine,
-`protseq`), paste:
+In a Claude Science session that has the workstation as a compute host (`<alias>`), paste, with
+your site's values filled in:
 
-> Publish the stringency skills into this instance. On the compute host `protseq` the current
-> texts are the directories under `/data/lab/env/stringency/current/skills/` (one `SKILL.md` each)
+> Publish the stringency skills into this instance. On the compute host `<alias>` the current
+> texts are the directories under `<prefix>/current/skills/` (one `SKILL.md` each)
 > and, for each method, `skills/stringency-analyze-*/SKILL.md` in the method repository at its
 > tag (the Xenium method is `https://github.com/santangelo-lab/stringency-xenium-method`, tag
 > `v0.6.0-rc16`). Download each file, publish it under its directory name with
@@ -24,13 +24,13 @@ what was published. Four skills today:
 | `stringency-operator` | `integrations/claude-science/stringency-operator/SKILL.md` (engine repo) | the session, to drive a project |
 | `stringency-declare` | `integrations/claude-science/stringency-declare/SKILL.md` (engine repo) | the session, to draft declarations from a brief |
 | `stringency-analyze-<name>` | `skills/stringency-analyze-<name>/SKILL.md` in the method repo, rendered by `integrations/claude-science/render_skill.py` from `skills/<pipeline>.analyze.yml` (Track 1d, built 2026-09-23) | a lab member, as the entry point for one analysis |
-| `stringency-analyze-toy-compare` | `skills/stringency-analyze-toy-compare/SKILL.md` in `stringency-toy-method` at `v0.1.5` (on PROTSEQ: `~/mytools/stringency/stringency-toy-method`) | the first instance, on the toy `toy-engine` pipeline; the Track 1 acceptance test runs through it |
+| `stringency-analyze-toy-compare` | `skills/stringency-analyze-toy-compare/SKILL.md` in `stringency-toy-method` at `v0.1.5` | the first instance, on the toy `toy-engine` pipeline; the Track 1 acceptance test runs through it |
 
 ## What the session runs
 
 For each skill, in a `repl` cell (the AI's reference; a person pastes the message above):
 
-    t = c.download("/data/lab/env/stringency/current/skills/<skill>/SKILL.md")   # or any host path holding the file
+    t = c.download("<prefix>/current/skills/<skill>/SKILL.md")   # or any host path holding the file
     content = open(t["local_path"]).read()
     host.skills.edit("<skill>", "SKILL.md", content)
     host.skills.publish("<skill>")
@@ -46,8 +46,8 @@ stringency loads the operator skill.
 The canonical text is the engine repository at its installed tag (operator, declare) and the
 method repository at its tag (analysis skills). From engine 0.2.11, `scripts/install.sh` copies the
 operator and declare skills beside each installed version, at
-`<prefix>/versions/<label>/skills/<skill>/SKILL.md` (on PROTSEQ,
-`/data/lab/env/stringency/current/skills/<skill>/SKILL.md`), which is the path for the download
+`<prefix>/versions/<label>/skills/<skill>/SKILL.md` (`<prefix>/current/skills/<skill>/SKILL.md`
+for the version in use), which is the path for the download
 cell; a held `run --json` names that copy as `operator_skill`, and the skill tells an operator
 holding an older published text to follow it. If the copy and the repository disagree, the
 repository wins.

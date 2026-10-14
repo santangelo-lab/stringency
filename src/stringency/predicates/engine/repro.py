@@ -102,7 +102,7 @@ def intermediate_dropped(ctx: GateContext) -> Verdict:
     """The step consumed an object type, produced none, and a later step needs one from it: an
     input of that type wired to this step. A later step wired to an earlier producer
     (`$steps.04_cluster.batch_evidence` read by the report after `05_assess_batch` consumed
-    it) still has its object, so nothing was dropped (Lyons lung and gut, 2026-10-08, where
+    it) still has its object, so nothing was dropped (the pilot's lung and gut, 2026-10-08, where
     every run logged the drop twice)."""
     m = ctx.project.module_for(ctx.action.module)
     if m is None or not ctx.project.pipeline.has_step(ctx.action.step_id):

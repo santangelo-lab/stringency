@@ -10,29 +10,29 @@ combinations:
     methods:
       stringency-xenium-method: v0.6.0-rc12
     date: 2026-10-12
-    host: PROTSEQ
-    evidence: Lyons CLP v2 qc_all and the four upstream organs delivered (rc12, rc12.1 for the spleen); rc13 lints clean under 0.2.16
+    host: the lab's Linux workstation (apptainer)
+    evidence: the pilot study's second QC chain (qc_all) and the four upstream organs delivered (rc12, rc12.1 for the spleen); rc13 lints clean under 0.2.16
   - engine: v0.2.19
     plugins:
       stringency-singlecell: v0.5.1
     methods:
       stringency-xenium-method: v0.6.0-rc14
     date: 2026-10-14
-    host: PROTSEQ
-    evidence: the first combination with `requires` on both sides; on PROTSEQ with the engine and plugin checkouts at the tags, `stringency lint` clean (warnings only), `probe --method` ready, `tests/run_outliers.sh` (group bands from the job's design, the mock-harness engine run, both controls) and `controls/synthetic_run.sh` (xenium-qc-tma end to end) passed; the engine and plugin tags were local when this row was written (the plugin's `uv lock` and tag follow the engine push)
+    host: the lab's Linux workstation (apptainer)
+    evidence: the first combination with `requires` on both sides; on the workstation with the engine and plugin checkouts at the tags, `stringency lint` clean (warnings only), `probe --method` ready, `tests/run_outliers.sh` (group bands from the job's design, the mock-harness engine run, both controls) and `controls/synthetic_run.sh` (xenium-qc-tma end to end) passed; the engine and plugin tags were local when this row was written (the plugin's `uv lock` and tag follow the engine push)
   - engine: v0.2.20
     plugins:
       stringency-singlecell: v0.5.1
     methods:
       stringency-xenium-method: v0.6.0-rc15
     date: 2026-10-14
-    host: PROTSEQ
-    evidence: rc15 keeps the shared R and Python code once (modules/_rlib, modules/_pylib) and relies on the engine's read-only bind of the method checkout; on PROTSEQ with the engine and plugin checkouts, `lint` clean, `tests/run_r.sh` (merge and normalise inside xenium-r sourcing modules/_rlib) and `controls/synthetic_run.sh` (xenium-qc-tma through the engine, qc-cells importing modules/_pylib inside the container) passed; tags local when written
+    host: the lab's Linux workstation (apptainer)
+    evidence: rc15 keeps the shared R and Python code once (modules/_rlib, modules/_pylib) and relies on the engine's read-only bind of the method checkout; on the workstation with the engine and plugin checkouts, `lint` clean, `tests/run_r.sh` (merge and normalise inside xenium-r sourcing modules/_rlib) and `controls/synthetic_run.sh` (xenium-qc-tma through the engine, qc-cells importing modules/_pylib inside the container) passed; tags local when written
   - engine: v0.2.20
     plugins:
       stringency-singlecell: v0.5.1
     methods:
       stringency-xenium-method: v0.6.0-rc16
     date: 2026-10-14
-    host: PROTSEQ
+    host: the lab's Linux workstation (apptainer)
     evidence: controls/synthetic_upstream.sh passed under the engine with the checkouts at the tags: a two-slide synthetic study through xenium-qc-tma and xenium-upstream (the organ declared in objective.yml params, ndim and the resolution proposed and approved, the batch judgment signed off and the annotation on the mock harness, delivered and presented); the run found and the plugin fixed extract_seurat.R's partial match on clustering_grid

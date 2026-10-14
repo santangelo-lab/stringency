@@ -34,12 +34,12 @@ and the container runtime is registered as an SSH compute provider. Every string
 there through the compute connection from a `repl` cell:
 
     c = host.compute.create("<provider>")
-    r = c.call_command("export PATH=/data/lab/env/stringency/current/bin:$PATH; cd <project>; stringency run --json",
+    r = c.call_command("export PATH=<prefix>/current/bin:$PATH; cd <project>; stringency run --json",
                        intent="Run the next analysis steps of <project> until something needs you.", login_shell=True)
     r.exit_code, r.stdout, r.stderr
 
-The engine path above is the lab's shared install; when the session brief's `PRE` line names
-another path (`docs/install.md` says where an install goes), the brief wins. Files the loop reads come back with `c.download(<abs path>)`, which returns a
+`<prefix>` is the site's install directory; the session brief's `PRE` line names it, and the brief
+wins over any guess. Files the loop reads come back with `c.download(<abs path>)`, which returns a
 transfer dict whose `local_path` is the copy. Run each engine command as its own `call_command`,
 so its output is read before the next one is issued. This is the mode for any project whose
 executor is `apptainer`, which is the production default.
@@ -47,7 +47,7 @@ executor is `apptainer`, which is the production default.
 In mode A, run this in bash first. It prints the path in use or tells you to stop.
 
     STRINGENCY_BIN=$(command -v stringency || true)
-    for d in "${STRINGENCY_HOME:-}/bin" /data/lab/env/stringency/current/bin /usr/local/lib/stringency/current/bin /opt/stringency/current/bin; do
+    for d in "${STRINGENCY_HOME:-}/bin" /usr/local/lib/stringency/current/bin /opt/stringency/current/bin "$HOME/.local/lib/stringency/current/bin"; do
       [ -z "$STRINGENCY_BIN" ] && [ -x "$d/stringency" ] && STRINGENCY_BIN="$d/stringency"
     done
     if [ -n "$STRINGENCY_BIN" ]; then

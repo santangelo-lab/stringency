@@ -22,7 +22,7 @@ def _tty(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def siblings(tmp_path: Path, toy_data: Path, make_project: InitFn) -> tuple[Project, Project]:
-    """Two projects that differ only in the data file they bind (the Lyons CLP QC pattern)."""
+    """Two projects that differ only in the data file they bind (the pilot's QC pattern)."""
     other = tmp_path / "data2" / "groups.csv"
     other.parent.mkdir()
     lines = toy_data.read_text().splitlines()

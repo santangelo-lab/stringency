@@ -2,8 +2,8 @@
 
 Two readers. A person sets a machine up by asking an AI; the AI follows the second half of this
 page. A person joining a machine that is already set up reads `docs/onboarding.md`; a method
-author reads `docs/method-author.md`. The lab's own machine is described in
-`integrations/claude-science/hosts/protseq-lab.md`.
+author reads `docs/method-author.md`. Keep your site's values (the install directory, the images
+directory, the group, the host alias) in a private note of your own; the guides use placeholders.
 
 ## For a person
 
@@ -51,14 +51,14 @@ Install one of those unless you are developing.
   test suite run with the `local` executor and need neither.
 - Disk for container images (a few GB each) and for projects.
 - A group that every user of the machine belongs to, so projects and the install are readable by
-  all of them. On the lab's machine that is an Active Directory group; see the host note.
+  all of them.
 
 ## Install by hand (what the bootstrap runs)
 
 From a checkout of this repository, as the user who will own the install, with `umask 002` when
 others must read it:
 
-    scripts/install.sh --prefix /data/lab/env/stringency \
+    scripts/install.sh --prefix <prefix> \
         --source git+https://github.com/santangelo-lab/stringency@v0.2.20 \
         --plugin 'git+https://github.com/santangelo-lab/stringency-plugins@v0.5.1#subdirectory=plugins/stringency-singlecell' \
         --no-toy
@@ -72,7 +72,7 @@ itself (development).
 
 Put the engine on everyone's `PATH` with one line in each user's `~/.profile`:
 
-    export PATH=/data/lab/env/stringency/current/bin:$PATH
+    export PATH=<prefix>/current/bin:$PATH
 
 ## Container images
 
@@ -84,7 +84,7 @@ every image of the machine in one directory, named `<name>-<version>.sif`, never
 new build gets a new name), with a `MANIFEST.md` beside them recording name, version, sha256,
 source definition and build date. Set `images_root` once per user:
 
-    mkdir -p ~/.config/stringency && echo "images_root: /data/lab/env/images" > ~/.config/stringency/config.yml
+    mkdir -p ~/.config/stringency && echo "images_root: <images>" > ~/.config/stringency/config.yml
 
 Images come from the method repository's container builds (the Xenium method publishes to GHCR
 and the method's `envs/README.md` says how to pull one by digest and convert it to a SIF).
@@ -128,13 +128,10 @@ the skills from the repositories directly.
 
 ## Adding a version
 
-The owner's one-page checklist for this and the other recurring jobs is `docs/maintainer.md`.
+The one-page checklist for this and the other recurring jobs is `docs/release.md`.
 
 Install again with the new sources (above); the label changes, `current` moves, nothing is
 deleted. Then restart any standing console service so it serves the new engine. Every run
 records the engine and plugin versions it ran under, so an older project is reproduced by
 installing the versions its `stringency.yml` names and pointing `PATH` at them.
 
-## Where the lab's install is
-
-`integrations/claude-science/hosts/protseq-lab.md`: paths, the group, ports, resource caps.

@@ -13,8 +13,7 @@ manifest, the person's own sentences, the plugin's defaults. You may not invent 
 level, a contrast, a deliverable, or a replication unit. When the text admits two readings, ask.
 
 The engine is `stringency`, found the way the operator skill's section 1 describes (`stringency
-probe` says what is installed; on the lab's host it is `/data/lab/env/stringency/current/bin`;
-mode B: on the registered compute host, prefixed the way the operator skill describes). Export the
+probe` says what is installed; mode B: on the registered compute host, prefixed the way the operator skill describes). Export the
 `STRINGENCY_OPERATOR*` variables as the operator skill says; `init` records them as the drafter.
 
 ## 0. What the plugin knows

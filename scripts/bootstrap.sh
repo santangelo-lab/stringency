@@ -7,7 +7,7 @@
 #   scripts/bootstrap.sh [--prefix DIR] [--engine TAG] [--plugin NAME@TAG]     # from a checkout
 #
 # Defaults: --prefix ~/.local/lib/stringency (no sudo; a shared machine uses a group-writable
-# directory such as /data/lab/env/stringency with `umask 002`); the engine and plugin tags of the
+# directory the group owns, with `umask 002`); the engine and plugin tags of the
 # latest dated row of compat/known-good.yml on main. Needs curl and git; installs uv when missing.
 set -euo pipefail
 prefix=$HOME/.local/lib/stringency

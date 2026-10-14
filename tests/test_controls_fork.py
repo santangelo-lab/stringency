@@ -226,7 +226,7 @@ def reviewer(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _proposed_parent(p: Project) -> str:
     """A completed run whose 01_filter ran with min_value 9, proposed by the operator and
-    accepted by a person at the `param.agent_proposed` hold (the Lyons v2 spleen's ndim and
+    accepted by a person at the `param.agent_proposed` hold (the pilot's ndim and
     cluster_method, in toy form). Every value below 10 in the toy table is below 8, so the
     filtered table and the judgment are the same as at the default."""
     from stringency.review import record_review

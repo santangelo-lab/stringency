@@ -8,7 +8,7 @@ instance, once:
 
 1. Add the workstation as an SSH compute provider under your alias (Customize, compute). Every
    command then runs on the workstation as you.
-2. Set the project area (on the lab's machine `/data/lab/projects`) as a data root, so reading
+2. Set the project area (`<projects>`) as a data root, so reading
    results there does not raise a card each time.
 3. Paste the skill-publishing message from `publish-skills.md` into a session. The session
    publishes the engine's skills and each method's analysis skill; you get a list back.
@@ -31,8 +31,7 @@ decision to you the same way.
 ### On the workstation, once
 
 1. Engine installed (`docs/install.md`). Check with `stringency probe --method <url>@<tag>`,
-   which also checks the method's `requires` and images. On PROTSEQ the install is shared at
-   `/data/lab/env/stringency/current/bin` (`hosts/protseq-lab.md`).
+   which also checks the method's `requires` and images.
 2. Container runtime present (`apptainer` or `singularity`) and the method's images where the
    site keeps them (`images_root` in `~/.config/stringency/config.yml`, or the paths the
    manifest names).
@@ -46,7 +45,7 @@ decision to you the same way.
 ### In Claude Science, once per instance
 
 5. Add the workstation as an SSH compute provider under its SSH alias (Customize, compute).
-   Set the project area, for example `/data/lab/projects/<area>`, as a data root so file
+   Set the project area, `<projects>`, as a data root so file
    downloads inside it do not each raise an approval card.
 6. Publish the skills if the instance does not have them (`publish-skills.md`): the operator and
    declare skills, and the analysis skill of each method the person will use.
@@ -56,10 +55,10 @@ decision to you the same way.
 7. Render the two texts on the workstation. For a project that `init` has not created yet:
 
         $(dirname "$(readlink -f "$(command -v stringency)")")/python integrations/claude-science/render_brief.py \
-            /data/lab/projects/<area>/<project> --provider <alias> \
+            <projects>/<project> --provider <alias> \
             --method <url>@<tag> --pipeline <name> > brief.md
         $(dirname "$(readlink -f "$(command -v stringency)")")/python integrations/claude-science/render_brief.py \
-            /data/lab/projects/<area>/<project> --provider <alias> \
+            <projects>/<project> --provider <alias> \
             --method <url>@<tag> --pipeline <name> --context > context.md
 
    For a project already bound, drop `--method` and `--pipeline`; the renderer reads
@@ -81,6 +80,5 @@ decision to you the same way.
 
 The measurement table in `spec/plans/backlog.md` has one row per measured run: the toy took 25
 authorization points on 2026-09-08 and 7 turns in 15 minutes through its analysis skill on
-2026-09-23 under a project-scoped command grant; the Lyons CLP chain of 2026-10-06 ran eleven
-projects with 31 holds in under three hours. `examples/toy-cs/` has the texts of the first run and
-the agent's reports.
+2026-09-23 under a project-scoped command grant; the pilot study's QC chain of 2026-10-06 ran
+eleven projects with 31 holds in under three hours.

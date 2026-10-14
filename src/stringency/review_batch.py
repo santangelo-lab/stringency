@@ -1,7 +1,7 @@
 """`stringency review --holds A,B,C --projects <dir>`: one echo-back over sibling projects'
 confirm holds, one acceptance that covers the set (roadmap Lane A 5c; design 7.3).
 
-Eight Lyons CLP QC projects differed only in the bundle they bound; the owner accepted eight
+Eight QC projects of the pilot differed only in the bundle they bound; the owner accepted eight
 echo-backs that restated one design. Here the declarations of every project in the batch are
 compared field by field: what they share is shown once, what differs is shown per project, and
 the verdict is recorded on every hold as its own `reviews` row (`reason_code: batch`), so each

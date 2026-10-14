@@ -76,7 +76,7 @@ def build_action(
     made with a reason on the run row). `inherited` is what a forked run's ancestor admitted for
     the step, as name -> (value, label) from `fork.inherited_params`: a value the ancestor took at
     its default keeps the label `default`, any other is `inherited`, and a proposed value
-    overrides it (backlog L27: the Lyons v2 spleen fork ran at the pipeline defaults). Undeclared
+    overrides it (backlog L27: a fork of the pilot ran at the pipeline defaults). Undeclared
     proposals are kept in `parameters` so `param.undeclared` can see them.
     """
     proposed = dict(proposed or {})

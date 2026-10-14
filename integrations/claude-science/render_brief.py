@@ -17,6 +17,7 @@ the engine's interpreter so jinja2 and pyyaml are present:
 
 from __future__ import annotations
 
+import os
 import argparse
 import sys
 from pathlib import Path
@@ -25,7 +26,7 @@ import jinja2
 import yaml
 
 HERE = Path(__file__).parent
-ENGINE_BIN = "/data/lab/env/stringency/current/bin"
+ENGINE_BIN = os.environ.get("STRINGENCY_HOME", "/usr/local/lib/stringency") + "/current/bin"
 
 
 def load(args: argparse.Namespace) -> dict:

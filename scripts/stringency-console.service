@@ -1,4 +1,4 @@
-# The standing stringency console on PROTSEQ (console-and-fleet-plan.md, C1; owner's decision
+# The standing stringency console (a template: fill in <prefix> and <projects>) (console-and-fleet-plan.md, C1; owner's decision
 # 2026-10-07: loopback port 8765, reached through a tunnel).
 #
 # A `systemd --user` unit for the reviewer's own account: a verdict recorded on this console is
@@ -15,7 +15,7 @@
 #     journalctl --user -u stringency-console.service -n 5     # prints the URL with its token
 #     sudo loginctl enable-linger $USER                         # once: keep it running after logout
 #
-# Reach it from a laptop:  ssh -N -L 8765:127.0.0.1:8765 protseq   then open the printed URL once;
+# Reach it from a laptop:  ssh -N -L 8765:127.0.0.1:8765 <alias>   then open the printed URL once;
 # after that the token is a cookie and plain links work. Add `--projects <dir>` lines for other
 # studies; each is rescanned every thirty seconds. Ports 8000 and 8001 are this machine's Claude
 # Science.
@@ -26,10 +26,10 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/data/lab/env/stringency/current/bin/stringency review --serve \
+ExecStart=<prefix>/current/bin/stringency review --serve \
     --bind 127.0.0.1 --port 8765 \
     --token-file %h/.config/stringency/console-token \
-    --projects /data/lab/projects
+    --projects <projects>
 Restart=on-failure
 RestartSec=10
 UMask=0002

@@ -656,7 +656,7 @@ def test_predecessor_skipped_counts_as_done(project: Project) -> None:
 def test_intermediate_dropped_ignores_a_later_step_wired_to_an_earlier_producer(
     project: Project,
 ) -> None:
-    """Lyons lung and gut, 2026-10-08: the report read `$steps.04_cluster.batch_evidence` after
+    """The pilot's lung and gut, 2026-10-08: the report read `$steps.04_cluster.batch_evidence` after
     `05_assess_batch` consumed it, and every run logged a drop. In the toy pipeline 04_compare
     reads 01_filter's frame after 02_summarize consumed it: nothing is dropped."""
     ctx = make_ctx(

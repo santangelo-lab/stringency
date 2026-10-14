@@ -85,7 +85,7 @@ def bind_set(job: Job) -> list[str]:
     any directory nested under another dropped.
 
     A path is bound at its resolved location, and, when the job named it through a symlink
-    (`/lab/...` for `/data/lab/...` on PROTSEQ), also at the name the job used, as
+    (`/lab/...` for `/data/lab/...` on a workstation that links the two), also at the name the job used, as
     `<resolved>:<as named>`, so the unresolved argument the module receives exists under
     `--containall`."""
     named: set[Path] = {Path(p) for p in job.bind_paths} | {job.cwd}
