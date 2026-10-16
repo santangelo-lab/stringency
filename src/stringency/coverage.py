@@ -11,9 +11,10 @@ from collections import Counter
 from typing import Any
 
 from stringency import __version__
+from stringency.egress import CLASS_NAMES
 from stringency.gate import in_scope_specs
 from stringency.predicates import registry
-from stringency.runs import RunContext, captured_plugins
+from stringency.runs import RunContext, captured_egress, captured_plugins
 from stringency.when import skip_reason
 
 
@@ -58,6 +59,70 @@ def in_scope_for_pipeline(rc: RunContext) -> set[str]:
             ):
                 ids.add(s.id)
     return ids
+
+
+def egress_coverage(
+    captured: dict[str, Any] | None,
+    completed: set[str],
+    operator_steps: set[str],
+    invocations: int,
+) -> dict[str, Any] | None:
+    """What left the machine on this run (backlog L1): each component recorded at run open,
+    whether it was used (the harness when it was invoked, the hosted operator session always,
+    operator-run steps and network-reaching modules when one of their steps completed), and
+    the highest class reached. None when the run recorded no assessment."""
+    if captured is None:
+        return None
+    rows: list[dict[str, Any]] = []
+    for c in captured.get("components", []):
+        ids = {str(s).split(" ")[0] for s in c.get("steps", [])}
+        key = c.get("key", "")
+        if key == "harness":
+            used, detail = invocations > 0, f"{invocations} invocations"
+        elif key == "operator.session":
+            used, detail = c.get("class", 0) > 0, "as reported"
+        elif key == "operator.steps":
+            ran = sorted(ids & operator_steps)
+            used, detail = bool(ran), "ran " + (", ".join(ran) or "none") + "; as reported"
+        else:
+            ran = sorted(ids & completed)
+            used, detail = bool(ran), "ran " + (", ".join(ran) or "none")
+        rows.append(
+            {
+                "label": c.get("label"),
+                "class": c.get("class", 0),
+                "basis": c.get("basis"),
+                "to": c.get("to"),
+                "used": used,
+                "detail": detail,
+            }
+        )
+    reached = max((r["class"] for r in rows if r["used"]), default=0)
+    return {
+        "fingerprint": captured.get("fingerprint"),
+        "report": captured.get("report"),
+        "max_class": captured.get("max_class"),
+        "assessed_class": captured.get("assessed_class"),
+        "highest_reached": reached,
+        "components": rows,
+    }
+
+
+def egress_line(e: dict[str, Any] | None) -> str:
+    """One sentence for summary.md: the highest class reached against the ceiling."""
+    if e is None:
+        return "Data egress was not recorded for this run."
+    reached = int(e["highest_reached"])
+    ceiling = e.get("max_class")
+    limit = (
+        "no ceiling was declared"
+        if ceiling is None
+        else f"the ceiling is class {ceiling} {CLASS_NAMES[int(ceiling)]}"
+    )
+    return (
+        f"Data egress: the highest class reached was {reached} {CLASS_NAMES[reached]}; {limit} "
+        f"(report {e.get('report')})."
+    )
 
 
 def coverage_data(rc: RunContext) -> dict[str, Any]:
@@ -258,6 +323,12 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "env_digest": run["env_digest"],
             "invocations": inv_summary,
         },
+        "egress": egress_coverage(
+            captured_egress(store, rc.run_id),
+            {s["step_id"] for s in steps if s["status"] == "completed"},
+            {e["step_id"] for e in operator},
+            len(invs),
+        ),
     }
 
 
@@ -337,6 +408,25 @@ def render_coverage(d: dict[str, Any]) -> str:
         )
     else:
         lines.append("  no judgment invocations")
+    lines.append("")
+    eg = d.get("egress")
+    if eg is None:
+        lines.append("data egress: not recorded for this run")
+    else:
+        ceiling = eg["max_class"]
+        limit = "none declared" if ceiling is None else f"class {ceiling} {CLASS_NAMES[ceiling]}"
+        lines.append(f"data egress (ceiling {limit}; report {eg['report']}):")
+        for c in eg["components"]:
+            if c["used"]:
+                lines.append(
+                    f"  {c['label']}: class {c['class']} {CLASS_NAMES[c['class']]} to {c['to']}; "
+                    f"{c['detail']}"
+                )
+        unused = [c["label"] for c in eg["components"] if not c["used"]]
+        if unused:
+            lines.append(f"  assessed but not used on this run: {', '.join(unused)}")
+        hr = eg["highest_reached"]
+        lines.append(f"  highest class reached: {hr} {CLASS_NAMES[hr]}")
     lines.append("")
     lines.append("not checked: anything not listed above")
     return "\n".join(lines) + "\n"

@@ -244,6 +244,20 @@ def captured_plugins(store: Store, run_id: str) -> dict[str, str]:
     return {str(k): str(v) for k, v in plugins.items()} if isinstance(plugins, dict) else {}
 
 
+def captured_egress(store: Store, run_id: str) -> dict[str, Any] | None:
+    """The egress assessment recorded when the run opened, from its `captures` event (backlog
+    L1); None for a run opened before it was recorded. Reads: run_events."""
+    row = store.one(
+        "SELECT payload_json FROM run_events WHERE run_id = ? AND event = 'captures' "
+        "ORDER BY seq DESC LIMIT 1",
+        (run_id,),
+    )
+    if row is None:
+        return None
+    egress = json.loads(row["payload_json"] or "{}").get("egress")
+    return dict(egress) if isinstance(egress, dict) else None
+
+
 def _digest_or_none(executor: Executor, env: str) -> str | None:
     try:
         return executor.env_digest(env)
@@ -410,7 +424,7 @@ def open_run(
                     "max_class": egress.max_class,
                     "operator": egress.operator,
                     "harness": egress.harness,
-                    "report": str(project.egress_report_path(egress)),
+                    "report": str(project.egress_report_path(egress).relative_to(project.root)),
                     "components": [c.to_json() for c in egress.components],
                 },
             },

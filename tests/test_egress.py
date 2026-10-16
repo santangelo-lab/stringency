@@ -188,3 +188,14 @@ def test_egress_predicates_must_fire_and_pass(project: Project, pid: str, phase:
     assert not spec.fn(_ctx_with(project, phase, _assess(project, max_class=4))).fired
     assert not spec.fn(_ctx_with(project, phase, _assess(project))).fired  # no ceiling
     assert not spec.fn(_ctx_with(project, phase, None)).fired  # no assessment
+
+
+def test_lint_warns_on_a_module_that_reaches_the_network(project: Project) -> None:
+    from stringency.lint import LintReport, lint_module
+
+    mod = project.modules.require("summarize-groups@0.1.1")
+    (mod.path / "fetch.py").write_text("import requests\n")
+    report = LintReport()
+    lint_module(mod, report, plugin=project.plugin, policy=project.policy)
+    assert report.ok
+    assert any("reach the network but the module declares no egress" in w for w in report.warnings)

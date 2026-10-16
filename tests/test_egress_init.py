@@ -287,3 +287,20 @@ def test_a_chained_project_does_not_inherit_the_acknowledgement(
     assert down.egress_status() == "pending"  # never inherited
     r = cli(down, "run", env=MOCK)
     assert r.exit_code == 10 and "(egress)" in r.output
+
+
+def test_the_delivery_says_what_left(make_project: InitFn) -> None:
+    p = make_project(egress_max=3, pipeline="toy-engine", execution="engine")
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+    accept_hold(p.store, _holds(p, "egress")[0]["hold_id"])
+    r = cli(p, "run", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    d = deliver(load_run(p, json.loads(r.output)["run_id"]))
+    cov = d.coverage
+    assert "data egress (ceiling class 3 derived; report prov/egress-" in cov
+    assert "operator session (hosted): class 3 derived" in cov
+    assert "assessed but not used on this run: judgment harness mock" not in cov  # mock is used
+    assert "highest class reached: 3 derived" in cov
+    assert "Data egress: the highest class reached was 3 derived" in d.summary
+    index = json.loads((d.path / "index.json").read_text())
+    assert index["egress"]["max_class"] == 3 and index["egress"]["highest_reached"] == 3
