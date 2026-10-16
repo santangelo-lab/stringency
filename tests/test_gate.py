@@ -57,6 +57,30 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         lambda p: make_ctx(p, "04_compare", artifact_kinds={"00" * 32: "frame"}),
     ),
     (
+        # open mode: an answer citing something that resolves to nothing
+        "ans.cited_missing",
+        lambda p: _answer_ctx(p, "the mean is 74.31", missing=["01BAD"]),
+        lambda p: _answer_ctx(p, "the mean is 74.31"),
+    ),
+    (
+        # open mode: a numeral in the answer that is no cited cell
+        "ans.numeral_unmatched",
+        lambda p: _answer_ctx(p, "the mean is 74.99"),
+        lambda p: _answer_ctx(p, "the mean is 74.31 over 3 units"),
+    ),
+    (
+        # open mode: the operator writes the label
+        "ans.label_authored",
+        lambda p: _answer_ctx(p, "this is Trusted: the mean is 74.31"),
+        lambda p: _answer_ctx(p, "the mean is 74.31"),
+    ),
+    (
+        # open mode: a tool without a current control, logged (the label carries it)
+        "prov.controls_stale",
+        lambda p: _open_ctx(p, {"compare-groups@0.1.1": {"status": "none"}}),
+        lambda p: _open_ctx(p, {"compare-groups@0.1.1": {"status": "current"}}),
+    ),
+    (
         # open mode: a tool's values against its params.schema.json (an enum here)
         "param.schema_invalid",
         lambda p: make_ctx(p, "04_compare", proposed={"correction": "foo"}),
@@ -344,6 +368,50 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         lambda p: make_ctx(p, "01_filter"),
     ),
 ]
+
+
+def _answer_ctx(p: Project, text: str, *, missing: list[str] | None = None) -> GateContext:
+    """An `answer` action over the summary table's A row as the cited cells (open mode)."""
+    from stringency.actions import Action
+
+    action = Action(
+        action_id="ANSWER",
+        run_id="RUN",
+        step_id="answer",
+        attempt=0,
+        operation="answer",
+        module="answer",
+        parameters={},
+        param_source={},
+        inputs={},
+        input_digest="blake3:" + "00" * 32,
+        params_hash="blake3:" + "00" * 32,
+        proposed_by="agent",
+    )
+    cited = SUMMARY_TABLE.__class__(
+        name="summary",
+        key_column="group",
+        columns=SUMMARY_TABLE.columns,
+        rows={"A": SUMMARY_TABLE.rows["A"]},
+    )
+    bundle = OutputBundle(
+        outputs={},
+        prose=text,
+        evidence_tables={"summary": cited},
+        observed={"missing": missing or []},
+    )
+    return make_ctx(p, "01_filter", phase="post", action=action, output=bundle)
+
+
+def _open_ctx(p: Project, controls: dict[str, dict[str, str]]) -> GateContext:
+    ctx = make_ctx(p, "04_compare")
+    from dataclasses import replace
+
+    cfg = ctx.project.config.model_copy(
+        update={"mode": "open", "pipeline": None, "domain": "stringency-toy"}
+    )
+    project = replace(ctx.project, config=cfg, controls_current=controls)
+    return replace(ctx, project=project)
 
 
 def _dropped_ctx(p: Project) -> GateContext:

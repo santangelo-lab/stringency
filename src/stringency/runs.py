@@ -14,6 +14,7 @@ from typing import Any
 
 from stringency import __version__, git, hashing
 from stringency.actions import Action
+from stringency.controls import current_for
 from stringency.db.store import Store
 from stringency.executor.base import Executor
 from stringency.exit_codes import BlockedError, ConfigError, DirtyTreeError, HeldError, RefusedError
@@ -240,7 +241,18 @@ class RunContext:
             step_status=self.step_status(),
             script_blobs=self.script_blobs,
             artifact_kinds=self.artifact_kinds(),
+            controls_current=self.controls_current(),
         )
+
+    def controls_current(self) -> dict[str, dict[str, Any]]:
+        """Per tool of an open project, whether its last passing control still speaks for it
+        under the environment digest of this run (`controls.current_for`). Reads: controls_runs."""
+        if not self.open_ended:
+            return {}
+        return {
+            m.ref: current_for(self.store, m, self.env_digests.get(m.manifest.env))
+            for m in self.project.tools()
+        }
 
     def gate_context(
         self, phase: str, action: Action, state: State, output: Any = None

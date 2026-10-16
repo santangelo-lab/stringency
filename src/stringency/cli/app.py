@@ -7,6 +7,7 @@ import typer
 from stringency import __version__
 from stringency.cli import (
     verb_abandon,
+    verb_answer,
     verb_ask,
     verb_board,
     verb_call,
@@ -45,6 +46,7 @@ app.command("run")(verb_run.run)
 app.command("ask")(verb_ask.ask)
 app.command("call")(verb_call.call)
 app.command("exec")(verb_exec.exec_)
+app.command("answer")(verb_answer.answer)
 app.command("next")(verb_next.next_)
 app.command("propose")(verb_propose.propose)
 app.command("submit")(verb_submit.submit)
