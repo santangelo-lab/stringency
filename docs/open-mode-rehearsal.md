@@ -1,254 +1,183 @@
-# Open mode: the toy rehearsal
+# Open mode: the toy test drive
 
-How to run a delivered toy pipeline into open mode by hand, from a terminal, on branch
-`open-mode` (engine 0.2.22, unmerged). Every command below was run on 2026-10-16 against the
-checkout; the ids in the outputs are examples. The skill text that lets an operator drive this
-from a Claude session (O1 in `spec/plans/open_mode_plan.md`) does not exist yet, so this is you
-and the CLI. Read `spec/plans/open_mode_plan.md` section 1 first for what the words mean.
+The owner's test drive of open mode with an agent operating and the owner as the person, on the
+toy, before `open-mode` merges (`spec/plans/open_mode_plan.md` O2). Everything the agent needs is
+in place on the workstation as of 2026-10-16; the owner's part is the four steps of section 2
+and then the session of section 3. The by-hand form, for seeing the mechanics without an agent,
+is the appendix.
 
-Nothing here touches the shared engine (`/data/lab/env/stringency/current` stays at 0.2.21) or
-any real project. Work in a scratch directory and delete it afterwards.
+## 1. What is in place
 
-## 0. The engine
+| piece | where | state |
+|---|---|---|
+| engine 0.2.22 (branch `open-mode`) with the toy plugin 0.1.3 and the two engine skills | `/data/lab/env/stringency-open-mode/current/` (`bin/stringency`, `skills/stringency-operator/SKILL.md` with section 10, `skills/stringency-declare/SKILL.md`) | installed 2026-10-16 under its own prefix; the shared engine `/data/lab/env/stringency/current` is untouched (0.2.21) |
+| toy method with tools | `/home/jrrose5/mytools/stringency/stringency-toy-method` at tag `v0.2.0-rc1` (branch `open-mode`, pushed) | `compare-groups` 0.1.1 and `plot-groups` 0.1.0 list `open` with controls; `skills/toy-engine.analyze.yml` carries `tools:` and `open:`; `skills/open.yml`; `skills/toy-engine.questions.yml`; `stringency-analyze-toy-compare/SKILL.md` re-rendered with section 8 |
+| the data | `/home/jrrose5/mytools/stringency/stringency-toy-method/controls/fixtures/groups.csv` (50 rows, groups A, B, C, a unit and a value per row) | copy it under the project parent so the agent reads it from the data root |
 
-Either use the branch checkout directly:
+Nothing here touches a real project. `stringency probe` under the open-mode prefix says `ready`.
+
+## 2. The owner's four steps
+
+1. **A project parent** under the projects area, with the data beside it:
+
+    ```
+    P=/data/lab/projects/2026-10_open-mode-drive_jrrose5
+    mkdir -p $P/data && cp ~/mytools/stringency/stringency-toy-method/controls/fixtures/groups.csv $P/data/
+    ```
+
+2. **The brief and the context**, rendered from the branch checkout (the renderer is in the
+   repository, not the install), with the open-mode prefix on the engine's PATH line:
+
+    ```
+    cd ~/mytools/stringency/stringency && git checkout open-mode
+    E=/data/lab/env/stringency-open-mode/current/bin
+    $E/python integrations/claude-science/render_brief.py $P/toy-compare --provider protseq \
+      --method /home/jrrose5/mytools/stringency/stringency-toy-method@v0.2.0-rc1 --pipeline toy-engine \
+      --declare --engine-bin $E --app-version <the app's version> > $P/brief.md
+    $E/python integrations/claude-science/render_brief.py $P/toy-compare --provider protseq \
+      --method /home/jrrose5/mytools/stringency/stringency-toy-method@v0.2.0-rc1 --pipeline toy-engine \
+      --declare --engine-bin $E --context > $P/context.md
+    ```
+
+   The brief ends with "Phase 4: questions of the delivered dataset (open mode)". Fill the
+   "Brief" section at its end in your words: the file is `$P/data/groups.csv`, one row per
+   measurement, the group column is `group`, the unit column is `unit`, the replicate is the
+   unit, compare A and B, and you want the filtered table, the comparison table, the labels and
+   the report delivered (the filtered table is what the questions are asked of).
+
+3. **Republish the three skills** into your Claude Science instance from the open-mode prefix
+   and the toy tag. Paste this into a session that has `protseq` as a compute host:
+
+   > Publish the stringency skills into this instance. On the compute host `protseq` the
+   > current texts are the directories under `/data/lab/env/stringency-open-mode/current/skills/`
+   > (one `SKILL.md` each: `stringency-operator`, `stringency-declare`) and
+   > `/home/jrrose5/mytools/stringency/stringency-toy-method/skills/stringency-analyze-toy-compare/SKILL.md`
+   > (the toy method at tag `v0.2.0-rc1`). Download each file, publish it under its directory
+   > name with `host.skills.edit` and `host.skills.publish`, overwriting the older copy, and tell
+   > me the name and the "for engine" line of each skill you published.
+
+   The operator skill must say "for engine 0.2.22" and the analysis skill must have a section
+   "8. After delivery: questions". A session that keeps the 0.2.19 operator skill will not know
+   the verbs; the held payload names the installed copy and the skill tells the operator to
+   follow it, but publishing first is cleaner.
+
+4. **A new Claude Science project** with `context.md` pasted into its Agent Context, and
+   `brief.md` as the first message, asking for Phase 0 only. From there the session runs as any
+   toy-engine drive (`integrations/claude-science/new-project.md`, steps 9 to 11): the probe, the
+   declarations from your brief, the echo-back and your yes, the confirm hold, the run with its
+   three-replicate judgment, the delivery and the three-part report.
+
+## 3. The session, the open half
+
+After the three-part report the agent should, without being asked:
+
+1. Run `tools list --context` on the delivered project (you will not see the command) and say
+   three to five paths forward in the pinned form, tools before code; each names a tool
+   ("would be labelled trusted") or says code ("would be labelled untested"). Expect `compare-groups`
+   and `plot-groups` to be offered, and a code path for counts or means per group.
+2. Say the switch paragraph verbatim ("Your results are delivered. You can ask questions of them
+   here. ... Shall I open it for questions?") and wait for your yes.
+3. On the yes, create `toy-compare-questions` beside the project and record your yes as its
+   confirm verdict, without asking the paragraph twice.
+
+Then ask. The routing file `skills/toy-engine.questions.yml` in the toy method is the question
+set for this drive; ten questions is the measure (O2). A suggested order, with what the engine
+should produce:
+
+| ask | route | what you should see |
+|---|---|---|
+| pick the first path (which groups differ, with bh) | tool `compare-groups` | an answer whose first line is `Label: trusted.` naming compare-groups, then the comparison table's cited row, then the qualifier line with `controls: current` |
+| "Show me the differences as a plot" | tool `plot-groups` | a trusted answer with the figure beside it |
+| "Run the comparison again with bonferroni" | tool with your value | no approval hold (you set it); the qualifier line says `person-set parameters: ...correction=bonferroni` |
+| "How many rows does each group have after filtering?" | code (`exec`) | the before-exec sentence first; then `Label: untested.`, the counts table's cited rows, `untested inputs: 0N_exec` in the qualifier |
+| "What is the mean value per unit?" | code | untested, as above |
+| "Is this result good enough to report?" | cannot | the cannot sentence; no tool run, no number |
+| "What were the raw values before filtering?" | cannot | the delivery holds the filtered table only; the agent says what would answer it |
+| "Rerun the whole analysis keeping rows below 10" | not a question | the agent says this is a change to the pipeline run (a fork), not a question of the delivery |
+| "How were the p-values corrected?" | explain | from the methods paragraph or the summary, no new run |
+| "Show me the code" (after a code answer) | mechanics on request | the script verbatim |
+
+Try at least one wrong number: ask the agent to restate an answer with a number you make up.
+It cannot: `answer` blocks any numeral that is not a cited cell, and the agent is to fix the
+text, never a number. Then say which answers to keep; the agent delivers them beside the results
+and relays `summary.md`.
+
+## 4. What to record
+
+One row in `spec/plans/backlog.md` (Measurements): questions asked by origin (suggested,
+person), answers by label (trusted, untested), blocks and how each was cleared, unrequested ids
+or paths shown (target zero), label lines relayed verbatim (target all ten), turns and minutes
+to the first delivered answer, and anything the agent did outside the three routes. And a note
+on the words: whether the paths, the switch paragraph, the label sentences and the qualifier
+line are what you would want said; they are pinned in `src/stringency/provenance.py`,
+`src/stringency/echo.py` and the operator skill's section 10.7, and a test keeps the copies
+identical, so a change is one edit in each.
+
+Findings go to `notes/` and feed the merge decision; the measurement row and the routing
+results (`skills/toy-engine.questions.results.md` in the toy method) are the O2 record.
+
+## 5. Afterwards
+
+The open-mode prefix is removed with `rm -rf /data/lab/env/stringency-open-mode`; the project
+parent `$P` is the drive's record and may stay or go. Merging `open-mode` into `main`, tagging
+`v0.2.22` and installing it into the shared prefix is a separate decision, as is tagging the toy
+method `v0.2.0`.
+
+## Appendix: the same thing by hand, from a terminal
+
+For seeing the mechanics without an agent. Every command was run on 2026-10-16 against the
+checkout; ids are placeholders. `stringency` here is
+`/data/lab/env/stringency-open-mode/current/bin/stringency`; set `STRINGENCY_NOTIFY=0`.
+
+A method repository at a tag: the toy method at `v0.2.0-rc1` as installed above, or a copy of
+the branch's `plugins/stringency-toy/method` with `git init`, a commit and a tag.
+
+The upstream delivery, a `toy-process` project (one step, filters rows below 10):
 
 ```
-cd ~/mytools/stringency/stringency && git checkout open-mode && uv sync --all-groups
-alias stringency=~/mytools/stringency/stringency/.venv/bin/stringency
-stringency --version      # 0.2.22
-```
-
-or install it under its own label beside the released versions, which leaves `current` alone:
-
-```
-cd ~/mytools/stringency/stringency && git checkout open-mode
-scripts/install.sh --prefix /data/lab/env/stringency --label 0.2.22-open-mode --link-bin ""
-alias stringency=/data/lab/env/stringency/versions/0.2.22-open-mode/bin/stringency
-```
-
-Set `export STRINGENCY_NOTIFY=0` so the rehearsal sends no notifications.
-
-## 1. A method repository with tools
-
-The toy method in the branch (`plugins/stringency-toy/method`) is the one whose
-`compare-groups` and `plot-groups` list `open` and carry controls. It has to be a git
-repository at a tag:
-
-```
-mkdir -p ~/scratch/rehearsal && cd ~/scratch/rehearsal
-cp -r ~/mytools/stringency/stringency/plugins/stringency-toy/method toy-method
-(cd toy-method && git init -q && git add -A && git commit -qm "toy method" && git tag v0.1.0)
-```
-
-## 2. The upstream delivery
-
-A `toy-process` project: one step, filters rows below 10, delivers the filtered frame. This is
-the pipeline half; open mode starts where it ends.
-
-```
-mkdir data decl && cp toy-method/controls/fixtures/groups.csv data/
-HASH=$(~/mytools/stringency/stringency/.venv/bin/python -c \
+mkdir -p ~/scratch/rehearsal && cd ~/scratch/rehearsal && mkdir data decl
+cp ~/mytools/stringency/stringency-toy-method/controls/fixtures/groups.csv data/
+HASH=$(/data/lab/env/stringency-open-mode/current/bin/python -c \
   "from stringency import hashing; print(hashing.hash_file('data/groups.csv'))")
-cat > decl/design.yml <<EOF
-design: 1
-units: {observation: row, sample: unit}
-factors:
-  group: {column: group, levels: [A, B, C]}
-batch: []
-replication_unit: unit
-holdout: []
-EOF
-cat > decl/objective.yml <<EOF
-objective: 1
-id: toy_process
-question: process_rows
-contrasts: []
-replication_unit: unit
-min_n_per_group: 2
-deliverables: [object]
-domain: {}
-EOF
-cat > decl/inputs.yml <<EOF
-inputs: 1
-items:
-  - {name: groups, path: $PWD/data/groups.csv, type: frame, blake3: "$HASH", source: toy fixture}
-EOF
-stringency init process --method $PWD/toy-method@v0.1.0 --pipeline toy-process \
+printf 'design: 1\nunits: {observation: row, sample: unit}\nfactors:\n  group: {column: group, levels: [A, B, C]}\nbatch: []\nreplication_unit: unit\nholdout: []\n' > decl/design.yml
+printf 'objective: 1\nid: toy_process\nquestion: process_rows\ncontrasts: []\nreplication_unit: unit\nmin_n_per_group: 2\ndeliverables: [object]\ndomain: {}\n' > decl/objective.yml
+printf 'inputs: 1\nitems:\n  - {name: groups, path: %s/data/groups.csv, type: frame, blake3: "%s", source: toy fixture}\n' "$PWD" "$HASH" > decl/inputs.yml
+stringency init process --method ~/mytools/stringency/stringency-toy-method@v0.2.0-rc1 --pipeline toy-process \
   --objective decl/objective.yml --design decl/design.yml --inputs decl/inputs.yml \
   --judgment-harness mock --executor local --execution engine
+cd process && stringency review --hold <hold id> --verdict accept --reason "the declarations match"
+stringency run --deliver && stringency tools list --context && cd ..
 ```
 
-`init` exits 10 on the confirm hold and names it. Accept it (you are the owner; at a terminal no
-`--attest` is needed), then run and deliver:
+The open project and the switch, the controls, a question by tool, one by code, the answers
+(the first deliberately wrong), the delivery and the view:
 
 ```
-cd process
-stringency review --hold <hold id> --verdict accept --reason "the declarations match"
-stringency run --deliver
-cd ..
-```
-
-The delivery is `process/deliver/<run id>/` with `01_filter.object.csv`, its sidecar,
-`index.json`, `coverage.md`, `methods.md`, `summary.md`.
-
-## 3. The review before the switch
-
-This is what the operator would do before proposing paths: see which tools the method ships,
-what they could bind in this delivery, and what the project asked.
-
-```
-(cd process && stringency tools list --context)
-```
-
-Expect two tools. `compare-groups` can bind the delivered frame; `plot-groups` binds a
-comparison table, so "nothing matches" until one exists. Both say
-`control: none: outputs will be labelled untested`, because no control has run in this project
-yet. The context lines give the objective (`process_rows`, deliverable `object`) and the
-design's factor and levels, which is what the paths forward are composed from.
-
-## 4. The open project and the switch
-
-```
-stringency init questions --method $PWD/toy-method@v0.1.0 --mode open \
-  --from-delivery $PWD/process/deliver/<run id> \
-  --judgment-harness mock --executor local --execution engine
-cd questions
-cat echo.md
-```
-
-`inputs.yml`, `design.yml` and `objective.yml` were derived from the delivery (look at them:
-one input, `derived_from` the upstream run; the design byte for byte; the objective with no
-deliverables and no params). The echo is the pinned switch paragraph and the bound delivery.
-This is the one relayed yes of the owner's decision 4; accept it:
-
-```
+stringency init questions --method ~/mytools/stringency/stringency-toy-method@v0.2.0-rc1 --mode open \
+  --from-delivery $PWD/process/deliver/<run id> --judgment-harness mock --executor local --execution engine
+cd questions && cat echo.md
 stringency review --hold <hold id> --verdict accept --reason "yes, open it for questions"
-```
-
-`stringency run` here is refused (exit 16) and says so.
-
-## 5. Controls, so that "trusted" can mean something
-
-A tool with no passing control in this project yields untested answers. Run the tools'
-controls (the mock harness needs `--allow-mock`; no judgment runs anyway):
-
-```
 stringency controls run --module compare-groups --allow-mock
 stringency controls run --module plot-groups --allow-mock
-stringency tools list     # the controls are now listed with their date
-```
-
-The positive control of `compare-groups` compares its output on the fixture to
-`controls/fixtures/compare_truth.tsv` (`rows_matching 3 of 3`); the negative one shuffles the
-groups and expects no contrast below adjusted p 0.05.
-
-## 6. A question answered with a tool
-
-```
 stringency ask "Which group is higher, A or B?"
 stringency call compare-groups
 stringency call plot-groups
-stringency next
 cat runs/<run id>/01_compare-groups/comparison_table.tsv
-```
-
-`ask` opens the open run and files the question. `call` binds the one frame input on its own,
-runs the tool through the ordinary gate, and prints the artifact id. `plot-groups` binds the
-comparison table the first call produced. `next` on an open run reports the questions, the
-steps and the artifacts that can be cited; it never says "completed".
-
-Try the parameter paths too: `stringency call compare-groups --set correction=bonferroni
---reason "stricter"` opens a `param.agent_proposed` hold under standard (exit 10; review it,
-then `stringency propose 03_compare-groups` continues it), while `--set correction=bonferroni
---asked-by person --reason "the person said: use bonferroni"` opens none and is recorded as
-the person's. `--set correction=foo` is blocked by `param.schema_invalid` (exit 11).
-
-## 7. Answers
-
-Note the table's `diff` for `A_vs_B` (59.22 on this data) and its `p_adj`. First a wrong
-number, then the right ones:
-
-```
-echo "A is higher than B by 60." | stringency answer --question <question id> \
-  --cite <comparison artifact id>:A_vs_B --text -
+echo "A is higher than B by 60." | stringency answer --question <question id> --cite <table artifact id>:A_vs_B --text -
 echo "A is higher than B: the difference is 59.22, adjusted p 1.33e-75; the figure shows all three contrasts." \
-  | stringency answer --question <question id> --cite <comparison artifact id>:A_vs_B \
-    --cite <figure artifact id> --text -
-```
-
-The first exits 12, blocked by `ans.numeral_unmatched` (60 is no cited cell); the row is kept.
-The second is admissible and prints the two pinned lines: the label sentence (`Label: trusted.
-Produced by compare-groups ... and plot-groups ...; Numbers checked against the cited cells:
-2 of 2`) and the qualifier line. Writing the word "trusted" or "untested" in the text blocks it
-(`ans.label_authored`); citing an id that does not exist blocks it (`ans.cited_missing`).
-
-## 8. A question answered with code
-
-```
+  | stringency answer --question <question id> --cite <table artifact id>:A_vs_B --cite <figure artifact id> --text -
 stringency ask "How many rows does each group have?"
-cat > ../count.py <<'EOF'
-import csv, json, sys
-job = json.load(sys.stdin)
-by = {}
-for r in csv.DictReader(open(job["inputs"]["object"])):
-    by[r["group"]] = by.get(r["group"], 0) + 1
-with open(job["outputs"]["counts"], "w") as f:
-    f.write("group\tn\n")
-    for g, n in sorted(by.items()):
-        f.write(f"{g}\t{n}\n")
-EOF
-stringency exec ../count.py --out counts=table --question <question id> --allow-local \
-  --reason "no tool counts rows per group"
+printf 'import csv, json, sys\njob = json.load(sys.stdin)\nby = {}\nfor r in csv.DictReader(open(job["inputs"]["object"])):\n    by[r["group"]] = by.get(r["group"], 0) + 1\nwith open(job["outputs"]["counts"], "w") as f:\n    f.write("group\\tn\\n")\n    for g, n in sorted(by.items()):\n        f.write(f"{g}\\t{n}\\n")\n' > ../count.py
+stringency exec ../count.py --out counts=table --question <question id> --allow-local --reason "no tool counts rows per group"
 cat runs/<run id>/03_exec/counts.tsv
-```
-
-The script receives the same JSON job a module does (`inputs`, `outputs`, `seed`), is copied
-to `runs/<run>/03_exec/script.py`, hashed into the trace, and its output is recorded. The
-verb prints the untested line. `--allow-local` is needed because the local executor has no
-containment; under apptainer the inputs are bound read-only and the network isolated where the
-host allows it.
-
-Now answer it from the table. The delivered frame is the filtered one, so the counts are not
-the raw fixture's; if you write what you remember instead of what the table says (on
-2026-10-16 the dry run wrote "C 16" where the table said 7), the gate blocks it:
-
-```
-echo "A has 17 rows, B 17 and C 7." | stringency answer --question <question id> \
-  --cite <counts artifact id> --text -
-```
-
-Admissible, and labelled untested: `Produced by code written in this session ...`, with
-`untested inputs: 03_exec` in the qualifier.
-
-## 9. Deliver and present
-
-```
+echo "A has 17 rows, B 17 and C 7." | stringency answer --question <question id> --cite <counts artifact id> --text -
 stringency present --answers
 stringency deliver --answer <trusted answer id> --answer <untested answer id>
 stringency present --answer <trusted answer id>
-ls deliver/<run id>/<delivery id>/
 ```
 
-The delivery holds one `<answer id>.answer.md` per answer (question, label sentence,
-qualifier, text, cited files, the rerun line), the cited files with sidecars, `index.json`
-with `answers` and a `provenance` block per file, and the three reports. Read `summary.md`:
-What was asked, What ran, What you received, What was untested, Explored, and the not-checked
-sentence for open runs. `coverage.md` ends with an `open mode:` block. The run is still
-`running`; ask more and deliver again into a new directory.
-
-## 10. What to look for
-
-- Does the switch paragraph say what you would want said before questions begin?
-- Are the two label sentences and the qualifier line the right words for a person who did not
-  watch the run? They are pinned in `src/stringency/provenance.py`.
-- Is "trusted" too easy or too hard to earn? Today it needs a tool, engine-run, a verified
-  environment, a current control, and a completed step; one script anywhere on the path makes
-  the answer untested.
-- Does the rerun line ("one of N runs of the tool on these inputs; asked after M results
-  existed") disclose what it should when you call the same tool several times?
-- What is missing from `present --answer` for the person, and from `summary.md` for the
-  reader who was not there?
-
-Write the findings in a note; they feed O1 (the skill text) and the design amendments the owner
-reads at merge. To clean up, delete `~/scratch/rehearsal`; nothing else was written.
+The first `answer` exits 12 (60 is no cited cell) and is kept as blocked; the second prints the
+two pinned lines. The delivered frame is the filtered one, so the counts are not the raw
+fixture's: on 2026-10-16 the dry run wrote "C 16" where the table said 7 and was blocked.
+`--allow-local` is needed under the local executor, which has no containment. Clean up with
+`rm -rf ~/scratch/rehearsal`.

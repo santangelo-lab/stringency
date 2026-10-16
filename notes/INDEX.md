@@ -9,8 +9,12 @@ it is the first thing a new session reads.
   unmerged (`notes/2026-10-16-2200-open-mode-s1-s7.md`): `mode: open`, `init --from-delivery`,
   `tools list`, `ask`, `call`, `exec`, `answer`, `deliver --answer`, `present --answer`; the six
   predicates; migration 0005; the toy's tools and controls; the design amendments of the plan's
-  section 6 applied for the owner's reading at merge. Every check green. Next: the owner merges;
-  then O1 (skill text) and O2 (the toy rehearsal); backlog L39 (the `--set none` wart).
+  section 6 applied for the owner's reading at merge. Every check green. O1 built the same
+  evening (`f8710b4`: operator skill section 10, template section 8, the renderer's `tools:` and
+  `open:`); the toy method at `v0.2.0-rc1` with tools and the re-rendered skill; the branch
+  engine installed at `/data/lab/env/stringency-open-mode` (the shared engine untouched). Next:
+  the owner's agent-operated test drive (`docs/open-mode-rehearsal.md`), then the merge
+  decision; backlog L39 (the `--set none` wart).
 - The open-mode plan approved (`spec/plans/open_mode_plan.md`, Lane K;
   `notes/2026-10-16-1330-open-mode-plan.md`): after a pipeline delivers, the operator reviews
   the method's tools and the project's questions, proposes paths, and on the person's yes
