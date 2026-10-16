@@ -141,7 +141,9 @@ def pipeline_unknown_param(m: Path) -> None:
 
 
 def module_mode_unsupported(m: Path) -> None:
-    _edit_yaml(m / "modules/filter-rows/module.yml", lambda d: d.update(modes=["pipeline", "open"]))
+    _edit_yaml(
+        m / "modules/filter-rows/module.yml", lambda d: d.update(modes=["pipeline", "staged"])
+    )
 
 
 def vocabulary_unknown(m: Path) -> None:
@@ -214,7 +216,7 @@ ERROR_CASES: list[tuple[str, Breaker, str]] = [
     ("pipeline_dangling_output", pipeline_dangling_output, "which does not exist"),
     ("pipeline_params_fail_schema", pipeline_params_fail_schema, "params fail"),
     ("pipeline_unknown_param", pipeline_unknown_param, "declares parameter max_value, unknown"),
-    ("module_mode_unsupported", module_mode_unsupported, "mode open is not supported"),
+    ("module_mode_unsupported", module_mode_unsupported, "mode staged is not supported"),
     ("vocabulary_unknown", vocabulary_unknown, "vocabulary cell_types@1 is not provided"),
     ("report_consumed", report_consumed, "report outputs cannot be inputs"),
 ]

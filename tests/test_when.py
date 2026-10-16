@@ -237,8 +237,8 @@ def test_pipeline_refuses_a_when_on_a_non_ancestor_or_with_two_conditions(
     # 04_compare does not depend on 03_label
     pipe.write_text(
         base.replace(
-            "    module: compare-groups@0.1.0\n",
-            "    module: compare-groups@0.1.0\n    when: {step: 03_label, param: x, equals: 1}\n",
+            "    module: compare-groups@0.1.1\n",
+            "    module: compare-groups@0.1.1\n    when: {step: 03_label, param: x, equals: 1}\n",
         )
     )
     with pytest.raises(ConfigError, match="not an ancestor"):

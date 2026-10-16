@@ -22,7 +22,8 @@ from jinja2 import Environment, StrictUndefined
 from stringency.config import StringencyConfig, load_model
 from stringency.db.store import Store
 from stringency.exit_codes import ConfigError
-from stringency.pipelines import Pipeline, find_pipeline, load_pipeline
+from stringency.modules import ModuleIndex
+from stringency.pipelines import Pipeline, find_pipeline, load_pipeline, open_pipeline
 from stringency.plain import progress_sentence
 
 KINDS = ("table", "json_table", "jsonl", "text", "file", "figure", "figures", "chart")
@@ -51,8 +52,26 @@ class Site:
             raise ConfigError(f"{root} is not a stringency project (no stringency.yml)")
         cfg = load_model(StringencyConfig, root / "stringency.yml")
         store = Store.open(root / "prov" / "run.db", create=False)
-        pipeline = load_pipeline(find_pipeline(root / "method", cfg.pipeline))
+        if cfg.pipeline is None:
+            # an open project: the empty topology, built without the plugin (its questions are
+            # not needed to read results)
+            pipeline = open_pipeline(cfg.domain or "", cfg.method.tag, [])
+        else:
+            pipeline = load_pipeline(find_pipeline(root / "method", cfg.pipeline))
         return cls(root, cfg, store, pipeline)
+
+    @property
+    def open_ended(self) -> bool:
+        return self.config.pipeline is None
+
+    @property
+    def skill_name(self) -> str:
+        """The delivery skill file's stem: the pipeline's name, or `open` for an open project."""
+        return self.config.pipeline or "open"
+
+    def tools(self) -> list[Any]:
+        """The method's modules that list `open` (open_mode_plan.md 1). Reads the module index."""
+        return [m for m in ModuleIndex(self.method_root).all() if "open" in m.manifest.modes]
 
     @classmethod
     def find(cls, start: Path | None = None) -> Site:
@@ -70,7 +89,7 @@ class Site:
 def load_skill(project: Site, skills_dir: Path | None = None) -> tuple[dict[str, Any] | None, str]:
     """(skill dict, note). None with a note when the file is absent or malformed."""
     d = Path(skills_dir) if skills_dir else project.method_root / "skills"
-    f = d / f"{project.config.pipeline}.yml"
+    f = d / f"{project.skill_name}.yml"
     if not f.exists():
         return None, f"no delivery skill at {f}; showing the engine default"
     try:
@@ -79,10 +98,10 @@ def load_skill(project: Site, skills_dir: Path | None = None) -> tuple[dict[str,
         return None, f"delivery skill {f} is not valid YAML ({e}); showing the engine default"
     if not isinstance(data, dict) or data.get("skill") != 1:
         return None, f"delivery skill {f} is not a `skill: 1` document; showing the engine default"
-    if data.get("pipeline") not in (None, project.config.pipeline):
+    if data.get("pipeline") not in (None, project.skill_name):
         return None, (
             f"delivery skill {f} is for pipeline {data.get('pipeline')}, not "
-            f"{project.config.pipeline}; showing the engine default"
+            f"{project.skill_name}; showing the engine default"
         )
     return data, f"delivery skill {f}"
 
@@ -586,7 +605,7 @@ def present_run(
         "schema": "stringency.present/1",
         "kind": "run",
         "run_id": run_id,
-        "pipeline": project.config.pipeline,
+        "pipeline": project.skill_name,
         "progress": progress_sentence(project.pipeline, project.step_statuses(run_id)),
         "skill": note,
         "sections": [],

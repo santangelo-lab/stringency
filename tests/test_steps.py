@@ -614,7 +614,7 @@ def test_unedited_scripts_pass_and_dirty_run_measures_from_open(make_project: In
     assert set(rc.script_blobs) == {
         "filter-rows@0.1.1",
         "summarize-groups@0.1.1",
-        "compare-groups@0.1.0",
+        "compare-groups@0.1.1",
         "toy-report@0.1.1",
     }  # label-groups is a judgment module with no script: nothing to hash, nothing to drift
 

@@ -24,6 +24,7 @@ from stringency.cli import (
     verb_run,
     verb_status,
     verb_submit,
+    verb_tools,
     verb_wait,
 )
 
@@ -52,6 +53,7 @@ app.command("wait")(verb_wait.wait)
 app.command("lint")(verb_lint.lint)
 app.command("probe")(verb_probe.probe)
 app.add_typer(verb_controls.app, name="controls")
+app.add_typer(verb_tools.app, name="tools")
 app.add_typer(verb_policy.app, name="policy")
 app.add_typer(verb_plugins.app, name="plugins")
 

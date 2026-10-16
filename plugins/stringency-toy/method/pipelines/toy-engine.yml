@@ -21,7 +21,7 @@ steps:
     inputs: {summary: $steps.02_summarize.table}
   - id: 04_compare
     title: Compare the groups
-    module: compare-groups@0.1.0
+    module: compare-groups@0.1.1
     inputs: {object: $steps.01_filter.object}
     params:
       replicate_unit: {default: unit, options: [unit, row]}

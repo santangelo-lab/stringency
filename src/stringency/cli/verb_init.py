@@ -17,11 +17,22 @@ from stringency.project import InitRequest, init_project
 def init(
     path: Path = typer.Argument(..., help="project directory to create"),
     method: str = typer.Option(..., "--method", help="<git-url>@<tag> of the method repo"),
-    pipeline: str = typer.Option(..., "--pipeline", help="pipeline name under method/pipelines/"),
-    objective: Path = typer.Option(..., "--objective"),
-    design: Path = typer.Option(..., "--design"),
-    inputs: Path = typer.Option(..., "--inputs"),
-    mode: str = typer.Option("pipeline", "--mode"),
+    pipeline: str | None = typer.Option(
+        None, "--pipeline", help="pipeline name under method/pipelines/ (not in open mode)"
+    ),
+    objective: Path | None = typer.Option(None, "--objective"),
+    design: Path | None = typer.Option(None, "--design"),
+    inputs: Path | None = typer.Option(None, "--inputs"),
+    mode: str = typer.Option("pipeline", "--mode", help="pipeline | open"),
+    from_delivery: Path | None = typer.Option(
+        None,
+        "--from-delivery",
+        help="open mode: a delivery directory (deliver/<run>/) whose files become the inputs; "
+        "the design and objective are derived from the upstream project",
+    ),
+    upstream: Path | None = typer.Option(
+        None, "--upstream", help="with --from-delivery: the upstream project root"
+    ),
     profile: str = typer.Option("standard", "--profile"),
     owner: str | None = typer.Option(None, "--owner"),
     reviewer: str | None = typer.Option(None, "--reviewer"),
@@ -55,6 +66,8 @@ def init(
             executor=executor,
             drafted_by=drafted_by,
             brief=brief,
+            from_delivery=from_delivery,
+            upstream=upstream,
         )
     )
     hold = project.confirm_hold()
@@ -70,7 +83,9 @@ def init(
         else None,
     }
     human = (
-        f"project {project.config.project_id} bound at {project.root}\n"
+        f"project {project.config.project_id} bound at {project.root}"
+        + (" (open mode)" if project.open_ended else "")
+        + "\n"
         f"method {project.config.method.repo} @ {project.config.method.tag} ({project.config.method.sha[:12]})\n"
         f"echo-back written to {project.echo_path()}"
     )

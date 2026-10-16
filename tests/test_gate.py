@@ -358,7 +358,7 @@ def _dropped_ctx(p: Project) -> GateContext:
                 },
                 {
                     "id": "04_compare",
-                    "module": "compare-groups@0.1.0",
+                    "module": "compare-groups@0.1.1",
                     "inputs": {"object": "$steps.01_filter.object"},
                     "params": {"replicate_unit": "unit", "correction": "bh"},
                 },
@@ -416,7 +416,7 @@ def test_every_registered_predicate_has_a_case() -> None:
 def test_seed_unset_and_considered_set(project: Project) -> None:
     from stringency.modules import ModuleManifest
 
-    base = project.modules.require("compare-groups@0.1.0").manifest
+    base = project.modules.require("compare-groups@0.1.1").manifest
     stoch = base.model_copy(
         update={
             "stochastic": True,

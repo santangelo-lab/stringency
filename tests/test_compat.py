@@ -97,7 +97,7 @@ def test_requires_is_checked_by_lint_init_and_run_open(
     from stringency.project import Project
 
     p2 = Project.load(p.root)
-    with pytest.raises(ConfigError, match="plugin stringency-toy <0.1 required; installed 0.1.2"):
+    with pytest.raises(ConfigError, match="plugin stringency-toy <0.1 required; installed 0.1.3"):
         open_run(p2, allow_dirty="test")
     # a missing requires is a lint warning, not an error
     data = yaml.safe_load((p.method_root / "policy.yml").read_text())
@@ -109,18 +109,18 @@ def test_requires_is_checked_by_lint_init_and_run_open(
 
 def test_plugins_are_recorded_at_init_at_run_open_and_in_the_delivery(make_project: InitFn) -> None:
     p, run_id = completed_project(make_project)
-    assert p.config.plugins.get("stringency-toy") == "0.1.2"
+    assert p.config.plugins.get("stringency-toy") == "0.1.3"
     assert (
         yaml.safe_load((p.root / "stringency.yml").read_text())["plugins"]["stringency-toy"]
-        == "0.1.2"
+        == "0.1.3"
     )
-    assert captured_plugins(p.store, run_id)["stringency-toy"] == "0.1.2"
+    assert captured_plugins(p.store, run_id)["stringency-toy"] == "0.1.3"
     d = deliver(load_run(p, run_id))
     index = json.loads((d.path / "index.json").read_text())
-    assert index["plugins"]["stringency-toy"] == "0.1.2"
+    assert index["plugins"]["stringency-toy"] == "0.1.3"
     coverage = (d.path / "coverage.md").read_text()
-    assert f"stringency {__version__} with stringency-toy 0.1.2 | method" in coverage
-    assert "(plugin stringency-toy 0.1.2)" in (d.path / "methods.md").read_text()
+    assert f"stringency {__version__} with stringency-toy 0.1.3 | method" in coverage
+    assert "(plugin stringency-toy 0.1.3)" in (d.path / "methods.md").read_text()
 
 
 def test_a_changed_plugin_version_is_noted_at_run_open(make_project: InitFn) -> None:
@@ -133,7 +133,7 @@ def test_a_changed_plugin_version_is_noted_at_run_open(make_project: InitFn) -> 
     from stringency.project import Project
 
     rc = open_run(Project.load(p.root))
-    assert rc.plugin_changes == [{"plugin": "stringency-toy", "at_init": "0.0.9", "now": "0.1.2"}]
+    assert rc.plugin_changes == [{"plugin": "stringency-toy", "at_init": "0.0.9", "now": "0.1.3"}]
     ev = p.store.one(
         "SELECT payload_json FROM run_events WHERE run_id=? AND event='captures'", (rc.run_id,)
     )
@@ -170,7 +170,7 @@ def test_probe_reports_the_install_and_checks_a_method(
     payload = probe(None)
     assert (
         payload["engine"]["version"] == __version__
-        and payload["plugins"]["stringency-toy"] == "0.1.2"
+        and payload["plugins"]["stringency-toy"] == "0.1.3"
     )
     names = {c["name"]: c for c in payload["checks"]}
     assert names["engine"]["ok"] and names["plugins"]["ok"]

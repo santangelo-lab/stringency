@@ -1091,7 +1091,12 @@ class ReviewHandler(BaseHTTPRequestHandler):
         if run is None:
             return _NO_DRIVER
         d = driver(
-            site.store.conn, run, entry.get("step"), site.config.pipeline, refs, root=site.root
+            site.store.conn,
+            run,
+            entry.get("step"),
+            site.config.pipeline or "open",
+            refs,
+            root=site.root,
         )
         who = d["harness"] or "a terminal"
         if d["session"]:

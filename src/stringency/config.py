@@ -58,8 +58,9 @@ class StringencyConfig(Strict):
     created: str
     stringency_version: str
     method: MethodRef
-    pipeline: str
+    pipeline: str | None  # None in open mode: the topology grows one step at a time
     mode: Mode = "pipeline"
+    domain: str | None = None  # open mode: the plugin the tools belong to (design 2.2)
     profile: Profile = "standard"
     roles: Roles
     judgment_harness: JudgmentHarness = "subagent"
@@ -72,10 +73,19 @@ class StringencyConfig(Strict):
 
     @model_validator(mode="after")
     def _refuse_open_strict(self) -> StringencyConfig:
+        """Design 2.2: `open` is refused with `strict`; an open project binds no pipeline and
+        names its domain; `staged` stays reserved (open_mode_plan.md 2.1, 2026-10-16)."""
         if self.mode == "open" and self.profile == "strict":
             raise ValueError("mode open with profile strict is refused")
-        if self.mode != "pipeline":
-            raise ValueError(f"mode {self.mode} is reserved; v1 accepts only pipeline")
+        if self.mode == "staged":
+            raise ValueError("mode staged is reserved")
+        if self.mode == "open":
+            if self.pipeline is not None:
+                raise ValueError("mode open binds no pipeline; its tools are the method's modules")
+            if not self.domain:
+                raise ValueError("mode open needs domain (the plugin the tools belong to)")
+        elif self.pipeline is None:
+            raise ValueError("mode pipeline needs a pipeline")
         return self
 
 
