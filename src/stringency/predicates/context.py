@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from stringency.actions import Action
     from stringency.config import Design, InputsManifest, Objective, StringencyConfig
+    from stringency.egress import EgressAssessment
     from stringency.modules import ModuleManifest
     from stringency.pipelines import Pipeline
     from stringency.policy import Policy
@@ -50,6 +51,7 @@ class ProjectConfig:
     plugin_modes: tuple[str, ...] = ("pipeline",)
     vocabularies: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     object_types: tuple[str, ...] = ()  # types that have a state extractor
+    egress: EgressAssessment | None = None  # what the setup sends off the machine (L1)
 
     @property
     def mode(self) -> str:
