@@ -3,7 +3,22 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-15)
+## Current state (2026-10-16)
+
+- The open-mode plan approved (`spec/plans/open_mode_plan.md`, Lane K;
+  `notes/2026-10-16-1330-open-mode-plan.md`): after a pipeline delivers, the operator reviews
+  the method's tools and the project's questions, proposes paths, and on the person's yes
+  answers questions with trusted tools (modules listing `open`) or `exec`-run code labelled
+  untested, every numeral checked against cited cells. Five owner decisions recorded in the
+  plan. Nothing built; the implementation (S1 to S7, O1 to O6) is for an agent on the
+  workstation; the design amendments of its section 6 await the owner. G2 answered.
+- `posit-dev/commons` assessed against the design (`spec/plans/commons-assessment.md`,
+  `notes/2026-10-16-1210-commons-assessment.md`): no integration; backlog L35 to L38 (a trust
+  label on every delivered artifact, harness conformance fixtures for Lane J, a method-author
+  skill over the override corpus, quoted text verified) and a G2 proposal (`exec --step`).
+  Nothing built, nothing committed. The 2026-10-15 state below still holds.
+
+## Earlier state (2026-10-15)
 
 - Everything pushed; CI green in all three repositories and the compat workflow green; the plugins
   repository public; `0.2.21-sc0.5.1` installed on the workstation, `probe` ready
@@ -183,6 +198,8 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-16-1330-open-mode-plan.md` — the open-mode plan: three explorations, three design passes, the owner's five decisions and the pre-switch review; what the code already has (design 5's sentence, `modes`, on-demand steps as the one addition) and what it lacks (the deliver gate's dropped verdicts, read-write input binds, no timeout, no `--net`, a completion-only control scorer); implementation handed to the workstation.
+- `2026-10-16-1210-commons-assessment.md` — posit-dev/commons read against the design: the provenance outcome derived from the path, the citation match, the kernel sandbox for model code, the OTel trajectories and review documents, the cross-language fixtures; four borrowings (L35 to L38), the G2 proposal, and what commons lacks.
 - `2026-10-15-1000-install-for-people-and-ci.md` — the install for people (README message, bootstrap, the guides' two halves), the site-neutral repository and the lab directory, engine 0.2.21, the first CI runs and their five fixes, the install of `0.2.21-sc0.5.1`.
 - `2026-10-15-0300-xenium-analysis-skill-w6.md` — W6, backlog L32: `decisions:` in the analysis-skill source and the operator skill's section 9; the Xenium analysis skill (rc16); the synthetic two-slide upstream run through the engine, which found the plugin extractor's partial match.
 - `2026-10-15-0130-guides-w5.md` — W5, backlog L33: the three guides under `docs/`, the Claude Science notes trimmed and corrected, the host notes archived, the method-repo template's hook, CI and example skill.

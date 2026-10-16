@@ -42,6 +42,7 @@ delivered on rc12 and rc12.1 (2026-10-08 to 2026-10-12).
 | G judge sources | proposed, not started | `judge-sources-plan.md` | its S1 and S2 (the `openai-compatible` adapter, the Ollama evaluation) move to J; the panel specification and the remaining decisions of its section 6 stay here |
 | B bulk RNA-seq | dormant since 2026-09-23 | `bulkrna-plan.md` | nothing until the owner reopens it |
 | egress | unscheduled; the gate before the first PROTECT project | `egress-and-remeasurement.md`; backlog L1 to L4 | L3 (the judge on control results) is pulled into J; the rest waits |
+| K open mode | **approved 2026-10-16**, nothing built | `open_mode_plan.md` | S1 (binding: `mode: open`, `init --from-delivery`, `tools list --context`) by an agent on the workstation against the installed engine; the owner reads the design amendments of the plan's section 6 |
 
 ## The lanes
 
