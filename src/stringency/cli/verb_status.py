@@ -107,10 +107,10 @@ def _plain_run(rc: Any, statuses: dict[str, str]) -> str:
     """`plain` for `status --json`: the same sentences `run --json` carries, from the same
     `next` reading; an abandoned run says so instead. Reads: steps, holds, actions."""
     if rc.run["status"] == "abandoned":
-        return progress_sentence(rc.project.pipeline, statuses) + " The run was abandoned."
+        return progress_sentence(rc.pipeline, statuses) + " The run was abandoned."
     nx = next_step(rc)
     return plain_next(
-        rc.project.pipeline, rc.project.config.roles, nx.kind, nx.step_id, nx.detail, statuses
+        rc.pipeline, rc.project.config.roles, nx.kind, nx.step_id, nx.detail, statuses
     )
 
 

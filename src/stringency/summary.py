@@ -105,7 +105,7 @@ def what_was_checked(rc: RunContext, cov: dict[str, Any]) -> list[str]:
         f"{_plural(len(g['flags']), 'flag')} were raised."
     ]
     for f in g["flags"]:
-        title = rc.project.pipeline.title(f["step"])
+        title = rc.pipeline.title(f["step"])
         if f["verdict"] == "open":
             lines.append(f"- {f['predicate']} on {title}: open, not yet decided.")
             continue
@@ -121,7 +121,7 @@ def judgments(rc: RunContext, cov: dict[str, Any]) -> list[str]:
         return ["No step asked for a judgment."]
     lines = []
     for j in cov["judgment"]:
-        title = rc.project.pipeline.title(j["step"])
+        title = rc.pipeline.title(j["step"])
         lines.append(
             f"- {title} (step {j['step']}): {_plural(j['items'], 'item')} judged by "
             f"{_plural(j['replicates'], 'independent replicate')}; {_count(j['agreed'])} agreed, "

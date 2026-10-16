@@ -51,6 +51,18 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         lambda p: make_ctx(p, "02_summarize"),
     ),
     (
+        # open mode: the bound artifact's recorded kind against the module input's type
+        "topo.input_type_mismatch",
+        lambda p: make_ctx(p, "04_compare", artifact_kinds={"00" * 32: "table"}),
+        lambda p: make_ctx(p, "04_compare", artifact_kinds={"00" * 32: "frame"}),
+    ),
+    (
+        # open mode: a tool's values against its params.schema.json (an enum here)
+        "param.schema_invalid",
+        lambda p: make_ctx(p, "04_compare", proposed={"correction": "foo"}),
+        lambda p: make_ctx(p, "04_compare", proposed={"correction": "bonferroni"}),
+    ),
+    (
         "repro.dirty_tree",
         lambda p: make_ctx(p, "01_filter", phase="run_open", git_dirty=True),
         lambda p: make_ctx(

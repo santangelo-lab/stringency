@@ -24,7 +24,7 @@ Deliverables: comparison_table, group_labels.
 
 ## What was checked and decided
 
-Twenty-two checks were evaluated over five steps; no blocks and no flags were raised.
+Twenty-four checks were evaluated over five steps; no blocks and no flags were raised.
 
 ## Judgments
 

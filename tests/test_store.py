@@ -104,6 +104,34 @@ def test_append_only_tables_raise_on_update_and_delete(store: Store, table: str)
         )
     elif table == "messages":
         store.store_message("h", "text")
+    elif table in ("questions", "answers"):
+        # open mode (migration 0005): an answer references a question, which references the run
+        store.insert(
+            "questions",
+            {
+                "question_id": "Q1",
+                "run_id": run_id,
+                "seq": 1,
+                "text_ref": "h",
+                "origin": "person",
+                "asked_via": "tty",
+                "ts": "t",
+            },
+        )
+        if table == "answers":
+            store.insert(
+                "answers",
+                {
+                    "answer_id": "A1",
+                    "run_id": run_id,
+                    "question_id": "Q1",
+                    "text_ref": "h",
+                    "cited_json": [],
+                    "provenance_json": {},
+                    "status": "admissible",
+                    "ts": "t",
+                },
+            )
     elif table == "policy_snapshots":
         store.record_policy_snapshot("pd", "0.1.0", {}, [])
     else:

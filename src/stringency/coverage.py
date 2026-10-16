@@ -24,7 +24,7 @@ def decision_point_coverage(rc: RunContext) -> tuple[list[str], list[str]]:
     store = rc.store
     uncovered: list[str] = []
     ungated: list[str] = []
-    for step in rc.project.pipeline.steps:
+    for step in rc.pipeline.steps:
         st = store.scalar(
             "SELECT status FROM steps WHERE run_id=? AND step_id=?", (rc.run_id, step.id)
         )
@@ -49,7 +49,7 @@ def decision_point_coverage(rc: RunContext) -> tuple[list[str], list[str]]:
 
 def in_scope_for_pipeline(rc: RunContext) -> set[str]:
     ids: set[str] = set()
-    for step in rc.project.pipeline.steps:
+    for step in rc.pipeline.steps:
         m = rc.project.modules.require(step.module).manifest
         runner = step.runner or m.runner or rc.project.config.execution
         for phase in ("pre", "post"):

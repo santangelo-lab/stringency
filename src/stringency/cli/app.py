@@ -7,7 +7,9 @@ import typer
 from stringency import __version__
 from stringency.cli import (
     verb_abandon,
+    verb_ask,
     verb_board,
+    verb_call,
     verb_controls,
     verb_declare,
     verb_deliver,
@@ -39,6 +41,8 @@ app = typer.Typer(
 app.command("init")(verb_init.init)
 app.command("declare")(verb_declare.declare)
 app.command("run")(verb_run.run)
+app.command("ask")(verb_ask.ask)
+app.command("call")(verb_call.call)
 app.command("next")(verb_next.next_)
 app.command("propose")(verb_propose.propose)
 app.command("submit")(verb_submit.submit)

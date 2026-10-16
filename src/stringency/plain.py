@@ -73,6 +73,13 @@ def stop_sentence(
         if until:
             return f"Stopped after {pipeline.title(until)}, as asked."
         return "The run is complete."
+    if kind == "open":
+        n_q = len(detail.get("questions") or [])
+        n_a = len([a for a in (detail.get("answers") or []) if a.get("status") == "admissible"])
+        return (
+            f"Open for questions: {number_word(n_q)} asked, {number_word(n_a)} answered; "
+            "nothing here changes the delivered files."
+        )
     if kind == "runnable":
         skip = detail.get("skip")
         if skip:

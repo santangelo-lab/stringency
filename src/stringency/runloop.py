@@ -101,8 +101,8 @@ def while_held(hold_id: str) -> dict[str, Any]:
 
 def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
     """What the coming step is (design 14.1 `next --json`)."""
-    step = rc.project.pipeline.step(step_id)
-    module = rc.project.modules.require(step.module)
+    step = rc.pipeline.step(step_id)
+    module = rc.module_for(step_id)
     m = module.manifest
     params: dict[str, Any] = {}
     for name, schema in module.declared_params.items():
@@ -122,7 +122,7 @@ def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
     vocab = list(rc.project.plugin.vocabulary(m.vocabulary) or ()) if m.vocabulary else None
     return {
         "step_id": step_id,
-        "title": rc.project.pipeline.title(step_id),
+        "title": rc.pipeline.title(step_id),
         "module": module.ref,
         "kind": m.kind,
         "operation": m.operation,
@@ -145,7 +145,7 @@ def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
 def next_step(rc: RunContext) -> Next:
     """Reads: steps, holds, actions, predicate_results."""
     statuses = rc.step_status()
-    order = rc.project.pipeline.order()
+    order = rc.pipeline.order()
     holds = open_holds(rc.store, rc.run_id)
     if holds:
         return Next(
@@ -155,6 +155,8 @@ def next_step(rc: RunContext) -> Next:
             int(Exit.HELD),
             hold_message(rc, holds),
         )
+    if rc.open_ended:
+        return open_next(rc)
     for sid in order:
         st = StepStatus(statuses[sid])
         if st in DONE:
@@ -175,7 +177,7 @@ def next_step(rc: RunContext) -> Next:
             return Next(
                 "awaiting_execution",
                 sid,
-                {"job_spec": spec, "title": rc.project.pipeline.title(sid)},
+                {"job_spec": spec, "title": rc.pipeline.title(sid)},
                 int(Exit.AWAITING_EXECUTION),
                 f"awaiting execution: ticket {action.ticket} for {sid}\n" + render_job_spec(spec),
             )
@@ -185,7 +187,7 @@ def next_step(rc: RunContext) -> Next:
             return Next(
                 "dispatching",
                 sid,
-                {"dispatch_dir": str(ddir), "requests": n, "title": rc.project.pipeline.title(sid)},
+                {"dispatch_dir": str(ddir), "requests": n, "title": rc.pipeline.title(sid)},
                 int(Exit.DISPATCHING),
                 f"dispatching: {n} request(s) in {ddir}; have one fresh subagent answer each, then run again",
             )
@@ -232,10 +234,10 @@ def next_step(rc: RunContext) -> Next:
             StepStatus.RUNNING,
             StepStatus.PRODUCED,
         ):
-            preds = rc.project.pipeline.step(sid).predecessors()
+            preds = rc.pipeline.step(sid).predecessors()
             if all(statuses.get(p) in DONE for p in preds):
                 skip = (
-                    skip_decision(rc.store, rc.project.pipeline, rc.run_id, sid)
+                    skip_decision(rc.store, rc.pipeline, rc.run_id, sid)
                     if st == StepStatus.PENDING
                     else None
                 )
@@ -267,6 +269,82 @@ def next_step(rc: RunContext) -> Next:
                 f"next: {sid} (waiting on predecessors)",
             )
     return Next("completed", None, {}, 0, f"run {rc.run_id} completed")
+
+
+def open_next(rc: RunContext) -> Next:
+    """`next` on an open run with no open hold (open_mode_plan.md 2.2): what has been asked and
+    answered, every on-demand step with its state and question, and the artifacts that can be
+    cited. Exit 0: an open run waits for the next question, not for the engine. Reads:
+    questions, answers, steps, artifacts, messages."""
+    store = rc.store
+    questions = [
+        {
+            "question_id": q["question_id"],
+            "seq": q["seq"],
+            "origin": q["origin"],
+            "text": store.message(q["text_ref"]) or "",
+            "ts": q["ts"],
+        }
+        for q in store.all("SELECT * FROM questions WHERE run_id = ? ORDER BY seq", (rc.run_id,))
+    ]
+    answers = [
+        {
+            "answer_id": a["answer_id"],
+            "question_id": a["question_id"],
+            "label": a["label"],
+            "status": a["status"],
+            "ts": a["ts"],
+        }
+        for a in store.all(
+            "SELECT * FROM answers WHERE run_id = ? ORDER BY ts, rowid", (rc.run_id,)
+        )
+    ]
+    statuses = rc.step_status()
+    steps = [
+        {
+            "step_id": x["step_id"],
+            "kind": x["kind"],
+            "module": x["decl"].get("module"),
+            "status": statuses.get(x["step_id"], "pending"),
+            "question_id": x.get("question_id"),
+        }
+        for x in rc.on_demand()
+    ]
+    artifacts = [
+        {
+            "artifact_id": r["artifact_id"],
+            "step_id": r["step_id"],
+            "name": r["name"],
+            "kind": r["kind"],
+        }
+        for r in store.all(
+            "SELECT a.artifact_id, a.step_id, a.name, a.kind FROM artifacts a JOIN steps s ON "
+            "s.run_id=a.run_id AND s.step_id=a.step_id WHERE a.run_id=? AND a.status='produced' "
+            "AND s.status='completed' ORDER BY a.rowid",
+            (rc.run_id,),
+        )
+    ]
+    n_q, n_a = len(questions), len([a for a in answers if a["status"] == "admissible"])
+    open_q = [
+        q
+        for q in questions
+        if not any(
+            a["question_id"] == q["question_id"] and a["status"] == "admissible" for a in answers
+        )
+    ]
+    message = (
+        f"open: {n_q} question(s), {n_a} answered; {len(steps)} step(s) run on demand; "
+        f"{len(artifacts)} artifact(s) can be cited"
+    )
+    if open_q:
+        message += f"; unanswered: {', '.join(q['question_id'] for q in open_q)}"
+    return Next(
+        "open",
+        None,
+        {"questions": questions, "answers": answers, "steps": steps, "artifacts": artifacts},
+        0,
+        message,
+    )
 
 
 def outcome_to_next(rc: RunContext, out: StepOutcome) -> Next:
@@ -313,9 +391,7 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
             return _done(nx)
         sid = nx.step_id
         assert sid is not None
-        if until is not None and rc.project.pipeline.order().index(
-            sid
-        ) > rc.project.pipeline.order().index(until):
+        if until is not None and rc.pipeline.order().index(sid) > rc.pipeline.order().index(until):
             return _done(Next("completed", None, {"until": until}, 0, f"stopped after {until}"))
         st = StepStatus(rc.step_status()[sid])
         skip = nx.detail.get("skip")
@@ -361,7 +437,7 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
 def plain_for(rc: RunContext, nx: Next) -> str:
     """The `plain` sentences for a `Next` (ux-two-audiences 3.2). Reads: steps."""
     return plain_next(
-        rc.project.pipeline,
+        rc.pipeline,
         rc.project.config.roles,
         nx.kind,
         nx.step_id,

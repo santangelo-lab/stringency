@@ -28,7 +28,7 @@ from stringency.gate import GateResult, evaluate
 from stringency.holds import HoldOutcome, HoldRequest, open_hold
 from stringency.machine import RETRYABLE, StepStatus, step_status, transition
 from stringency.modules import Module
-from stringency.pipelines import StepDecl
+from stringency.pipelines import Ref, StepDecl
 from stringency.predicates import registry
 from stringency.predicates.context import EvidenceTable, OutputBundle, OutputInfo
 from stringency.runs import RunContext
@@ -79,6 +79,9 @@ class StepPlan:
     step_dir: Path
     design: dict[str, Any] = field(default_factory=dict)  # the bound design, as the job sees it
     objective: dict[str, Any] = field(default_factory=dict)  # the bound objective (E1)
+    # open mode: an on-demand step's inputs are bound read-only, so a session script cannot
+    # write beside the delivery it reads (open_mode_plan.md 2.4, design 10.3)
+    inputs_read_only: bool = False
 
 
 @dataclass
@@ -198,8 +201,8 @@ def resolve_inputs(rc: RunContext, step: StepDecl, module: Module) -> dict[str, 
 
 
 def plan_step(rc: RunContext, step_id: str, attempt: int) -> StepPlan:
-    step = rc.project.pipeline.step(step_id)
-    module = rc.project.modules.require(step.module)
+    step = rc.decl(step_id)
+    module = rc.module_for(step_id)
     step_dir = rc.project.step_dir(rc.run_id, step_id)
     output_paths = {
         name: step_dir / f"{name}.{EXT.get(spec.format or '', spec.format or 'out')}"
@@ -215,7 +218,99 @@ def plan_step(rc: RunContext, step_id: str, attempt: int) -> StepPlan:
         step_dir=step_dir,
         design=rc.project.design.model_dump(),
         objective=rc.project.objective.model_dump(),
+        inputs_read_only=rc.on_demand_entry(step_id) is not None,
     )
+
+
+# -- on-demand steps (open mode, open_mode_plan.md 2.2) --------------------------------------
+
+
+def _is_artifact_id(text: str) -> bool:
+    return len(text) == 26 and text.isalnum() and text.upper() == text
+
+
+def bind_inputs(rc: RunContext, module: Module, bindings: dict[str, str]) -> dict[str, str]:
+    """The input references of an on-demand step: `--in <name>=<$inputs.x | $steps.id.out |
+    artifact id>` for what the operator named; an unbound input binds the one project input or
+    else the latest produced artifact of its type; otherwise refused (exit 15) naming the
+    candidates. An optional input left unbound with no candidate stays unbound. Reads: artifacts,
+    steps."""
+    out: dict[str, str] = {}
+    inputs_by_name = rc.project.inputs.by_name()
+    for name, ref in bindings.items():
+        if name not in module.manifest.inputs:
+            raise ConfigError(
+                f"{module.manifest.name} has no input {name}; inputs: "
+                + ", ".join(module.manifest.inputs)
+            )
+        if _is_artifact_id(ref):
+            row = rc.store.one(
+                "SELECT step_id, name FROM artifacts WHERE run_id=? AND artifact_id=? AND "
+                "status='produced'",
+                (rc.run_id, ref),
+            )
+            if row is None:
+                raise ConfigError(f"input {name}: no produced artifact {ref} in run {rc.run_id}")
+            ref = f"$steps.{row['step_id']}.{row['name']}"
+        Ref.parse(ref)  # raises ConfigError on a malformed reference
+        out[name] = ref
+    for name, spec in module.manifest.inputs.items():
+        if name in out:
+            continue
+        candidates: list[str] = [
+            f"$inputs.{n}" for n, item in sorted(inputs_by_name.items()) if item.type == spec.type
+        ]
+        produced = [
+            f"$steps.{r['step_id']}.{r['name']}"
+            for r in rc.store.all(
+                "SELECT a.step_id, a.name FROM artifacts a JOIN steps s ON s.run_id=a.run_id AND "
+                "s.step_id=a.step_id WHERE a.run_id=? AND a.kind=? AND a.status='produced' AND "
+                "s.status='completed' ORDER BY a.rowid DESC",
+                (rc.run_id, spec.type),
+            )
+        ]
+        if len(candidates) == 1 and not produced:
+            out[name] = candidates[0]
+        elif produced:
+            out[name] = produced[0]
+        elif spec.optional:
+            continue
+        else:
+            have = ", ".join(candidates) or "none"
+            raise ConfigError(
+                f"input {name} ({spec.type}) of {module.manifest.name} is unbound; "
+                f"name it with --in {name}=<ref>; candidates: {have}"
+            )
+    return out
+
+
+def propose_tool(
+    rc: RunContext,
+    name: str,
+    bindings: dict[str, str],
+    proposed: dict[str, Any] | None,
+    rationale: str | None,
+    *,
+    source: str = "agent",
+    question_id: str | None = None,
+) -> Proposal:
+    """`call <tool>`: add a tool step to an open run and propose it (open_mode_plan.md 2.2).
+    The declaration carries no `params`, so `build_action` fills the module schema's defaults;
+    `source` labels every proposed value (`agent`, or `person` for a value the person dictated,
+    which opens no `param.agent_proposed` hold). Writes: steps, step_events (`created` with the
+    on-demand declaration), then everything `propose` writes."""
+    if not rc.open_ended:
+        raise RefusedError("call runs a tool on demand in an open project only")
+    module = rc.project.tool(name)
+    decl = StepDecl(
+        id=rc.next_step_id(module.manifest.name),
+        module=module.ref,
+        title=module.manifest.name,
+        inputs=bind_inputs(rc, module, bindings),
+        runner="engine",
+    )
+    rc.create_on_demand_step(decl, "tool", module, question_id=question_id)
+    return propose(rc, decl.id, proposed, rationale=rationale, source=source)
 
 
 # -- propose: action + pre-gate ----------------------------------------------------------
@@ -251,12 +346,12 @@ def propose(
     Writes: actions, messages (rationale), predicate_results, steps, step_events, holds.
     """
     store = rc.store
-    if not rc.project.pipeline.has_step(step_id):
-        raise ConfigError(f"no step {step_id} in pipeline {rc.project.pipeline.name}")
+    if not rc.pipeline.has_step(step_id):
+        raise ConfigError(f"no step {step_id} in pipeline {rc.pipeline.name}")
     current = step_status(store, rc.run_id, step_id)
     if current not in RETRYABLE:
         raise RefusedError(f"step {step_id} is {current}; it cannot be proposed now")
-    skip = skip_decision(store, rc.project.pipeline, rc.run_id, step_id)
+    skip = skip_decision(store, rc.pipeline, rc.run_id, step_id)
     if skip is not None:
         raise RefusedError(
             f"step {step_id} does not run in this run ({skip['reason']}); `run` records it as skipped"
@@ -416,14 +511,22 @@ def action_from_row(row: Any) -> Action:
 
 
 def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
+    """The executor job of a step. Input directories are bound read-write for a declared step
+    (as before) and read-only for an on-demand one (`plan.inputs_read_only`, design 10.3
+    amended 2026-10-16); the method checkout is read-only always."""
     m = plan.module.manifest
     seed = action.parameters.get(m.seed_param) if m.stochastic and m.seed_param else None
+    input_dirs = [p.parent for ri in plan.inputs.values() for p in ri.paths]
+    ro = [plan.module.path.parent.parent]  # the method checkout (design 10.3)
+    if plan.inputs_read_only:
+        ro = input_dirs + ro
+        input_dirs = []
     return Job(
         command=interpreter_for(script),
         env_name=m.env,
         cwd=plan.step_dir,
-        bind_paths=[p.parent for ri in plan.inputs.values() for p in ri.paths] + [plan.step_dir],
-        ro_bind_paths=[plan.module.path.parent.parent],  # the method checkout (design 10.3)
+        bind_paths=input_dirs + [plan.step_dir],
+        ro_bind_paths=ro,
         stdin_json={
             "inputs": {k: v.job_value() for k, v in plan.inputs.items()},
             "params": action.parameters,

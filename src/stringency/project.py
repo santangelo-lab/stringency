@@ -246,16 +246,19 @@ class Project:
         return {m.ref: m.manifest for m in self.modules.all()}
 
     def project_config(self, **runtime: Any) -> ProjectConfig:
-        return ProjectConfig(
-            config=self.config,
-            pipeline=self.pipeline,
-            modules=self.manifests(),
-            inputs=self.inputs,
-            plugin_modes=tuple(self.plugin.modes),
-            vocabularies=self.plugin.vocabularies,
-            object_types=tuple(self.plugin.object_types),
-            **runtime,
-        )
+        """The static facts a gate reads; a run context passes its own `pipeline` and `modules`
+        when the topology has grown on demand (open mode)."""
+        fields: dict[str, Any] = {
+            "config": self.config,
+            "pipeline": self.pipeline,
+            "modules": self.manifests(),
+            "inputs": self.inputs,
+            "plugin_modes": tuple(self.plugin.modes),
+            "vocabularies": self.plugin.vocabularies,
+            "object_types": tuple(self.plugin.object_types),
+        }
+        fields.update(runtime)
+        return ProjectConfig(**fields)
 
     # -- declarations and the confirm hold -------------------------------------------
 
