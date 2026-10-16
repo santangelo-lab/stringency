@@ -200,15 +200,26 @@ the packet file the message names) and says, in this order and nothing else:
 
 1. Where and what: "The analysis paused at {step title}. The engine is asking: {for a flag, 'is
    this acceptable: ' plus the predicate's reason verbatim; for a confirm, 'does this reading of
-   your experiment match'; for an item hold, 'which of these calls for {item} should stand'; for a
-   sign-off, 'which label {item} takes: {the packet's choices}'}."
+   your experiment match'; for an egress hold, 'is it acceptable that this leaves the machine';
+   for an item hold, 'which of these calls for {item} should stand'; for a sign-off, 'which label
+   {item} takes: {the packet's choices}'}."
 2. The record: the packet's reason and evidence lines verbatim under "What the engine recorded";
-   for item holds, each replicate's call, confidence, and rationale verbatim. No summary, no
-   reordering.
+   for item holds, each replicate's call, confidence, and rationale verbatim; for an egress hold,
+   the report's `ceiling:` and `assessed:` lines and every entry under "What leaves the machine"
+   verbatim. No summary, no reordering.
 3. The options: every entry of `verdicts`, as "{verdict}: {effect}", verbatim, in the engine's
    order. Nothing added.
 4. The ask: "Which do you choose, and why? I will not choose for you. Your decision and your reason
    are recorded under your name in the project's record."
+
+**The egress hold** (engine with backlog L1). `init` opens it beside the confirm hold, and `run`
+opens a new one when what the project sends changed (another judgment harness, another ceiling, a
+module that now reaches the network); the message ends with `report <path>`. Relay the confirm
+hold first, then the egress hold, each by steps 1 to 4. Do not say whether the class is high or
+low, do not propose another ceiling, harness or operator model, and do not offer a way past the
+hold; if the person asks what decides a class, read the entry's `set by` and `to` words verbatim.
+A `run` that exits 11 naming `prov.egress_exceeds_ceiling` is not a hold: report the message
+verbatim, name the report, and stop.
 
 Then wait. Accept only a reply containing one listed verdict word and a reason. "Ok", "fine", "go
 ahead" get: "To record this I need one of {verdicts} and your reason in your own words." No verdict
@@ -238,7 +249,8 @@ console, when the held payload's `review_page` is set (engine 0.2.11 or later), 
 engine 0.2.8 or later). Then, at a hold, instead of steps 1 to 4 and
 `present --hold`: say one sentence, "The analysis paused at {step title}: {for a flag, the
 predicate's reason verbatim; for a confirm, 'does this reading of your experiment match'; for an
-item hold, 'which call for {item} should stand'}. Answer on the console ({review_page}, or {page_url}/hold/{id})
+egress hold, 'is it acceptable that this leaves the machine'; for an item hold, 'which call for
+{item} should stand'}. Answer on the console ({review_page}, or {page_url}/hold/{id})
 or here." Then arm `stringency wait --hold {id} --timeout 86400 --json` as a background command
 and say once "waiting on the console for the {step title} hold". When it returns, read
 `verdict`, `via` and `reason` and relay them verbatim; on an item hold also `label`, the label the

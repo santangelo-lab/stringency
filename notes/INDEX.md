@@ -5,6 +5,12 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-16)
 
+- Data egress at init built on branch `egress` (worktree `../stringency-egress`, not merged;
+  `notes/2026-10-16-1420-egress-at-init.md`): the person sets a ceiling at init
+  (`--egress-max`), the engine assesses the setup, saves `prov/egress.md`, and opens an `egress`
+  hold the operator relays beside the confirm hold, asked again only when the profile changes;
+  over the ceiling, init is refused and run open blocked. Open: the merge after open mode S2, the
+  `module.yml` `egress` DEVIATIONS entry, the design amendments.
 - The open-mode plan approved (`spec/plans/open_mode_plan.md`, Lane K;
   `notes/2026-10-16-1330-open-mode-plan.md`): after a pipeline delivers, the operator reviews
   the method's tools and the project's questions, proposes paths, and on the person's yes
@@ -198,6 +204,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-16-1420-egress-at-init.md` — data egress at init (backlog L1): the owner's two answers (acknowledge once; the person's ceiling at init), the assessment, report, hold and blocks, the delivery record, the skill text; built on branch `egress` beside the open-mode session; merge and DEVIATIONS open.
 - `2026-10-16-1330-open-mode-plan.md` — the open-mode plan: three explorations, three design passes, the owner's five decisions and the pre-switch review; what the code already has (design 5's sentence, `modes`, on-demand steps as the one addition) and what it lacks (the deliver gate's dropped verdicts, read-write input binds, no timeout, no `--net`, a completion-only control scorer); implementation handed to the workstation.
 - `2026-10-16-1210-commons-assessment.md` — posit-dev/commons read against the design: the provenance outcome derived from the path, the citation match, the kernel sandbox for model code, the OTel trajectories and review documents, the cross-language fixtures; four borrowings (L35 to L38), the G2 proposal, and what commons lacks.
 - `2026-10-15-1000-install-for-people-and-ci.md` — the install for people (README message, bootstrap, the guides' two halves), the site-neutral repository and the lab directory, engine 0.2.21, the first CI runs and their five fixes, the install of `0.2.21-sc0.5.1`.

@@ -121,27 +121,51 @@ Ambiguities to ask about rather than resolve: "compare A, B, and C" (pairwise or
 contrast); whether replicate means sample or a grouping of samples; whether a column is biology
 or batch; which of several files is the primary object.
 
+## 3a. What may leave this machine
+
+Ask the person, in these words or close to them: "What may leave this machine while this project
+runs? The engine sorts it into five classes: 0, nothing leaves; 1, public reference data is
+downloaded and nothing from the project is sent; 2, names or identifiers from the project are
+sent as queries; 3, values computed from the data (tables of numbers, summaries) are sent, which
+is what a judgment by a hosted model needs; 4, the data, or whatever the operating agent reads,
+may be sent whole. Which is the highest you allow?" Their number is `--egress-max`. If they do not
+know, say the project can be initialised without one and the report will say none was declared;
+do not suggest a number. Never pick it for them, and never infer it from the data's path.
+
+`--operator-model` is a fact, not a choice: `hosted` when you, a hosted model, will operate the
+project (the default); `none` only when the person says they will operate it themselves at a
+terminal; `local` only when they say the operating agent runs on a model on this machine.
+
 ## 4. Check
 
     stringency declare --check <parent>/declarations --method <url>@<tag> --pipeline <name> \
-        [--profile ...] [--executor ...] [--judgment-harness ...]
+        [--profile ...] [--executor ...] [--judgment-harness ...] \
+        [--egress-max <0-4>] [--operator-model hosted|local|none]
 
-Exit 0 prints the echo-back. Exit 15 names the field, hash, or `init.*` predicate that failed:
-fix the file if the fix has a source in the brief or the manifest, otherwise ask. Loop until
-clean. Never edit a value to make the check pass without a source for the new value.
+Exit 0 prints the echo-back and the data egress report. Exit 15 names the field, hash, or `init.*`
+predicate that failed: fix the file if the fix has a source in the brief or the manifest,
+otherwise ask. Loop until clean. Never edit a value to make the check pass without a source for
+the new value. `init.egress_exceeds_ceiling` is different: the files are fine and the setup sends
+more than the person allowed. Show its reason verbatim, then ask whether they want a higher
+ceiling or a different setup (the reason names each part over the ceiling; a part's harness or
+operator model is a project setting, a step's runner or a module's scripts belong to the method).
+Do not choose for them and do not change a setting they did not name.
 
 ## 5. Present and hand over
 
-Show the person the echo-back verbatim, followed by a table of every field you wrote and its
-source (manifest column, brief sentence quoted, plugin default). Wait for a yes. Then:
+Show the person the echo-back verbatim, then the data egress report verbatim, followed by a table
+of every field you wrote and its source (manifest column, brief sentence quoted, plugin default;
+for the ceiling, the person's answer quoted). Wait for a yes. Then:
 
     stringency init <project> --method <url>@<tag> --pipeline <name> \
         --objective <parent>/declarations/objective.yml --design <parent>/declarations/design.yml \
         --inputs <parent>/declarations/inputs.yml --drafted-by agent --brief <parent>/brief.md \
-        [--profile ...] [--executor ...] [--judgment-harness ...] [--owner ...] [--reviewer ...]
+        [--profile ...] [--executor ...] [--judgment-harness ...] [--owner ...] [--reviewer ...] \
+        [--egress-max <0-4>] [--operator-model hosted|local|none]
 
-`init` exits 10 with the confirm hold. Report the hold id and the message verbatim and stop.
-You never accept the hold; the person does, at a terminal, after reading `echo.md`.
+`init` exits 10 with the confirm hold and the egress hold. Report both hold ids and the messages
+verbatim, the confirm hold first, and stop. You never accept either hold; the person does, after
+reading `echo.md` and `prov/egress.md`.
 
 ## Rules
 

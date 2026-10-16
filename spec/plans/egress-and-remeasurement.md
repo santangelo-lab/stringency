@@ -9,6 +9,14 @@ recorded here so they can be built when a lane needs them. Backlog rows L1 to L4
 
 **Status 2026-10-14.** Unscheduled; backlog L1 to L4. L1 is the gate before the first PROTECT project; L3 (the judge recorded on control results) moves to Lane J with the harness work (`roadmap-2026-10.md`); L4's `ill_formed` control kind is wanted by Lane F's annotation judgment (F7).
 
+**Status 2026-10-16.** Part 1 built on branch `egress` (phases 1 to 3 and the skill text; see
+"Part 1 as built" below), revised by the owner's answers of the same day: the ceiling is the
+person's, set at init, not the method's; init saves a report and opens an `egress` hold the
+operator relays beside the confirm hold, acknowledged once and asked again only when what the
+project sends changes. Open: the `module.yml` `egress` field (DEVIATIONS, awaiting
+acknowledgement) and lint failing on it; open mode's `exec` and the upstream ceiling; an optional
+site rule for `/data/protect`; the design amendments listed at the end of part 1.
+
 The line that justifies both, from ClawBio's `tests/test_data_handling_doc.py`: "A prose promise
 that networked skills are individually labelled governs nothing." Both mechanisms turn a
 statement the design already makes into something the engine checks and the trace records.
@@ -99,6 +107,47 @@ fixture modules that do and do not reach the network. Items 2 and 5 need the own
 and a policy field). Build before the first PROTECT project is initialised, and before the
 `openai-compatible` adapter ships if it ships first, so the loopback rule exists from its first
 run.
+
+### Part 1 as built (2026-10-16)
+
+The mechanism above, revised. What differs from items 1 to 6:
+
+- **The ceiling is the person's** (replaces item 5's `policy.yml` `max_class`). `stringency.yml`
+  `egress: {max_class: 0-4 | null, operator: hosted | local | none}`, set by `init` and
+  `declare --check` with `--egress-max` and `--operator-model`; the declare skill asks for it in
+  plain words (section 3a). Unset is allowed and the report says so.
+- **The assessment** (`src/stringency/egress.py`) reads the setup: the judgment harness when a
+  judgment step is bound (item 1's classes; no column per invocation, the class follows
+  `harness_kind`), the operator session (hosted 3: hold packets and present output pass through
+  it), operator-run steps (hosted 4, item 4), and every module whose scripts match the network
+  scan (item 3's patterns), counted as 4 until it can declare (item 2, pending DEVIATIONS).
+- **The report** is `prov/egress-<fp12>.md/.json` and `prov/egress.md/.json`: the ceiling (and
+  the last acknowledged one when it differs), the assessed class, one entry per component (class,
+  basis, set by, where to, what is sent, steps, steps that may not run, scan hits), the classes,
+  and what was not assessed. Facts only. `declare --check` prints it beside the echo-back.
+- **The hold.** Within the ceiling, init opens a project-level `egress` hold beside the confirm
+  hold, bound to the fingerprint; `run` waits on it and opens a new one (and a new report) when
+  the fingerprint changes. Never inherited. Over the ceiling, init is refused
+  (`init.egress_exceeds_ceiling`, exit 15) and run open is blocked (`prov.egress_exceeds_ceiling`,
+  exit 11); no acknowledgement clears either.
+- **The record** (item 6). The `captures` event carries the assessment; `coverage.md` lists each
+  component the run used and the highest class reached; `summary.md` one sentence; `index.json`
+  `egress`.
+- **Lint** warns on a module whose scripts reach the network; it fails once the field exists.
+
+Design amendments for the owner (proposed text, not applied):
+
+- 2.7, after the confirm hold: "Init also assesses what the project's setup sends off the machine
+  (data egress classes 0 to 4) against the ceiling the person declares, saves the report under
+  `prov/`, and opens a project-level `egress` hold bound to its fingerprint. A setup over the
+  ceiling is refused. The egress hold is never inherited."
+- 7.2, a row: "`egress` | the data egress report at init, and at run open when the setup's
+  egress fingerprint changed | project | accept or reject; waits on the owner; a `run` cannot open
+  while it is unresolved".
+- 12.2, a section after reproducibility: "data egress: each component the run used, its class
+  and destination, and the highest class reached, against the ceiling".
+- 14.1: `init` and `declare --check` take `--egress-max` and `--operator-model`; 14.2: no new
+  exit codes (10, 11 and 15 as above).
 
 ## Part 2: judgment re-measurement endpoints
 
