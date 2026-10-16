@@ -67,8 +67,9 @@ method:
   repo: git+https://github.com/santangelo-lab/stringency-xenium-method
   tag: v0.2.0
   sha: 3f9c1a…
-pipeline: spatial-tma              # file name in method/pipelines/
-mode: pipeline                     # pipeline | staged | open   (v1 accepts only pipeline)
+pipeline: spatial-tma              # file name in method/pipelines/; null in open mode
+mode: pipeline                     # pipeline | open   (staged reserved)
+domain: null                       # open mode: the plugin the tools belong to
 profile: standard                  # strict | standard | exploratory
 roles:
   owner: jrrose5
@@ -80,7 +81,7 @@ policy: method/policy.yml          # 6.4; digest recorded on every run
 splits: null                       # reserved for open mode (17)
 ```
 
-Bound means `run` reads these and takes no arguments that could change them. Changing any of them requires a new project, or a `fork` for the parameters forking is allowed to change (2.6). `init` refuses `mode: open` with `profile: strict`.
+Bound means `run` reads these and takes no arguments that could change them. Changing any of them requires a new project, or a `fork` for the parameters forking is allowed to change (2.6). `init` refuses `mode: open` with `profile: strict`. `mode: open` is accepted (open mode, `spec/plans/open_mode_plan.md`, 2026-10-16): `pipeline` is null and `domain` names the plugin; the project's tools are the method's modules whose `modes` list `open`; `splits` stays reserved.
 
 ### 2.3 Inputs manifest
 
@@ -141,13 +142,13 @@ domain: {}
 
 Every predicate receives the objective. The forward-feasibility predicate (6.5) compares `counts_per_group` in the state against `min_n_per_group` for every level of every contrast.
 
-An objective may carry `params: {<step>: {<parameter>: <value>}}`, values declared before the run for parameters the pipeline declares (added 2026-10-14, backlog L24). `init` and `declare --check` refuse a step or parameter the pipeline does not declare; the echo-back lists the values under "Parameters declared", and the confirm hold covers them as it covers the rest of the file. When the step runs the value is recorded with `param_source: declared`: it is not the agent's proposal, so it opens no `param.agent_proposed` hold, and `param.locked_changed` and `param.out_of_range` apply to it as to any value. A proposal that departs from a declared value is the agent's and is asked. A project whose objective declares parameters does not inherit its confirmation (2.7): a declared parameter is a decision this project's owner must see.
+An objective may carry `params: {<step>: {<parameter>: <value>}}`, values declared before the run for parameters the pipeline declares (added 2026-10-14, backlog L24). `init` and `declare --check` refuse a step or parameter the pipeline does not declare; the echo-back lists the values under "Parameters declared", and the confirm hold covers them as it covers the rest of the file. When the step runs the value is recorded with `param_source: declared`: it is not the agent's proposal, so it opens no `param.agent_proposed` hold, and `param.locked_changed` and `param.out_of_range` apply to it as to any value. A proposal that departs from a declared value is the agent's and is asked. A project whose objective declares parameters does not inherit its confirmation (2.7): a declared parameter is a decision this project's owner must see. An open objective declares `deliverables: []` and no `params` (2026-10-16): the person chooses which answers to deliver, and a tool's parameters are settled per question.
 
 ### 2.6 Runs and forks
 
 A run is one attempt at the bound pipeline. `run` is idempotent: it resumes the project's latest open run, opens the first run, and refuses (exit 16) when the latest run is closed; `run --new` opens the next one, so a `run` typed after the final submit cannot start a second attempt by accident. Runs close as `completed`, `failed`, or `abandoned` (`stringency abandon --reason "…"`).
 
-`fork --from <run_id> --at <step_id> --set <step>.<param>=<value>… --reason "…"` opens a new run with `parent_run_id` set. It inherits inputs and every completed step before `--at`, applies the declared parameter changes, and records them as `delta_json`. The parent is untouched. Forks may not change pipeline, mode, profile, objective, or design; those need a new project. Forking is how you rerun with a different threshold or contrast without overwriting the first result, and it is in v1 because application 1 is iteration-heavy. For every step it re-runs, a fork inherits the parameters its parent admitted (through forks of forks: the nearest ancestor that completed the step), recorded with `param_source: inherited` where the ancestor's value was not its default; `--set` overrides only what it names (`fork`); a parameter neither inherited nor set takes its default. An inherited value is not the agent's proposal in the child and opens no `param.agent_proposed` hold; the range and lock predicates apply to it as to any value. `fork` lists every re-run step's parameters with their source, and `fork --check` lists them without opening a run (amended 2026-10-14, backlog L27).
+`fork --from <run_id> --at <step_id> --set <step>.<param>=<value>… --reason "…"` opens a new run with `parent_run_id` set. It inherits inputs and every completed step before `--at`, applies the declared parameter changes, and records them as `delta_json`. The parent is untouched. Forks may not change pipeline, mode, profile, objective, or design; those need a new project. Forking is how you rerun with a different threshold or contrast without overwriting the first result, and it is in v1 because application 1 is iteration-heavy. For every step it re-runs, a fork inherits the parameters its parent admitted (through forks of forks: the nearest ancestor that completed the step), recorded with `param_source: inherited` where the ancestor's value was not its default; `--set` overrides only what it names (`fork`); a parameter neither inherited nor set takes its default. An inherited value is not the agent's proposal in the child and opens no `param.agent_proposed` hold; the range and lock predicates apply to it as to any value. `fork` lists every re-run step's parameters with their source, and `fork --check` lists them without opening a run (amended 2026-10-14, backlog L27). In an open project `run` and `fork` are refused (exit 16); an open run opens on the first `ask`, stays `running` or `held` until `abandon`, and its topology grows one on-demand step per `call` or `exec` (2026-10-16).
 
 ### 2.7 Init: validation, compatibility predicates, echo-back
 
@@ -159,7 +160,7 @@ Validation: every input hash matches; `design.yml` validates against the plugin 
 
 Compatibility predicates (6.5, the `init.*` set): the declarations are checked against each other and against the bound pipeline. Every contrast names a declared factor and declared levels; the replication unit is a declared unit; every design column exists in the raw input, which the engine learns by running the plugin's extractor once on each object input; the pipeline declares that it answers the objective's question; every deliverable is produced by some step; references named in the inputs match the pipeline's expected build. These are the errors an agent makes when it misreads a prose description, and they are cheapest to catch here.
 
-Inherited confirmation (added 2026-09-23): when every input is `derived_from` a run of a project the same owner confirmed, that project's `design.yml` is byte-identical to this one's, and the method tags share a major version, `init` still opens the confirm hold but resolves it at once by reference to the upstream acceptance (a `reviews` row with `via: inherited` naming the upstream project, hold, review, reviewer and date), and the echo-back shows only what is new: the pipeline, the question and deliverables, and the bound runs. A raw input, a different owner, a changed design, an unconfirmed upstream, or a method major-version change opens an ordinary hold. Fourteen chained Lyons CLP projects restated one design fourteen times before this.
+Inherited confirmation (added 2026-09-23): when every input is `derived_from` a run of a project the same owner confirmed, that project's `design.yml` is byte-identical to this one's, and the method tags share a major version, `init` still opens the confirm hold but resolves it at once by reference to the upstream acceptance (a `reviews` row with `via: inherited` naming the upstream project, hold, review, reviewer and date), and the echo-back shows only what is new: the pipeline, the question and deliverables, and the bound runs. A raw input, a different owner, a changed design, an unconfirmed upstream, or a method major-version change opens an ordinary hold. Fourteen chained Lyons CLP projects restated one design fourteen times before this. An open project inherits no confirmation (owner's decision 4, 2026-10-16): `init --mode open --from-delivery <dir>` derives the three declarations from a delivery (one input per delivered file with `derived_from`, the upstream design byte for byte, the upstream objective with no deliverables and no params), and the confirm echo is the pinned switch paragraph with the bound delivery, accepted at a terminal or relayed with `--attest`.
 
 Echo-back: `init` renders the design, objective, and inputs as plain language ("24 cores from 12 blocks on 4 slides; 12 tumor and 12 margin; the biological replicate is the block; the question is tumor versus margin differential expression with at least 3 blocks per group; slide is a batch variable") and opens a project-level hold of kind `confirm` waiting on the owner. `run` refuses to open a run until the owner has accepted it through `review`. This applies in every profile. The echo-back is regenerated and the hold reopened if any of the three files changes, because the accept is bound to their hashes (7.4).
 
@@ -295,6 +296,8 @@ Decision points are declared, so the coverage report (12.2) is computed rather t
 
 `report`: consumes tables and consensus records and produces prose and figures, with an optional harness call for the prose. The numeric-claims predicate applies to the prose. Report outputs cannot be inputs to other steps.
 
+A tool (open mode, 2026-10-16) is a module of any kind whose `modes` list `open`; its step is created at proposal (`call <tool>`), numbered after every step of the run so far, and gated as any step. `exec` runs a script written in the session as an on-demand step under the engine runner with a synthetic manifest (`exec@<script hash>`, operation `exec`, open mode only), its inputs bound read-only, the script's text in the trace, its outputs recorded and labelled untested when an answer cites them (closes backlog G2).
+
 ### 3.4 Executing a deterministic module
 
 Two runners share every step except the middle one.
@@ -419,7 +422,7 @@ Append-only. A forked run inherits the parent's history up to the fork point wit
 }
 ```
 
-`proposed_by` is `pipeline` when every parameter took its committed default and `agent` when the operator proposed any value; `param_source` records, per parameter, `default` or `agent`. `rationale_ref` points to the agent's stated reason for its choices when one was supplied with `propose`, and is never read by a predicate. `ticket` is set for operator-run steps. The fields are shaped so that open mode, where the agent proposes the operation as well as the parameters, uses the same record without a migration. Every action is written to the trace before its pre-gate runs, so rejected proposals are kept.
+`proposed_by` is `pipeline` when every parameter took its committed default and `agent` when the operator proposed any value; `param_source` records, per parameter, `default` or `agent` (or `fork`, `inherited`, `declared`, and since 2026-10-16 `person`: a value the person dictated in their own words, recorded with their words as the reason, which opens no `param.agent_proposed` hold; `proposed_by` precedence is agent, person, inherited, declared, pipeline). `rationale_ref` points to the agent's stated reason for its choices when one was supplied with `propose`, and is never read by a predicate. `ticket` is set for operator-run steps. The fields are shaped so that open mode, where the agent proposes the operation as well as the parameters, uses the same record without a migration. Every action is written to the trace before its pre-gate runs, so rejected proposals are kept.
 
 `attempt` increments when a step is retried after a rejection or in a fork. Parameter changes between attempts are a diff of `parameters`.
 
@@ -582,6 +585,12 @@ Domain-free, live in the engine, apply to every plugin.
 | `obj.feasibility` | pre, post | * | `counts_per_group` for any level of any contrast is below `min_n_per_group` | block |
 | `obj.deliverable_unreachable` | pre | * | no remaining step produces a declared deliverable | flag |
 | `prov.orphan_artifact` | deliver | * | an artifact proposed as final has no sidecar | block |
+| `topo.input_type_mismatch` | pre | * | a bound input's recorded kind differs from the type the module declares for it (open mode, 2026-10-16) | block, invariant |
+| `param.schema_invalid` | pre | * | the action's declared parameters fail the module's `params.schema.json` (enum, bounds, type); a tool run on demand has no pipeline range, so the schema bounds it (2026-10-16) | block, invariant |
+| `prov.controls_stale` | pre | * (open mode only; never for `exec`) | the tool has no passing control for its version, or its last passing control ran under another digest of its environment; the label carries the consequence (2026-10-16) | log |
+| `ans.cited_missing` | post | `answer` | a cited artifact or cell does not exist, is rejected or superseded, or belongs to a step that did not complete (2026-10-16) | block, invariant |
+| `ans.numeral_unmatched` | post | `answer` | a numeral in the answer matches no cited cell after rounding to the written precision; the denominator is the cited cells, not every cell of every table (2026-10-16) | block, invariant |
+| `ans.label_authored` | post | `answer` | the answer's text contains the word trusted or untested: the engine prints the label from what ran, the operator may not write it (2026-10-16) | block, invariant |
 
 `obj.feasibility` runs pre-gate on every step (cheap, catches a state that is already infeasible) and post-gate on every step (catches the step that made it infeasible, before anything downstream runs). This is the forward-feasibility idea from the design note in its simplest honest form: it does not predict what a filter will do, it checks what the filter did before the next step can start.
 
@@ -627,7 +636,7 @@ Predicates do not read the agent's rationale as evidence for admissibility. The 
 | proposed, admissible, held, running, awaiting_execution, dispatching, produced | the run is abandoned | abandoned (the step closes with the run; its open holds are withdrawn; added 2026-09-23) |
 | awaiting_execution | `submit <ticket> --failed --reason` (the operator reports the external run failed) | running, then failed; the executions row carries the reported exit code (added 2026-09-23) |
 
-Run status is derived: `held` if any step is held; `blocked` or `failed` if the frontier is; `completed` when every step is completed or skipped; otherwise `running`. A skipped step is done for its successors and for the run; summaries, the methods paragraph, the board and the project page name it with its reason, and coverage counts it as not evaluated.
+Run status is derived: `held` if any step is held; `blocked` or `failed` if the frontier is; `completed` when every step is completed or skipped; otherwise `running`. An open-ended run (open mode, 2026-10-16) is `held` when any step is held and otherwise `running`: it never completes by itself, and a blocked, rejected or failed on-demand step is that step's state only; `next` on it reports the questions, answers, steps and citable artifacts. A skipped step is done for its successors and for the run; summaries, the methods paragraph, the board and the project page name it with its reason, and coverage counts it as not evaluated.
 
 `stringency next` returns the first `pending` step whose inputs are complete, or the current hold, block, or failure with its reason. `run` loops on `next` until it returns something other than a runnable step, then exits with the matching code (14.2). Every transition writes a `step_events` row in the same transaction as the status change.
 
@@ -846,8 +855,13 @@ deliveries(delivery_id PK, run_id, path, coverage_hash, methods_hash, index_hash
 
 policy_snapshots(policy_digest PK, policy_version, content_json, predicate_set_json, first_seen)
 
+questions(question_id PK, run_id, seq, text_ref, origin, asked_via, operator_session_ref, ts)   -- append-only (open mode, 2026-10-16)
+answers(answer_id PK, run_id, question_id, text_ref, cited_json, label, provenance_json, status, ts) -- append-only (open mode, 2026-10-16)
+
 schema_migrations(version PK, applied)
 ```
+
+Open mode (2026-10-16) adds no column to `steps` or `artifacts`: an on-demand step's `created` event payload carries `on_demand: {kind: tool | exec, decl, manifest, question_id}`, the run's `captures` event carries `tools` and `upstream_lineage`, `executions.network` records `none`, `unenforced` or `n/a` for an `exec` step, and an answer's label is derived from the cited artifacts' lineage, never stored on an artifact.
 
 One database per project at `prov/run.db`, WAL mode, never on CIFS. A thin index on PROTSEQ can point at project databases later if cross-project queries are ever needed.
 
@@ -961,7 +975,7 @@ ExecResult: exit_code, stdout_path, stderr_path, duration_ms, env_digest
 
 `apptainer`: `apptainer exec --containall --bind <paths> <image.sif> <command>`. `env_digest` is the SIF digest recorded in the environment manifest, verified against the file at run open. Production for engine-run steps, state extractors, and judgment evidence generation. An `image` in the environment manifest is an absolute path used as given, or a file name or relative path resolved against `$STRINGENCY_IMAGES`, then `images_root` in the user's `~/.config/stringency/config.yml`, then the method checkout and its `envs/` directory (added 2026-10-14, backlog L31), so a method names its images portably and a site says where it keeps them. An engine-run step (a module's script, a judgment's `pre.*` and `post.*`, a control's generator) also sees the project's `method/` checkout, bound read-only, so shared code beside the modules (`modules/_rlib/`, `modules/_pylib/`) is reachable; the checkout is at a recorded SHA and checked for dirtiness at run open, so that code is pinned as the module scripts are (added 2026-10-14, backlog L7).
 
-Extractors and judgment `pre.*` scripts always use the engine runner, because the state every gate reads and the evidence every judge sees must be produced by committed code the engine executed rather than by the party being gated.
+Extractors and judgment `pre.*` scripts always use the engine runner, because the state every gate reads and the evidence every judge sees must be produced by committed code the engine executed rather than by the party being gated. An on-demand step's input directories are bound read-only, and a read-only bind named by the job stays read-only even when the job's stdin names a path under it; an `exec` step runs under the profile's `open.exec_timeout_s`, asks for `--net --network none` where the host allows it (`probe` reports whether it does) and records the outcome in `executions.network`; the local executor is development-only for `exec` (`--allow-local`) (2026-10-16).
 
 The run's `env_digest` is the hash of the sorted set of environment digests used, with `as_reported` entries marked in the digest input so two runs that differ only in verification status do not collide.
 
@@ -1021,6 +1035,8 @@ expect:
 
 Fixtures are identified by hash; the path is a hint. The engine resolves fixtures from the project's fixtures directory and the method repo's `controls/fixtures/`. Every generator refuses to touch any hash listed under `design.holdout`, and `lint` warns if a control fixture matches one. Negative controls require no annotation and are the first control to write for every judgment module.
 
+A deterministic tool is scored by `expect.equals: {output, columns, tolerance}` (the output table against `fixture.truth` keyed by `truth.key`; fewer matching rows than the last passing run is a regression), `expect.count: {output, where: {column, below | above}, max | min}` (a negative control) or `expect.completed: true` (a figure tool); `params` are the values the control runs with, admitted as defaults; a module that lists `open` is controlled alone, as a one-step synthetic run on its fixture under a mode it admits, so a tool's truth table describes the tool's output, not the fixture after an upstream step; the control's metrics record the environment digest it ran under, and `lint` warns on an open tool without a positive control (2026-10-16).
+
 ## 12. Deliver
 
 ### 12.1 Harvest and write-back
@@ -1028,6 +1044,8 @@ Fixtures are identified by hash; the path is a hint. The engine resolves fixture
 `deliver` requires the run to be `completed`. It copies every artifact marked final (report-module outputs by default, `--include <step>.<output>` for others) with sidecars into `deliver/<run_id>/`, verifies that every deliverable named in the objective is present, writes `coverage.md` (12.2) and `methods.md` (12.3), writes `index.json` linking each file to run, step, action, and hash, and records the delivery. In the Claude Science deployment the skill then saves these as session artifacts, so both stores carry the run ID.
 
 `deliver` also writes `summary.md`: the engine's plain rendering of the run for a reader who will not open the trace: what was analyzed, what ran, what was checked and who decided what, what was delivered, what was not checked. Every sentence is filled from the trace; the file contains no interpretation. (Amendment approved 2026-09-15.)
+
+An open run delivers from `running`, never stopping for a sign-off (owner's decision 5, 2026-10-16): `deliver --answer <id>...` copies the chosen admissible answers' cited artifacts into `deliver/<run>/<delivery_id>/` with one `<answer_id>.answer.md` each (question, label sentence, qualifier, text, cited files, the rerun line); `index.json` carries `mode`, `answers` and a `provenance` block per file (both modes; backlog L35); the deliver gate's verdicts are recorded; `summary.md` adds What was asked, What was untested and Explored (every run of every tool on the same inputs is counted, and questions are counted by origin), and the coverage report an `open mode:` block with the upstream lineage captured at run open.
 
 ### 12.2 Coverage report
 
@@ -1093,7 +1111,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 
 | Verb | Arguments | Gate | Trace | Eval |
 |---|---|---|---|---|
-| `init <path>` | `--method <git-url>@<tag> --pipeline <name> --mode --profile --owner --reviewer --objective <file> --design <file> --inputs <file> [--judgment-harness api] [--executor apptainer] [--drafted-by person\|agent] [--brief <file>]` | binds; refuses open+strict; runs lint | opens the project record | none |
+| `init <path>` | `--method <git-url>@<tag> [--pipeline <name>] --mode --profile --owner --reviewer [--objective <file> --design <file> --inputs <file>] [--from-delivery <dir> [--upstream <root>]] [--judgment-harness api] [--executor apptainer] [--drafted-by person\|agent] [--brief <file>]` | binds; refuses open+strict and `--pipeline` with `--mode open`; runs lint | opens the project record | none |
 | `declare <dir>` | `--check --method <git-url>@<tag> --pipeline <name> [--objective --design --inputs] [--profile] [--executor] [--json]` | every `init` check, in a temporary directory | none; prints the echo-back | none |
 | `run` | `[--until <step>] [--allow-dirty "<reason>"] [--new] [--json] [--responses <file\|->] [--check] [--deliver]` | evaluates predicates; halts on hold or block; `--responses` files dispatch responses from one document; with `--check` it only reports what filing them would do (validity, the `judg.*` gates, the holds that would open) and writes nothing; `--deliver` delivers on completion | writes everything (nothing with `--check`) | triggers replicates |
 | `next` | `[--json]` | reports the next step with its plan template (operation, parameter schema with defaults and ranges, vocabulary, declared outputs, expected evidence), or the current hold | reads | none |
@@ -1101,12 +1119,17 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `submit <ticket>` | `--outputs name=path… [--evidence path]… [--command "<string>"] [--json]` | hashes outputs, extracts state, parses evidence, runs plan-drift and post-gate | writes execution, snapshot, verdicts | none |
 | `status` | `[--run <id>] [--overrides [--module]] [--json]` | reports holds and who they wait on | reads | override rates |
 | `review` | `[--run <id>] [--show] [--hold <id>] [--verdict accept\|override\|reject\|defer --hold <id> [--item <id>] [--replicate n] [--correction <json>] --reason "<txt>"] [--attest] [--serve [--port <n>] [--bind <addr>] [--project <path>]... [--projects <dir>]] [--holds <id,...> --projects <dir> [--verdict accept\|reject --reason "<txt>"]]` | clears holds by recorded verdict; `--serve` reads holds and records verdicts with `via: web` (7.5; built 2026-09-23, `review_serve.py`) | appends reviews | accumulates override corpus |
-| `deliver` | `[--run <id>] [--include <step>.<output>]…` | none | harvests, cross-links | emits coverage report and methods paragraph |
+| `deliver` | `[--run <id>] [--include <step>.<output>]… [--answer <id>]…` | none | harvests, cross-links; `--answer` delivers an open run's admissible answers (2026-10-16) | emits coverage report and methods paragraph |
+| `tools list` | `[--context] [--json]` | none; reads only, loads no plugin | the method's modules listing `open` with what they could bind here, their words from the analyze skill, the last passing control; `--context` adds the objective and the design (open mode, 2026-10-16) | none |
+| `ask "<text>"` | `[--suggested] [--json]` | the confirm hold enforced | files the person's words as a question of the open run (`origin` person or suggested) | none |
+| `call <tool>` | `[--question <id>] [--in k=ref]… [--set k=v]… [--asked-by agent\|person] [--reason] [--json]` | the ordinary pre- and post-gate on an on-demand step | adds the step, proposes, executes on the engine, records | none |
+| `exec <script\|->` | `[--lang] [--question <id>] [--in k=ref]… [--out name=type[/format]]… [--env] [--seed N] [--reason] [--allow-local] [--json]` | the ordinary gate; nothing new blocks | the script in the trace, the synthetic manifest, inputs read-only, the network outcome; outputs untested when cited | none |
+| `answer` | `--question <id> --cite <artifact id[:row[:column]]>… (--text <file> \| -) [--json]` | `ans.*`: every numeral a cited cell, every citation resolving, the label unwritten | the answer with its derived label and qualifier; blocked answers kept (exit 12) | none |
 | `fork` | `--from <run> --at <step> [--set <step>.<param>=<value>]… --reason "<txt>" [--check] [--json]` | none | opens a child run with delta and lists what each re-run step will run with and the source of each value (inherited, fork, default); `--check` lists and opens nothing | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
 | `wait` | `[--hold <id> \| --run <id>] [--timeout <s>] [--json]` | none | reads only, every five seconds: returns (exit 0) when the hold is resolved or withdrawn, printing the review's verdict, reason, reviewer and via, or when the run's status, a step's status or its open holds change, or at once on a closed run; exit 10 when the timeout passes, 15 on an unknown id; with neither option, the latest run. The operator's way to sleep until a person has answered (added 2026-10-07) | none |
 | `board <root>` | `[--write] [--json]` | none | reads every project under `<root>` (one level; skips `superseded/`, `declarations/`): plan status, latest run and step, open holds and who they wait on, latest delivery's files; `--write` rewrites `<root>/STATUS.md`, which `init`, `run`, `propose`, `submit`, `review`, `deliver` and `abandon` refresh when it exists | none |
-| `present` | `[--run <id>] [--hold <id>] [--skills-dir <dir>] [--json]` | none | reads the run's delivery or the hold and renders what the method's delivery skill (14.4) says a person should see; the engine default is the progress sentence and the deliverables | none |
+| `present` | `[--run <id>] [--hold <id>] [--answer <id>] [--answers] [--skills-dir <dir>] [--json]` | none | reads the run's delivery or the hold and renders what the method's delivery skill (14.4) says a person should see; the engine default is the progress sentence and the deliverables; `--answer` renders one answer (the label sentence first, the question, the text, the method's `answer_view` from `skills/open.yml` or the cited rows, the cells, the decisions) and `--answers` lists them (2026-10-16) | none |
 | `lint` | `<path>` or `<repo-or-url>@<tag>` | static checks on a module directory or a method repo; a tagged spec is cloned into a temporary directory first | none | none |
 | `probe` | `[--method <path\|url@tag>] [--no-hash] [--json]` | none; reads only | reports the engine version and path, every plugin and version, the container runtime, the skills installed beside the engine, and with `--method` the method's `requires` against what is installed and every image its environment manifest names (resolved, present, readable, hashing to the manifest's sha256 unless `--no-hash`); exit 0 when every check passes, 1 otherwise (added 2026-10-14, backlog L30) | none |
 | `controls run` | `[--module <name>]` | real gates on a single module | writes controls_runs | metrics and regression diff |
@@ -1238,7 +1261,8 @@ Everything in the eval column is either a control, a rate computed from the trac
 
 | Item | Reserved now | Trigger to build |
 |---|---|---|
-| open and staged modes | `mode` field, `splits`, `proposed_by`, `rationale_ref`, `budgets` column on runs | app 1 runs end to end in pipeline mode and the exploratory surface between clustering and niche characterisation is real |
+| open mode | built 2026-10-16 (`spec/plans/open_mode_plan.md`, phase 1: tools, `exec`, answers with labels, deliver); `budgets` and `splits` stay reserved | phase 2 (judgment tools on demand, budgets, structured claims, the console's questions page, the promotion loop) when the first real open project has run |
+| staged mode | `mode` field, `splits` | someone wants a confirmatory claim from an open project (backlog H5) |
 | free-text, ungated steps | nothing | open mode |
 | `openai-compatible` adapter | harness protocol | the Qwen3 evaluation |
 | re-audit | `policy_snapshots`, full state and action records | a predicate is added after real runs exist |

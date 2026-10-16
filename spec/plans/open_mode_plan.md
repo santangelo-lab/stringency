@@ -1,9 +1,12 @@
 # Open mode: interactive downstream analysis on a delivered dataset
 
-**Status 2026-10-16.** Approved by the owner 2026-10-16 (plan mode, this engine checkout;
-`notes/2026-10-16-1330-open-mode-plan.md`). Nothing built. The implementation (sessions S1 to
-S7 and O1 to O6 of section 7) is to be driven by an agent on the lab's workstation against the
-installed engine; the design amendments of section 6 await the owner's reading. Lane K in
+**Status 2026-10-16, evening.** Approved by the owner 2026-10-16 (plan mode, this engine
+checkout; `notes/2026-10-16-1330-open-mode-plan.md`). S1 to S7 built the same day on branch
+`open-mode` (engine 0.2.22, not tagged, not merged; `notes/2026-10-16-2200-open-mode-s1-s7.md`):
+every engine change of section 2, the toy's tools and controls of section 4, the six predicates,
+the trace tables, and the design amendments of section 6 applied to `spec/stringency-design.md`
+for the owner's reading at merge. Open: O1 to O6 (the skill text, the toy rehearsal, the console,
+the Xenium tools, the acceptance run, the promotion loop) and the owner's merge. Lane K in
 `roadmap-2026-10.md`.
 
 ## Context
