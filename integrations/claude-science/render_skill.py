@@ -44,7 +44,8 @@ REQUIRED = {
     "asks": list,
     "defaults_to_say": dict,
 }
-OPTIONAL = {"name": str, "summary": str, "decisions": list}
+OPTIONAL = {"name": str, "summary": str, "decisions": list, "tools": list, "open": dict}
+QUESTION_OUTCOMES = ("exec", "cannot", "fork", "explain")  # or tool:<name>
 HOW = ("declared", "proposed")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
@@ -124,11 +125,15 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
     asks = _str_list(data["asks"], "asks", problems)
     defaults = _str_map(data["defaults_to_say"], "defaults_to_say", problems, allow_empty=True)
     decisions = _decisions(data.get("decisions"), steps, problems)
+    tools = _tools(data.get("tools"), problems)
+    open_block = _open(data.get("open"), tools, problems)
 
     after_delivery_titles: list[str] = []
     if method_root is not None:
         _cross_check(method_root, pipeline, data["question"], steps, deliverables, problems)
         _cross_check_decisions(method_root, pipeline, decisions, problems)
+        _cross_check_tools(method_root, pipeline, tools, open_block, problems)
+        _check_questions_file(method_root, pipeline, tools, problems)
         delivery = method_root / "skills" / f"{pipeline}.yml"
         if delivery.exists():
             try:
@@ -177,8 +182,254 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
             for d in decisions
             if d["how"] == "proposed"
         ],
+        "tools": tools,
+        "open_intro": open_block.get("intro", ""),
+        "open_paths": open_block.get("paths", []),
     }
     return ctx, problems
+
+
+def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
+    """`tools`: the words a method writes for each tool a person may ask for after delivery
+    (open mode, 2026-10-16): `{module, title, use_when, asks: {param: question}, proposed:
+    [{param, evidence, ask}], defaults_to_say: {param: phrase}}`. The engine reads `module.yml`
+    for what a tool is; this is what the skill says about it."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        problems.add("tools: a list is required")
+        return []
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for i, t in enumerate(value, 1):
+        where = f"tools[{i}]"
+        if not isinstance(t, dict):
+            problems.add(f"{where}: must be a mapping")
+            continue
+        for key in t:
+            if key not in ("module", "title", "use_when", "asks", "proposed", "defaults_to_say"):
+                problems.add(f"{where}: unknown key `{key}`")
+        module = t.get("module")
+        if not isinstance(module, str) or not SLUG.match(module):
+            problems.add(f"{where}: `module` must be the module's name")
+            continue
+        if module in seen:
+            problems.add(f"{where}: module `{module}` listed twice")
+            continue
+        seen.add(module)
+        title, use_when = t.get("title"), t.get("use_when")
+        if not isinstance(title, str) or not title.strip():
+            problems.add(
+                f"{where} ({module}): `title` must be a short phrase in the person's words"
+            )
+            continue
+        if not isinstance(use_when, str) or not use_when.strip():
+            problems.add(
+                f"{where} ({module}): `use_when` must say when this tool answers a question"
+            )
+            continue
+        asks = _str_map(t.get("asks") or {}, f"{where}.asks", problems, allow_empty=True)
+        defaults = _str_map(
+            t.get("defaults_to_say") or {}, f"{where}.defaults_to_say", problems, allow_empty=True
+        )
+        proposed: list[dict[str, Any]] = []
+        raw_prop = t.get("proposed") or []
+        if not isinstance(raw_prop, list):
+            problems.add(f"{where}.proposed: a list is required")
+            raw_prop = []
+        for j, p in enumerate(raw_prop, 1):
+            pw = f"{where}.proposed[{j}]"
+            if not isinstance(p, dict) or not isinstance(p.get("param"), str):
+                problems.add(f"{pw}: must be a mapping with `param`")
+                continue
+            evidence = _str_list(p.get("evidence"), f"{pw}.evidence", problems)
+            ask = p.get("ask")
+            if not isinstance(ask, str) or not ask.strip():
+                problems.add(f"{pw}: `ask` must be the question in the person's words")
+                continue
+            proposed.append({"param": p["param"].strip(), "evidence": evidence, "ask": ask.strip()})
+        out.append(
+            {
+                "module": module,
+                "title": title.strip(),
+                "use_when": use_when.strip(),
+                "asks": [{"param": k, "ask": v} for k, v in asks.items()],
+                "proposed": proposed,
+                "defaults_to_say": [{"key": k, "say": v} for k, v in defaults.items()],
+            }
+        )
+    return out
+
+
+def _open(value: Any, tools: list[dict[str, Any]], problems: Problems) -> dict[str, Any]:
+    """`open`: `{intro, paths: [{answers, tool | code, needs, asks}]}`, the method's suggested
+    paths forward in its own words (open mode, 2026-10-16). A path names a listed tool or says
+    `code: true`, never both; `needs` names the pipeline outputs it needs delivered."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        problems.add("open: a mapping is required")
+        return {}
+    for key in value:
+        if key not in ("intro", "paths"):
+            problems.add(f"open: unknown key `{key}`")
+    intro = value.get("intro", "")
+    if intro is not None and not isinstance(intro, str):
+        problems.add("open.intro: must be a sentence")
+        intro = ""
+    paths_raw = value.get("paths") or []
+    if not isinstance(paths_raw, list):
+        problems.add("open.paths: a list is required")
+        paths_raw = []
+    names = {t["module"] for t in tools}
+    paths: list[dict[str, Any]] = []
+    for i, p in enumerate(paths_raw, 1):
+        where = f"open.paths[{i}]"
+        if not isinstance(p, dict):
+            problems.add(f"{where}: must be a mapping")
+            continue
+        for key in p:
+            if key not in ("answers", "tool", "code", "needs", "asks"):
+                problems.add(f"{where}: unknown key `{key}`")
+        answers = p.get("answers")
+        if not isinstance(answers, str) or not answers.strip():
+            problems.add(f"{where}: `answers` must say what the path answers")
+            continue
+        tool, code = p.get("tool"), bool(p.get("code"))
+        if tool is not None and code:
+            problems.add(f"{where}: a path names a tool or says code, not both")
+            continue
+        if tool is None and not code:
+            problems.add(f"{where}: a path names a listed tool or says `code: true`")
+            continue
+        if tool is not None and tool not in names:
+            problems.add(f"{where}: tool `{tool}` is not in `tools`")
+            continue
+        needs = _str_list(p.get("needs"), f"{where}.needs", problems) if "needs" in p else []
+        asks = p.get("asks")
+        if asks is not None and (not isinstance(asks, str) or not asks.strip()):
+            problems.add(f"{where}: `asks` must be a sentence")
+            continue
+        paths.append(
+            {
+                "answers": answers.strip(),
+                "tool": tool,
+                "code": code,
+                "needs": needs,
+                "asks": (asks or "").strip(),
+                "title": next((t["title"] for t in tools if t["module"] == tool), None),
+            }
+        )
+    return {"intro": (intro or "").strip(), "paths": paths}
+
+
+def _module_yml(root: Path, name: str) -> dict[str, Any] | None:
+    mfile = root / "modules" / name / "module.yml"
+    if not mfile.exists():
+        return None
+    m = _read_yaml(mfile)
+    return m if isinstance(m, dict) else None
+
+
+def _cross_check_tools(
+    root: Path,
+    pipeline: str,
+    tools: list[dict[str, Any]],
+    open_block: dict[str, Any],
+    problems: Problems,
+) -> None:
+    """Each tool is a module of the method that lists `open`; every `asks` and `proposed` key is
+    a parameter of its schema; every decision point of the module is settled by one of them;
+    every path's `needs` is an output of a pipeline step (the `decisions:` check of backlog L32,
+    reused)."""
+    import json
+
+    if not (root / "modules").is_dir():
+        return
+    for t in tools:
+        m = _module_yml(root, t["module"])
+        if m is None:
+            problems.add(f"tools: `{t['module']}` is not a module of this method")
+            continue
+        modes = m.get("modes") or ["pipeline"]
+        if "open" not in modes:
+            problems.add(f"tools: module `{t['module']}` does not list `open` in its modes")
+        schema_path = root / "modules" / t["module"] / "params.schema.json"
+        params: set[str] = set()
+        if schema_path.exists():
+            try:
+                sch = json.loads(schema_path.read_text())
+                params = set((sch.get("properties") or {}).keys())
+            except (json.JSONDecodeError, AttributeError):
+                problems.add(f"tools: {schema_path} is not a JSON object")
+        settled = {a["param"] for a in t["asks"]} | {p["param"] for p in t["proposed"]}
+        for name in settled:
+            if name not in params:
+                problems.add(
+                    f"tools: `{t['module']}` has no parameter `{name}` (asked or proposed)"
+                )
+        for dp in m.get("decision_points") or []:
+            if str(dp) not in settled:
+                problems.add(
+                    f"tools: decision point `{dp}` of `{t['module']}` is settled by nobody: "
+                    "add it to `asks` or `proposed`"
+                )
+    if not open_block.get("paths"):
+        return
+    pfile = root / "pipelines" / f"{pipeline}.yml"
+    outputs: set[str] = set()
+    if pfile.exists():
+        p = _read_yaml(pfile)
+        for s in (p.get("steps") or []) if isinstance(p, dict) else []:
+            if isinstance(s, dict) and s.get("module"):
+                m = _module_yml(root, str(s["module"]).split("@")[0])
+                if m and isinstance(m.get("outputs"), dict):
+                    outputs |= set(m["outputs"])
+    if not outputs:
+        return
+    for i, path in enumerate(open_block["paths"], 1):
+        for need in path["needs"]:
+            if need not in outputs:
+                problems.add(
+                    f"open.paths[{i}]: needs `{need}`, which no step of pipeline `{pipeline}` produces"
+                )
+
+
+def _check_questions_file(
+    root: Path, pipeline: str, tools: list[dict[str, Any]], problems: Problems
+) -> None:
+    """`skills/<pipeline>.questions.yml` (open mode): `questions: 1`, `skill`, and lists
+    `positive` and `negative` of `{text, expect}` where `expect` is `tool:<listed tool>`,
+    `exec`, `cannot`, `fork` or `explain`. Shape only; it is run by hand."""
+    f = root / "skills" / f"{pipeline}.questions.yml"
+    if not f.exists():
+        return
+    try:
+        data = _read_yaml(f)
+    except yaml.YAMLError as e:
+        problems.add(f"{f}: not valid YAML ({e})")
+        return
+    if not isinstance(data, dict) or data.get("questions") != 1:
+        problems.add(f"{f}: must be a `questions: 1` document")
+        return
+    names = {t["module"] for t in tools}
+    for key in ("positive", "negative"):
+        items = data.get(key)
+        if not isinstance(items, list) or not items:
+            problems.add(f"{f}: `{key}` must be a non-empty list of {{text, expect}}")
+            continue
+        for i, it in enumerate(items, 1):
+            if not isinstance(it, dict) or not isinstance(it.get("text"), str):
+                problems.add(f"{f}: {key}[{i}] must be a mapping with `text`")
+                continue
+            exp = str(it.get("expect") or "")
+            if exp.startswith("tool:"):
+                if exp[5:] not in names:
+                    problems.add(f"{f}: {key}[{i}] expects tool `{exp[5:]}`, not in `tools`")
+            elif exp not in QUESTION_OUTCOMES:
+                problems.add(
+                    f"{f}: {key}[{i}] `expect` must be tool:<name> or one of {', '.join(QUESTION_OUTCOMES)}"
+                )
 
 
 def _decisions(value: Any, steps: dict[str, str], problems: Problems) -> list[dict[str, Any]]:

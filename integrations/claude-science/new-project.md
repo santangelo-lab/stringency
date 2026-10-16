@@ -20,7 +20,9 @@ that description. It asks you a few plain questions one at a time, shows you the
 of your experiment and waits for your yes, then runs the pipeline and reports progress in
 sentences. When the run needs a decision it stops and tells you what it is asking and the
 choices; you answer in the chat or on the console. At the end you get the deliverables, a methods
-paragraph, a coverage report and a one-page summary.
+paragraph, a coverage report and a one-page summary. Then it offers to answer questions of the
+delivered results (open mode): it proposes paths, asks for your yes, and labels every answer
+trusted or untested from what ran (`docs/open-mode.md`).
 
 If the method has no analysis skill yet, say "set up a stringency project for <pipeline> on
 <data>" instead; the session follows the operator checklist below and still presents every
