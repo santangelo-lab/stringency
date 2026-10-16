@@ -35,7 +35,7 @@ def test_ask_then_call_completes_with_an_artifact(questions: Project) -> None:
     assert r.exit_code == 0, r.output + str(r.stderr)
     asked = json.loads(r.output)
     assert asked["origin"] == "person" and asked["seq"] == 1
-    assert [t["name"] for t in asked["tools"]] == ["compare-groups"]
+    assert [t["name"] for t in asked["tools"]] == ["compare-groups", "plot-groups"]
     qid, run_id = asked["question_id"], asked["run_id"]
     row = q.store.one("SELECT * FROM questions WHERE question_id=?", (qid,))
     assert (
@@ -49,8 +49,8 @@ def test_ask_then_call_completes_with_an_artifact(questions: Project) -> None:
             "SELECT payload_json FROM run_events WHERE run_id=? AND event='captures'", (run_id,)
         )
     )
-    assert captures["tools"] == ["compare-groups@0.1.1"]
-    assert captures["script_blobs"].keys() == {"compare-groups@0.1.1"}
+    assert captures["tools"] == ["compare-groups@0.1.1", "plot-groups@0.1.0"]
+    assert captures["script_blobs"].keys() == {"compare-groups@0.1.1", "plot-groups@0.1.0"}
 
     r = cli(q, "call", "compare-groups", "--question", qid, "--json")
     assert r.exit_code == 0, r.output + str(r.stderr)
@@ -242,8 +242,8 @@ def test_wrong_input_kind_blocks_and_unbound_input_is_named(questions: Project) 
     assert r.exit_code == 15 and "has no input frame" in str(r.stderr)
     r = cli(q, "call", "compare-groups", "--in", "object=nonsense")
     assert r.exit_code == 15
-    r = cli(q, "call", "plot-groups")
-    assert r.exit_code == 15 and "no tool named plot-groups" in str(r.stderr)
+    r = cli(q, "call", "draw-things")
+    assert r.exit_code == 15 and "no tool named draw-things" in str(r.stderr)
     r = cli(q, "call", "compare-groups", "--question", "01NOTAQUESTION000000000000")
     assert r.exit_code == 15
 

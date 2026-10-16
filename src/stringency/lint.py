@@ -180,6 +180,12 @@ def lint_module(
     for need in m.controls.required:
         if need not in kinds:
             report.error(where, f"controls.required names {need} but no such control exists")
+    if "open" in m.modes and m.kind == "deterministic" and "positive" not in kinds:
+        report.warn(
+            where,
+            "lists open with no positive control: an answer built on its outputs will be "
+            "labelled untested",
+        )
 
     # in-scope predicates not listed
     listed = {g.split("@")[0] for g in m.gates}

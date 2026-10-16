@@ -1,0 +1,15 @@
+# The comparison the tool must reproduce on the fixture at its defaults (open_mode_plan.md 2.6):
+# the truth table is what compare-groups 0.1.1 wrote on controls/fixtures/groups.csv, checked
+# by hand (A above C above B). A lower rows_matching than the last passing run is a regression.
+control: 1
+name: positive-known-differences
+kind: positive
+fixture:
+  input: {type: frame, blake3: "0ec1e2d905fe497a60fb307d378b3e12bfdc4994b6be234b82874aa3b46b3fd1", path: controls/fixtures/groups.csv}
+  truth: {path: controls/fixtures/compare_truth.tsv, key: contrast}
+params: {replicate_unit: unit, correction: bh}
+expect:
+  equals:
+    output: comparison_table
+    columns: [n_a, n_b, diff, p_adj]
+    tolerance: {diff: 0.01, p_adj: 0.001}
