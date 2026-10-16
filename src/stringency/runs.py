@@ -10,6 +10,7 @@ import json
 import os
 import socket
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from stringency import __version__, git, hashing
@@ -344,6 +345,67 @@ def _context_for(project: Project, run_row: Any, *, executor_kind: str | None = 
     )
 
 
+def upstream_lineage(project: Project) -> list[dict[str, Any]]:
+    """For an open project, the upstream runs its inputs came from: each run's ancestor chain
+    (`parent_run_id`), its status and its deliveries' timestamps, read from the upstream
+    project's `prov/run.db` read-only (open_mode_plan.md 2.7, `captures.upstream_lineage`).
+    An unreadable upstream is reported as such, not raised."""
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in project.inputs.items:
+        d = item.derived_from
+        if d is None or not d.project:
+            continue
+        key = (d.project, d.run_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        entry: dict[str, Any] = {"input": item.name, "project": d.project, "run_id": d.run_id}
+        db = Path(d.project) / "prov" / "run.db"
+        try:
+            with Store.open(db, create=False) as up:
+                chain: list[dict[str, Any]] = []
+                cur: str | None = d.run_id
+                while cur and len(chain) < 50:
+                    row = up.one(
+                        "SELECT run_id, parent_run_id, status, started, ended FROM runs WHERE run_id=?",
+                        (cur,),
+                    )
+                    if row is None:
+                        break
+                    chain.append(
+                        {
+                            k: row[k]
+                            for k in ("run_id", "parent_run_id", "status", "started", "ended")
+                        }
+                    )
+                    cur = row["parent_run_id"]
+                entry["chain"] = chain
+                entry["deliveries"] = [
+                    r["ts"]
+                    for r in up.all(
+                        "SELECT ts FROM deliveries WHERE run_id=? ORDER BY ts", (d.run_id,)
+                    )
+                ]
+                entry["upstream_pipeline"] = up.scalar("SELECT pipeline_name FROM projects LIMIT 1")
+        except Exception as e:  # noqa: BLE001
+            entry["error"] = f"{type(e).__name__}: {e}"
+        out.append(entry)
+    return out
+
+
+def captured_upstream_lineage(store: Store, run_id: str) -> list[dict[str, Any]]:
+    row = store.one(
+        "SELECT payload_json FROM run_events WHERE run_id = ? AND event = 'captures' ORDER BY seq LIMIT 1",
+        (run_id,),
+    )
+    if row is None:
+        return []
+    payload = json.loads(row["payload_json"] or "{}")
+    ul = payload.get("upstream_lineage")
+    return list(ul) if isinstance(ul, list) else []
+
+
 def captured_plugins(store: Store, run_id: str) -> dict[str, str]:
     """The plugins installed when the run opened, from its `captures` event (backlog L29); {}
     for a run opened by an engine before 0.2.19. Reads: run_events."""
@@ -504,6 +566,7 @@ def open_run(
                 "plugins": installed,
                 "plugin_changes": plugin_changes,
                 "tools": [m.ref for m in project.tools()] if project.open_ended else [],
+                "upstream_lineage": upstream_lineage(project) if project.open_ended else [],
                 "method": {
                     "repo": project.config.method.repo,
                     "tag": project.config.method.tag,

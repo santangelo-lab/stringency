@@ -589,13 +589,22 @@ def _deliver_dir(project: Site, run_id: str) -> Path | None:
 def present_run(
     project: Site, run_id: str | None, skills_dir: Path | None = None
 ) -> dict[str, Any]:
-    """The after-delivery view of a run (the latest completed run by default)."""
+    """The after-delivery view of a run (the latest completed run by default; on an open
+    project the latest run with a delivery, since an open run never completes)."""
     if run_id is None:
-        row = project.store.one(
-            "SELECT run_id FROM runs WHERE status = 'completed' ORDER BY ended DESC, rowid DESC LIMIT 1"
+        row = (
+            project.store.one("SELECT run_id FROM deliveries ORDER BY ts DESC, rowid DESC LIMIT 1")
+            if project.open_ended
+            else project.store.one(
+                "SELECT run_id FROM runs WHERE status = 'completed' ORDER BY ended DESC, rowid DESC LIMIT 1"
+            )
         )
         if row is None:
-            raise ConfigError("no completed run to present")
+            raise ConfigError(
+                "no delivered run to present"
+                if project.open_ended
+                else "no completed run to present"
+            )
         run_id = row["run_id"]
     if project.store.one("SELECT 1 FROM runs WHERE run_id = ?", (run_id,)) is None:
         raise ConfigError(f"no run {run_id}")
@@ -702,6 +711,201 @@ def present_hold(
     return payload
 
 
+# -- answers (open mode, open_mode_plan.md 2.7) ------------------------------------------------
+
+
+def _answer_rows(project: Site, run_id: str | None) -> list[Any]:
+    if run_id is None:
+        return project.store.all(
+            "SELECT a.*, q.seq, q.origin, q.text_ref AS q_ref FROM answers a JOIN questions q ON "
+            "q.question_id = a.question_id ORDER BY a.ts, a.rowid"
+        )
+    return project.store.all(
+        "SELECT a.*, q.seq, q.origin, q.text_ref AS q_ref FROM answers a JOIN questions q ON "
+        "q.question_id = a.question_id WHERE a.run_id = ? ORDER BY a.ts, a.rowid",
+        (run_id,),
+    )
+
+
+def _answer_views(project: Site, skills_dir: Path | None) -> list[dict[str, Any]]:
+    """The method's `answer_view` entries from `skills/open.yml`: `{tool, title, output, kind,
+    columns, head}`; a malformed file yields none."""
+    d = Path(skills_dir) if skills_dir else project.method_root / "skills"
+    f = d / "open.yml"
+    if not f.is_file():
+        return []
+    try:
+        data = yaml.safe_load(f.read_text())
+    except yaml.YAMLError:
+        return []
+    if not isinstance(data, dict) or data.get("skill") != 1:
+        return []
+    raw = data.get("answer_view")
+    return [v for v in raw if isinstance(v, dict)] if isinstance(raw, list) else []
+
+
+def _delivered_answer(project: Site, run_id: str, answer_id: str) -> dict[str, Any] | None:
+    """The delivery entry of an answer when it was delivered (the latest delivery of the run
+    that lists it). Reads: deliveries and `index.json`."""
+    for d in project.store.all(
+        "SELECT path FROM deliveries WHERE run_id = ? ORDER BY ts DESC, rowid DESC", (run_id,)
+    ):
+        idx = Path(d["path"]) / "index.json"
+        if not idx.exists():
+            continue
+        try:
+            data = json.loads(idx.read_text())
+        except json.JSONDecodeError:
+            continue
+        for a in data.get("answers", []):
+            if a.get("answer_id") == answer_id:
+                return {**a, "path": str(Path(d["path"]) / str(a.get("file")))}
+    return None
+
+
+def present_answer(project: Site, answer_id: str, skills_dir: Path | None = None) -> dict[str, Any]:
+    """One answer as the person sees it (open_mode_plan.md 1, 2.7): the label sentence first,
+    the question, the text, the tables and figures the method's `answer_view` names for the
+    tool (else every cited table's cited rows), the cells the numbers were checked against,
+    the decisions with their sources, and the delivered file when there is one. Loads no
+    plugin. Reads: answers, questions, messages, artifacts, deliveries."""
+    row = project.store.one(
+        "SELECT a.*, q.seq, q.origin, q.text_ref AS q_ref FROM answers a JOIN questions q ON "
+        "q.question_id = a.question_id WHERE a.answer_id = ?",
+        (answer_id,),
+    )
+    if row is None:
+        raise ConfigError(f"no answer {answer_id}")
+    prov = json.loads(row["provenance_json"] or "{}")
+    cited = json.loads(row["cited_json"] or "[]")
+    sections: list[dict[str, Any]] = []
+    views = _answer_views(project, skills_dir)
+    tools = [str(t) for t in prov.get("tools", [])]
+    shown: set[str] = set()
+    for v in views:
+        tool = str(v.get("tool") or "")
+        if not any(t.split("@")[0] == tool for t in tools):
+            continue
+        art = project.store.one(
+            "SELECT * FROM artifacts WHERE run_id = ? AND name = ? AND status = 'produced' AND step_id IN "
+            "(SELECT step_id FROM steps WHERE run_id = ? AND module = ?) ORDER BY rowid DESC LIMIT 1",
+            (row["run_id"], str(v.get("output") or ""), row["run_id"], tool),
+        )
+        if art is None:
+            sections.append(
+                {
+                    "title": str(v.get("title") or tool),
+                    "kind": str(v.get("kind") or "table"),
+                    "error": f"output {v.get('output')} of {tool} not found",
+                }
+            )
+            continue
+        sections.append(_artifact_section(project, art, v))
+        shown.add(str(art["artifact_id"]))
+    for c in cited:
+        aid = str(c.get("artifact_id"))
+        if aid in shown:
+            continue
+        art = project.store.one("SELECT * FROM artifacts WHERE artifact_id = ?", (aid,))
+        if art is None:
+            continue
+        shown.add(aid)
+        cells = (prov.get("cells") or {}).get(aid)
+        if art["kind"] == "table" and cells:
+            rows = [dict(r) for r in cells.values()]
+            cols = list(rows[0].keys()) if rows else []
+            sections.append(
+                {"title": f"{art['name']} (cited rows)", "kind": "table", **_table(rows, cols, {})}
+            )
+        else:
+            sections.append(
+                _artifact_section(
+                    project,
+                    art,
+                    {"title": art["name"], "kind": "figure" if art["kind"] == "figure" else "file"},
+                )
+            )
+    delivered = _delivered_answer(project, row["run_id"], answer_id)
+    return {
+        "schema": "stringency.present/1",
+        "kind": "answer",
+        "run_id": row["run_id"],
+        "answer_id": answer_id,
+        "question_id": row["question_id"],
+        "question": project.store.message(row["q_ref"]) or "",
+        "origin": row["origin"],
+        "status": row["status"],
+        "label": row["label"],
+        "label_sentence": prov.get("label_sentence"),
+        "qualifier": prov.get("qualifier_line"),
+        "route": prov.get("route"),
+        "tools": tools,
+        "text": project.store.message(row["text_ref"]) or "",
+        "sections": sections,
+        "cited": cited,
+        "cells": prov.get("cells") or {},
+        "decisions": prov.get("decisions") or [],
+        "files": [delivered["path"]] if delivered else [],
+        "delivered": delivered,
+        "never_show": [],
+        "skill": "answer view from skills/open.yml" if views else "the engine default answer view",
+    }
+
+
+def _artifact_section(project: Site, art: Any, view: dict[str, Any]) -> dict[str, Any]:
+    path = Path(str(art["path"]))
+    title = str(view.get("title") or art["name"])
+    kind = str(view.get("kind") or ("figure" if art["kind"] == "figure" else "table"))
+    if kind == "figure":
+        return {
+            "title": title,
+            "kind": "figure",
+            "path": str(path),
+            "caption": None,
+            "beside": None,
+            "beside_caption": None,
+            "beside_missing": None,
+        }
+    if kind == "file" or art["kind"] not in ("table",):
+        return {"title": title, "kind": "file", "path": str(path)}
+    try:
+        rows = _rows_from_table(path)
+    except (OSError, ValueError) as e:
+        return {"title": title, "kind": "table", "error": f"{path.name}: {e}"}
+    head = view.get("head")
+    note = None
+    if isinstance(head, int) and len(rows) > head:
+        note = f"first {head} of {len(rows)} rows"
+        rows = rows[:head]
+    raw_cols = view.get("columns")
+    cols = [str(c) for c in raw_cols] if isinstance(raw_cols, list) else None
+    sec = {"title": title, "kind": "table", **_table(rows, cols, {})}
+    if note:
+        sec["note"] = note
+    return sec
+
+
+def present_answers(project: Site, run_id: str | None = None) -> dict[str, Any]:
+    """Every answer, newest last: id, question, label, status, whether delivered."""
+    items = []
+    for r in _answer_rows(project, run_id):
+        items.append(
+            {
+                "answer_id": r["answer_id"],
+                "run_id": r["run_id"],
+                "question_id": r["question_id"],
+                "seq": r["seq"],
+                "origin": r["origin"],
+                "question": project.store.message(r["q_ref"]) or "",
+                "label": r["label"],
+                "status": r["status"],
+                "ts": r["ts"],
+                "delivered": _delivered_answer(project, r["run_id"], r["answer_id"]) is not None,
+            }
+        )
+    return {"schema": "stringency.present/1", "kind": "answers", "answers": items}
+
+
 def present_step(
     project: Site, run_id: str, step_id: str, skills_dir: Path | None = None
 ) -> dict[str, Any]:
@@ -790,7 +994,29 @@ def render_html(payload: dict[str, Any], url_for: Callable[[str], str] | None = 
 
 def render_markdown(payload: dict[str, Any]) -> str:
     out: list[str] = []
-    if payload["kind"] == "run":
+    if payload["kind"] == "answers":
+        if not payload["answers"]:
+            return "no answers filed\n"
+        for a in payload["answers"]:
+            mark = a["label"] or a["status"]
+            out.append(
+                f"- {a['answer_id']} ({mark}{', delivered' if a['delivered'] else ''}): "
+                f"question {a['seq']} ({a['origin']}): {a['question']}"
+            )
+        return "\n".join(out) + "\n"
+    if payload["kind"] == "answer":
+        out.append(f"## Answer {payload['answer_id']} to question {payload['question_id']}")
+        out.append("")
+        if payload["status"] != "admissible":
+            out.append(f"(this answer was {payload['status']} and is not shown as an answer)")
+            out.append("")
+        out.append(payload["label_sentence"] or "")
+        out.append(payload["qualifier"] or "")
+        out.append("")
+        out.append(f"Question ({payload['origin']}): {payload['question']}")
+        out.append("")
+        out.append(payload["text"].rstrip())
+    elif payload["kind"] == "run":
         out.append(f"## {payload['pipeline']}: {payload['progress']}")
     else:
         out.append(
@@ -836,6 +1062,23 @@ def render_markdown(payload: dict[str, Any]) -> str:
         out.append("")
         out.append("Deliverables:")
         out += [f"- {p}" for p in payload["deliverables"]] or ["- none"]
+    if payload["kind"] == "answer":
+        if payload["cells"]:
+            out.append("")
+            out.append("Cells the numbers were checked against:")
+            for aid, rows in payload["cells"].items():
+                for key, row in rows.items():
+                    out.append(f"- {aid}:{key}: " + ", ".join(f"{c}={v}" for c, v in row.items()))
+        if payload["decisions"]:
+            out.append("")
+            out.append("Decisions:")
+            out += [
+                f"- {d['step']}.{d['param']} = {d['value']} ({d['source']})"
+                for d in payload["decisions"]
+            ]
+        if payload["delivered"]:
+            out.append("")
+            out.append(f"Delivered as {payload['delivered']['file']}.")
     if payload["files"]:
         out.append("")
         out.append("Files to send:")

@@ -17,6 +17,9 @@ from stringency.runs import latest_run, load_run
 def deliver(
     run_id: str | None = typer.Option(None, "--run"),
     include: list[str] = typer.Option([], "--include", help="<step>.<output>; repeatable"),
+    answers: list[str] = typer.Option(
+        [], "--answer", help="open mode: an admissible answer to deliver; repeatable"
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Project.find()
@@ -26,13 +29,14 @@ def deliver(
             raise RefusedError("no run to deliver")
         run_id = row["run_id"]
     rc = load_run(project, run_id)
-    d = do_deliver(rc, list(include))
+    d = do_deliver(rc, list(include), list(answers))
     payload = {
         "schema": "stringency.deliver/1",
         "delivery_id": d.delivery_id,
         "run_id": run_id,
         "path": str(d.path),
         "files": d.files,
+        "answers": d.answers,
     }
     refresh_if_present(project.root)
     notify_after(project, run_id=run_id, delivery=payload)

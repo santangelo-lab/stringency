@@ -18,6 +18,14 @@ from stringency.steps import action_from_row
 from stringency.when import skip_reason
 
 NOT_CHECKED = "not checked: anything not listed above"
+NOT_CHECKED_OPEN = (
+    "not checked: whether the delivered answers were chosen because they came out (every run of "
+    "every tool on the same inputs is counted above; the choice was the person's); anything the "
+    "assistant said that was not filed as an answer; whether an untested script computed what its "
+    "output claims, or used the seed it was given; what the operator read into the hosted session "
+    "beyond the cited artifacts; whether the upstream delivery was re-run after a question here "
+    "was answered; and anything not listed above"
+)
 
 
 def _n(n: int) -> str:
@@ -54,16 +62,48 @@ def _plural(n: int, one: str, many: str | None = None) -> str:
     return f"{_n(n)} {one if n == 1 else (many or one + 's')}"
 
 
+def _question_text(rc: RunContext, question_id: str | None) -> str:
+    if not question_id:
+        return ""
+    ref = rc.store.scalar("SELECT text_ref FROM questions WHERE question_id=?", (question_id,))
+    return (rc.store.message(ref) if ref else None) or ""
+
+
 def what_ran(rc: RunContext) -> list[str]:
     """One line per step, by title: parameters that differed from the defaults, or
-    'at defaults'; a skipped step with its reason. Reads: steps, actions, step_events."""
-    store, project = rc.store, rc.project
+    'at defaults'; a skipped step with its reason. In an open run (open_mode_plan.md 2.7) a
+    tool line names its question and an exec line the script's hash, its environment and its
+    outputs, untested. Reads: steps, actions, step_events, executions, questions."""
+    store = rc.store
     lines: list[str] = []
-    for step in project.pipeline.steps:
+    for step in rc.pipeline.steps:
         st = store.scalar(
             "SELECT status FROM steps WHERE run_id=? AND step_id=?", (rc.run_id, step.id)
         )
-        title = project.pipeline.title(step.id)
+        title = rc.pipeline.title(step.id)
+        entry = rc.on_demand_entry(step.id)
+        if entry is not None and entry.get("kind") == "exec":
+            row = store.one(
+                "SELECT e.script_blob, e.env_name FROM executions e JOIN actions a ON a.action_id=e.action_id "
+                "WHERE a.run_id=? AND a.step_id=? ORDER BY e.rowid DESC LIMIT 1",
+                (rc.run_id, step.id),
+            )
+            outs = ", ".join(
+                f"{r['name']} ({r['kind']})"
+                for r in store.all(
+                    "SELECT name, kind FROM artifacts WHERE run_id=? AND step_id=? AND status='produced' ORDER BY rowid",
+                    (rc.run_id, step.id),
+                )
+            )
+            blob = (row["script_blob"] or "")[:12] if row else "unrecorded"
+            env = row["env_name"] if row else "unknown"
+            q = _question_text(rc, entry.get("question_id"))
+            lines.append(
+                f"- A script written in the session (step {step.id}, blake3 {blob}) run in env {env}"
+                + (f' for the question "{q}"' if q else "")
+                + f": status {st}; outputs {outs or 'none'}, untested."
+            )
+            continue
         if st == "skipped":
             reason = skip_reason(store, rc.run_id, step.id) or "skipped"
             lines.append(f"- {title} (step {step.id}): {reason}.")
@@ -92,7 +132,77 @@ def what_ran(rc: RunContext) -> list[str]:
             )
         else:
             detail = "at defaults"
-        lines.append(f"- {title} (step {step.id}): {detail}.")
+        q = _question_text(rc, entry.get("question_id")) if entry is not None else ""
+        asked = f' for the question "{q}"' if q else ""
+        lines.append(f"- {title} (step {step.id}){asked}: {detail}.")
+    return lines
+
+
+def what_was_asked(rc: RunContext) -> list[str]:
+    """Every question of the run in order, with its origin and whether it was answered."""
+    lines: list[str] = []
+    for q in rc.store.all("SELECT * FROM questions WHERE run_id=? ORDER BY seq", (rc.run_id,)):
+        text = rc.store.message(q["text_ref"]) or ""
+        n = rc.store.scalar(
+            "SELECT COUNT(*) FROM answers WHERE question_id=? AND status='admissible'",
+            (q["question_id"],),
+        )
+        who = (
+            "the person's own words" if q["origin"] == "person" else "a path the operator proposed"
+        )
+        lines.append(
+            f'- Question {q["seq"]} ({who}): "{text}"; {_count(int(n or 0))} admissible answer(s).'
+        )
+    return lines or ["No question was asked."]
+
+
+def what_you_received_open(answers: list[dict[str, Any]], files: list[dict[str, Any]]) -> list[str]:
+    lines: list[str] = []
+    for a in answers:
+        lines.append(
+            f'- `{a["file"]}`: the answer to "{a["question"]}", labelled {a["label"]}; '
+            + (f"cited files {', '.join(a['files'])}; " if a.get("files") else "")
+            + f"{a.get('runs', '')}."
+        )
+    for f in files:
+        lines.append(
+            f"- `{f['file']}`: the {f['output']} output of step {f['step_id']} ({f['kind']})."
+        )
+    lines.append(
+        "- `coverage.md`: the coverage report; `methods.md`: the methods paragraph; "
+        "`index.json`: each file and answer linked to its run, step, action, hash and provenance."
+    )
+    return lines
+
+
+def what_was_untested(rc: RunContext, answers: list[dict[str, Any]]) -> list[str]:
+    lines = [
+        f"- Answer `{a['file']}`: {a.get('qualifier') or ''}"
+        for a in answers
+        if a["label"] == "untested"
+    ]
+    execs = [x["step_id"] for x in rc.on_demand() if x.get("kind") == "exec"]
+    if execs:
+        lines.append(f"- Scripts written in the session: steps {', '.join(execs)}.")
+    return lines or [
+        "Every delivered answer rests on tools shipped with the method and their current controls."
+    ]
+
+
+def explored(cov: dict[str, Any]) -> list[str]:
+    ex = cov.get("explored") or {}
+    lines: list[str] = []
+    for e in ex.get("rerun_counts", []):
+        lines.append(
+            f"- {e['module']} on one set of inputs: {_plural(e['runs'], 'run')}, "
+            f"{_plural(e['distinct_params'], 'distinct parameter set')}, "
+            f"{_count(e['delivered'])} delivered (steps {', '.join(e['steps'])})."
+        )
+    q = ex.get("questions") or {}
+    lines.append(
+        f"- Questions: {_count(int(q.get('person', 0)))} in the person's own words, "
+        f"{_count(int(q.get('suggested', 0)))} a path the operator proposed."
+    )
     return lines
 
 
@@ -135,14 +245,12 @@ def judgments(rc: RunContext, cov: dict[str, Any]) -> list[str]:
 
 
 def what_you_received(rc: RunContext, files: list[dict[str, Any]]) -> list[str]:
-    project = rc.project
     lines = []
     for f in files:
-        step = project.pipeline.step(f["step_id"])
-        spec = project.modules.require(step.module).manifest.outputs.get(f["output"])
+        spec = rc.module_for(f["step_id"]).manifest.outputs.get(f["output"])
         shape = f"; type {spec.type}, format {spec.format}" if spec else ""
         lines.append(
-            f"- `{f['file']}`: the {f['output']} output of {project.pipeline.title(f['step_id'])}{shape}."
+            f"- `{f['file']}`: the {f['output']} output of {rc.pipeline.title(f['step_id'])}{shape}."
         )
     lines.append(
         "- `coverage.md`: the coverage report; `methods.md`: the methods paragraph; "
@@ -151,10 +259,59 @@ def what_you_received(rc: RunContext, files: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def render_summary(rc: RunContext, cov: dict[str, Any], files: list[dict[str, Any]]) -> str:
+def render_summary(
+    rc: RunContext,
+    cov: dict[str, Any],
+    files: list[dict[str, Any]],
+    answers: list[dict[str, Any]] | None = None,
+) -> str:
     project = rc.project
     echo_path = project.echo_path()
     echo = echo_body(echo_path.read_text()) if echo_path.exists() else "No echo-back was recorded."
+    if rc.open_ended:
+        sections_open = [
+            f"# Summary of run {rc.run_id}",
+            "",
+            f"Project {project.config.project_id}; open mode on method {project.config.method.tag}; "
+            f"profile {project.config.profile}.",
+            "",
+            "## What was analyzed",
+            "",
+            echo,
+            "",
+            "## What was asked",
+            "",
+            *what_was_asked(rc),
+            "",
+            "## What ran",
+            "",
+            *(what_ran(rc) or ["Nothing ran."]),
+            "",
+            "## What was checked and decided",
+            "",
+            *what_was_checked(rc, cov),
+            "",
+            "## Judgments",
+            "",
+            *judgments(rc, cov),
+            "",
+            "## What you received",
+            "",
+            *what_you_received_open(answers or [], files),
+            "",
+            "## What was untested",
+            "",
+            *what_was_untested(rc, answers or []),
+            "",
+            "## Explored",
+            "",
+            *explored(cov),
+            "",
+            "## Not checked",
+            "",
+            NOT_CHECKED_OPEN,
+        ]
+        return "\n".join(sections_open) + "\n"
     sections = [
         f"# Summary of run {rc.run_id}",
         "",

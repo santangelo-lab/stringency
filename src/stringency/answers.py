@@ -217,12 +217,24 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
         only=[s for s in registry.all() if s.id.startswith("ans.")],
     )
     status = "blocked" if gate.blocked else "admissible"
+    sentence = label_sentence(label, facts, matched, total)
     provenance = {
         "label": label,
+        "label_sentence": sentence,
         "qualifier": quals,
+        "qualifier_line": render_qualifier(quals),
         "lineage": [f.to_json() for f in facts],
         "cited": [c.to_json() for c in cites],
+        "cells": cells,
         "numerals": {"matched": matched, "total": total},
+        "route": "code" if any(f.kind == "exec" for f in facts) else "tool",
+        "tools": [f.module for f in facts if f.kind == "tool"],
+        "decisions": [
+            {"step": f.step_id, "param": k, "value": f.params.get(k), "source": src}
+            for f in facts
+            if f.kind in ("tool", "exec")
+            for k, src in f.param_sources.items()
+        ],
     }
     ref = hashing.hash_text(words)
     store.store_message(ref, words)
@@ -250,7 +262,7 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
         question_id=question_id,
         status=status,
         label=label,
-        sentence=label_sentence(label, facts, matched, total),
+        sentence=sentence,
         qualifier=render_qualifier(quals),
         gate=gate,
         cited=[c.to_json() for c in cites],
