@@ -7,6 +7,7 @@
     "project_id": {"type": "string"},
     "profile": {"enum": ["strict", "standard", "exploratory"]},
     "confirm": {"enum": ["accepted", "pending", "rejected"]},
+    "egress": {"enum": ["accepted", "pending", "rejected", "exceeds"]},
     "run": {
       "type": ["object", "null"],
       "required": ["run_id", "status", "started", "ended", "git_sha", "policy_digest", "parent_run_id"],

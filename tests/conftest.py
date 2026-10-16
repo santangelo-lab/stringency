@@ -62,6 +62,24 @@ def _no_operator_session(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(k, raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _egress_acknowledged(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every project opens an `egress` hold at init (backlog L1). Tests written before it
+    confirm the echo-back and run; for them the egress hold is not opened and counts as
+    acknowledged. Tests marked `egress` see the real behaviour. The ceiling block
+    (`prov.egress_exceeds_ceiling`) is live everywhere."""
+    if request.node.get_closest_marker("egress") is not None:
+        return
+    from stringency.project import Project
+
+    def _status(self: Project, a: object = None) -> str:
+        a = a or self.egress_assessment()
+        return "exceeds" if a.within is False else "accepted"  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(Project, "ensure_egress_hold", lambda self, a=None: None)
+    monkeypatch.setattr(Project, "egress_status", _status)
+
+
 @pytest.fixture
 def method_repo(tmp_path: Path) -> MethodRepo:
     dest = tmp_path / "method-src"

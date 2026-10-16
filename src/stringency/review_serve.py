@@ -1004,7 +1004,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             view = render(project, h)
             site = Site.load(root)
             try:
-                hp = present_hold(site, h["hold_id"]) if h["kind"] != "confirm" else None
+                hp = present_hold(site, h["hold_id"]) if h["run_id"] is not None else None
             finally:
                 site.store.close()
             ctx = hold_context(h)
@@ -1369,7 +1369,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         site = Site.load(project.root)
         try:
             skill, _note = load_skill(site)
-            if h["kind"] != "confirm":  # the confirm packet is the echo-back already
+            if h["run_id"] is not None:  # a project hold's packet is its echo-back or report
                 hp = present_hold(site, h["hold_id"])
                 if hp["sections"] and h["run_id"]:
                     view_sections = render_html(hp, self._url_for(site, h["run_id"]))

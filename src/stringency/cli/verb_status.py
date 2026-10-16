@@ -65,8 +65,12 @@ def status_payload(project: Project, run_id: str | None) -> dict[str, Any]:
     ch = project.confirm_hold()
     if ch is not None and ch["resolved_by_review"] is None:
         payload["holds"].append(_hold_entry(project, ch))
+    payload["egress"] = project.egress_status()
+    eh = project.egress_hold()
+    if eh is not None and eh["resolved_by_review"] is None:
+        payload["holds"].append(_hold_entry(project, eh))
     if row is None:
-        payload["plain"] = _plain_no_run(project, ch)
+        payload["plain"] = _plain_no_run(project, ch, eh)
         return payload
     rc = load_run(project, row["run_id"])
     payload["run"] = {
@@ -94,11 +98,17 @@ def status_payload(project: Project, run_id: str | None) -> dict[str, Any]:
     return payload
 
 
-def _plain_no_run(project: Project, confirm_hold: Any) -> str:
+def _plain_no_run(project: Project, confirm_hold: Any, egress_hold: Any = None) -> str:
+    owner = project.config.roles.owner
     if confirm_hold is not None and confirm_hold["resolved_by_review"] is None:
         return (
             "No run has started. The plan for this project waits for the owner "
-            f"({project.config.roles.owner}) to confirm it."
+            f"({owner}) to confirm it."
+        )
+    if egress_hold is not None and egress_hold["resolved_by_review"] is None:
+        return (
+            "No run has started. The data egress report for this project waits for the owner "
+            f"({owner}) to acknowledge it."
         )
     return "No run has started."
 

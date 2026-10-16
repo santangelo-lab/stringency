@@ -86,6 +86,13 @@ def project_entry(root: Path) -> dict[str, Any]:
         holds: list[dict[str, Any]] = []
         if status == "pending":
             holds.append({"kind": "confirm", "waits_on": _who(cfg, "owner"), "hold_id": hold_id})
+        for eh in store.all(
+            "SELECT hold_id FROM holds WHERE kind = 'egress' AND run_id IS NULL "
+            "AND resolved_by_review IS NULL ORDER BY created, rowid"
+        ):
+            holds.append(
+                {"kind": "egress", "waits_on": _who(cfg, "owner"), "hold_id": eh["hold_id"]}
+            )
         run = latest_run(store)
         entry["run"] = None
         entry["step"] = None

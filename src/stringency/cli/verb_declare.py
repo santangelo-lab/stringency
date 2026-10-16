@@ -33,6 +33,17 @@ def declare(
     judgment_harness: str = typer.Option("subagent", "--judgment-harness"),
     execution: str = typer.Option("operator", "--execution"),
     executor: str = typer.Option("apptainer", "--executor"),
+    egress_max: int | None = typer.Option(
+        None,
+        "--egress-max",
+        help="the highest data egress class this project allows: 0 none, 1 reference, "
+        "2 terms, 3 derived, 4 data",
+    ),
+    operator_model: str = typer.Option(
+        "hosted",
+        "--operator-model",
+        help="hosted | local | none: the model of the agent that operates the project",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     if not check:
@@ -61,6 +72,8 @@ def declare(
             judgment_harness=judgment_harness,
             execution=execution,
             executor=executor,
+            egress_max=egress_max,
+            operator_model=operator_model,
             from_delivery=from_delivery,
             upstream=upstream,
         )
@@ -68,6 +81,8 @@ def declare(
     n = len(result.predicates)
     human = (
         result.echo.rstrip()
+        + "\n\n"
+        + (result.egress_report or "").rstrip()
         + f"\n\ndeclarations check out: {n} init predicate(s) evaluated, none fired; "
         f"method {result.method_sha[:12]}. Nothing was created; `stringency init` binds the project."
     )

@@ -42,7 +42,7 @@ def current_user() -> str:
 
 
 def queue(project: Project, run_id: str | None = None) -> list[Any]:
-    """Unresolved holds oldest first; the project-level confirm hold comes first when open."""
+    """Unresolved holds oldest first; the project-level holds (confirm, egress) come first."""
     if run_id:
         return project.store.all(
             "SELECT * FROM holds WHERE resolved_by_review IS NULL AND resolved_via IS NULL AND (run_id = ? OR run_id IS NULL) ORDER BY run_id IS NOT NULL, created, rowid",
@@ -261,7 +261,7 @@ def record_review(
         if verdict == "defer":
             return ReviewResult(review_id, hold_id, verdict, via, None, None)
         store.resolve_hold(hold_id, review_id, via)
-        if h["kind"] == "confirm":
+        if h["run_id"] is None:  # a project-level hold (confirm, egress) settles no step
             return ReviewResult(review_id, hold_id, verdict, via, None, None)
         rc = load_run(project, h["run_id"])
         if is_item:

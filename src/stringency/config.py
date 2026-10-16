@@ -50,6 +50,15 @@ class Declarations(Strict):
     brief: str | None = None  # file name in the project root, when a brief was given
 
 
+class EgressSetting(Strict):
+    """The ceiling on what may leave the machine, set by the person at init (backlog L1).
+    `max_class` 0 none to 4 data, None when not declared; `operator` says whether the agent
+    operating the project runs on a hosted model (it reads hold packets and present output)."""
+
+    max_class: int | None = Field(default=None, ge=0, le=4)
+    operator: Literal["hosted", "local", "none"] = "hosted"
+
+
 class StringencyConfig(Strict):
     """stringency.yml. Written by init, read-only after."""
 
@@ -70,6 +79,7 @@ class StringencyConfig(Strict):
     splits: dict[str, Any] | None = None
     declarations: Declarations | None = None
     plugins: dict[str, str] = Field(default_factory=dict)  # installed at init, by name (L29)
+    egress: EgressSetting = Field(default_factory=EgressSetting)  # the person's ceiling (L1)
 
     @model_validator(mode="after")
     def _refuse_open_strict(self) -> StringencyConfig:

@@ -2,7 +2,8 @@
 
 `init_project` writes the layout, clones the method repo at its tag, verifies inputs, runs
 lint and the `init.*` predicates, writes `stringency.yml`, opens the trace, and opens the
-project-level `confirm` hold bound to the declaration hashes. `Project.load` reads it back.
+project-level `confirm` hold bound to the declaration hashes and the `egress` hold bound to the
+data egress fingerprint (backlog L1). `Project.load` reads it back.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from stringency.clock import now_iso
 from stringency.config import (
     Declarations,
     Design,
+    EgressSetting,
     InputItem,
     InputsManifest,
     MethodRef,
@@ -35,6 +37,8 @@ from stringency.config import (
 )
 from stringency.db.store import Store
 from stringency.echo import render_echo, render_inherited_echo, render_open_echo
+from stringency.egress import EgressAssessment, assess
+from stringency.egress import render_markdown as render_egress_markdown
 from stringency.executor.base import Executor
 from stringency.executor.local import LocalExecutor
 from stringency.exit_codes import ConfigError
@@ -45,6 +49,7 @@ from stringency.modules import Module, ModuleIndex
 from stringency.operator_id import operator_env
 from stringency.pipelines import (
     Pipeline,
+    StepDecl,
     find_pipeline,
     load_pipeline,
     open_pipeline,
@@ -79,6 +84,8 @@ class InitRequest:
     judgment_harness: str = "subagent"
     execution: str = "operator"
     executor: str = "apptainer"
+    egress_max: int | None = None  # the person's ceiling, 0 none to 4 data (backlog L1)
+    operator_model: str = "hosted"  # hosted | local | none: the operating agent's model
     drafted_by: str = "person"  # person | agent (design 2.7)
     brief: Path | None = None  # the person's own words, kept beside the declarations
     check_only: bool = False  # `declare --check`: every init check, no project record
@@ -96,6 +103,8 @@ class DeclarationCheck:
     inputs: dict[str, str]
     predicates: list[dict[str, Any]]
     method_sha: str
+    egress: dict[str, Any] | None = None  # the assessment init would save (backlog L1)
+    egress_report: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {"schema": "stringency.declare/1", **self.__dict__}
@@ -333,7 +342,7 @@ class Project:
         )
         return GateContext(
             phase="init",
-            project=self.project_config(),
+            project=self.project_config(egress=self.egress_assessment()),
             objective=self.objective,
             design=self.design,
             state=self.initial_state("init", objects),
@@ -537,6 +546,122 @@ class Project:
         )
         return "accepted" if verdict in ("accept", "override") else "rejected"
 
+    # -- data egress and the egress hold (backlog L1) -----------------------------------
+
+    def egress_steps(self) -> list[StepDecl]:
+        """The steps the assessment reads: the pipeline's, or in open mode one per tool."""
+        if self.open_ended:
+            return [
+                StepDecl(id=t.manifest.name, module=t.ref, title="a tool, run when called")
+                for t in self.tools()
+            ]
+        return list(self.pipeline.steps)
+
+    def egress_assessment(self) -> EgressAssessment:
+        """What this setup sends off the machine (egress.assess). Reads: stringency.yml, the
+        module manifests and scripts, and holds (the ceiling on the last acknowledged report,
+        shown beside the current one). Writes nothing. Not cached: a control project copies
+        this object's attributes and binds another pipeline."""
+        e = self.config.egress
+        return assess(
+            steps=self.egress_steps(),
+            modules={m.ref: m for m in self.modules.all()},
+            harness=self.config.judgment_harness,
+            execution=self.config.execution,
+            max_class=e.max_class,
+            operator=e.operator,
+            previous_max_class=self._acknowledged_egress_ceiling(),
+        )
+
+    def _acknowledged_egress_ceiling(self) -> int | None:
+        """Reads: holds, reviews. The ceiling recorded on the last accepted egress hold."""
+        row = self.store.one(
+            "SELECT h.context_json FROM holds h JOIN reviews r "
+            "ON r.review_id = h.resolved_by_review WHERE h.kind = 'egress' AND h.run_id IS NULL "
+            "AND r.verdict IN ('accept', 'override') ORDER BY h.created DESC, h.rowid DESC LIMIT 1"
+        )
+        if row is None or not row["context_json"]:
+            return None
+        ctx = row["context_json"]
+        ctx = json.loads(ctx) if isinstance(ctx, str) else ctx
+        v = ctx.get("max_class") if isinstance(ctx, dict) else None
+        return int(v) if isinstance(v, int) else None
+
+    def egress_report_path(self, a: EgressAssessment) -> Path:
+        return self.root / "prov" / f"egress-{a.fingerprint[:12]}.md"
+
+    def write_egress_report(self, a: EgressAssessment) -> Path:
+        """Writes `prov/egress-<fp12>.md` and `.json` (the record for this profile) and
+        `prov/egress.md` and `.json` (the current one). Returns the fingerprinted report."""
+        prov = self.root / "prov"
+        prov.mkdir(parents=True, exist_ok=True)
+        text = render_egress_markdown(a, project_id=self.config.project_id, assessed_at=now_iso())
+        body = json.dumps(a.to_json(), indent=2, sort_keys=True) + "\n"
+        path = self.egress_report_path(a)
+        for target in (path, prov / "egress.md"):
+            target.write_text(text)
+            target.with_suffix(".json").write_text(body)
+        return path
+
+    def egress_hold(self, a: EgressAssessment | None = None) -> Any:
+        """Reads: holds. The egress hold bound to the current fingerprint, or None."""
+        a = a or self.egress_assessment()
+        return self.store.one(
+            "SELECT * FROM holds WHERE kind = 'egress' AND run_id IS NULL AND step_id IS NULL "
+            "AND bound_input_digest = ? ORDER BY created DESC, rowid DESC LIMIT 1",
+            (hashing.prefixed(a.fingerprint),),
+        )
+
+    def ensure_egress_hold(self, a: EgressAssessment | None = None) -> str | None:
+        """Open the egress hold for the current fingerprint if none exists (backlog L1).
+
+        Writes: the report files (`write_egress_report`) and one `holds` row (kind `egress`,
+        run_id NULL, waits on the owner, bound to the fingerprint). Never inherited from an
+        upstream project. Opens nothing when the setup exceeds the ceiling: that is a block
+        (`init.egress_exceeds_ceiling`, `prov.egress_exceeds_ceiling`), not a question.
+        Returns the new hold_id, or None."""
+        a = a or self.egress_assessment()
+        if a.within is False or self.egress_hold(a) is not None:
+            return None
+        path = self.write_egress_report(a)
+        return self.store.create_hold(
+            {
+                "run_id": None,
+                "step_id": None,
+                "kind": "egress",
+                "reason": "the data egress report awaits the owner's acknowledgement",
+                "waits_on_role": "owner",
+                "bound_input_digest": hashing.prefixed(a.fingerprint),
+                "context_json": {
+                    "report_path": str(path),
+                    "report_json": str(path.with_suffix(".json")),
+                    "assessed_class": a.assessed_class,
+                    "max_class": a.max_class,
+                    "previous_max_class": a.previous_max_class,
+                    "within": a.within,
+                    "operator": a.operator,
+                    "summary": a.summary_line(),
+                },
+            }
+        )
+
+    def egress_status(self, a: EgressAssessment | None = None) -> str:
+        """`accepted`, `rejected`, `pending`, or `exceeds` for the current fingerprint. Opens
+        the hold (and writes the report) when the profile changed since the last one."""
+        a = a or self.egress_assessment()
+        if a.within is False:
+            self.write_egress_report(a)
+            return "exceeds"
+        self.ensure_egress_hold(a)
+        h = self.egress_hold(a)
+        assert h is not None
+        if h["resolved_by_review"] is None:
+            return "pending"
+        verdict = self.store.scalar(
+            "SELECT verdict FROM reviews WHERE review_id = ?", (h["resolved_by_review"],)
+        )
+        return "accepted" if verdict in ("accept", "override") else "rejected"
+
 
 # -- init ---------------------------------------------------------------------------
 
@@ -550,7 +675,8 @@ def _parse_method(spec: str) -> tuple[str, str]:
 
 def init_project(req: InitRequest) -> Project:
     """Bind a project (design 2.7). Writes: projects, predicate_results (run_id 'init'),
-    holds (confirm), echo.md, stringency.yml, and the layout in 2.1."""
+    holds (confirm, egress), echo.md, prov/egress*.md and .json, stringency.yml, and the layout
+    in 2.1."""
     root = req.path.resolve()
     existed = root.exists()
     if existed and any(root.iterdir()):
@@ -592,6 +718,7 @@ def check_declarations(req: InitRequest) -> DeclarationCheck:
         root.mkdir()
         probe = InitRequest(**{**req.__dict__, "path": root, "check_only": True})
         project, objects, gate = _init_in(root, probe)
+        egress = project.egress_assessment()
         return DeclarationCheck(
             echo=project.render_echo(objects),
             hashes=project.declaration_hashes(),
@@ -601,6 +728,10 @@ def check_declarations(req: InitRequest) -> DeclarationCheck:
                 for r in gate.records
             ],
             method_sha=project.config.method.sha,
+            egress=egress.to_json(),
+            egress_report=render_egress_markdown(
+                egress, project_id="(not yet bound)", assessed_at=now_iso()
+            ),
         )
 
 
@@ -921,6 +1052,7 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         executor=req.executor,
         declarations=declarations,
         plugins=installed_plugin_versions(),
+        egress=_egress_setting(req),
     )
     dump_yaml(cfg.model_dump(mode="json"), root / "stringency.yml")
 
@@ -962,4 +1094,13 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
     )
     project.run_init_predicates(objects, record=True)
     project.ensure_confirm_hold(objects)
+    project.ensure_egress_hold()
     return project, objects, gate
+
+
+def _egress_setting(req: InitRequest) -> EgressSetting:
+    if req.egress_max is not None and not 0 <= req.egress_max <= 4:
+        raise ConfigError("--egress-max must be a class from 0 (none) to 4 (data)")
+    if req.operator_model not in ("hosted", "local", "none"):
+        raise ConfigError("--operator-model must be hosted, local or none")
+    return EgressSetting(max_class=req.egress_max, operator=req.operator_model)

@@ -333,6 +333,21 @@ def verdicts_for(
                 "command": base.format(verdict="reject") + ' --reason "<why>"',
             },
         ]
+    if kind == "egress":
+        return [
+            {
+                "verdict": "accept",
+                "effect": "the owner has read what leaves this machine and accepts it; runs may "
+                "open",
+                "command": base.format(verdict="accept") + ' --reason "<why>"',
+            },
+            {
+                "verdict": "reject",
+                "effect": "not acceptable; the project cannot run until its setup changes and a "
+                "new report is acknowledged",
+                "command": base.format(verdict="reject") + ' --reason "<why>"',
+            },
+        ]
     if kind == "sign_off":
         return [
             {
@@ -468,6 +483,28 @@ def render_confirm(project: Project, h: Any) -> HoldView:
         hashes = ctx.get("hashes") or {}
         lines += [f"{INDENT}{name}: {digest}" for name, digest in sorted(hashes.items())]
     verdicts = verdicts_for("confirm", h["hold_id"], None)
+    lines += ["", *_closing_lines(project, h, verdicts)]
+    return HoldView(h, "\n".join(lines), verdicts=verdicts)
+
+
+def render_egress(project: Project, h: Any) -> HoldView:
+    """Reads: holds.context_json (the report path) and the report on disk (backlog L1)."""
+    ctx = json.loads(h["context_json"] or "{}")
+    lines = [
+        f"hold {h['hold_id']}  kind egress  waits on {who_waits(project, h)}",
+        f"created {h['created']}",
+        "",
+        "question: is it acceptable that this leaves the machine",
+        "",
+    ]
+    report = Path(str(ctx.get("report_path") or ""))
+    if ctx.get("report_path") and report.exists():
+        lines.append(report.read_text().rstrip())
+    else:
+        lines.append(f"report missing on disk; the hold was bound to {h['bound_input_digest']}")
+        if ctx.get("summary"):
+            lines.append(str(ctx["summary"]))
+    verdicts = verdicts_for("egress", h["hold_id"], None)
     lines += ["", *_closing_lines(project, h, verdicts)]
     return HoldView(h, "\n".join(lines), verdicts=verdicts)
 
@@ -693,6 +730,8 @@ def render(project: Project, h: Any) -> HoldView:
     """Render one hold for the reviewer (design 7.3). Reads: see the module docstring."""
     if h["kind"] == "confirm":
         return _resolved(project, h, render_confirm(project, h))
+    if h["kind"] == "egress":
+        return _resolved(project, h, render_egress(project, h))
     rc = load_run(project, h["run_id"])
     action = _latest_action(rc, h["step_id"])
     plan = plan_step(rc, h["step_id"], action.attempt) if action else None
@@ -742,8 +781,8 @@ p.note { color: #555; font-size: 0.9em; }
 
 
 def packet_dir(project: Project, h: Any) -> Path | None:
-    """`runs/<run>/<step>/review/` for a step hold; the project confirm hold has no packet
-    (its echo-back is the packet)."""
+    """`runs/<run>/<step>/review/` for a step hold; a project-level hold has no packet (the
+    echo-back or the egress report is the packet)."""
     if h["run_id"] is None or h["step_id"] is None:
         return None
     return project.step_dir(h["run_id"], h["step_id"]) / "review"
