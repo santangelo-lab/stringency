@@ -13,6 +13,7 @@ from stringency.cli import (
     verb_controls,
     verb_declare,
     verb_deliver,
+    verb_exec,
     verb_fork,
     verb_init,
     verb_lint,
@@ -43,6 +44,7 @@ app.command("declare")(verb_declare.declare)
 app.command("run")(verb_run.run)
 app.command("ask")(verb_ask.ask)
 app.command("call")(verb_call.call)
+app.command("exec")(verb_exec.exec_)
 app.command("next")(verb_next.next_)
 app.command("propose")(verb_propose.propose)
 app.command("submit")(verb_submit.submit)

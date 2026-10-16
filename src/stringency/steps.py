@@ -27,7 +27,7 @@ from stringency.extract import extract_object
 from stringency.gate import GateResult, evaluate
 from stringency.holds import HoldOutcome, HoldRequest, open_hold
 from stringency.machine import RETRYABLE, StepStatus, step_status, transition
-from stringency.modules import Module
+from stringency.modules import IOSpec, Module, ModuleManifest
 from stringency.pipelines import Ref, StepDecl
 from stringency.predicates import registry
 from stringency.predicates.context import EvidenceTable, OutputBundle, OutputInfo
@@ -82,6 +82,9 @@ class StepPlan:
     # open mode: an on-demand step's inputs are bound read-only, so a session script cannot
     # write beside the delivery it reads (open_mode_plan.md 2.4, design 10.3)
     inputs_read_only: bool = False
+    timeout: float | None = None  # an exec step: the policy's open.exec_timeout_s
+    network_isolation: bool = False  # an exec step asks the executor to isolate the network
+    method_root: Path | None = None  # the checkout bound read-only (default: above the module)
 
 
 @dataclass
@@ -109,6 +112,7 @@ class ExecInfo:
     evidence_paths: list[str] = field(default_factory=list)
     observed: dict[str, Any] = field(default_factory=dict)
     script_blob: str | None = None  # hash of the entry script as it was when it ran
+    network: str | None = None  # exec steps: none | unenforced | n/a (open_mode_plan.md 2.4)
 
 
 @dataclass
@@ -208,6 +212,8 @@ def plan_step(rc: RunContext, step_id: str, attempt: int) -> StepPlan:
         name: step_dir / f"{name}.{EXT.get(spec.format or '', spec.format or 'out')}"
         for name, spec in module.manifest.outputs.items()
     }
+    entry = rc.on_demand_entry(step_id)
+    is_exec = entry is not None and entry.get("kind") == "exec"
     return StepPlan(
         step=step,
         module=module,
@@ -218,7 +224,12 @@ def plan_step(rc: RunContext, step_id: str, attempt: int) -> StepPlan:
         step_dir=step_dir,
         design=rc.project.design.model_dump(),
         objective=rc.project.objective.model_dump(),
-        inputs_read_only=rc.on_demand_entry(step_id) is not None,
+        inputs_read_only=entry is not None,
+        method_root=rc.project.method_root,
+        timeout=float(rc.project.policy.profile(rc.project.config.profile).open.exec_timeout_s)
+        if is_exec
+        else None,
+        network_isolation=is_exec,
     )
 
 
@@ -311,6 +322,175 @@ def propose_tool(
     )
     rc.create_on_demand_step(decl, "tool", module, question_id=question_id)
     return propose(rc, decl.id, proposed, rationale=rationale, source=source)
+
+
+EXEC_FORMATS = {
+    "table": "tsv",
+    "frame": "csv",
+    "json": "json",
+    "jsonl": "jsonl",
+    "text": "md",
+    "prose": "md",
+    "figure": "svg",
+}
+EXEC_LANGS = {"py": "py", "python": "py", "r": "R", "R": "R", "sh": "sh", "bash": "sh"}
+
+
+def _kind_of_ref(rc: RunContext, ref: str) -> str:
+    """The recorded kind of what a reference binds: a project input's type or a produced
+    artifact's kind."""
+    r = Ref.parse(ref)
+    if r.kind == "inputs":
+        item = rc.project.inputs.by_name().get(r.name)
+        if item is None:
+            raise ConfigError(f"no input named {r.name} in inputs.yml")
+        return item.type
+    produced = step_outputs(rc.store, rc.run_id, r.name)
+    row = produced.get(r.output or "")
+    if row is None:
+        raise ConfigError(f"{ref} has not been produced in run {rc.run_id}")
+    return str(row["kind"])
+
+
+def exec_manifest(
+    *,
+    blob: str,
+    domain: str,
+    env: str,
+    ext: str,
+    inputs: dict[str, str],
+    outputs: dict[str, tuple[str, str]],
+    seed: int,
+) -> ModuleManifest:
+    """The synthetic manifest of an exec step (open_mode_plan.md 2.4): name `exec`, version the
+    script's hash prefix, deterministic, operation `exec`, open mode only, the bound inputs by
+    kind, the declared outputs, and a `seed` parameter whose default is the seed the step runs
+    with (so the engine records one and no `param.agent_proposed` hold opens for it)."""
+    return ModuleManifest(
+        contract=1,
+        name="exec",
+        version=blob[:12],
+        kind="deterministic",
+        operation="exec",
+        domain=domain,
+        modes=["open"],
+        env=env,
+        runner="engine",
+        entry=f"script.{ext}",
+        inputs={k: IOSpec(type=t) for k, t in inputs.items()},
+        outputs={k: IOSpec(type=t, format=f) for k, (t, f) in outputs.items()},
+        stochastic=True,
+        seed_param="seed",
+        params_schema={
+            "type": "object",
+            "properties": {"seed": {"type": "integer", "default": seed}},
+            "additionalProperties": False,
+        },
+    )
+
+
+def parse_outs(outs: list[str]) -> dict[str, tuple[str, str]]:
+    """`--out <name>=<type>[/<format>]`; the format defaults by type (table/tsv, frame/csv,
+    json, text/md, figure/svg), else the type's own name."""
+    out: dict[str, tuple[str, str]] = {}
+    for s in outs:
+        if "=" not in s:
+            raise ConfigError(f"--out expects <name>=<type>[/<format>], got {s!r}")
+        name, _, spec = s.partition("=")
+        typ, _, fmt = spec.partition("/")
+        name, typ, fmt = name.strip(), typ.strip(), fmt.strip()
+        if not name or not typ:
+            raise ConfigError(f"--out expects <name>=<type>[/<format>], got {s!r}")
+        out[name] = (typ, fmt or EXEC_FORMATS.get(typ, typ))
+    return out
+
+
+def propose_exec(
+    rc: RunContext,
+    script: str,
+    *,
+    lang: str = "py",
+    bindings: dict[str, str] | None = None,
+    outputs: dict[str, tuple[str, str]],
+    env: str | None = None,
+    seed: int | None = None,
+    rationale: str | None = None,
+    question_id: str | None = None,
+    allow_local: bool = False,
+) -> Proposal:
+    """`exec`: run a script written in the session as an on-demand step of the open run
+    (open_mode_plan.md 2.4; owner's decision 1, 2026-10-16). The script text (a file or stdin,
+    never argv) is copied to `runs/<run>/<step>/script.<ext>`, hashed and stored in `messages`
+    under its hash; the step's manifest is `exec_manifest`; the declaration binds `--in` names
+    (default: every project input by name) and runs on the engine. Refused (exit 16) when the
+    profile's `open.exec` is `refused`, and under the `local` executor without `allow_local`
+    (the local executor inherits the engine's whole environment; development only).
+    Writes: the script file, messages, steps, step_events, then everything `propose` writes."""
+    if not rc.open_ended:
+        raise RefusedError("exec runs a session script in an open project only")
+    profile = rc.project.policy.profile(rc.project.config.profile)
+    if profile.open.exec != "allowed":
+        raise RefusedError(
+            f"exec is refused under profile {rc.project.config.profile} (policy open.exec)"
+        )
+    if rc.project.config.executor == "local" and not allow_local:
+        raise RefusedError(
+            "exec under the local executor runs the script with the engine's own environment "
+            "and no containment; pass --allow-local for development only"
+        )
+    ext = EXEC_LANGS.get(lang)
+    if ext is None:
+        raise ConfigError(f"--lang must be one of {', '.join(sorted(set(EXEC_LANGS)))}")
+    if not script.strip():
+        raise ConfigError("the script is empty")
+    if not outputs:
+        raise ConfigError("exec needs at least one --out <name>=<type>[/<format>]")
+    envs = rc.project.env_names()
+    if env is None:
+        if len(envs) != 1:
+            raise ConfigError(
+                "--env is required: the tools use " + (", ".join(envs) or "no environment")
+            )
+        env = envs[0]
+    elif env not in envs:
+        raise ConfigError(
+            f"--env {env} is not an environment of the method's tools ({', '.join(envs)})"
+        )
+    bindings = dict(bindings or {})
+    if not bindings:
+        bindings = {i.name: f"$inputs.{i.name}" for i in rc.project.inputs.items}
+    kinds = {name: _kind_of_ref(rc, ref) for name, ref in bindings.items()}
+    if seed is None:
+        import secrets
+
+        seed = secrets.randbelow(2**31)
+    blob = hashing.hash_text(script)
+    rc.store.store_message(blob, script)
+    manifest = exec_manifest(
+        blob=blob,
+        domain=rc.project.pipeline.domain,
+        env=env,
+        ext=ext,
+        inputs=kinds,
+        outputs=outputs,
+        seed=int(seed),
+    )
+    step_id = rc.next_step_id("exec")
+    step_dir = rc.project.step_dir(rc.run_id, step_id)
+    step_dir.mkdir(parents=True, exist_ok=True)
+    (step_dir / f"script.{ext}").write_text(script)
+    module = Module(step_dir, manifest)
+    decl = StepDecl(
+        id=step_id,
+        module=manifest.ref,
+        title="a script written in the session",
+        inputs=bindings,
+        runner="engine",
+    )
+    rc.create_on_demand_step(
+        decl, "exec", module, manifest=manifest.model_dump(mode="json"), question_id=question_id
+    )
+    return propose(rc, step_id, None, rationale=rationale, source="agent")
 
 
 # -- propose: action + pre-gate ----------------------------------------------------------
@@ -517,7 +697,9 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
     m = plan.module.manifest
     seed = action.parameters.get(m.seed_param) if m.stochastic and m.seed_param else None
     input_dirs = [p.parent for ri in plan.inputs.values() for p in ri.paths]
-    ro = [plan.module.path.parent.parent]  # the method checkout (design 10.3)
+    # the method checkout (design 10.3); an exec module lives in its step directory, so the
+    # checkout is named by the plan, not derived from the module's path
+    ro = [plan.method_root or plan.module.path.parent.parent]
     if plan.inputs_read_only:
         ro = input_dirs + ro
         input_dirs = []
@@ -527,6 +709,7 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
         cwd=plan.step_dir,
         bind_paths=input_dirs + [plan.step_dir],
         ro_bind_paths=ro,
+        network="none" if plan.network_isolation else None,
         stdin_json={
             "inputs": {k: v.job_value() for k, v in plan.inputs.items()},
             "params": action.parameters,
@@ -536,7 +719,7 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
             "design": plan.design,
             "objective": plan.objective,
         },
-        timeout=None,
+        timeout=plan.timeout,
         stdout_path=plan.step_dir / "stdout.txt",
         stderr_path=plan.step_dir / "stderr.txt",
     )
@@ -632,6 +815,7 @@ def execute_engine(rc: RunContext, proposal: Proposal) -> StepOutcome:
         stdout_path=str(res.stdout_path),
         stderr_path=str(res.stderr_path),
         script_blob=blob,
+        network=(res.network or "n/a") if plan.network_isolation else None,
     )
     if res.exit_code != 0:
         write_execution(rc, action, plan, info)
@@ -674,6 +858,7 @@ def write_execution(rc: RunContext, action: Action, plan: StepPlan, info: ExecIn
             "env_status": info.env_status,
             "command": info.command,
             "script_blob": info.script_blob,
+            "network": info.network,
             "exit_code": info.exit_code,
             "duration_ms": info.duration_ms,
             "stdout_path": info.stdout_path,

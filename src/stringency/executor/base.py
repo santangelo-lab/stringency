@@ -22,6 +22,9 @@ class Job:
     resources: Mapping[str, Any] = field(default_factory=dict)
     stdout_path: Path | None = None
     stderr_path: Path | None = None
+    # `none`: isolate the container's network when the host allows it (open mode `exec`,
+    # open_mode_plan.md 2.4); None: the executor's default
+    network: str | None = None
 
 
 @dataclass(frozen=True)
@@ -33,6 +36,8 @@ class ExecResult:
     env_digest: str | None
     command: str
     timed_out: bool = False
+    # what became of a `network: none` request: `none` (enforced) | `unenforced` | None (not asked)
+    network: str | None = None
 
     def stdout(self) -> str:
         return self.stdout_path.read_text() if self.stdout_path.exists() else ""

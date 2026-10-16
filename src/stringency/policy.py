@@ -16,6 +16,23 @@ from stringency.predicates.registry import PredicateSpec, Registry
 from stringency.versions import Requires
 
 
+class OpenPolicy(BaseModel):
+    """Open mode (open_mode_plan.md 2.9, 2026-10-16): whether a session script may run under
+    the executor (`exec`), and the wall-clock limit on one. Budgets are phase 2."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    exec: str = "allowed"  # allowed | refused
+    exec_timeout_s: int = 3600
+
+    @model_validator(mode="after")
+    def _check(self) -> OpenPolicy:
+        if self.exec not in {"allowed", "refused"}:
+            raise ValueError(f"open.exec must be allowed or refused; got {self.exec}")
+        if self.exec_timeout_s <= 0:
+            raise ValueError("open.exec_timeout_s must be a positive number of seconds")
+        return self
+
+
 class ProfilePolicy(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     remap: dict[str, str] = Field(default_factory=dict)
@@ -24,6 +41,7 @@ class ProfilePolicy(BaseModel):
     agreement: str = "standard"
     qc_ranges: str = "standard"
     relayed_review: bool = True
+    open: OpenPolicy = Field(default_factory=OpenPolicy)
 
     @model_validator(mode="after")
     def _check(self) -> ProfilePolicy:

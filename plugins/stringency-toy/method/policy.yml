@@ -14,6 +14,7 @@ profiles:
     agreement: standard
     qc_ranges: strict
     relayed_review: false
+    open: {exec: refused, exec_timeout_s: 3600}   # open mode is refused with strict at init
   standard:
     remap: {}
     params: ranged
@@ -21,6 +22,7 @@ profiles:
     agreement: standard
     qc_ranges: standard
     relayed_review: true
+    open: {exec: allowed, exec_timeout_s: 3600}   # a session script may run under the executor
   exploratory:
     remap: {block: flag}
     params: free
@@ -28,6 +30,7 @@ profiles:
     agreement: relaxed
     qc_ranges: wide
     relayed_review: true
+    open: {exec: allowed, exec_timeout_s: 3600}
 overrides:
   toy.filter_after_summary:
     exploratory: {disposition: log, reason: "exploration is where filters get chosen"}
