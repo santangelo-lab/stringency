@@ -641,6 +641,28 @@ def _verify_derived_from(item: InputItem) -> None:
         )
 
 
+def _verify_upstream_input(item: InputItem) -> None:
+    """An upstream pipeline's input bound in an open project must be one that project declared,
+    with the same hash (2026-10-19). Reads the upstream's `inputs.yml`."""
+    u = item.upstream_input
+    assert u is not None
+    path = Path(u.project) / "inputs.yml"
+    if not path.exists():
+        raise ConfigError(
+            f"input {item.name}: upstream_input names {u.project}, which has no inputs.yml"
+        )
+    declared = load_model(InputsManifest, path).by_name().get(u.input)
+    if declared is None:
+        raise ConfigError(
+            f"input {item.name}: the upstream {u.project} declares no input {u.input}"
+        )
+    if declared.blake3 != item.blake3:
+        raise ConfigError(
+            f"input {item.name}: hash {item.blake3[:12]} differs from the upstream's "
+            f"{declared.blake3[:12]} for {u.input}"
+        )
+
+
 def open_tools(modules: ModuleIndex) -> list[Module]:
     """Every module of the index that lists `open` in its `modes`, in index order."""
     return [m for m in modules.all() if "open" in m.manifest.modes]
@@ -668,9 +690,10 @@ def declarations_from_delivery(
     """Write the three declaration files of an open project from a delivery (open_mode_plan.md
     2.1, 2026-10-16): `inputs.yml` with one item per delivered file (`name` the output name, the
     step id prefixed on a clash; `type` the recorded kind, `prose` read as `text`; `derived_from`
-    the run, step, output and upstream project), `design.yml` byte for byte from the upstream,
+    the run, step, output and upstream project), then one item per input the upstream declared
+    (`upstream_<name>`, its `upstream_input` naming it), `design.yml` byte for byte from the upstream,
     `objective.yml` from the upstream's with `id` suffixed `-open`, no deliverables and no params.
-    Reads `<dir>/index.json` and the upstream's `design.yml` and `objective.yml`; writes the
+    Reads `<dir>/index.json` and the upstream's `inputs.yml`, `design.yml` and `objective.yml`; writes the
     three files under `into` and returns them by key (`objective`, `design`, `inputs`)."""
     delivery_dir = Path(delivery_dir).resolve()
     index_path = delivery_dir / "index.json"
@@ -714,6 +737,21 @@ def declarations_from_delivery(
         )
     if not items:
         raise ConfigError(f"{index_path} lists no files; nothing to ask questions of")
+    # the upstream pipeline's own inputs, read-only beside the delivery (2026-10-19): a question
+    # about what the pipeline removed or changed needs the data from before it ran
+    taken = {str(i["name"]) for i in items}
+    up_inputs = load_model(InputsManifest, root / "inputs.yml")
+    for u in up_inputs.items:
+        name = f"upstream_{u.name}"
+        if name in taken:
+            continue
+        entry: dict[str, Any] = {
+            **u.model_dump(exclude_none=True),
+            "name": name,
+            "source": f"input {u.name} of the upstream pipeline {root}, before it ran",
+            "upstream_input": {"project": str(root), "input": u.name},
+        }
+        items.append(entry)
     up_objective = load_yaml(root / "objective.yml")
     if not isinstance(up_objective, dict):
         raise ConfigError(f"{root / 'objective.yml'}: expected a mapping")
@@ -842,6 +880,8 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
             )
         if item.derived_from is not None:
             _verify_derived_from(item)
+        if item.upstream_input is not None:
+            _verify_upstream_input(item)
 
     # modules resolve and admit the mode (the pipeline's steps, or in open mode the tools)
     if req.mode == "open":

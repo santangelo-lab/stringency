@@ -14,7 +14,12 @@ the assistant:
   engine on the delivered data in a verified environment, each with a passing control on record,
   every step completed. The words around the numbers are still the assistant's.
 - **untested**: anything else; in particular, code the assistant wrote in the session, which the
-  engine ran and recorded but which nothing has checked.
+  engine ran and recorded but which nothing has checked. A tool's answer can be untested too,
+  when the tool missed a condition (its control failed, say); the label sentence then names the
+  tool and the reason, never "code".
+
+A deterministic tool's controls run on known data before its first use in the project, so a tool
+the method tested is trusted without anyone asking for the check.
 
 Beside the label one fixed line names what the two words would hide: flags a person accepted on
 the path, parameters outside their range, parameters the person set, whether the upstream
@@ -24,14 +29,18 @@ were untested.
 ## What you can ask
 
 Anything about the delivered dataset the tools can compute, or that code can compute from it.
-Not a judgment ("is this good", "should we exclude these"): that is a hold or a person's call.
-Not something the delivery does not hold: the assistant says what would answer it. The
+The open project also holds the pipeline's own inputs, read-only, so a question about what the
+pipeline removed or changed (unfiltered against filtered rows, say) can be answered from the data
+before it ran. Not a judgment ("is this good", "should we exclude these"): that is a hold or a
+person's call. Not something neither the delivery nor the inputs hold: the assistant says what
+would answer it. The
 assistant proposes three to five paths before the switch, so the first question can be a pick.
 
 ## The three routes
 
 For each question the assistant takes one route: a tool whose use-when fits; code written in the
-session (`exec`), only when no tool fits and the delivery holds the data, said before it runs;
+session (`exec`), only when no tool fits and the delivery or the pipeline's inputs hold the
+data, said before it runs;
 or cannot. It never combines tools to approximate a question none answers.
 
 ## Decisions
@@ -43,11 +52,21 @@ answer says it is one of N.
 
 ## Delivering
 
-The person says which answers to keep. `deliver --answer` writes each as a file beside the
-delivered results with its label sentence, qualifier, text and cited files, plus the cited
-tables and figures, `index.json` with a provenance block per file, and the three reports. The
+When the person says they are done, the assistant asks once which answers to keep: all of them,
+or some by number. `deliver --answer` (or `--answer all`) writes them into
+`deliver/answers-<NN>/` in the open project: one `q<NN>-<words>.md` per answer with its label
+sentence, qualifier, text and cited files, the cited tables and figures, `index.json` with a
+provenance block per file, and `answers-summary.md`, `answers-coverage.md` and
+`answers-methods.md`. The
 summary of an open run says what was asked, what ran, what was untested, and what was explored.
 Nothing asked changes the delivered files.
+
+## Finding your way around later
+
+The open project sits beside the delivered one as `<project>-open`. Its `README.md`, written by
+the engine and kept current, lists every question with how it was answered, its label, the step
+directories that hold its work and the file it was delivered as, then says what every path in
+the project holds. Pipeline projects carry the same kind of README.
 
 ## What is recorded
 

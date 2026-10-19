@@ -37,9 +37,8 @@ def controls_stale(ctx: GateContext) -> Verdict:
     status = str(cur.get("status", "none"))
     if status == "current":
         return Verdict(False)
-    why = (
-        "no passing control is recorded for this tool version"
-        if status == "none"
-        else "the last passing control ran under another environment"
-    )
+    why = {
+        "none": "no passing control is recorded for this tool version",
+        "failed": "this tool version's control ran and failed",
+    }.get(status, "the last passing control ran under another environment")
     return Verdict(True, why, {"status": status, "last_passing": cur.get("last_passing")})

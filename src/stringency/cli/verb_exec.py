@@ -46,7 +46,10 @@ def exec_(
     ),
     question_id: str | None = typer.Option(None, "--question", help="the question this answers"),
     ins: list[str] = typer.Option(
-        [], "--in", help="<name>=<$inputs.x | $steps.id.out>; default: every project input"
+        [],
+        "--in",
+        help="<name>=<$inputs.x | $steps.id.out>; repeatable; added to every delivered "
+        "input, which is always bound (an upstream_* input only when named)",
     ),
     outs: list[str] = typer.Option([], "--out", help="<name>=<type>[/<format>]; repeatable"),
     env: str | None = typer.Option(None, "--env", help="the environment to run in"),

@@ -199,8 +199,11 @@ Then `stringency run --json` again.
 The run is complete when `run --json` reports `kind: completed` with `run_status: completed`.
 Pass `--deliver` on the `run` calls after the last dispatch or ticket so the engine delivers in the
 same invocation; the payload's `delivery.path` names `deliver/<run_id>/`. Otherwise call
-`stringency deliver`. Then save `summary.md`, `coverage.md`, `methods.md`, and `index.json` from
-that directory as artifacts and relay `summary.md` to the person as it is. A `run` after that is
+`stringency deliver`. Then save the delivered files, `summary.md`, `coverage.md`, `methods.md`,
+and `index.json` from that directory as artifacts, and show the person the results as section 7
+says: `stringency present` relayed whole, then at most three sentences from `summary.md` on what
+was decided (holds, judgments, anything flagged), and the names of the saved files. Do not paste
+`summary.md`, the coverage report or the methods paragraph unless asked. A `run` after that is
 refused (exit 16); only `run --new` opens another run, and only when the user asks for one.
 
 ## 6. Holds
@@ -311,18 +314,23 @@ topology, in which you answer the person's questions with **tools** the method s
 listing `open`, run by the engine on demand) or with **code written in this session**, which the
 engine runs and records but labels untested. The engine labels every answer `trusted` or
 `untested` from what ran; you never write the label. Nothing asked here changes the delivered
-files.
+files. Beside the delivered files, the open project holds the upstream pipeline's own inputs,
+read-only (`upstream_<name>`), so a question about what the pipeline removed or changed has the
+data from before it ran.
 
 ### 10.1 Before it begins: the review and the paths forward
 
 After the three-part report of a delivery (section 7), and before you say anything about
 questions, run `stringency tools list --context --json` in the delivered project. It lists every
 tool with its inputs and what in the delivery could bind them, its parameters and decision
-points, its last passing control (or "none: outputs will be labelled untested"), the words the
+points, its last passing control or what will happen without one ("runs before the tool's first use;
+its outputs are trusted if it passes", or "none: outputs will be labelled untested"), the words the
 method wrote for it (`title`, `use_when`, `asks`), the method's suggested paths (`open.paths`),
 and under `context` the objective's question and deliverables and the design's factors and
 levels. From that one payload compose three to five paths forward, in the pinned form of 10.7:
-tools before code; never a path the delivery lacks the data for (a tool whose input has no
+a tool whose control is on record or runs before its first use is "would be labelled trusted";
+a tool whose note says "none" is said as "would be labelled untested, since no control checks
+it"; tools before code; never a path the delivery lacks the data for (a tool whose input has no
 candidate is not offered); never a verdict-shaped path ("is the result significant"). Say the
 paths, then the switch paragraph, and ask for the yes. The person may pick a path, ask something
 else, or stop; stopping is an answer.
@@ -331,7 +339,7 @@ else, or stop; stopping is an answer.
 
 The switch is one relayed yes, not an inherited confirmation (owner's decision 4). On the yes:
 
-1. `stringency init <upstream>-questions --method <the same method@tag> --mode open
+1. `stringency init <upstream>-open --method <the same method@tag> --mode open
    --from-delivery <upstream>/deliver/<run id> --judgment-harness <as upstream> --executor <as
    upstream> --execution engine --owner ... --reviewer ...` beside the upstream project. It exits
    10 with a confirm hold whose echo is the switch paragraph and the bound delivery.
@@ -352,9 +360,16 @@ closed (abandoned) run opens a new one.
 - `stringency call <tool> --question <id> [--in <input>=<ref>] [--set k=v ...] --json` runs a
   tool as an on-demand step through the ordinary gate (exit 0 completed, 10 held, 11 blocked,
   12 rejected, 13 failed). An unbound input binds the one delivered file of its type or the
-  latest artifact of that type; name it with `--in` when the engine says it is ambiguous.
+  latest artifact of that type; name it with `--in` when the engine says it is ambiguous, and
+  to run a tool on an upstream input (`--in <input>=$inputs.upstream_<name>`). The first call of
+  a deterministic tool runs its controls first (`controls_run` in the payload); a failing control
+  is said plainly, and that tool's answers are labelled untested. A judgment tool's controls are
+  yours to run with `stringency controls run --module <tool>`, answering its dispatch.
 - `stringency exec <script file> --out <name>=<type>[/<format>] --question <id> --reason "<why
-  no tool>" --json` runs a script you wrote, under the executor, inputs read-only. Write the
+  no tool>" [--in upstream_<name>=$inputs.upstream_<name>] --json` runs a script you wrote, under
+  the executor, inputs read-only. Every delivered file is bound by name; an upstream input is
+  bound only when you name it, and only when the question needs the data from before the
+  pipeline ran. Write the
   script to a file outside the project; it reads a JSON job from stdin (`inputs`, `outputs`,
   `seed`) exactly as a module does. Say the before-exec sentence of 10.7 first.
 - `stringency answer --question <id> --cite <artifact id>[:<row>[:<column>]] ... --text <file>
@@ -365,14 +380,20 @@ closed (abandoned) run opens a new one.
   names, the cells the numbers were checked against, the decisions. Never the ids, the paths,
   the second project, or the script, unless they ask; "show me the code" prints the script
   verbatim from `runs/<run>/<step>/script.<ext>`.
-- At the end the person says which answers to deliver: `stringency deliver --answer <id> ...`
-  writes them beside the upstream delivery, with their labels; relay `summary.md` as it is.
+- Delivering answers happens once, when the person says they are done (or asks to keep
+  answers): ask the deliver sentence of 10.7, never after each answer and never more than once
+  per stop. `stringency deliver --answer <id> ...` (or `--answer all`) writes the chosen answers
+  into `deliver/answers-<NN>/` with their labels, each as `q<NN>-<words>.md`. Save that
+  directory's files as artifacts under the names they have (they never share a name with the
+  pipeline delivery's), then say in one line which questions were delivered and that the record
+  keeps the others as asked but not delivered. Relay `answers-summary.md` only when asked.
 
 ### 10.4 The three routes
 
 For each question pick exactly one route, in this order: a **tool** when a tool's `use_when`
 fits the question and its inputs are in the delivery or already produced here; **exec** when no
-tool fits and the delivery holds the data the question needs; **cannot** otherwise, said with the
+tool fits and the delivery or the upstream inputs hold the data the question needs; **cannot**
+otherwise, said with the
 cannot sentence of 10.7. Never combine tools to approximate a question none of them answers,
 never run a tool on an input it was not written for, and never answer a judgment ("is this
 good", "should we exclude") with either route: that is a hold or a person's call, not a result.
@@ -401,7 +422,8 @@ number that is not a cell of an artifact you cited.
 
 Said as written. The label sentences and the qualifier line are printed by the engine
 (`stringency answer`) and relayed verbatim; the engine fills `{tools}` with the tools on the
-answer's path, `{matched}` and `{total}` with the numeral counts, and the qualifier's six fields,
+answer's path, `{data}` with what the path rests on, `{why}` with the condition of trusted a
+tool missed, `{matched}` and `{total}` with the numeral counts, and the qualifier's six fields,
 each `none` when empty. The rest are yours. The engine's `provenance.py` and `echo.py` hold the
 same text; a test keeps the copies identical.
 
@@ -410,12 +432,14 @@ same text; a test keeps the copies identical.
 - path, code: "{what it answers}: no tool ships for this, so I would write code; it would be labelled untested."
 - paths forward, the close: "You can pick one, ask something else, or stop here."
 - switch: "Your results are delivered. You can ask questions of them here. Nothing you ask is declared in advance and nothing here is a pre-registered result. Some questions I answer with tools shipped with this method, which are tested; some with code written in this session, which is not; the engine labels each answer trusted or untested from what ran, counts every run of the same tool on the same data, and nothing you ask changes the delivered files. Shall I open it for questions?"
-- before exec: "No tool shipped with this method answers that, so I am writing code for it; the engine will run it on the delivered data and label the answer untested."
-- cannot: "I cannot answer that from this delivery: {it holds {what} only | it needs {what}, which is not delivered | it is a judgment, not a result}. {What would answer it, or nothing.}"
-- label, trusted: "Label: trusted. Produced by {tools}, a tool shipped with the method, run by the engine on the delivered data. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
-- label, untested: "Label: untested. Produced by code written in this session, run and recorded by the engine on the delivered data; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
+- before exec: "No tool shipped with this method answers that, so I am writing code for it; the engine will run it on {the delivered data | the pipeline's inputs | the delivered data and the pipeline's inputs} and label the answer untested."
+- cannot: "I cannot answer that from this delivery: {it holds {what} only | it needs {what}, which is neither delivered nor an input of the pipeline | it is a judgment, not a result}. {What would answer it, or nothing.}"
+- label, trusted: "Label: trusted. Produced by {tools}, a tool shipped with the method, run by the engine on {data}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
+- label, untested: "Label: untested. Produced by code written in this session, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
+- label, untested tool: "Label: untested. Produced by {tools}, a tool shipped with the method, run by the engine on {data}; {why}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested}"
 - what trusted means, when first relevant or asked: "Trusted means the engine ran a tool the method ships, in a verified environment, with a passing control on record, on the delivered data; the words around the numbers are still mine."
-- what untested means, when first relevant or asked: "Untested means the engine ran code I wrote in this session and recorded it, but nothing has checked that the code computes what it claims."
+- what untested means, when first relevant or asked: "Untested means the engine ran code I wrote in this session and recorded it, but nothing has checked that the code computes what it claims; or it ran a tool the method ships that missed a condition of trusted, which the label names."
 - who labels, when asked: "The engine labels from what ran; I cannot change a label, and I am not allowed to write one."
 - trusted only, when asked: "I can answer only with tools shipped with the method, if you prefer; then anything no tool answers I will say I cannot answer."
+- deliver, once, when the person is done: "Which of these answers should go with the delivered results? You can say all of them, or name them by number."

@@ -77,32 +77,13 @@ def test_answer_blocked_on_a_wrong_numeral_then_trusted_when_the_tool_is_control
         )
     }
     assert preds == {"ans.cited_missing": 0, "ans.numeral_unmatched": 1, "ans.label_authored": 0}
-    # the right numerals, but the tool has no current control: admissible and untested
-    r = _answer(
-        q,
-        qid,
-        "A is higher than B: the difference is 59.22 with n_a 3 and n_b 3.",
-        f"{aid}:A_vs_B",
-        path=text,
-    )
-    assert r.exit_code == 0, r.output + str(r.stderr)
-    out = json.loads(r.output)
-    assert out["status"] == "admissible" and out["label"] == "untested"
-    assert out["qualifier"].endswith(
-        "| upstream: verified | controls: none | untested inputs: none"
-    )
-    assert out["label_sentence"].startswith("Label: untested.")
-    # the control passes, the same tool is run again: the answer on that run is trusted
-    r = cli(q, "controls", "run", "--module", "compare-groups", "--allow-mock", env=MOCK)
-    assert r.exit_code == 0, r.output
-    r = cli(q, "call", "compare-groups", "--question", qid, "--json")
-    assert r.exit_code == 0
-    aid2 = json.loads(r.output)["artifacts"][0]["artifact_id"]
+    # the right numerals: admissible and trusted, the tool's controls having run before its
+    # first use (2026-10-19)
     r = _answer(
         q,
         qid,
         "A is higher than B: the difference is 59.22 (adjusted p 1.33e-75).",
-        f"{aid2}:A_vs_B",
+        f"{aid}:A_vs_B",
         path=text,
     )
     assert r.exit_code == 0, r.output + str(r.stderr)
@@ -127,18 +108,68 @@ def test_answer_blocked_on_a_wrong_numeral_then_trusted_when_the_tool_is_control
     )
     assert json.loads(ev["payload_json"])["label"] == "trusted"
     # the human output carries the two pinned lines
-    human = _answer(q, qid, "The difference is 59.22.", f"{aid2}:A_vs_B:diff", path=text).output
+    human = _answer(q, qid, "The difference is 59.22.", f"{aid}:A_vs_B:diff", path=text).output
     assert "Label: trusted." in human and "flags accepted on the path: none" in human
-    # the controls_stale verdict was logged on the first call and not on the third
+    # the second call finds the controls current and runs none
+    r = cli(q, "call", "compare-groups", "--question", qid, "--json")
+    assert r.exit_code == 0 and json.loads(r.output)["controls_run"] == []
+    assert q.store.scalar("SELECT COUNT(*) FROM controls_runs WHERE module='compare-groups'") == 2
+    # so the controls_stale verdict fired on neither call
     logged = q.store.all(
         "SELECT a.step_id, pr.fired FROM predicate_results pr JOIN actions a ON a.action_id=pr.action_id "
         "WHERE pr.run_id=? AND pr.predicate_id='prov.controls_stale' ORDER BY a.rowid",
         (run_id,),
     )
     assert [(r_["step_id"], r_["fired"]) for r_ in logged] == [
-        ("01_compare-groups", 1),
+        ("01_compare-groups", 0),
         ("02_compare-groups", 0),
     ]
+
+
+def test_label_sentence_names_why_a_tool_answer_is_untested() -> None:
+    """A tool that missed a condition of trusted is never described as code (2026-10-19)."""
+    tool = provenance.StepFact(
+        step_id="01_plot-groups",
+        kind="tool",
+        module="plot-groups@0.1.0",
+        title="Draw the differences",
+        status="completed",
+        runner="engine",
+        env_status="verified",
+        controls="none",
+    )
+    delivered = provenance.StepFact(
+        step_id="input:comparison_table", kind="input", derived_from={"run_id": "R"}
+    )
+    facts = [tool, delivered]
+    assert provenance.label_for(facts) == "untested"
+    assert provenance.label_sentence("untested", facts, 0, 0) == (
+        "Label: untested. Produced by Draw the differences (plot-groups@0.1.0), a tool shipped "
+        "with the method, run by the engine on the delivered data; no passing control is on "
+        "record for it. Numbers checked against the cited cells: 0 of 0. Everything else in "
+        "this answer is the assistant's reading."
+    )
+    tool.controls = "failed"
+    assert "; its control failed." in provenance.label_sentence("untested", facts, 0, 0)
+    tool.controls, tool.env_status = "current", "unpinned"
+    assert "; its environment was not verified." in provenance.label_sentence(
+        "untested", facts, 0, 0
+    )
+    # code anywhere on the path outranks the tool's reason
+    facts.insert(1, provenance.StepFact(step_id="02_exec", kind="exec", status="completed"))
+    assert provenance.label_sentence("untested", facts, 0, 0).startswith(
+        "Label: untested. Produced by code written in this session"
+    )
+    # an upstream pipeline input on the path changes what the sentence says it ran on
+    raw = provenance.StepFact(
+        step_id="input:upstream_groups", kind="input", upstream_input={"input": "groups"}
+    )
+    assert "on the pipeline's inputs" in provenance.label_sentence(
+        "untested", [facts[1], raw], 0, 0
+    )
+    assert "on the delivered data and the pipeline's inputs" in provenance.label_sentence(
+        "untested", [facts[1], delivered, raw], 0, 0
+    )
 
 
 def test_answer_on_exec_output_is_untested_and_missing_or_authored_block(
@@ -301,7 +332,7 @@ def test_pinned_sentences_are_the_engines() -> None:
     assert (
         provenance.SWITCH == OPEN_SWITCH and "Shall I open it for questions?" in provenance.SWITCH
     )
-    assert set(provenance.LABEL_SENTENCES) == {"trusted", "untested"}
+    assert set(provenance.LABEL_SENTENCES) == {"trusted", "untested", "untested, tool"}
     for s in provenance.LABEL_SENTENCES.values():
         assert "{matched} of {total}" in s and s.endswith(
             "Everything else in this answer is the assistant's reading."

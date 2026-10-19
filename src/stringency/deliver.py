@@ -1,8 +1,11 @@
 """Deliver (design 12.1): harvest finals with sidecars, verify deliverables, write the
 coverage report, the methods paragraph, the plain summary, and index.json, and record the
 delivery. An open run (open_mode_plan.md 2.7) delivers the answers the person chose
-(`--answer`), with their cited artifacts, into `deliver/<run>/<delivery_id>/`; it never stops
-for a sign-off (owner's decision 5) and may deliver several times.
+(`--answer`), with their cited artifacts, into `deliver/answers-<NN>/` (numbered per project,
+2026-10-19; `<run>/<delivery_id>/` before), each answer as `q<NN>-<words>.md` and the reader's
+files as `answers-summary.md`, `answers-coverage.md` and `answers-methods.md`, so they never
+share a name with the pipeline delivery's; it never stops for a sign-off (owner's decision 5)
+and may deliver several times.
 
 Reads: artifacts, steps, answers, questions, and everything coverage reads. Writes:
 artifacts.is_final, predicate_results (the deliver gate), deliveries, run_events.
@@ -11,6 +14,7 @@ artifacts.is_final, predicate_results (the deliver gate), deliveries, run_events
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -45,7 +49,8 @@ class Delivery:
 
 def chosen_answers(rc: RunContext, answer_ids: list[str]) -> list[dict[str, Any]]:
     """The answers an open run delivers: each id an admissible answer of this run (a blocked
-    one, or another run's, is refused with exit 15). Reads: answers, questions, messages."""
+    one, or another run's, is refused with exit 15); `all` alone is the latest admissible answer
+    of every question. Reads: answers, questions, messages."""
     from stringency.answers import answer_row
 
     if not answer_ids:
@@ -53,6 +58,20 @@ def chosen_answers(rc: RunContext, answer_ids: list[str]) -> list[dict[str, Any]
             "an open run delivers the answers the person chose: --answer <id> (repeatable); "
             "`stringency present --answers` lists them"
         )
+    if answer_ids == ["all"]:
+        # the latest admissible answer of every question, in the order they were asked
+        answer_ids = [
+            str(r["answer_id"])
+            for r in rc.store.all(
+                "SELECT a.answer_id FROM answers a JOIN questions q ON q.question_id=a.question_id "
+                "WHERE q.run_id=? AND a.status='admissible' AND a.rowid = (SELECT MAX(b.rowid) "
+                "FROM answers b WHERE b.question_id=a.question_id AND b.status='admissible') "
+                "ORDER BY q.seq",
+                (rc.run_id,),
+            )
+        ]
+        if not answer_ids:
+            raise ConfigError(f"run {rc.run_id} has no admissible answer to deliver")
     out: list[dict[str, Any]] = []
     for aid in dict.fromkeys(answer_ids):
         row = answer_row(rc, aid)
@@ -62,6 +81,27 @@ def chosen_answers(rc: RunContext, answer_ids: list[str]) -> list[dict[str, Any]
             )
         out.append(row)
     return out
+
+
+# the reader's files of a delivery; an open run's carry a prefix (2026-10-19)
+OPEN_PREFIX = "answers-"
+
+
+def answer_file_name(seq: int, question: str) -> str:
+    """`q<NN>-<the question's first words>.md`: the answer's file in an open delivery."""
+    words = re.findall(r"[a-z0-9]+", question.lower())[:8]
+    slug = "-".join(words)[:48].rstrip("-") or "answer"
+    return f"q{seq:02d}-{slug}.md"
+
+
+def next_answers_dir(root: Path) -> Path:
+    """`deliver/answers-<NN>/`, one past the highest present."""
+    taken = [
+        int(m.group(1))
+        for d in (root / "deliver").glob(f"{OPEN_PREFIX}*")
+        if (m := re.fullmatch(rf"{OPEN_PREFIX}(\d+)", d.name))
+    ]
+    return root / "deliver" / f"{OPEN_PREFIX}{max(taken, default=0) + 1:02d}"
 
 
 def answer_artifacts(rc: RunContext, answers: list[dict[str, Any]]) -> list[Any]:
@@ -240,7 +280,8 @@ def deliver(
 
     did = new_id()
     # an open run delivers several times, each into its own directory (`present` reads the latest)
-    dest = project.root / "deliver" / rc.run_id / (did if rc.open_ended else "")
+    dest = next_answers_dir(project.root) if rc.open_ended else project.root / "deliver" / rc.run_id
+    prefix = OPEN_PREFIX if rc.open_ended else ""
     dest.mkdir(parents=True, exist_ok=True)
     files: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
@@ -274,14 +315,22 @@ def deliver(
     by_artifact = {f["artifact_id"]: f["file"] for f in files}
     for ans in answers:
         prov = ans["provenance"]
-        fname = f"{ans['answer_id']}.answer.md"
+        seq = rc.store.scalar(
+            "SELECT seq FROM questions WHERE question_id=?", (ans["question_id"],)
+        )
+        fname = answer_file_name(int(seq or 0), ans["question"])
         cited_files = sorted(
             {by_artifact[c["artifact_id"]] for c in ans["cited"] if c["artifact_id"] in by_artifact}
         )
         rerun = answer_rerun_line(rc, ans, counts)
+        asked = (
+            "as a path the operator proposed"
+            if ans["origin"] == "suggested"
+            else "in the person's own words"
+        )
         (dest / fname).write_text(
-            f"# Answer {ans['answer_id']}\n\n"
-            f"Question ({ans['origin']}): {ans['question']}\n\n"
+            f"# Question {seq}: {ans['question']}\n\n"
+            f"Asked {asked}; answer {ans['answer_id']}.\n\n"
             f"{prov.get('label_sentence', '')}\n{prov.get('qualifier_line', '')}\n\n"
             f"{ans['text'].rstrip()}\n\n"
             "Cited files: " + (", ".join(cited_files) or "none") + "\n"
@@ -291,6 +340,7 @@ def deliver(
             {
                 "answer_id": ans["answer_id"],
                 "question_id": ans["question_id"],
+                "seq": seq,
                 "question": ans["question"],
                 "origin": ans["origin"],
                 "file": fname,
@@ -323,10 +373,11 @@ def deliver(
     coverage_text = render_coverage(cov)
     methods_text = methods_paragraph(rc, cov)
     summary_text = render_summary(rc, cov, files, delivered_answers)
-    (dest / "coverage.md").write_text(coverage_text)
-    (dest / "methods.md").write_text(methods_text)
-    (dest / "summary.md").write_text(summary_text)
-    (dest / "coverage.json").write_text(
+    names = {k: f"{prefix}{k}.md" for k in ("coverage", "methods", "summary")}
+    (dest / names["coverage"]).write_text(coverage_text)
+    (dest / names["methods"]).write_text(methods_text)
+    (dest / names["summary"]).write_text(summary_text)
+    (dest / f"{prefix}coverage.json").write_text(
         json.dumps(cov, indent=2, sort_keys=True, default=str) + "\n"
     )
     index = {
@@ -339,9 +390,9 @@ def deliver(
         "plugins": captured_plugins(store, rc.run_id),
         "delivered": now_iso(),
         "files": files,
-        "coverage": {"file": "coverage.md", "blake3": hashing.hash_text(coverage_text)},
-        "methods": {"file": "methods.md", "blake3": hashing.hash_text(methods_text)},
-        "summary": {"file": "summary.md", "blake3": hashing.hash_text(summary_text)},
+        "coverage": {"file": names["coverage"], "blake3": hashing.hash_text(coverage_text)},
+        "methods": {"file": names["methods"], "blake3": hashing.hash_text(methods_text)},
+        "summary": {"file": names["summary"], "blake3": hashing.hash_text(summary_text)},
     }
     index_text = json.dumps(index, indent=2, sort_keys=True) + "\n"
     (dest / "index.json").write_text(index_text)

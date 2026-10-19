@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from stringency.echo import open_echo_lines, wrap_text
 from stringency.methods import number_word
 from stringency.runs import RunContext
 from stringency.steps import action_from_row
@@ -169,8 +170,9 @@ def what_you_received_open(answers: list[dict[str, Any]], files: list[dict[str, 
             f"- `{f['file']}`: the {f['output']} output of step {f['step_id']} ({f['kind']})."
         )
     lines.append(
-        "- `coverage.md`: the coverage report; `methods.md`: the methods paragraph; "
-        "`index.json`: each file and answer linked to its run, step, action, hash and provenance."
+        "- `answers-coverage.md`: the coverage report; `answers-methods.md`: the methods "
+        "paragraph; `index.json`: each file and answer linked to its run, step, action, hash and "
+        "provenance."
     )
     return lines
 
@@ -269,6 +271,11 @@ def render_summary(
     echo_path = project.echo_path()
     echo = echo_body(echo_path.read_text()) if echo_path.exists() else "No echo-back was recorded."
     if rc.open_ended:
+        # what the project is bound to, never the switch paragraph: that is a question asked
+        # once, before the first question, not part of the record (2026-10-19)
+        bound = wrap_text(
+            "\n".join(open_echo_lines(project.objective, project.inputs, project.tools()))
+        )
         sections_open = [
             f"# Summary of run {rc.run_id}",
             "",
@@ -277,7 +284,7 @@ def render_summary(
             "",
             "## What was analyzed",
             "",
-            echo,
+            bound,
             "",
             "## What was asked",
             "",

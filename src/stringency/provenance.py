@@ -30,20 +30,41 @@ from stringency.runs import RunContext
 TRUSTED = "trusted"
 UNTESTED = "untested"
 
-# The two label sentences (open_mode_plan.md 1, "The pinned sentences"): printed by `answer`,
-# relayed by the operator as written, held identical to the skills' copies by a test.
+# The label sentences (open_mode_plan.md 1, "The pinned sentences"): printed by `answer`,
+# relayed by the operator as written, held identical to the skills' copies by a test. The label
+# is one of two words; an untested answer whose path holds no code was produced by a tool that
+# missed a condition of `trusted`, and its sentence says which (`{why}`), never "code".
+UNTESTED_TOOL = "untested, tool"
 LABEL_SENTENCES = {
     TRUSTED: (
         "Label: trusted. Produced by {tools}, a tool shipped with the method, run by the "
-        "engine on the delivered data. Numbers checked against the cited cells: {matched} of "
-        "{total}. Everything else in this answer is the assistant's reading."
+        "engine on {data}. Numbers checked against the cited cells: {matched} of {total}. "
+        "Everything else in this answer is the assistant's reading."
     ),
     UNTESTED: (
         "Label: untested. Produced by code written in this session, run and recorded by the "
-        "engine on the delivered data; no test or control has checked it. Numbers checked "
-        "against the cited cells: {matched} of {total}. Everything else in this answer is the "
-        "assistant's reading."
+        "engine on {data}; no test or control has checked it. Numbers checked against the "
+        "cited cells: {matched} of {total}. Everything else in this answer is the assistant's "
+        "reading."
     ),
+    UNTESTED_TOOL: (
+        "Label: untested. Produced by {tools}, a tool shipped with the method, run by the "
+        "engine on {data}; {why}. Numbers checked against the cited cells: {matched} of "
+        "{total}. Everything else in this answer is the assistant's reading."
+    ),
+}
+# `{data}` in the label sentences: what the answer's path rests on
+DATA_DELIVERED = "the delivered data"
+DATA_PIPELINE_INPUTS = "the pipeline's inputs"
+DATA_BOTH = "the delivered data and the pipeline's inputs"
+# `{why}` in the tool sentence, by the first condition of `trusted` the path missed
+WHY_UNTESTED = {
+    "controls none": "no passing control is on record for it",
+    "controls failed": "its control failed",
+    "controls stale": "its last passing control ran under another environment",
+    "env": "its environment was not verified",
+    "runner": "it was not run by the engine",
+    "status": "it did not complete",
 }
 QUALIFIER_LINE = (
     "flags accepted on the path: {flags} | parameters outside range: {ranges} | "
@@ -71,6 +92,7 @@ class StepFact:
     out_of_range: list[str] = field(default_factory=list)
     input_name: str | None = None  # kind input: the declared input
     derived_from: dict[str, Any] | None = None
+    upstream_input: dict[str, Any] | None = None  # kind input: an input of the upstream pipeline
 
     def to_json(self) -> dict[str, Any]:
         return {k: v for k, v in self.__dict__.items() if v not in (None, [], {})}
@@ -187,6 +209,9 @@ def lineage(rc: RunContext, artifact_id: str) -> list[StepFact]:
                             derived_from=item.derived_from.model_dump()
                             if item.derived_from
                             else None,
+                            upstream_input=item.upstream_input.model_dump()
+                            if item.upstream_input
+                            else None,
                         )
                     )
                 continue
@@ -203,16 +228,36 @@ def lineage(rc: RunContext, artifact_id: str) -> list[StepFact]:
 def label_for(facts: list[StepFact]) -> str:
     """`trusted` when every step on the path is a tool or a declared step, engine-run, under a
     verified environment, with a current control (tools) and completed; else `untested`."""
-    for f in facts:
-        if f.kind == "input":
-            continue
-        if f.kind == "exec":
-            return UNTESTED
-        if f.status != "completed" or f.runner != "engine" or f.env_status != "verified":
-            return UNTESTED
+    return TRUSTED if untested_reason(facts) is None else UNTESTED
+
+
+def untested_reason(facts: list[StepFact]) -> str | None:
+    """The first condition of `trusted` the path misses: `exec` when code is on it (code
+    outranks every other reason), else a key of `WHY_UNTESTED`; None when trusted."""
+    steps = [f for f in facts if f.kind != "input"]
+    if any(f.kind == "exec" for f in steps):
+        return "exec"
+    for f in steps:
+        if f.status != "completed":
+            return "status"
+        if f.runner != "engine":
+            return "runner"
+        if f.env_status != "verified":
+            return "env"
         if f.kind == "tool" and f.controls != "current":
-            return UNTESTED
-    return TRUSTED
+            return f"controls {f.controls or 'none'}"
+    return None
+
+
+def data_phrase(facts: list[StepFact]) -> str:
+    """`{data}` of the label sentences: the delivered data, the upstream pipeline's own inputs
+    (bound beside the delivery since 2026-10-19), or both."""
+    roots = [f for f in facts if f.kind == "input"]
+    delivered = any(f.derived_from for f in roots)
+    before = any(f.upstream_input for f in roots)
+    if before and delivered:
+        return DATA_BOTH
+    return DATA_PIPELINE_INPUTS if before else DATA_DELIVERED
 
 
 _upstream_cache: dict[str, str] = {}
@@ -221,11 +266,13 @@ _upstream_cache: dict[str, str] = {}
 def upstream_status(rc: RunContext, facts: list[StepFact]) -> str:
     """`verified` when every completed step of every upstream run the inputs came from ran
     under a verified environment; `as reported (<steps>)` naming the ones that did not;
-    `none` when no input is a delivery; `unknown` when an upstream trace cannot be read.
-    Reads the upstream project's `prov/run.db` read-only."""
+    `pipeline inputs` when the path rests only on the upstream pipeline's own inputs; `none`
+    when no input is a delivery; `unknown` when an upstream trace cannot be read. Reads the
+    upstream project's `prov/run.db` read-only."""
     roots = [f for f in facts if f.kind == "input" and f.derived_from]
     if not roots:
-        return "none"
+        before = any(f.kind == "input" and f.upstream_input for f in facts)
+        return "pipeline inputs" if before else "none"
     as_reported: list[str] = []
     unknown = False
     for f in roots:
@@ -286,6 +333,8 @@ def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
         controls = "none"
     elif all(f.controls == "current" for f in tools):
         controls = "current"
+    elif any(f.controls == "failed" for f in tools):
+        controls = "failed"
     elif any(f.controls == "stale" for f in tools):
         controls = "under another environment"
     else:
@@ -308,7 +357,15 @@ def render_qualifier(fields: dict[str, str]) -> str:
 def label_sentence(label: str, facts: list[StepFact], matched: int, total: int) -> str:
     tools = [f for f in facts if f.kind in ("tool", "pipeline")]
     names = " and ".join(f"{f.title or f.step_id} ({f.module})" for f in tools) or "a tool"
-    return LABEL_SENTENCES[label].format(tools=names, matched=matched, total=total)
+    data = data_phrase(facts)
+    if label == TRUSTED:
+        return LABEL_SENTENCES[TRUSTED].format(tools=names, data=data, matched=matched, total=total)
+    why = untested_reason(facts)
+    if why is None or why == "exec":
+        return LABEL_SENTENCES[UNTESTED].format(data=data, matched=matched, total=total)
+    return LABEL_SENTENCES[UNTESTED_TOOL].format(
+        tools=names, data=data, why=WHY_UNTESTED[why], matched=matched, total=total
+    )
 
 
 def block_for(rc: RunContext, artifact_id: str) -> dict[str, Any]:

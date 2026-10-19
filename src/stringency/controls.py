@@ -536,17 +536,22 @@ def _expect_count(
 
 def current_for(store: Any, module: Module, env_digest: str | None) -> dict[str, Any]:
     """Whether a tool's last passing control still speaks for it (open_mode_plan.md 2.5):
-    `{status: current | stale | none, last_passing}`. `current` when a passing `controls_runs`
+    `{status: current | stale | failed | none, last_passing}`. `current` when a passing `controls_runs`
     row exists for `name@version` and it ran under the environment digest given (recorded in
-    its metrics as `env_digest`); `stale` when the digest differs or either is unknown; `none`
-    without a passing row. Reads: controls_runs."""
+    its metrics as `env_digest`); `stale` when the digest differs or either is unknown; `failed`
+    when the version's controls ran and none passed; `none` when none ran. Reads:
+    controls_runs."""
     row = store.one(
         "SELECT control_name, kind, ts, metrics_json FROM controls_runs WHERE module=? AND "
         "module_version=? AND passed=1 ORDER BY ts DESC, rowid DESC LIMIT 1",
         (module.manifest.name, module.manifest.version),
     )
     if row is None:
-        return {"status": "none", "last_passing": None}
+        ran = store.scalar(
+            "SELECT COUNT(*) FROM controls_runs WHERE module=? AND module_version=?",
+            (module.manifest.name, module.manifest.version),
+        )
+        return {"status": "failed" if ran else "none", "last_passing": None}
     metrics = json.loads(row["metrics_json"] or "{}")
     ran_under = metrics.get("env_digest")
     status = "current" if env_digest and ran_under == env_digest else "stale"
@@ -593,7 +598,13 @@ def run_control(
 ) -> ControlResult:
     """Execute one control end to end and record it. Writes: controls_runs, and everything a
     run writes, under `controls/<module>/<control>/`."""
-    if project.config.judgment_harness == "mock" and not allow_mock:
+    # a deterministic tool's control never reaches the harness, so the mock answers nothing
+    # there (2026-10-19, open mode: controls run before a tool's first use)
+    if (
+        project.config.judgment_harness == "mock"
+        and not allow_mock
+        and module.manifest.kind == "judgment"
+    ):
         raise RefusedError(
             "controls must exercise the real judgment harness; the mock is refused (use --allow-mock in tests)"
         )
@@ -720,3 +731,17 @@ def run_controls(
     for module, spec, _ in iter_controls(project, module_name):
         results.append(run_control(project, module, spec, allow_mock=allow_mock))
     return results
+
+
+def ensure_current(project: Project, module: Module, env_digest: str | None) -> list[ControlResult]:
+    """Open mode (2026-10-19): before a tool's step, run its controls when none speaks for it
+    under this environment (`current_for` is not `current`), so a tool the method tested is
+    labelled trusted without the operator having to remember `controls run`. Deterministic
+    tools only: a judgment tool's control dispatches to the harness and is the operator's
+    `controls run`. Returns the results ([] when nothing ran). Writes what `run_control`
+    writes."""
+    if module.manifest.kind != "deterministic" or not module.control_files():
+        return []
+    if current_for(project.store, module, env_digest)["status"] == "current":
+        return []
+    return run_controls(project, module.manifest.name)

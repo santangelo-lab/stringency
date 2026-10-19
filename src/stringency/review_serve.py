@@ -1202,8 +1202,10 @@ class ReviewHandler(BaseHTTPRequestHandler):
         files: list[dict[str, str]] = []
         if d is not None and (Path(d["path"]) / "index.json").exists():
             ddir = Path(d["path"])
-            if (ddir / "summary.md").exists():
-                summary = (ddir / "summary.md").read_text()
+            idx_summary = json.loads((ddir / "index.json").read_text()).get("summary") or {}
+            sname = str(idx_summary.get("file") or "summary.md")  # answers-summary.md when open
+            if (ddir / sname).exists():
+                summary = (ddir / sname).read_text()
             for name, (_ctype, kind, step) in served_files(ddir).items():
                 if kind == "sidecar":
                     continue

@@ -18,7 +18,10 @@ def deliver(
     run_id: str | None = typer.Option(None, "--run"),
     include: list[str] = typer.Option([], "--include", help="<step>.<output>; repeatable"),
     answers: list[str] = typer.Option(
-        [], "--answer", help="open mode: an admissible answer to deliver; repeatable"
+        [],
+        "--answer",
+        help="open mode: an admissible answer to deliver; repeatable; `all` for every "
+        "admissible answer of the run, the latest per question",
     ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:

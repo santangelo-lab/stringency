@@ -118,7 +118,8 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     assert r.exit_code == 0, r.output + str(r.stderr)
     out = json.loads(r.output)
     dest = Path(out["path"])
-    assert dest.parent == q.root / "deliver" / run_id and dest.name == out["delivery_id"]
+    # numbered per project, beside nothing of the pipeline's (2026-10-19)
+    assert dest == q.root / "deliver" / "answers-01"
     index = json.loads((dest / "index.json").read_text())
     assert index["mode"] == "open" and [a["answer_id"] for a in index["answers"]] == [
         ids["a1"],
@@ -126,7 +127,7 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     ]
     a1 = index["answers"][0]
     assert a1["label"] == "trusted" and a1["question"] == "Which group is higher, A or B?"
-    assert a1["file"] == f"{ids['a1']}.answer.md" and a1["files"] == [
+    assert a1["file"] == "q01-which-group-is-higher-a-or-b.md" and a1["files"] == [
         "01_compare-groups.comparison_table.tsv"
     ]
     assert a1["runs"].startswith(
@@ -151,7 +152,9 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     assert files["02_exec.means.tsv"]["provenance"]["label"] == "untested"
     answer_md = (dest / a1["file"]).read_text()
     assert (
-        "Label: trusted." in answer_md and "Question (person): Which group is higher" in answer_md
+        answer_md.startswith("# Question 1: Which group is higher, A or B?")
+        and "Asked in the person's own words; answer " + ids["a1"] in answer_md
+        and "Label: trusted." in answer_md
     )
     assert (
         "Cited files: 01_compare-groups.comparison_table.tsv" in answer_md
@@ -171,14 +174,14 @@ def test_deliver_answers_writes_index_provenance_and_reports(
         and q.store.scalar("SELECT status FROM runs WHERE run_id=?", (run_id,)) == "running"
     )
     d2 = deliver(load_run(q, run_id), answer_ids=[ids["a2"]])
-    assert (
-        d2.path != dest
-        and d2.path.parent == dest.parent
-        and [a["answer_id"] for a in d2.answers] == [ids["a2"]]
-    )
+    assert d2.path == q.root / "deliver" / "answers-02" and [
+        a["answer_id"] for a in d2.answers
+    ] == [ids["a2"]]
     assert q.store.scalar("SELECT COUNT(*) FROM deliveries WHERE run_id=?", (run_id,)) == 2
     # the reports
-    cov = (dest / "coverage.md").read_text()
+    # the reader's files never share a name with the pipeline delivery's
+    assert not (dest / "summary.md").exists() and index["summary"]["file"] == "answers-summary.md"
+    cov = (dest / "answers-coverage.md").read_text()
     assert "open mode:" in cov and "tools run without current controls: none" in cov
     assert "scripts written in the session: 02_exec" in cov
     assert (
@@ -190,7 +193,7 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     assert cov.rstrip().endswith(
         "whether the upstream delivery was re-run after a question here was answered; and anything not listed above"
     )
-    methods = (dest / "methods.md").read_text()
+    methods = (dest / "answers-methods.md").read_text()
     assert (
         methods.startswith("Questions were answered with stringency")
         and "in open mode using the tools of method v0.1.0 (compare-groups@0.1.1, plot-groups@0.1.0"
@@ -204,7 +207,8 @@ def test_deliver_answers_writes_index_provenance_and_reports(
         f"Input object was delivered by stringency run {up_rc.run_id} (step 01_filter, output object)."
         in methods
     )
-    summary = (dest / "summary.md").read_text()
+    summary = (dest / "answers-summary.md").read_text()
+    assert "Shall I open it" not in summary
     assert (
         "## What was asked" in summary
         and "## What was untested" in summary
@@ -213,12 +217,8 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     golden = GOLDEN / "summary_open.md"
     got = normalise(summary).replace(str(up.root), "<UPSTREAM>").replace(str(q.root), "<PROJECT>")
     # the echo wraps at 100 columns around the temporary path, whose length varies
-    got = re.sub(
-        r"Delivery bound:.*?output object\)\.",
-        lambda m: " ".join(m.group(0).split()),
-        got,
-        flags=re.S,
-    )
+    for pattern in (r"Delivery bound:.*?output object\)\.", r"The pipeline's own inputs.*?>\."):
+        got = re.sub(pattern, lambda m: " ".join(m.group(0).split()), got, flags=re.S)
     if request.config.getoption("--update-golden"):
         golden.write_text(got)
     assert got == golden.read_text()
@@ -295,6 +295,10 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     assert re.match(r"^Label: untested\.", ans2["label_sentence"])
     r = cli(q, "present", "--answer", "01BADBADBADBADBADBADBADBAD")
     assert r.exit_code == 15
+
+    # `all`: the latest admissible answer of every question, in the order asked
+    d3 = deliver(load_run(q, run_id), answer_ids=["all"])
+    assert [a["answer_id"] for a in d3.answers] == [ids["a1"], ids["a2"]]
 
 
 def test_deliver_on_held_open_run_exits_10(

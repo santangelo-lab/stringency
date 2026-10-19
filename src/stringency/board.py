@@ -10,6 +10,7 @@ breaks the verb).
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
 from typing import Any
@@ -249,8 +250,13 @@ def write_board(root: Path) -> Path:
 
 
 def refresh_if_present(project_root: Path) -> None:
-    """Rewrite `<project>/../STATUS.md` when one exists. Never raises: the board is a convenience
-    and must not turn a successful verb into a failure."""
+    """Rewrite the project's `README.md` (2026-10-19) and `<project>/../STATUS.md` when one
+    exists. Never raises: both are conveniences and must not turn a successful verb into a
+    failure."""
+    from stringency.readme import write_readme
+
+    with contextlib.suppress(Exception):
+        write_readme(Path(project_root))
     try:
         parent = Path(project_root).resolve().parent
         if (parent / BOARD_FILE).exists():

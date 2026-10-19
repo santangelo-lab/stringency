@@ -3,7 +3,16 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-16, evening)
+## Current state (2026-10-19)
+
+- The owner's first open-mode drive (`notes/2026-10-19-1400-open-mode-drive-findings.md`): six
+  findings, all changed on branch `open-mode` (controls before a tool's first use, the untested
+  tool sentence, the upstream pipeline's own inputs, the answer delivery's names, a project
+  README, one delivery-reporting rule); toy method `v0.2.0-rc2` pushed, rc3 prepared. Next: the
+  owner's word on commit, push and the toy manifest sync; reinstall the open-mode prefix;
+  republish; the second drive.
+
+## Earlier state (2026-10-16, evening)
 
 - Open mode S1 to S7 built on branch `open-mode`, seven commits, engine 0.2.22 untagged and
   unmerged (`notes/2026-10-16-2200-open-mode-s1-s7.md`): `mode: open`, `init --from-delivery`,
@@ -208,6 +217,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-19-1400-open-mode-drive-findings.md` — the owner's first open-mode drive on the toy: the paste and image failures before it, and the six findings after it (no control ever ran, a tool's answer called code, the raw input out of reach, the delivery's names, the directory, the long delivery message), each built and recorded.
 - `2026-10-16-2200-open-mode-s1-s7.md` — open mode S1 to S7 built on branch `open-mode` (engine 0.2.22): binding, on-demand steps, exec, controls for tools, answers and labels, deliver and present, the chain test and the design amendments; what was learned (the read-only bind that was not, a tool controlled alone, the `--set none` wart); O1 to O6 open.
 - `2026-10-16-1330-open-mode-plan.md` — the open-mode plan: three explorations, three design passes, the owner's five decisions and the pre-switch review; what the code already has (design 5's sentence, `modes`, on-demand steps as the one addition) and what it lacks (the deliver gate's dropped verdicts, read-write input binds, no timeout, no `--net`, a completion-only control scorer); implementation handed to the workstation.
 - `2026-10-16-1210-commons-assessment.md` — posit-dev/commons read against the design: the provenance outcome derived from the path, the citation match, the kernel sandbox for model code, the OTel trajectories and review documents, the cross-language fixtures; four borrowings (L35 to L38), the G2 proposal, and what commons lacks.

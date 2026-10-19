@@ -162,10 +162,31 @@ def render_open_echo(
     """The echo-back of an open project (open_mode_plan.md 1 and 2.1, 2026-10-16): the switch
     paragraph, then the bound delivery (the upstream run and project, the files by name and
     type) and the tools the method ships, then the hashes the accept is bound to."""
+    lines = open_echo_lines(objective, inputs, tools)
+    bound = "\n".join(f"  {k}: {v}" for k, v in sorted(hashes.items()))
+    return (
+        "# Echo-back (open mode)\n\n"
+        + wrap_text(OPEN_SWITCH)
+        + "\n\n"
+        + wrap_text("\n".join(lines))
+        + f"\n\nBound to:\n{bound}\n"
+    )
+
+
+def open_echo_lines(objective: Objective, inputs: InputsManifest, tools: list[Module]) -> list[str]:
+    """What an open project is bound to, without the switch paragraph: the delivery, the
+    upstream pipeline's own inputs, other inputs, the upstream question and the tools. The
+    echo-back says it after the switch; the open summary's "What was analyzed" is it."""
     lines: list[str] = []
     runs: dict[tuple[str, str], list[str]] = {}
     raw: list[str] = []
+    before: dict[str, list[str]] = {}
     for i in inputs.items:
+        if i.upstream_input is not None:
+            before.setdefault(i.upstream_input.project, []).append(
+                f"{i.upstream_input.input} ({i.type}) as {i.name}"
+            )
+            continue
         d = i.derived_from
         if d is None:
             raw.append(f"{i.name} ({i.type})")
@@ -175,6 +196,11 @@ def render_open_echo(
         )
     for (run_id, project), files in runs.items():
         lines.append(f"Delivery bound: run {run_id} of {project}: " + "; ".join(files) + ".")
+    for project, names in before.items():
+        lines.append(
+            f"The pipeline's own inputs, read-only, from before it ran: {'; '.join(names)} of "
+            f"{project}."
+        )
     if raw:
         lines.append("Inputs that are not a delivery: " + ", ".join(raw) + ".")
     lines.append(f"The upstream project asked {objective.question}.")
@@ -184,11 +210,4 @@ def render_open_echo(
             + ", ".join(f"{m.manifest.name} ({m.manifest.operation})" for m in tools)
             + "."
         )
-    bound = "\n".join(f"  {k}: {v}" for k, v in sorted(hashes.items()))
-    return (
-        "# Echo-back (open mode)\n\n"
-        + wrap_text(OPEN_SWITCH)
-        + "\n\n"
-        + wrap_text("\n".join(lines))
-        + f"\n\nBound to:\n{bound}\n"
-    )
+    return lines

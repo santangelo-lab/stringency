@@ -127,7 +127,10 @@ def test_tools_list_on_a_delivered_pipeline_project(
     assert set(tool["params"]) == {"replicate_unit", "correction"}
     assert tool["params"]["correction"]["decision_point"] is True
     assert tool["controls"]["last_passing"] is None
-    assert "untested" in tool["controls"]["note"]
+    # a deterministic tool with declared controls: they run before its first use
+    assert "before the tool's first use" in tool["controls"]["note"]
+    plot = payload["tools"][1]
+    assert plot["controls"]["declared"] == ["positive-draws"]
     assert tool["words"] is None  # the toy method ships no analyze skill file here
     ctx = payload["context"]
     assert ctx["objective"]["question"] == "process_rows"
@@ -252,7 +255,9 @@ def test_open_project_tools_list_names_the_inputs(
     payload = json.loads(cli(q, "tools", "list", "--context", "--json").output)
     assert payload["mode"] == "open" and payload["pipeline"] is None
     cands = payload["tools"][0]["inputs"]["object"]["candidates"]
-    assert [c["ref"] for c in cands] == ["$inputs.object"]
+    # the upstream pipeline's own input is listed, marked, and binds only when named
+    assert [c["ref"] for c in cands] == ["$inputs.object", "$inputs.upstream_groups"]
+    assert "upstream_input" not in cands[0] and cands[1]["upstream_input"] == "groups"
     assert payload["context"]["objective"]["deliverables"] == []
 
 

@@ -4,7 +4,7 @@ an SSH compute provider, or the project's agent-context text.
 
     <engine python> render_brief.py <project dir> --provider <name> [--context] [--app-version V]
                                    [--method <url>@<tag> --pipeline <name>] [--image <sif>]...
-                                   [--declare]
+                                   [--declare] [--rehearsal]
 
 Reads `<project>/stringency.yml` and `<project>/method/envs/manifest.yml` when the project is
 bound. For a project that `init` has not created yet, pass --method and --pipeline; the brief
@@ -42,6 +42,7 @@ def load(args: argparse.Namespace) -> dict:
         "bound": cfg_path.exists(),
         "images": list(args.image or []),
         "declare": bool(args.declare),
+        "rehearsal": bool(args.rehearsal),
     }
     if ctx["bound"]:
         cfg = yaml.safe_load(cfg_path.read_text())
@@ -99,6 +100,12 @@ def main() -> None:
         "--declare",
         action="store_true",
         help="Phase 1 hands over to the stringency-declare skill instead of init from files",
+    )
+    ap.add_argument(
+        "--rehearsal",
+        action="store_true",
+        help="an engine test drive: Phase 3 also asks for the engine's record (approval cards, "
+        "delegates, model identity, frame id)",
     )
     args = ap.parse_args()
     env = jinja2.Environment(

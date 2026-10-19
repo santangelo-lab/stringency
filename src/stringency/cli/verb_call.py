@@ -10,7 +10,8 @@ import typer
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.cli.verb_propose import parse_sets
-from stringency.exit_codes import ConfigError, Exit
+from stringency.controls import ControlResult, ensure_current
+from stringency.exit_codes import ConfigError, Exit, StringencyError
 from stringency.machine import StepStatus
 from stringency.notify import notify_after
 from stringency.project import Project
@@ -56,6 +57,16 @@ def call(
     rc = open_for_questions(project)
     if question_id is not None:
         question(rc, question_id)  # must be a question of this run
+    # a tool the method tested is checked before its first step here, so its answer can be
+    # trusted (2026-10-19); a failing control is recorded and the step still runs, untested
+    module = next((m for m in project.tools() if m.manifest.name == tool), None)
+    controls: list[ControlResult] = []
+    control_error = None
+    if module is not None:
+        try:
+            controls = ensure_current(project, module, rc.env_digests.get(module.manifest.env))
+        except StringencyError as e:  # a control that cannot run leaves the tool untested
+            control_error = str(e)
     prop = propose_tool(
         rc,
         tool,
@@ -90,9 +101,22 @@ def call(
         "param_source": prop.action.param_source,
         "inputs": {k: str(v.job_value()) for k, v in prop.plan.inputs.items()},
         "artifacts": artifacts,
+        "controls_run": [r.to_json() for r in controls],
+        "controls_error": control_error,
         "next": nx.to_json(),
     }
-    lines = [f"run {rc.run_id}", f"step {prop.action.step_id}: {prop.plan.module.ref} {status}"]
+    lines = [f"run {rc.run_id}"]
+    if control_error:
+        lines.append(
+            f"the controls of {tool} could not run ({control_error}); its outputs will be "
+            "labelled untested"
+        )
+    for r in controls:
+        lines.append(
+            f"control {r.control} of {r.module} ran before its first use: "
+            + ("pass" if r.passed else "FAIL; its outputs will be labelled untested")
+        )
+    lines.append(f"step {prop.action.step_id}: {prop.plan.module.ref} {status}")
     if message:
         lines.append(message)
     for a in artifacts:

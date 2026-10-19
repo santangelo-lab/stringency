@@ -539,3 +539,23 @@ and a commit naming it.
   real `exec`.
 - Real data (O4, O5): one organ's delivery through the Xenium tools; the acceptance run and
   the baseline arm; the measurement row.
+
+## 9. Amendments after the owner's test drive (2026-10-19)
+
+The drive (`docs/open-mode-rehearsal.md`, toy method `v0.2.0-rc2`) found six things; each is
+built on branch `open-mode` and recorded in `spec/DECISIONS.md` under "Open mode O2 findings":
+
+- Every answer was untested: no control ever ran in the open project. A deterministic tool's
+  controls now run inside `call` before its first step (`controls.ensure_current`).
+- The untested label of a tool's answer said "code written in this session". A third pinned
+  sentence names the tool and why it missed trusted; `{data}` names what the path rests on.
+- The upstream's raw input was out of reach. `init --from-delivery` binds the upstream
+  pipeline's own inputs as `upstream_<name>`, read-only, bound only when named.
+- The open delivery shared file names with the pipeline delivery and used ids for names:
+  `deliver/answers-<NN>/`, `q<NN>-<words>.md`, `answers-summary.md` and its siblings,
+  `deliver --answer all`; the summary no longer carries the switch question.
+- The project directory was hard to read: an engine-written `README.md` in every project, and
+  the open project named `<upstream>-open` (sections 2.1 and 3 say `-questions`; read `-open`).
+- The delivery message was long: one reporting rule in the skills, the brief's engine-record
+  list behind `--rehearsal`, and answers delivered once after the pinned deliver sentence.
+

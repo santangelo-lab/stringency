@@ -242,8 +242,9 @@ def _is_artifact_id(text: str) -> bool:
 
 def bind_inputs(rc: RunContext, module: Module, bindings: dict[str, str]) -> dict[str, str]:
     """The input references of an on-demand step: `--in <name>=<$inputs.x | $steps.id.out |
-    artifact id>` for what the operator named; an unbound input binds the one project input or
-    else the latest produced artifact of its type; otherwise refused (exit 15) naming the
+    artifact id>` for what the operator named; an unbound input binds the one delivered project
+    input or else the latest produced artifact of its type (an input of the upstream pipeline
+    binds only when named); otherwise refused (exit 15) naming the
     candidates. An optional input left unbound with no candidate stays unbound. Reads: artifacts,
     steps."""
     out: dict[str, str] = {}
@@ -268,8 +269,11 @@ def bind_inputs(rc: RunContext, module: Module, bindings: dict[str, str]) -> dic
     for name, spec in module.manifest.inputs.items():
         if name in out:
             continue
+        # the upstream pipeline's own inputs bind only when named: a tool reads the delivery
         candidates: list[str] = [
-            f"$inputs.{n}" for n, item in sorted(inputs_by_name.items()) if item.type == spec.type
+            f"$inputs.{n}"
+            for n, item in sorted(inputs_by_name.items())
+            if item.type == spec.type and item.upstream_input is None
         ]
         produced = [
             f"$steps.{r['step_id']}.{r['name']}"
@@ -422,9 +426,10 @@ def propose_exec(
     (open_mode_plan.md 2.4; owner's decision 1, 2026-10-16). The script text (a file or stdin,
     never argv) is copied to `runs/<run>/<step>/script.<ext>`, hashed and stored in `messages`
     under its hash; the step's manifest is `exec_manifest`; the declaration binds `--in` names
-    (default: every project input by name) and runs on the engine. Refused (exit 16) when the
-    profile's `open.exec` is `refused`, and under the `local` executor without `allow_local`
-    (the local executor inherits the engine's whole environment; development only).
+    (added to every delivered input by name; an upstream pipeline input only when named) and
+    runs on the engine. Refused (exit 16) when the profile's `open.exec` is `refused`, and under
+    the `local` executor without `allow_local` (the local executor inherits the engine's whole
+    environment; development only).
     Writes: the script file, messages, steps, step_events, then everything `propose` writes."""
     if not rc.open_ended:
         raise RefusedError("exec runs a session script in an open project only")
@@ -456,9 +461,14 @@ def propose_exec(
         raise ConfigError(
             f"--env {env} is not an environment of the method's tools ({', '.join(envs)})"
         )
-    bindings = dict(bindings or {})
-    if not bindings:
-        bindings = {i.name: f"$inputs.{i.name}" for i in rc.project.inputs.items}
+    # every delivered input by name, plus what `--in` names: an input of the upstream pipeline
+    # (`upstream_*`) is bound only when named, so a script's lineage holds what it may read
+    bindings = {
+        **{
+            i.name: f"$inputs.{i.name}" for i in rc.project.inputs.items if i.upstream_input is None
+        },
+        **dict(bindings or {}),
+    }
     kinds = {name: _kind_of_ref(rc, ref) for name, ref in bindings.items()}
     if seed is None:
         import secrets
