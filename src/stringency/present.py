@@ -763,12 +763,16 @@ def _delivered_answer(project: Site, run_id: str, answer_id: str) -> dict[str, A
     return None
 
 
-def present_answer(project: Site, answer_id: str, skills_dir: Path | None = None) -> dict[str, Any]:
-    """One answer as the person sees it (open_mode_plan.md 1, 2.7): the label sentence first,
-    the question, the text, the tables and figures the method's `answer_view` names for the
-    tool (else every cited table's cited rows), the cells the numbers were checked against,
-    the decisions with their sources, and the delivered file when there is one. Loads no
-    plugin. Reads: answers, questions, messages, artifacts, deliveries."""
+def present_answer(
+    project: Site, answer_id: str, skills_dir: Path | None = None, *, details: bool = False
+) -> dict[str, Any]:
+    """One answer as the operator reads it to compose the reply (open_mode_plan.md 2.7;
+    2026-10-19, the owner's second drive): the question, the text, the tables and figures the
+    method's `answer_view` names for the tool (else every cited table's cited rows, with the
+    row names), the label sentence, the parameters the person settled, and the delivered file
+    when there is one; with `details`, also the qualifier line, the cells the numbers were
+    checked against, every decision with its source and the ids. Loads no plugin. Reads:
+    answers, questions, messages, artifacts, deliveries."""
     row = project.store.one(
         "SELECT a.*, q.seq, q.origin, q.text_ref AS q_ref FROM answers a JOIN questions q ON "
         "q.question_id = a.question_id WHERE a.answer_id = ?",
@@ -812,7 +816,9 @@ def present_answer(project: Site, answer_id: str, skills_dir: Path | None = None
         shown.add(aid)
         cells = (prov.get("cells") or {}).get(aid)
         if art["kind"] == "table" and cells:
-            rows = [dict(r) for r in cells.values()]
+            # the row names lead the table: without them a column of counts says nothing
+            key = _key_column(Path(str(art["path"])), str(art["name"]))
+            rows = [{key: k, **dict(r)} for k, r in cells.items()]
             cols = list(rows[0].keys()) if rows else []
             sections.append(
                 {"title": f"{art['name']} (cited rows)", "kind": "table", **_table(rows, cols, {})}
@@ -833,6 +839,7 @@ def present_answer(project: Site, answer_id: str, skills_dir: Path | None = None
         "answer_id": answer_id,
         "question_id": row["question_id"],
         "question": project.store.message(row["q_ref"]) or "",
+        "seq": row["seq"],
         "origin": row["origin"],
         "status": row["status"],
         "label": row["label"],
@@ -848,8 +855,32 @@ def present_answer(project: Site, answer_id: str, skills_dir: Path | None = None
         "files": [delivered["path"]] if delivered else [],
         "delivered": delivered,
         "never_show": [],
+        "details": details,
         "skill": "answer view from skills/open.yml" if views else "the engine default answer view",
     }
+
+
+def _key_column(path: Path, name: str) -> str:
+    """The name of a table's row-key column, for the cited rows; `row` when it cannot be read."""
+    from stringency.tables import load_table
+
+    try:
+        return load_table(path, name).key_column or "row"
+    except Exception:  # noqa: BLE001  (a reading view never fails on one table)
+        return "row"
+
+
+def _settled_lines(decisions: list[dict[str, Any]]) -> list[str]:
+    """The parameters the person settled, and the ones the assistant proposed and the person
+    approved at a hold, in words; defaults and declared values are left to `--details`."""
+    you = [f"{d['param']} = {d['value']}" for d in decisions if d.get("source") == "person"]
+    agent = [f"{d['param']} = {d['value']}" for d in decisions if d.get("source") == "agent"]
+    out = []
+    if you:
+        out.append("You set: " + "; ".join(you) + ".")
+    if agent:
+        out.append("Proposed by the assistant and approved at a hold: " + "; ".join(agent) + ".")
+    return out
 
 
 def _artifact_section(project: Site, art: Any, view: dict[str, Any]) -> dict[str, Any]:
@@ -1005,16 +1036,11 @@ def render_markdown(payload: dict[str, Any]) -> str:
             )
         return "\n".join(out) + "\n"
     if payload["kind"] == "answer":
-        out.append(f"## Answer {payload['answer_id']} to question {payload['question_id']}")
+        out.append(f"## Question {payload['seq']}: {payload['question']}")
         out.append("")
         if payload["status"] != "admissible":
             out.append(f"(this answer was {payload['status']} and is not shown as an answer)")
             out.append("")
-        out.append(payload["label_sentence"] or "")
-        out.append(payload["qualifier"] or "")
-        out.append("")
-        out.append(f"Question ({payload['origin']}): {payload['question']}")
-        out.append("")
         out.append(payload["text"].rstrip())
     elif payload["kind"] == "run":
         out.append(f"## {payload['pipeline']}: {payload['progress']}")
@@ -1063,6 +1089,16 @@ def render_markdown(payload: dict[str, Any]) -> str:
         out.append("Deliverables:")
         out += [f"- {p}" for p in payload["deliverables"]] or ["- none"]
     if payload["kind"] == "answer":
+        out.append("")
+        out.append(payload["label_sentence"] or "")
+        out += _settled_lines(payload["decisions"])
+    if payload["kind"] == "answer" and payload["details"]:
+        out.append("")
+        out.append(payload["qualifier"] or "")
+        out.append(
+            f"Answer {payload['answer_id']} to question {payload['question_id']} "
+            f"({payload['origin']}), run {payload['run_id']}."
+        )
         if payload["cells"]:
             out.append("")
             out.append("Cells the numbers were checked against:")
@@ -1076,16 +1112,17 @@ def render_markdown(payload: dict[str, Any]) -> str:
                 f"- {d['step']}.{d['param']} = {d['value']} ({d['source']})"
                 for d in payload["decisions"]
             ]
-        if payload["delivered"]:
-            out.append("")
-            out.append(f"Delivered as {payload['delivered']['file']}.")
-    if payload["files"]:
+    if payload["kind"] == "answer" and payload["delivered"]:
+        out.append("")
+        out.append(f"Delivered as {payload['delivered']['file']}.")
+    if payload["files"] and payload["kind"] != "answer":
         out.append("")
         out.append("Files to send:")
         out += [f"- {p}" for p in payload["files"]]
     if payload["never_show"]:
         out.append("")
         out.append("Not shown, by the method's rule: " + ", ".join(payload["never_show"]) + ".")
-    out.append("")
-    out.append(f"({payload['skill']})")
+    if payload["kind"] != "answer" or payload["details"]:
+        out.append("")
+        out.append(f"({payload['skill']})")
     return "\n".join(out) + "\n"

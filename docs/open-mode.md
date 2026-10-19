@@ -36,6 +36,15 @@ person's call. Not something neither the delivery nor the inputs hold: the assis
 would answer it. The
 assistant proposes three to five paths before the switch, so the first question can be a pick.
 
+## How an answer reads
+
+The assistant answers in its own words: what the result shows, the few numbers that carry it
+and any caveat the data shows, then the table or figure, then one sentence on how far to trust
+it, carrying the engine's label word and reason. Every number it says was checked by the engine
+against the cited tables when the answer was filed. The engine's own lines (the label sentence,
+the fixed qualifier line, the cells checked) are in the delivered answer files, and the assistant
+gives them when asked how an answer was checked.
+
 ## The three routes
 
 For each question the assistant takes one route: a tool whose use-when fits; code written in the
@@ -87,5 +96,5 @@ the verbs are `tools list`, `init --mode open --from-delivery`, `ask`, `call`, `
 ## How it is measured
 
 One row per run in `spec/plans/backlog.md`: questions asked (person and suggested), answers by
-label, blocks and how each was cleared, unrequested ids shown (target zero), label lines relayed
-verbatim (target all), turns and minutes to the first delivered answer.
+label, blocks and how each was cleared, unrequested ids shown (target zero), label words stated
+correctly in the reply (target all), turns and minutes to the first delivered answer.

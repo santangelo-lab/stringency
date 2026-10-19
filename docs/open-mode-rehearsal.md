@@ -104,17 +104,18 @@ should produce:
 
 | ask | route | what you should see |
 |---|---|---|
-| pick the first path (which groups differ, with bh) | tool `compare-groups` | the tool's controls pass first (said in a line); then an answer whose first line is `Label: trusted.` naming compare-groups, then the comparison table's cited row, then the qualifier line with `controls: current` |
+| pick the first path (which groups differ, with bh) | tool `compare-groups` | the tool's controls pass first (said in a line); then a reply in plain words (A and B differ a lot, A and C barely), the comparison table, and one sentence saying the answer is trusted because it came from the method's tested tool; no ids, no qualifier line |
 | "Show me the differences as a plot" | tool `plot-groups` | a trusted answer with the figure beside it |
-| "Run the comparison again with bonferroni" | tool with your value | no approval hold (you set it); the qualifier line says `person-set parameters: ...correction=bonferroni` |
-| "How many rows does each group have after filtering?" | code (`exec`) | the before-exec sentence first; then `Label: untested.`, the counts table's cited rows, `untested inputs: 0N_exec` in the qualifier |
+| "Run the comparison again with bonferroni" | tool with your value | no approval hold (you set it); the reply says you set the correction to bonferroni |
+| "How many rows does each group have after filtering?" | code (`exec`) | the before-exec sentence first; then the counts in words, the table with the group names, and a sentence saying it is untested because it is code written in the session |
 | "What is the mean value per unit?" | code | untested, as above |
 | "Is this result good enough to report?" | cannot | the cannot sentence; no tool run, no number |
-| "What were the raw values before filtering?" | code, on the pipeline's input | the script names `upstream_groups`; `Label: untested.` says it ran "on the delivered data and the pipeline's inputs" (or "on the pipeline's inputs") |
+| "What were the raw values before filtering?" | code, on the pipeline's input | the script names `upstream_groups`; the reply says it is untested code and that it read the data from before the pipeline ran |
 | "What was the room temperature when the values were measured?" | cannot | in neither the delivery nor the inputs; the agent says what would answer it |
 | "Rerun the whole analysis keeping rows below 10" | not a question | the agent says this is a change to the pipeline run (a fork), not a question of the delivery |
 | "How were the p-values corrected?" | explain | from the methods paragraph or the summary, no new run |
 | "Show me the code" (after a code answer) | mechanics on request | the script verbatim |
+| "How was that checked?" | mechanics on request | the qualifier line and the cells the numbers were checked against, in words (`present --answer --details`) |
 
 Try at least one wrong number: ask the agent to restate an answer with a number you make up.
 It cannot: `answer` blocks any numeral that is not a cited cell, and the agent is to fix the
@@ -128,7 +129,7 @@ pastes `answers-summary.md` only if you ask.
 
 One row in `spec/plans/backlog.md` (Measurements): questions asked by origin (suggested,
 person), answers by label (trusted, untested), blocks and how each was cleared, unrequested ids
-or paths shown (target zero), label lines relayed verbatim (target all ten), turns and minutes
+or paths shown (target zero), label words stated correctly in the reply (target all ten), turns and minutes
 to the first delivered answer, and anything the agent did outside the three routes. And a note
 on the words: whether the paths, the switch paragraph, the label sentences and the qualifier
 line are what you would want said; they are pinned in `src/stringency/provenance.py`,

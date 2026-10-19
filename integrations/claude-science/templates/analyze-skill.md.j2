@@ -249,8 +249,11 @@ the yes. On the yes, the operator skill's 10.2 applies: `init --mode open --from
 beside the upstream, the yes recorded as that project's confirm verdict, a picked path filed
 with `ask --suggested`. Then per question: `ask`, one route (a tool whose use-when fits, else
 `exec` when the delivery or the pipeline's own inputs hold the data, else cannot), `answer`
-citing every cell, and `present --answer` relayed whole with the label sentence first. You never
-write the label; the engine prints it from what ran. The open project holds the pipeline's own
+citing every cell, then your own reply to the person, never the engine output relayed: the
+answer you filed, written to explain the result (what it shows, the few numbers that carry it,
+any caveat the data shows), the table or figure from `present --answer`, and one plain sentence
+on how far to trust it that carries the engine's label word and reason. You never write the
+label and never upgrade it; the engine prints it from what ran. The open project holds the pipeline's own
 inputs read-only as `upstream_<name>`, bound only when you name them with `--in`, for questions
 about what the pipeline removed or changed. A tool's controls run before its first use. When the
 person says they are done, ask the deliver sentence once and deliver what they name (`deliver
@@ -283,9 +286,10 @@ The paths the method suggests, each said in the pinned form:
 {% endfor %}
 
 {% endif %}
-The pinned sentences, said as written (the label sentences and the qualifier line are printed by
-`stringency answer` and relayed verbatim; the engine fills `{tools}`, `{data}`, `{why}`,
-`{matched}`, `{total}` and the qualifier's six fields, each `none` when empty):
+The pinned sentences, said as written except the label sentences and the qualifier line, which
+are the engine's record, printed by `stringency answer` and said in plain words in your reply
+(the engine fills `{tools}`, `{data}`, `{why}`, `{matched}`, `{total}` and the qualifier's six
+fields, each `none` when empty):
 
 - paths forward, the opening: "Your project asked {the objective's question in the method's words}, and the delivery holds {the deliverables}. Paths I can take from here:"
 - path, a tool: "{what it answers}: {tool title}, a tool shipped with the method; it would be labelled trusted{; it needs {ask} from you}."

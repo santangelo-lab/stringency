@@ -354,7 +354,7 @@ closed (abandoned) run opens a new one.
 
 ### 10.3 The loop, per question
 
-`ask` → route (10.4) → `call` or `exec` or cannot → `answer` → `present --answer` relayed whole.
+`ask` → route (10.4) → `call` or `exec` or cannot → `answer` → your reply, in your own words.
 
 - `stringency ask "<the person's words verbatim>" --json` prints the question id and the tools.
 - `stringency call <tool> --question <id> [--in <input>=<ref>] [--set k=v ...] --json` runs a
@@ -369,17 +369,32 @@ closed (abandoned) run opens a new one.
   no tool>" [--in upstream_<name>=$inputs.upstream_<name>] --json` runs a script you wrote, under
   the executor, inputs read-only. Every delivered file is bound by name; an upstream input is
   bound only when you name it, and only when the question needs the data from before the
-  pipeline ran. Write the
-  script to a file outside the project; it reads a JSON job from stdin (`inputs`, `outputs`,
-  `seed`) exactly as a module does. Say the before-exec sentence of 10.7 first.
+  pipeline ran. Write the script to a file outside the project; it reads a JSON job from stdin
+  (`inputs`, `outputs`, `seed`) exactly as a module does. Say the before-exec sentence of 10.7
+  first.
 - `stringency answer --question <id> --cite <artifact id>[:<row>[:<column>]] ... --text <file>
-  --json` records your reply. Cite every artifact a number comes from, by row and column where
-  you can. Exit 0 prints the label sentence and the qualifier line; exit 12 is a block (10.6).
-- `stringency present --answer <id>` is what the person reads; relay it whole and in order: the
-  label sentence first, the question, the text, the tables and figures the method's answer view
-  names, the cells the numbers were checked against, the decisions. Never the ids, the paths,
-  the second project, or the script, unless they ask; "show me the code" prints the script
-  verbatim from `runs/<run>/<step>/script.<ext>`.
+  --json` records your reply. Write the text for the person, the way you would explain the
+  result to a colleague: lead with what it shows in plain words (which group is higher and by
+  roughly how much, which differences are large and which are within the noise, what stands
+  out), then the few numbers that carry it, then any caveat the data itself shows (few units,
+  a unit left with one row, a skewed group). Do not recite every cell: the table goes beside
+  the text. A reading, never a verdict ("significant", "good enough to report"). Cite every
+  artifact a number comes from, by row and column where you can; every numeral in the text
+  must be a cited cell. Exit 0 prints the label sentence and the qualifier line; exit 12 is a
+  block (10.6).
+- Then reply to the person yourself; do not relay engine output. `stringency present --answer
+  <id>` gives you the parts (the tables and figures the method's answer view names, with their
+  row names, and the label sentence); `--details` adds the qualifier line, the cells checked
+  and every decision. Your reply is: the answer text you filed, the table or figure that shows
+  it (as a table, or the figure sent as a file), one plain sentence on how far to trust it, and
+  the parameters the person set, if any. The trust sentence carries the engine's label word and
+  its reason in your words: trusted ("from the method's Compare the groups tool, which the
+  method tests; its controls passed"), untested because it is code you wrote ("nothing has
+  checked the code"), or untested for the tool's reason the label names. Never call an untested
+  answer trusted, never soften or upgrade a label, and never say a number in the reply that is
+  not in the filed text or the shown table. Never the ids, the paths, the second project, the
+  qualifier line or the script unless they ask; "how was this checked" gets `--details` in
+  words; "show me the code" prints the script verbatim from `runs/<run>/<step>/script.<ext>`.
 - Delivering answers happens once, when the person says they are done (or asks to keep
   answers): ask the deliver sentence of 10.7, never after each answer and never more than once
   per stop. `stringency deliver --answer <id> ...` (or `--answer all`) writes the chosen answers
@@ -420,8 +435,9 @@ number that is not a cell of an artifact you cited.
 
 ### 10.7 The pinned sentences
 
-Said as written. The label sentences and the qualifier line are printed by the engine
-(`stringency answer`) and relayed verbatim; the engine fills `{tools}` with the tools on the
+The label sentences and the qualifier line are the engine's record: printed by `stringency
+answer`, written into every delivered answer file, and the source of the trust sentence of your
+reply (10.3), which says them in plain words. The rest are said as written. The engine fills `{tools}` with the tools on the
 answer's path, `{data}` with what the path rests on, `{why}` with the condition of trusted a
 tool missed, `{matched}` and `{total}` with the numeral counts, and the qualifier's six fields,
 each `none` when empty. The rest are yours. The engine's `provenance.py` and `echo.py` hold the

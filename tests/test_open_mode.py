@@ -196,13 +196,18 @@ def test_open_mode_end_to_end(
     readme = (q.root / "README.md").read_text()
     assert "Which group is higher, A or B?" in readme and "deliver/answers-01/" in readme
     assert "`controls/<tool>/<control>/`" in readme and "tool compare-groups" in readme
+    # the view the operator composes its reply from: the question, the text, the tables and
+    # figures, the label; no ids, no cells-checked list unless asked (2026-10-19)
     shown = cli(q, "present", "--answer", a1["answer_id"]).output
-    assert (
-        "Label: trusted." in shown
-        and "Which group is higher, A or B?" in shown
-        and "diff=59.22" in shown
-    )
-    assert "figure:" in shown  # the cited figure is a section of the answer view
+    assert shown.startswith("## Question 1: Which group is higher, A or B?")
+    assert "Label: trusted." in shown and "figure:" in shown
+    assert a1["answer_id"] not in shown and "diff=59.22" not in shown
+    detailed = cli(q, "present", "--answer", a1["answer_id"], "--details").output
+    assert "diff=59.22" in detailed and a1["answer_id"] in detailed
+    assert "flags accepted on the path" in detailed
+    # a cited table keeps its row names
+    counted = cli(q, "present", "--answer", a2["answer_id"]).output
+    assert "| group | n |" in counted
     listed = json.loads(cli(q, "present", "--answers", "--json").output)["answers"]
     assert sum(1 for a in listed if a["delivered"]) == 2
     # the upstream delivery is untouched

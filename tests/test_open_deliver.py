@@ -244,12 +244,10 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     )
     assert ans["decisions"][0]["source"] == "default" and ans["files"] == [str(dest / a1["file"])]
     human = cli(q, "present", "--answer", ids["a1"]).output
-    assert (
-        "Label: trusted." in human
-        and "Cells the numbers were checked against:" in human
-        and "diff=59.22" in human
-    )
+    assert "Label: trusted." in human and "Cells the numbers were checked against:" not in human
     assert f"Delivered as {a1['file']}." in human
+    detailed = cli(q, "present", "--answer", ids["a1"], "--details").output
+    assert "Cells the numbers were checked against:" in detailed and "diff=59.22" in detailed
     r = cli(q, "present", "--answers", "--json")
     lst = json.loads(r.output)["answers"]
     listed = [a["answer_id"] for a in lst]
