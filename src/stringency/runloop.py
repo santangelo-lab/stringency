@@ -275,8 +275,10 @@ def open_next(rc: RunContext) -> Next:
     """`next` on an open run with no open hold (open_mode_plan.md 2.2): what has been asked and
     answered, every on-demand step with its state and question, and the artifacts that can be
     cited. Exit 0: an open run waits for the next question, not for the engine. Reads:
-    questions, answers, steps, artifacts, messages."""
+    questions, answers, steps, artifacts, messages, findings."""
     store = rc.store
+    from stringency.findings import current as current_findings
+
     questions = [
         {
             "question_id": q["question_id"],
@@ -341,7 +343,13 @@ def open_next(rc: RunContext) -> Next:
     return Next(
         "open",
         None,
-        {"questions": questions, "answers": answers, "steps": steps, "artifacts": artifacts},
+        {
+            "questions": questions,
+            "answers": answers,
+            "steps": steps,
+            "artifacts": artifacts,
+            "findings": sorted(current_findings(store, rc.run_id)),
+        },
         0,
         message,
     )

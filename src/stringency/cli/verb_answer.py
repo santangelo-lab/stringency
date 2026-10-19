@@ -15,6 +15,7 @@ from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError, Exit
 from stringency.project import Project
 from stringency.questions import open_for_questions
+from stringency.report import write_open_delivery
 
 
 @handle_errors
@@ -40,7 +41,17 @@ def answer(
     res = file_answer(rc, question_id, body, [parse_cite(c) for c in cites])
     payload = {**res.to_json(), "run_id": rc.run_id}
     if res.status == "admissible":
-        human = f"answer {res.answer_id} recorded ({res.status})\n{res.sentence}\n{res.qualifier}"
+        # every admissible answer is in deliver/<run>/ the moment it exists (2026-10-19)
+        d = write_open_delivery(rc)
+        mine = next((e for e in d.answers if e["answer_id"] == res.answer_id), None)
+        payload["report"] = {
+            "path": str(d.path / "report.md"),
+            "file": mine["file"] if mine else None,
+        }
+        human = (
+            f"answer {res.answer_id} recorded ({res.status})\n{res.sentence}\n{res.qualifier}\n"
+            f"in the report as {mine['file'] if mine else '?'} ({d.path / 'report.md'})"
+        )
     else:
         human = (
             f"answer {res.answer_id} blocked: "

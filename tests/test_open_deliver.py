@@ -1,8 +1,9 @@
-"""Open mode S6, deliver and present (spec/plans/open_mode_plan.md 2.7): `deliver --answer`
-from a running open run into its own directory, `index.json` with `answers` and per-file
-`provenance`, the deliver gate's verdicts recorded, the summary with its open-mode sections
-and `explored` (golden), the methods paragraph and coverage report for an open run, and
-`present --answer` and `--answers`."""
+"""Open mode, the report (spec/plans/open_mode_plan.md 2.7 and section 10, 2026-10-19): every
+admissible answer lands in `deliver/<run>/` as it is filed, with `index.json` (`answers`, per-file
+`provenance`, `report`), the deliver gate's verdicts recorded, a `deliveries` row only when the
+content changed; `finding` marks and unmarks (append-only), and `report.md` (golden) leads with
+the findings; the methods paragraph and coverage report for an open run; `present --answer` and
+`--answers`; `deliver --answer` refused."""
 
 from __future__ import annotations
 
@@ -16,6 +17,8 @@ import yaml
 from stringency.deliver import deliver
 from stringency.exit_codes import ConfigError, RefusedError
 from stringency.project import Project
+from stringency.provenance import TRUSTED_MEANS, UNTESTED_MEANS
+from stringency.report import NO_FINDING_YET
 from stringency.runs import load_run
 from tests.conftest import InitFn, MethodRepo, accept_hold
 from tests.test_deliver import GOLDEN, normalise
@@ -70,8 +73,11 @@ def answered(
     r = cli(q, "answer", "--question", q1, "--text", str(t), "--cite", f"{aid}:A_vs_B", "--json")
     assert r.exit_code == 0, r.output + str(r.stderr)
     a1 = json.loads(r.output)["answer_id"]
+    # a probe for the cells: blocked (999 is no cell), so it is not in the report
     cells = json.loads(
-        cli(q, "answer", "--question", q2, "--text", "-", "--cite", mid, "--json", input="x").output
+        cli(
+            q, "answer", "--question", q2, "--text", "-", "--cite", mid, "--json", input="probe 999"
+        ).output
     )["cells"]
     t.write_text(
         f"The means are A {cells[mid]['A']['mean']}, B {cells[mid]['B']['mean']} and C {cells[mid]['C']['mean']}."
@@ -100,31 +106,22 @@ def answered(
     )
 
 
-def test_deliver_answers_writes_index_provenance_and_reports(
+def test_answers_land_in_the_report_as_filed_and_findings_lead(
     answered: tuple[Project, Project, dict[str, str]], request: pytest.FixtureRequest
 ) -> None:
     up, q, ids = answered
     run_id = json.loads(cli(q, "next", "--json").output)["run_id"]
     rc = load_run(q, run_id)
-    # refusals: no --answer, a blocked answer, and --answer on a pipeline run
-    with pytest.raises(ConfigError, match="--answer"):
-        deliver(rc)
-    with pytest.raises(ConfigError, match="blocked"):
-        deliver(rc, answer_ids=[ids["blocked"]])
     up_rc = load_run(up, up.store.scalar("SELECT run_id FROM runs"))
-    with pytest.raises(RefusedError, match="declared topology"):
-        deliver(up_rc, answer_ids=[ids["a1"]])
-    r = cli(q, "deliver", "--answer", ids["a1"], "--answer", ids["a2"], "--json")
-    assert r.exit_code == 0, r.output + str(r.stderr)
-    out = json.loads(r.output)
-    dest = Path(out["path"])
-    # numbered per project, beside nothing of the pipeline's (2026-10-19)
-    assert dest == q.root / "deliver" / "answers-01"
+    dest = q.root / "deliver" / run_id
+    # every admissible answer was written when it was filed: one `deliveries` row per change,
+    # none for the two blocked answers
+    assert q.store.scalar("SELECT COUNT(*) FROM deliveries WHERE run_id=?", (run_id,)) == 2
     index = json.loads((dest / "index.json").read_text())
-    assert index["mode"] == "open" and [a["answer_id"] for a in index["answers"]] == [
-        ids["a1"],
-        ids["a2"],
-    ]
+    assert index["mode"] == "open" and index["report"]["file"] == "report.md"
+    assert "summary" not in index and "written" in index
+    assert [a["answer_id"] for a in index["answers"]] == [ids["a1"], ids["a2"]]
+    assert all(a["finding"] is False for a in index["answers"])
     a1 = index["answers"][0]
     assert a1["label"] == "trusted" and a1["question"] == "Which group is higher, A or B?"
     assert a1["file"] == "q01-which-group-is-higher-a-or-b.md" and a1["files"] == [
@@ -151,16 +148,28 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     assert files["01_compare-groups.comparison_table.tsv"]["provenance"]["label"] == "trusted"
     assert files["02_exec.means.tsv"]["provenance"]["label"] == "untested"
     answer_md = (dest / a1["file"]).read_text()
+    assert answer_md.startswith("# Question 1: Which group is higher, A or B?\n")
     assert (
-        answer_md.startswith("# Question 1: Which group is higher, A or B?")
-        and "Asked in the person's own words; answer " + ids["a1"] in answer_md
+        "Asked in the person's own words; answer " + ids["a1"] in answer_md
         and "Label: trusted." in answer_md
-    )
-    assert (
-        "Cited files: 01_compare-groups.comparison_table.tsv" in answer_md
+        and "Cited files: 01_compare-groups.comparison_table.tsv" in answer_md
         and "Runs: one of 1 run(s)" in answer_md
+        and "Marked as a finding" not in answer_md
     )
-    # the deliver gate's verdicts are recorded now
+    # the one reader-facing file is the report; nothing is marked yet
+    assert not (dest / "summary.md").exists() and not (dest / "answers-summary.md").exists()
+    report = (dest / "report.md").read_text()
+    assert report.startswith(f"# Questions of {up.root.name}'s results\n")
+    assert NO_FINDING_YET in report and "Shall I open it" not in report
+    others = report[report.index("## Other questions") :]
+    assert (
+        "**1. Which group is higher, A or B?** (tool compare-groups; trusted). A is higher"
+        in others
+    )
+    assert "**2. What is the mean per group?** (code written in the session; untested)." in others
+    assert "Full answer with its tables: `q02-what-is-the-mean-per-group.md`." in others
+    assert TRUSTED_MEANS in report and UNTESTED_MEANS in report
+    # the deliver gate's verdicts are recorded on every regeneration
     rows = q.store.all(
         "SELECT predicate_id, fired FROM predicate_results WHERE run_id=? AND phase='deliver'",
         (run_id,),
@@ -168,24 +177,74 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     assert {r_["predicate_id"] for r_ in rows} == {"prov.orphan_artifact"} and not any(
         r_["fired"] for r_ in rows
     )
-    # the run stays running and may deliver again, into another directory
-    assert (
-        rc.status() == "running"
-        and q.store.scalar("SELECT status FROM runs WHERE run_id=?", (run_id,)) == "running"
-    )
-    d2 = deliver(load_run(q, run_id), answer_ids=[ids["a2"]])
-    assert d2.path == q.root / "deliver" / "answers-02" and [
-        a["answer_id"] for a in d2.answers
-    ] == [ids["a2"]]
+    # refusals: --answer is gone; a blocked, unknown or pipeline answer cannot be a finding
+    r = cli(q, "deliver", "--answer", ids["a1"])
+    assert r.exit_code == 16 and "finding" in str(r.stderr)
+    with pytest.raises(RefusedError, match="finding"):
+        deliver(rc, answer_ids=[ids["a1"]])
+    with pytest.raises(RefusedError, match="declared topology"):
+        deliver(up_rc, answer_ids=[ids["a1"]])
+    assert cli(q, "finding", ids["blocked"]).exit_code == 15
+    assert cli(q, "finding", "01BADBADBADBADBADBADBADBAD").exit_code == 15
+    assert cli(up, "finding", ids["a1"]).exit_code == 16
+    # `deliver` with nothing changed writes the same bytes and no row
+    before = (dest / "index.json").read_bytes()
+    r = cli(q, "deliver", "--json")
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    assert json.loads(r.output)["changed"] is False
+    assert (dest / "index.json").read_bytes() == before
     assert q.store.scalar("SELECT COUNT(*) FROM deliveries WHERE run_id=?", (run_id,)) == 2
+    assert rc.status() == "running"
+    # a finding: an append-only row, the index, the answer file, and the report leads with it
+    r = cli(q, "finding", ids["a1"], "--reason", "this is the comparison I wanted", "--json")
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    out = json.loads(r.output)
+    assert out["results"][0]["changed"] is True and out["findings"] == [ids["a1"]]
+    frow = q.store.one("SELECT * FROM findings")
+    assert frow["action"] == "mark" and frow["via"] == "tty" and frow["answer_id"] == ids["a1"]
+    assert q.store.message(frow["reason_ref"]) == "this is the comparison I wanted"
+    assert q.store.scalar("SELECT COUNT(*) FROM deliveries WHERE run_id=?", (run_id,)) == 3
+    index = json.loads((dest / "index.json").read_text())
+    assert index["answers"][0]["finding"] is True and index["answers"][1]["finding"] is False
+    assert index["answers"][0]["finding_reason"] == "this is the comparison I wanted"
+    answer_md = (dest / a1["file"]).read_text()
+    assert answer_md.startswith("# Question 1: Which group is higher, A or B? (finding)\n")
+    assert "Marked as a finding by" in answer_md
+    report = (dest / "report.md").read_text()
+    assert NO_FINDING_YET not in report and "one marked as a finding" in report
+    found = report[report.index("## Findings") : report.index("## Other questions")]
+    assert (
+        "### Which group is higher, A or B?" in found
+        and "Question 1, asked by the person." in found
+    )
+    assert (
+        "| A_vs_B |" in found and "Label: trusted." in found and "Marked as a finding by" in found
+    )
+    assert "Full record: `q01-which-group-is-higher-a-or-b.md`." in found
+    others = report[report.index("## Other questions") :]
+    assert "**1. Which group" not in others and "**2. What is the mean per group?**" in others
+    # marking again is a no-op; unmarking is a row; the report follows
+    human = cli(q, "finding", ids["a1"]).output
+    assert "already a finding" in human
+    assert q.store.scalar("SELECT COUNT(*) FROM findings") == 1
+    assert q.store.scalar("SELECT COUNT(*) FROM deliveries WHERE run_id=?", (run_id,)) == 3
+    r = cli(q, "finding", ids["a1"], "--remove", "--json")
+    assert r.exit_code == 0 and json.loads(r.output)["results"][0]["changed"] is True
+    assert q.store.scalar("SELECT COUNT(*) FROM findings") == 2
+    assert NO_FINDING_YET in (dest / "report.md").read_text()
+    assert q.store.scalar("SELECT COUNT(*) FROM deliveries WHERE run_id=?", (run_id,)) == 4
+    with pytest.raises(ConfigError, match="only an admissible"):
+        from stringency.findings import mark
+
+        mark(rc, [ids["blocked"]])
+    r = cli(q, "finding", ids["a1"], "--reason", "this is the comparison I wanted")
+    assert r.exit_code == 0
     # the reports
-    # the reader's files never share a name with the pipeline delivery's
-    assert not (dest / "summary.md").exists() and index["summary"]["file"] == "answers-summary.md"
-    cov = (dest / "answers-coverage.md").read_text()
+    cov = (dest / "coverage.md").read_text()
     assert "open mode:" in cov and "tools run without current controls: none" in cov
     assert "scripts written in the session: 02_exec" in cov
     assert (
-        "explored: compare-groups@0.1.1 1 run(s), 1 distinct parameter set(s), 1 delivered (steps 01_compare-groups)"
+        "explored: compare-groups@0.1.1 1 run(s), 1 distinct parameter set(s), 1 cited by findings (steps 01_compare-groups)"
         in cov
     )
     assert "questions: 1 in the person's own words, 1 suggested by the operator" in cov
@@ -193,7 +252,7 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     assert cov.rstrip().endswith(
         "whether the upstream delivery was re-run after a question here was answered; and anything not listed above"
     )
-    methods = (dest / "answers-methods.md").read_text()
+    methods = (dest / "methods.md").read_text()
     assert (
         methods.startswith("Questions were answered with stringency")
         and "in open mode using the tools of method v0.1.0 (compare-groups@0.1.1, plot-groups@0.1.0"
@@ -207,55 +266,72 @@ def test_deliver_answers_writes_index_provenance_and_reports(
         f"Input object was delivered by stringency run {up_rc.run_id} (step 01_filter, output object)."
         in methods
     )
-    summary = (dest / "answers-summary.md").read_text()
-    assert "Shall I open it" not in summary
-    assert (
-        "## What was asked" in summary
-        and "## What was untested" in summary
-        and "## Explored" in summary
-    )
-    golden = GOLDEN / "summary_open.md"
-    got = normalise(summary).replace(str(up.root), "<UPSTREAM>").replace(str(q.root), "<PROJECT>")
-    # the echo wraps at 100 columns around the temporary path, whose length varies
-    for pattern in (r"Delivery bound:.*?output object\)\.", r"The pipeline's own inputs.*?>\."):
-        got = re.sub(pattern, lambda m: " ".join(m.group(0).split()), got, flags=re.S)
+    report = (dest / "report.md").read_text()
+    golden = GOLDEN / "report_open.md"
+    got = normalise(report).replace(str(up.root), "<UPSTREAM>").replace(str(q.root), "<PROJECT>")
     if request.config.getoption("--update-golden"):
         golden.write_text(got)
     assert got == golden.read_text()
-    # present: the run view defaults to the delivered run; the answer view; the list
+    # present: the run view defaults to the run with the report; the answer view says where
+    # the answer is in it; the list marks the finding
     r = cli(q, "present", "--json")
     assert r.exit_code == 0, r.output + str(r.stderr)
     view = json.loads(r.output)
-    assert view["kind"] == "run" and view["run_id"] == run_id and len(view["deliverables"]) == 1
+    assert view["kind"] == "run" and view["run_id"] == run_id and len(view["deliverables"]) == 2
     r = cli(q, "present", "--answer", ids["a1"], "--json")
     assert r.exit_code == 0, r.output + str(r.stderr)
     ans = json.loads(r.output)
     assert ans["kind"] == "answer" and ans["label"] == "trusted" and ans["route"] == "tool"
+    assert ans["report"]["finding"] is True and ans["files"] == [str(dest / a1["file"])]
     assert ans["question"] == "Which group is higher, A or B?" and ans["tools"] == [
         "compare-groups@0.1.1"
     ]
-    assert ans["label_sentence"].startswith("Label: trusted.") and ans["qualifier"].startswith(
-        "flags accepted"
-    )
     assert ans["cells"][ids["aid"]]["A_vs_B"]["diff"] == 59.22
-    assert (
-        ans["sections"][0]["kind"] == "table"
-        and ans["sections"][0]["title"] == "comparison_table (cited rows)"
-    )
-    assert ans["decisions"][0]["source"] == "default" and ans["files"] == [str(dest / a1["file"])]
     human = cli(q, "present", "--answer", ids["a1"]).output
     assert "Label: trusted." in human and "Cells the numbers were checked against:" not in human
-    assert f"Delivered as {a1['file']}." in human
+    assert "In the report as q01-which-group-is-higher-a-or-b.md (a finding, marked by" in human
     detailed = cli(q, "present", "--answer", ids["a1"], "--details").output
     assert "Cells the numbers were checked against:" in detailed and "diff=59.22" in detailed
+    assert "(not marked as a finding)" in cli(q, "present", "--answer", ids["a2"]).output
     r = cli(q, "present", "--answers", "--json")
     lst = json.loads(r.output)["answers"]
     listed = [a["answer_id"] for a in lst]
     assert listed[0] == ids["a1"] and listed[-1] == ids["blocked"] and ids["a2"] in listed
     assert len(listed) == 4  # the cells probe in the fixture filed a blocked answer too
-    assert lst[0]["delivered"] and lst[-1]["status"] == "blocked" and not lst[-1]["delivered"]
+    assert lst[0]["finding"] and lst[0]["in_report"]
+    assert lst[-1]["status"] == "blocked" and not lst[-1]["in_report"]
     human = cli(q, "present", "--answers").output
-    assert ids["blocked"] in human and "(blocked)" in human
+    assert ids["blocked"] in human and "(blocked)" in human and "(trusted, finding)" in human
+    # the console serves the report and the answer files by name
+    from stringency.review_serve import served_files
+
+    names = served_files(dest)
+    assert "report.md" in names and names[a1["file"]][1] == "answer"
+    # a second answer to a question gets its own file; the first keeps its name
+    r = cli(
+        q,
+        "answer",
+        "--question",
+        ids["q1"],
+        "--text",
+        "-",
+        "--cite",
+        f"{ids['aid']}:A_vs_B:diff",
+        "--json",
+        input="The difference is 59.22.",
+    )
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    assert json.loads(r.output)["report"]["file"] == "q01-which-group-is-higher-a-or-b-2.md"
+    index = json.loads((dest / "index.json").read_text())
+    # question order, then filing order
+    assert [a["file"] for a in index["answers"]] == [
+        "q01-which-group-is-higher-a-or-b.md",
+        "q01-which-group-is-higher-a-or-b-2.md",
+        "q02-what-is-the-mean-per-group.md",
+    ]
+    assert (dest / "q01-which-group-is-higher-a-or-b-2.md").exists()
+    plain = json.loads(cli(q, "status", "--json").output)["plain"]
+    assert "two asked, three answered, one marked as findings" in plain
     # a method's answer view for the tool: the tool's output through the view, with a head
     skills = q.method_root / "skills"
     skills.mkdir(exist_ok=True)
@@ -284,6 +360,10 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     ]
     assert ans["sections"][0]["note"] == "first 2 of 3 rows" and len(ans["sections"]) == 1
     assert ans["skill"] == "answer view from skills/open.yml"
+    # the report takes the same view: regenerated, the finding shows the method's table
+    cli(q, "deliver")
+    report = (dest / "report.md").read_text()
+    assert "**The comparison**" in report and "| contrast | diff | p_adj |" in report
     ans2 = json.loads(cli(q, "present", "--answer", ids["a2"], "--json").output)
     assert (
         ans2["route"] == "code"
@@ -293,10 +373,6 @@ def test_deliver_answers_writes_index_provenance_and_reports(
     assert re.match(r"^Label: untested\.", ans2["label_sentence"])
     r = cli(q, "present", "--answer", "01BADBADBADBADBADBADBADBAD")
     assert r.exit_code == 15
-
-    # `all`: the latest admissible answer of every question, in the order asked
-    d3 = deliver(load_run(q, run_id), answer_ids=["all"])
-    assert [a["answer_id"] for a in d3.answers] == [ids["a1"], ids["a2"]]
 
 
 def test_deliver_on_held_open_run_exits_10(

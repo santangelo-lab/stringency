@@ -139,7 +139,8 @@ session id and version, set only `STRINGENCY_OPERATOR=claude-code` or nothing at
 | call | Answer your question about {project} with the {tool title} tool. |
 | exec | Answer your question about {project} with code written here, recorded as untested. |
 | answer | Record the answer to your question about {project} against the cells it cites. |
-| deliver --answer | Collect the answers you chose for {project} beside the delivered results. |
+| finding | Mark the answers you named as the findings {project}'s report leads with. |
+| deliver (open mode) | Rewrite {project}'s report from the record. |
 
 Step titles come from the engine: `title` beside `job_spec` or `dispatch_dir` on `run --json` and
 `next --json`, and `plan.title` for a runnable step. When a pipeline declares no title the engine
@@ -350,7 +351,9 @@ The switch is one relayed yes, not an inherited confirmation (owner's decision 4
    (`origin: person`). The two are counted apart in the coverage report.
 
 On a later session, the open project already exists: `cd` into it and continue with `ask`; a
-closed (abandoned) run opens a new one.
+closed (abandoned) run opens a new one. Read its `README.md` first: when answers are in the
+report and none is marked a finding, say the findings sentence of 10.7 once, before anything
+else, and then carry on whatever the person says.
 
 ### 10.3 The loop, per question
 
@@ -395,13 +398,18 @@ closed (abandoned) run opens a new one.
   not in the filed text or the shown table. Never the ids, the paths, the second project, the
   qualifier line or the script unless they ask; "how was this checked" gets `--details` in
   words; "show me the code" prints the script verbatim from `runs/<run>/<step>/script.<ext>`.
-- Delivering answers happens once, when the person says they are done (or asks to keep
-  answers): ask the deliver sentence of 10.7, never after each answer and never more than once
-  per stop. `stringency deliver --answer <id> ...` (or `--answer all`) writes the chosen answers
-  into `deliver/answers-<NN>/` with their labels, each as `q<NN>-<words>.md`. Save that
-  directory's files as artifacts under the names they have (they never share a name with the
-  pipeline delivery's), then say in one line which questions were delivered and that the record
-  keeps the others as asked but not delivered. Relay `answers-summary.md` only when asked.
+- The report. Every admissible answer is in `deliver/<run>/` the moment `answer` files it: its
+  own `q<NN>-<words>.md`, the files it cites, and `report.md`, which leads with the findings in
+  full and ends with the other questions in short. Nothing depends on anyone remembering a
+  step. When the first answer lands, say the report sentence of 10.7 once; never ask per
+  answer. A finding is the person's call, in their words: `stringency finding <answer id>
+  [--reason "<their words>"]` marks it, `--remove` unmarks; no hold opens, and the report is
+  rewritten. When the person says they are done (or asks what will be kept), ask the findings
+  sentence of 10.7 once, mark what they name, and hand over: save `deliver/<run>/report.md` as
+  the artifact (the same file, a new version each time it changes) and say in one line where
+  it is on disk and how many of the answers are findings. `stringency deliver` rewrites the
+  directory from the trace at any time; it is the cap-off command, and forgetting it costs
+  nothing. Never `deliver --answer` (refused). Relay `report.md` only when asked.
 
 ### 10.4 The three routes
 
@@ -430,7 +438,7 @@ Exit 12 names the predicate: `ans.numeral_unmatched` (a number in your text is n
 trusted or untested). Fix the text: never a number, never a table, never re-run the tool to make
 a number match. After two blocks on one question, relay the cited table through `present` and
 say which number you could not source. Never: run analysis code outside `exec`; write a label of
-your own; put a file into `deliver/` except through `deliver --answer`; give a verdict; say a
+your own; put a file into `deliver/` yourself (the engine writes it); give a verdict; say a
 number that is not a cell of an artifact you cited.
 
 ### 10.7 The pinned sentences
@@ -458,4 +466,5 @@ same text; a test keeps the copies identical.
 - what untested means, when first relevant or asked: "Untested means the engine ran code I wrote in this session and recorded it, but nothing has checked that the code computes what it claims; or it ran a tool the method ships that missed a condition of trusted, which the label names."
 - who labels, when asked: "The engine labels from what ran; I cannot change a label, and I am not allowed to write one."
 - trusted only, when asked: "I can answer only with tools shipped with the method, if you prefer; then anything no tool answers I will say I cannot answer."
-- deliver, once, when the person is done: "Which of these answers should go with the delivered results? You can say all of them, or name them by number."
+- report, once, when the first answer lands: "Everything you ask goes into the report, on disk beside the results as it is answered; tell me whenever you want an answer marked as a finding, the ones the report leads with."
+- findings, once, when the person is done: "Which of these answers are findings, the ones the report should lead with? You can name them by number, say all, or none."

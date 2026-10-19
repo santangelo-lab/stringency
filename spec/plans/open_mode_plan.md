@@ -559,3 +559,20 @@ built on branch `open-mode` and recorded in `spec/DECISIONS.md` under "Open mode
 - The delivery message was long: one reporting rule in the skills, the brief's engine-record
   list behind `--rehearsal`, and answers delivered once after the pinned deliver sentence.
 
+## 10. The report replaces `deliver --answer` (2026-10-19, after the second drive)
+
+The second drive showed that answers reach the person in the chat before anything reaches
+disk, so a session that ends after "that's what I wanted" left `deliver/` empty. The owner's
+reading of what delivery is for: put forward the fruitful avenues, keep everything attempted on
+record. Built on branch `open-mode` (`spec/DECISIONS.md`, "Open mode, the report"):
+
+- `report.py`: every admissible answer is written into `deliver/<run>/` as it is filed
+  (`verb_answer` calls `write_open_delivery`); `report.md` leads with the findings in full and
+  ends with the other questions as short paragraphs; `index.json` carries `report` and the
+  finding fields per answer; deterministic content, a `deliveries` row only on change.
+- `findings` table (migration 0006, append-only) and `stringency finding <answer id>...
+  [--reason] [--remove]`; `plain` counts findings; the README shows them.
+- `deliver` in open mode regenerates; `--answer` refused. The open summary is gone (the report
+  is the reader's file); coverage says "cited by findings".
+- The operator says the report sentence once at the first answer, the findings sentence once
+  when the person is done, and offers once in a later session with unmarked answers (10.7).

@@ -35,6 +35,7 @@ APPEND_ONLY = frozenset(
         "messages",
         "judgments",
         "controls_runs",
+        "findings",
         "deliveries",
         "policy_snapshots",
         "questions",

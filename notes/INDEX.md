@@ -3,7 +3,15 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-19)
+## Current state (2026-10-19, night)
+
+- The report replaces `deliver --answer` (`notes/2026-10-19-2100-open-mode-report.md`): every
+  admissible answer lands in `deliver/<run>/` as it is filed; `report.md` leads with the
+  findings; `stringency finding` marks them (migration 0006); the operator's report and
+  findings sentences. Built and green on branch `open-mode`; toy method `v0.2.0-rc5`. Next:
+  reinstall the prefix, republish, the owner's review before any merge.
+
+## Earlier state (2026-10-19, afternoon)
 
 - The owner's first open-mode drive (`notes/2026-10-19-1400-open-mode-drive-findings.md`): six
   findings, all changed on branch `open-mode` (controls before a tool's first use, the untested
@@ -217,6 +225,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-19-2100-open-mode-report.md` — the report replaces `deliver --answer`: automatic delivery of every answer, `report.md` with the findings first, the `findings` table and verb, the skills' two new sentences; the probe that was never blocked; what was altered.
 - `2026-10-19-1400-open-mode-drive-findings.md` — the owner's first open-mode drive on the toy: the paste and image failures before it, and the six findings after it (no control ever ran, a tool's answer called code, the raw input out of reach, the delivery's names, the directory, the long delivery message), each built and recorded.
 - `2026-10-16-2200-open-mode-s1-s7.md` — open mode S1 to S7 built on branch `open-mode` (engine 0.2.22): binding, on-demand steps, exec, controls for tools, answers and labels, deliver and present, the chain test and the design amendments; what was learned (the read-only bind that was not, a tool controlled alone, the `--set none` wart); O1 to O6 open.
 - `2026-10-16-1330-open-mode-plan.md` — the open-mode plan: three explorations, three design passes, the owner's five decisions and the pre-switch review; what the code already has (design 5's sentence, `modes`, on-demand steps as the one addition) and what it lacks (the deliver gate's dropped verdicts, read-write input binds, no timeout, no `--net`, a completion-only control scorer); implementation handed to the workstation.

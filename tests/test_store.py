@@ -104,8 +104,9 @@ def test_append_only_tables_raise_on_update_and_delete(store: Store, table: str)
         )
     elif table == "messages":
         store.store_message("h", "text")
-    elif table in ("questions", "answers"):
-        # open mode (migration 0005): an answer references a question, which references the run
+    elif table in ("questions", "answers", "findings"):
+        # open mode (migration 0005): an answer references a question, which references the run;
+        # a finding (migration 0006) references both
         store.insert(
             "questions",
             {
@@ -118,7 +119,7 @@ def test_append_only_tables_raise_on_update_and_delete(store: Store, table: str)
                 "ts": "t",
             },
         )
-        if table == "answers":
+        if table in ("answers", "findings"):
             store.insert(
                 "answers",
                 {
@@ -129,6 +130,20 @@ def test_append_only_tables_raise_on_update_and_delete(store: Store, table: str)
                     "cited_json": [],
                     "provenance_json": {},
                     "status": "admissible",
+                    "ts": "t",
+                },
+            )
+        if table == "findings":
+            store.insert(
+                "findings",
+                {
+                    "finding_id": "F1",
+                    "run_id": run_id,
+                    "question_id": "Q1",
+                    "answer_id": "A1",
+                    "action": "mark",
+                    "marked_by": "tester",
+                    "via": "tty",
                     "ts": "t",
                 },
             )

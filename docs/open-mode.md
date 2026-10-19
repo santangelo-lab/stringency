@@ -59,22 +59,36 @@ such, no approval hold) or proposed by the assistant with a reason citing a cell
 hold the person answers. Every run of the same tool on the same inputs is counted; a delivered
 answer says it is one of N.
 
-## Delivering
+## The report
 
-When the person says they are done, the assistant asks once which answers to keep: all of them,
-or some by number. `deliver --answer` (or `--answer all`) writes them into
-`deliver/answers-<NN>/` in the open project: one `q<NN>-<words>.md` per answer with its label
-sentence, qualifier, text and cited files, the cited tables and figures, `index.json` with a
-provenance block per file, and `answers-summary.md`, `answers-coverage.md` and
-`answers-methods.md`. The
-summary of an open run says what was asked, what ran, what was untested, and what was explored.
-Nothing asked changes the delivered files.
+Every admissible answer is written into the open project's `deliver/<run>/` the moment it is
+filed: its own file (`q<NN>-<words>.md`, with its label sentence, qualifier line and cited
+files), the tables and figures it cites, and `report.md`, the one file a person reads. Nothing
+reaches the person before it reaches disk, and nothing depends on a step anyone must remember.
+
+The report leads with the **findings**, the answers the person marked as the ones worth putting
+forward, in full: the answer, its table or figure, its label, the parameters the person set, who
+marked it and why. The other questions follow, each a short paragraph with its answer and the
+name of the file holding the rest; questions with no admissible answer are listed as such. The
+record closes it: questions by origin, how many times each tool ran and how many of those runs a
+finding cites, the scripts written in the session, what was not checked. If nothing is marked,
+the findings section says so and every question is in the second part.
+
+A finding is the person's call, made at any time: when an answer lands, when they say they are
+done, or in a session weeks later when writing up. `stringency finding <answer id>` marks (with
+`--reason` for their words), `--remove` unmarks; each is an append-only row with who, how and
+when, so the summary's chosen-versus-explored record survives and is dated. The assistant says
+once, when the first answer lands, that everything goes into the report; asks once, when the
+person is done, which answers are findings; and offers once at the start of a later session
+that has unmarked answers. `stringency deliver` rewrites the directory from the trace; it is the
+cap-off command, and forgetting it costs nothing. Nothing asked changes the delivered files.
 
 ## Finding your way around later
 
 The open project sits beside the delivered one as `<project>-open`. Its `README.md`, written by
 the engine and kept current, lists every question with how it was answered, its label, the step
-directories that hold its work and the file it was delivered as, then says what every path in
+directories that hold its work, whether it is a finding and the file it has in the report, then
+says what every path in
 the project holds. Pipeline projects carry the same kind of README.
 
 ## What is recorded
@@ -83,14 +97,14 @@ The questions (the person's words verbatim, and whether the assistant suggested 
 tool run and script run as a step of the trace (the script's text under its hash), every answer
 with the cells it cited and whether it was admissible or blocked, every label derived from the
 lineage, the rerun counts, and the deliver gate's verdicts. The coverage report ends with what
-was not checked: whether the answers delivered were chosen because they came out, what the
+was not checked: whether the answers marked as findings were chosen because they came out, what the
 assistant said that was not filed as an answer, whether a script computed what it claims.
 
 ## For operators and authors
 
 The operator's rules are section 10 of `integrations/claude-science/stringency-operator/SKILL.md`;
 the verbs are `tools list`, `init --mode open --from-delivery`, `ask`, `call`, `exec`, `answer`,
-`deliver --answer`, `present --answer`. A method author's side is `docs/method-author.md`,
+`finding`, `deliver`, `present --answer`. A method author's side is `docs/method-author.md`,
 "Tools for questions". The test drive on the toy is `docs/open-mode-rehearsal.md`.
 
 ## How it is measured

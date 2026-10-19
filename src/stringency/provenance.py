@@ -66,6 +66,29 @@ WHY_UNTESTED = {
     "runner": "it was not run by the engine",
     "status": "it did not complete",
 }
+# What the two words mean, in the words the operator says when first relevant (the operator
+# skill's 10.7 "what trusted means" / "what untested means"); `report.md` prints them too, so
+# the three copies are held identical by a test (2026-10-19).
+TRUSTED_MEANS = (
+    "Trusted means the engine ran a tool the method ships, in a verified environment, with a "
+    "passing control on record, on the delivered data; the words around the numbers are still "
+    "mine."
+)
+UNTESTED_MEANS = (
+    "Untested means the engine ran code I wrote in this session and recorded it, but nothing "
+    "has checked that the code computes what it claims; or it ran a tool the method ships that "
+    "missed a condition of trusted, which the label names."
+)
+# Said once, when the first answer lands, and once when the person says they are done
+# (open mode, the report; 2026-10-19). Pinned with the rest by the same test.
+REPORT_SENTENCE = (
+    "Everything you ask goes into the report, on disk beside the results as it is answered; "
+    "tell me whenever you want an answer marked as a finding, the ones the report leads with."
+)
+FINDINGS_SENTENCE = (
+    "Which of these answers are findings, the ones the report should lead with? You can name "
+    "them by number, say all, or none."
+)
 QUALIFIER_LINE = (
     "flags accepted on the path: {flags} | parameters outside range: {ranges} | "
     "person-set parameters: {person} | upstream: {upstream} | controls: {controls} | "

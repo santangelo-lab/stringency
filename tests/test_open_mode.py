@@ -63,6 +63,7 @@ def test_open_mode_end_to_end(
     ]
     call = json.loads(cli(q, "call", "compare-groups", "--question", qid, "--json").output)
     assert call["status"] == "completed"
+    q_run_id = call["run_id"]
     assert call["controls_run"] and all(c["passed"] for c in call["controls_run"])
     assert call["inputs"]["object"].endswith("01_filter.object.csv")  # the delivery, not raw
     aid = call["artifacts"][0]["artifact_id"]
@@ -178,23 +179,30 @@ def test_open_mode_end_to_end(
     assert (
         "on the delivered data and the pipeline's inputs" in json.loads(r.output)["label_sentence"]
     )
-    # delivered beside the upstream delivery, with the labels, then presented
-    r = cli(q, "deliver", "--answer", a1["answer_id"], "--answer", a2["answer_id"], "--json")
-    assert r.exit_code == 0, r.output + str(r.stderr)
-    d = json.loads(r.output)
-    index = json.loads((Path(d["path"]) / "index.json").read_text())
-    assert [a["label"] for a in index["answers"]] == ["trusted", "untested"]
+    # every answer is in deliver/<run>/ already, without anyone asking; nothing is a finding
+    dest = q.root / "deliver" / q_run_id
+    index = json.loads((dest / "index.json").read_text())
+    assert [a["label"] for a in index["answers"]] == ["trusted", "untested", "untested"]
     assert {f["kind"] for f in index["files"]} == {"table", "figure"}
-    dest = Path(d["path"])
-    assert dest.name == "answers-01"
-    summary = (dest / "answers-summary.md").read_text()
-    assert summary.count("## ") == 9 and "Shall I open it" not in summary
     assert [a["file"] for a in index["answers"]] == [
         "q01-which-group-is-higher-a-or-b.md",
         "q02-how-many-rows-per-group.md",
+        "q03-how-many-rows-were-there-before-filtering.md",
     ]
+    report = (dest / "report.md").read_text()
+    assert "No answer has been marked as a finding yet." in report
+    assert "Shall I open it" not in report and "![" not in report  # no finding, no figure yet
+    assert cli(q, "deliver", "--answer", a1["answer_id"]).exit_code == 16
+    # the person marks the first answer; the report leads with it
+    r = cli(q, "finding", a1["answer_id"], "--reason", "that is what I asked")
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    report = (dest / "report.md").read_text()
+    found = report[report.index("## Findings") : report.index("## Other questions")]
+    assert "### Which group is higher, A or B?" in found and "![" in found
+    assert "**2. How many rows per group?**" in report[report.index("## Other questions") :]
     readme = (q.root / "README.md").read_text()
-    assert "Which group is higher, A or B?" in readme and "deliver/answers-01/" in readme
+    assert "Which group is higher, A or B?" in readme and f"deliver/{q_run_id}/report.md" in readme
+    assert "| yes |" in readme and "1 finding(s) of 3 answer(s)" in readme
     assert "`controls/<tool>/<control>/`" in readme and "tool compare-groups" in readme
     # the view the operator composes its reply from: the question, the text, the tables and
     # figures, the label; no ids, no cells-checked list unless asked (2026-10-19)
@@ -209,9 +217,13 @@ def test_open_mode_end_to_end(
     counted = cli(q, "present", "--answer", a2["answer_id"]).output
     assert "| group | n |" in counted
     listed = json.loads(cli(q, "present", "--answers", "--json").output)["answers"]
-    assert sum(1 for a in listed if a["delivered"]) == 2
+    assert sum(1 for a in listed if a["finding"]) == 1
+    assert all(a["in_report"] for a in listed if a["status"] == "admissible")
     # the upstream delivery is untouched
     assert (delivery / "01_filter.object.csv").exists()
     assert up.store.scalar("SELECT COUNT(*) FROM deliveries") == 1
     board = cli(q, "status", "--json").output
-    assert "Open for questions: three asked, three answered" in json.loads(board)["plain"]
+    assert (
+        "Open for questions: three asked, three answered, one marked as findings"
+        in json.loads(board)["plain"]
+    )

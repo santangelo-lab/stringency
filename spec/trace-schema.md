@@ -28,4 +28,5 @@ that write the matching event row in the same transaction.
 | `policy_snapshots` | yes | every distinct policy digest with its content and predicate set |
 | `questions` | yes | open mode (migration 5): `run_id`, `seq`, `text_ref` (a `messages` hash of the person's words), `origin` (`person`/`suggested`), `asked_via` (`tty`/`relayed`), `operator_session_ref`, `ts` |
 | `answers` | yes | open mode (migration 5): `run_id`, `question_id`, `text_ref` (the reply text), `cited_json` (`[{artifact_id, row?, column?}]`), `label` (`trusted`/`untested`; null when blocked), `provenance_json` (the label sentence, the qualifier's fields and line, the lineage walked, the cited cells, the numeral counts, the route, the tools, the decisions), `status` (`admissible`/`blocked`), `ts` |
+| `findings` | yes | open mode (migration 6): `run_id`, `question_id`, `answer_id`, `action` (`mark`/`unmark`; the latest row per answer is its state), `marked_by`, `via` (`tty`/`relayed`), `operator_session_ref`, `reason_ref` (a `messages` hash of the person's words), `ts` |
 | `schema_migrations` | no | forward-only migration log |

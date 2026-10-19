@@ -1,4 +1,5 @@
-"""`stringency deliver [--run] [--include <step>.<output>]...` (design 12.1)."""
+"""`stringency deliver [--run] [--include <step>.<output>]...` (design 12.1). In an open
+project it regenerates `deliver/<run>/` (the report and every answer; 2026-10-19)."""
 
 from __future__ import annotations
 
@@ -20,8 +21,8 @@ def deliver(
     answers: list[str] = typer.Option(
         [],
         "--answer",
-        help="open mode: an admissible answer to deliver; repeatable; `all` for every "
-        "admissible answer of the run, the latest per question",
+        help="refused: open mode writes every answer as it is filed; see `finding`",
+        hidden=True,
     ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
@@ -42,6 +43,18 @@ def deliver(
         "answers": d.answers,
     }
     refresh_if_present(project.root)
+    if rc.open_ended:
+        payload["changed"] = d.changed
+        if d.changed:
+            notify_after(project, run_id=run_id, delivery=payload)
+        n_f = sum(1 for e in d.answers if e["finding"])
+        emit(
+            payload,
+            as_json,
+            f"report {'rewritten' if d.changed else 'unchanged'}: {d.path / 'report.md'}\n"
+            f"{n_f} finding(s) of {len(d.answers)} answer(s); {len(d.files)} cited file(s)",
+        )
+        return
     notify_after(project, run_id=run_id, delivery=payload)
     emit(
         payload,

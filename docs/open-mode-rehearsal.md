@@ -119,11 +119,13 @@ should produce:
 
 Try at least one wrong number: ask the agent to restate an answer with a number you make up.
 It cannot: `answer` blocks any numeral that is not a cited cell, and the agent is to fix the
-text, never a number. When you say you are done, the agent asks once which answers to keep
-("You can say all of them, or name them by number"); it delivers them into
-`toy-compare-open/deliver/answers-01/` (`q01-...md` per answer, `answers-summary.md` beside
-them), saves those files as artifacts, and says in one line which questions were delivered. It
-pastes `answers-summary.md` only if you ask.
+text, never a number. Every answer is already on disk: `toy-compare-2-open/deliver/<run>/`
+holds `q01-...md` per answer and `report.md`, rewritten as you go; after the first answer the
+agent tells you so once. When you say you are done, the agent asks once which answers are
+findings ("You can name them by number, say all, or none"); it marks the ones you name, saves
+`report.md` as an artifact, and says in one line where it is and how many findings it has. Open
+`report.md`: the findings in full first, the other questions in short after. In a later session,
+`stringency finding --remove <id>` or a new mark rewrites it.
 
 ## 4. What to record
 
@@ -174,7 +176,8 @@ stringency run --deliver && stringency tools list --context && cd ..
 
 The open project and the switch, a question by tool (its controls run before the first call;
 under the mock harness only a deterministic tool's controls run), one by code, the answers (the
-first deliberately wrong), the delivery and the view:
+first deliberately wrong; every admissible one lands in `deliver/<run id>/` as it is filed), a
+finding, the report and the view:
 
 ```
 stringency init questions-open --method ~/mytools/stringency/stringency-toy-method@v0.2.0-rc3 --mode open \
@@ -194,7 +197,10 @@ stringency exec ../count.py --out counts=table --question <question id> --allow-
 cat runs/<run id>/03_exec/counts.tsv
 echo "A has 17 rows, B 17 and C 7." | stringency answer --question <question id> --cite <counts artifact id> --text -
 stringency present --answers
-stringency deliver --answer <trusted answer id> --answer <untested answer id>
+cat deliver/<run id>/report.md
+stringency finding <trusted answer id> --reason "this is the one"
+cat deliver/<run id>/report.md
+stringency deliver
 stringency present --answer <trusted answer id>
 ```
 

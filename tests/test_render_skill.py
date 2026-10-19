@@ -298,8 +298,14 @@ def test_pinned_open_mode_sentences_identical_in_skill_template_and_engine():
 
     operator = _pinned(OPERATOR.read_text(), "### 10.7 The pinned sentences")
     rendered = _pinned(_render_toy_with_tools(), "The pinned sentences, said as written")
-    assert len(operator) == 16, sorted(operator)
+    assert len(operator) == 17, sorted(operator)
     assert operator == rendered
+    assert operator["report, once, when the first answer lands"] == provenance.REPORT_SENTENCE
+    assert operator["findings, once, when the person is done"] == provenance.FINDINGS_SENTENCE
+    assert operator["what trusted means, when first relevant or asked"] == provenance.TRUSTED_MEANS
+    assert (
+        operator["what untested means, when first relevant or asked"] == provenance.UNTESTED_MEANS
+    )
     assert operator["switch"] == OPEN_SWITCH
     assert operator["label, trusted"] == provenance.LABEL_SENTENCES["trusted"]
     assert operator["label, untested"] == provenance.LABEL_SENTENCES["untested"]

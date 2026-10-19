@@ -369,7 +369,7 @@ def render_coverage(d: dict[str, Any]) -> str:
         for e in ex.get("rerun_counts", []):
             lines.append(
                 f"  explored: {e['module']} {e['runs']} run(s), {e['distinct_params']} distinct parameter set(s), "
-                f"{e.get('delivered', 0)} delivered (steps {', '.join(e['steps'])})"
+                f"{e.get('findings', 0)} cited by findings (steps {', '.join(e['steps'])})"
             )
         q = ex.get("questions") or {}
         lines.append(

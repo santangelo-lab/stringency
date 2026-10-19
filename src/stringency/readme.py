@@ -51,10 +51,12 @@ OPEN_LAYOUT = [
         "labelled trusted",
     ),
     (
-        "`deliver/answers-<NN>/`",
-        "each delivery of the answers the person chose: one `q<NN>-*.md` per answer, the files it "
-        "cites, `answers-summary.md` (start here), `answers-coverage.md`, `answers-methods.md`, "
-        "and `index.json` (every file with its hash and provenance)",
+        "`deliver/<run>/`",
+        "the delivery, rewritten after every answer and every mark: `report.md` (start here: "
+        "the findings in full, the other questions in short, the record), one `q<NN>-*.md` per "
+        "answer with its label and cited files, the cited tables and figures with their "
+        "sidecars, `coverage.md`, `methods.md`, and `index.json` (every file and answer with its "
+        "hash and provenance)",
     ),
     (
         "`prov/run.db`",
@@ -145,14 +147,21 @@ def _question_rows(site: Site) -> list[dict[str, Any]]:
                 "dir": f"runs/{e['run_id']}/{e['step_id']}/",
             }
         )
-    delivered: dict[str, str] = {}
+    # the report's entry per question: the latest admissible answer's file and whether any
+    # answer of the question is a finding, from the latest index.json of each run
+    in_report: dict[str, dict[str, Any]] = {}
     for d in _deliveries(site):
         idx = Path(d["path"]) / "index.json"
         if not idx.exists():
             continue
         try:
             for a in json.loads(idx.read_text()).get("answers") or []:
-                delivered[str(a.get("question_id"))] = _rel(root, Path(d["path"]) / a["file"])
+                qid = str(a.get("question_id"))
+                prior = in_report.get(qid, {})
+                in_report[qid] = {
+                    "file": _rel(root, Path(d["path"]) / a["file"]),
+                    "finding": bool(prior.get("finding")) or bool(a.get("finding")),
+                }
         except (json.JSONDecodeError, KeyError, TypeError):
             continue
     rows: list[dict[str, Any]] = []
@@ -176,7 +185,8 @@ def _question_rows(site: Site) -> list[dict[str, Any]]:
                 "route": ", ".join(dict.fromkeys(routes)) or "no step",
                 "label": ans["label"] if ans is not None else "not answered",
                 "dirs": ", ".join(f"`{s['dir']}`" for s in steps) or "none",
-                "delivered": f"`{delivered[qid]}`" if qid in delivered else "not delivered",
+                "finding": "yes" if in_report.get(qid, {}).get("finding") else "",
+                "file": f"`{in_report[qid]['file']}`" if qid in in_report else "none yet",
             }
         )
     return rows
@@ -206,34 +216,39 @@ def render_open(site: Site) -> str:
     rows = _question_rows(site)
     if rows:
         lines += [
-            "| # | question | asked by | answered by | label | steps | delivered as |",
-            "|---|---|---|---|---|---|---|",
+            "| # | question | asked by | answered by | label | finding | steps | file |",
+            "|---|---|---|---|---|---|---|---|",
         ]
         for r in rows:
             lines.append(
                 f"| {r['seq']} | {_cell(r['text'])} | {r['origin']} | {r['route']} | "
-                f"{r['label']} | {r['dirs']} | {r['delivered']} |"
+                f"{r['label']} | {r['finding']} | {r['dirs']} | {r['file']} |"
             )
     else:
         lines.append("No question has been asked yet.")
-    lines += ["", "## Deliveries", ""]
+    lines += ["", "## The report", ""]
     ds = _deliveries(site)
     if not ds:
-        lines.append("No answer has been delivered yet.")
-    for d in ds:
+        lines.append("Not written yet: no answer has been filed.")
+    else:
+        d = ds[-1]
         idx = Path(d["path"]) / "index.json"
-        seqs: list[str] = []
-        start = "answers-summary.md"
+        n_a = n_f = 0
+        start = "report.md"
         if idx.exists():
             try:
                 index = json.loads(idx.read_text())
-                seqs = [str(a["seq"]) for a in index.get("answers") or [] if a.get("seq")]
-                start = str((index.get("summary") or {}).get("file") or start)
+                answers = index.get("answers") or []
+                n_a, n_f = len(answers), sum(1 for a in answers if a.get("finding"))
+                start = str(
+                    (index.get("report") or index.get("summary") or {}).get("file") or start
+                )
             except (json.JSONDecodeError, AttributeError):
-                seqs = []
-        which = f"questions {', '.join(seqs)}" if seqs else "answers"
+                pass
         lines.append(
-            f"- `{_rel(root, d['path'])}/` ({str(d['ts'])[:10]}): {which}. Start with `{start}`."
+            f"- `{_rel(root, d['path'])}/{start}`: {n_f} finding(s) of {n_a} answer(s); last "
+            f"written {str(d['ts'])[:10]}. Rewritten after every answer and every mark; "
+            "`stringency finding <answer id>` marks a finding, `--remove` unmarks."
         )
     lines += ["", "## What is where", "", *_layout(root, OPEN_LAYOUT), ""]
     return "\n".join(lines)

@@ -289,4 +289,5 @@ def answer_row(rc: RunContext, answer_id: str) -> dict[str, Any]:
         "provenance": json.loads(row["provenance_json"] or "{}"),
         "question": q["text"],
         "origin": q["origin"],
+        "seq": q["seq"],
     }
