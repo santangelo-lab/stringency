@@ -452,7 +452,8 @@ def render_report(
         + f"under method {project.config.method.tag}"
         + (f", from {first_asked} to {written[:10]}" if first_asked else "")
         + f": {number_word(n_q)} question{'s' if n_q != 1 else ''} asked, "
-        + f"{number_word(n_f)} marked as {'a finding' if n_f == 1 else 'findings'}. The findings lead; "
+        + f"{'none' if n_f == 0 else number_word(n_f)} marked as "
+        + f"{'a finding' if n_f == 1 else 'findings'}. The findings lead; "
         "everything else asked follows, in short, with its full answer in a file beside this one.",
         "",
         "## Findings",
