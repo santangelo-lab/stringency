@@ -3,7 +3,15 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-20, evening)
+## Current state (2026-10-20, night)
+
+- Engine 0.2.24 (`notes/2026-10-20-2100-open-tools-engine-fixes.md`): init from a delivery takes
+  each file's run from its sidecar, the report names the delivery run, cited cells and table
+  views from any csv or tsv artifact, `exec --help` fixed (L43). Behind it the Xenium method's
+  open tools (branch `open-tools`: six tools pass on the Lyons liver delivery; CellChat next).
+  Plugin 0.6.1 installed. Next: the method's rc tag and the pilot through Claude Science.
+
+## Earlier state (2026-10-20, evening)
 
 - The merge train is done (`notes/2026-10-20-1600-egress-drive-and-merge.md`, `notes/2026-10-20-1700-egress-plan-retired.md`):
   open mode (PR #14, v0.2.22) and data egress (PR #15, v0.2.23) are on `main`, installed as
@@ -252,6 +260,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-20-2100-open-tools-engine-fixes.md` — engine 0.2.24 for the Xenium open tools: the sidecar run on init from a delivery, is_tabular, exec --help; plugin 0.6.1; what was learned about --set lists and optional inputs.
 - `2026-10-20-1700-egress-plan-retired.md` — egress in open mode probed (three gaps), the egress plan archived, backlog L1 done and L40 to L46 added, the roadmap's duplicated rows collapsed, the skill description cap in the renderer, the Xenium method rc18.
 - `2026-10-20-1600-egress-drive-and-merge.md` — the owner's egress drive through Claude Science (passed; the findings), `open-mode` merged into `egress`, the scan's XML-namespace fix, engine 0.2.23, the wait as a job in mode B; the merge train for the owner.
 - `2026-10-19-2100-open-mode-report.md` — the report replaces `deliver --answer`: automatic delivery of every answer, `report.md` with the findings first, the `findings` table and verb, the skills' two new sentences; the probe that was never blocked; what was altered.
