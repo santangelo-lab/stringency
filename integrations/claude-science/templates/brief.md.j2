@@ -35,7 +35,7 @@ at the end, `summary.md`; show me a code, an id, or a path only when I ask.
 
 ## Project
 
-- pipeline `{{ pipeline }}`, profile `{{ profile }}`, judgment harness `{{ harness }}`, executor `{{ executor }}`
+- pipeline `{{ pipeline }}`, profile `{{ profile }}`, judgment harness `{{ harness }}`, executor `{{ executor }}`, execution `{{ execution }}`
 - method `{{ method }}`{% if method_sha %} (commit {{ method_sha }}){% endif %}
 {% if owner %}- owner `{{ owner }}`, reviewer `{{ reviewer }}`
 {% endif %}{% if images %}- container image{{ 's' if images|length > 1 else '' }}: {% for i in images %}`{{ i }}`{{ ', ' if not loop.last else '' }}{% endfor %}
@@ -61,8 +61,9 @@ Save my brief verbatim as `{{ parent }}/brief.md` (the skill's step 1) and write
 under `{{ parent }}/declarations/`. Every value needs a source in the manifest, the brief, or the
 plugin's published defaults; ask me rather than pick when two readings are possible. Run
 `declare --check`, show me the echo-back and the table of fields with sources, and wait for my
-yes before `init`. Ask me what may leave this machine (the declare skill's section 3a) and pass
-my answer as `--egress-max` to both. `init` runs with `--drafted-by agent --brief
+yes before `init`. Pass `--executor {{ executor }} --execution {{ execution }} --judgment-harness
+{{ harness }}` to both `declare --check` and `init`. Ask me what may leave this machine (the
+declare skill's section 3a) and pass my answer as `--egress-max` to both. `init` runs with `--drafted-by agent --brief
 {{ parent }}/brief.md` and ends with a confirm hold and an egress hold. Present each by the hold
 protocol (skill section 6), the confirm hold first, and wait for my verdict.
 
@@ -72,7 +73,7 @@ protocol (skill section 6), the confirm hold first, and wait for my verdict.
     sx("cd {{ parent }} && stringency init {{ name }} "
        "--method {{ method }} --pipeline {{ pipeline }} "
        "--objective objective.yml --design design.yml --inputs inputs.yml "
-       "--profile {{ profile }} --judgment-harness {{ harness }} --executor {{ executor }}",
+       "--profile {{ profile }} --judgment-harness {{ harness }} --executor {{ executor }} --execution {{ execution }}",
        intent="Create the {{ name }} analysis project and show you what it will do.")
 
 This ends with a confirm hold and an egress hold. Present each by the hold protocol (skill

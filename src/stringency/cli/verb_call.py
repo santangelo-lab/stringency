@@ -71,7 +71,11 @@ def call(
         rc,
         tool,
         parse_ins(ins),
-        parse_sets(sets) or None,
+        parse_sets(
+            sets,
+            (module.manifest.params_schema.get("properties") if module is not None else None),
+        )
+        or None,
         reason,
         source=asked_by,
         question_id=question_id,

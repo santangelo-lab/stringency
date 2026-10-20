@@ -5,9 +5,9 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-21)
 
-- Engine 0.2.25 (`notes/2026-10-21-0030-trace-integrity-t1-t2.md`): trace integrity T1 and T2
-  built; T3 and T4 wait on the owner. Next: the triage's pass 3 (L47, L39, L49, L41, L40, L44)
-  and pass 4 (J1, J2, K5, L2).
+- Engine 0.2.26 (`notes/2026-10-21-0200-triage-pass-3.md`): the triage's pass 3 done (L39, L40,
+  L41, L44, L47, L49) after 0.2.25's trace integrity T1 and T2. T3 and T4 wait on the owner.
+  Next: pass 4 (J1, J2, K5, L2).
 
 ## Earlier state (2026-10-20, night)
 
@@ -269,6 +269,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-21-0200-triage-pass-3.md` — engine 0.2.26: --set by the parameter's schema (lists, enums as spelled), optional inputs by name, the upstream's ceiling inherited, session scripts in the egress assessment and blocked over the ceiling, the brief renderer's run flags; L39, L40, L41, L44, L47, L49 done.
 - `2026-10-21-0030-trace-integrity-t1-t2.md` — engine 0.2.25: the Store's connection private with a read-only reader, insert refusing all five tables, the docstrings and 9.5 told the truth (T1); `stringency audit`, `prov.trace_inconsistent` at run open and deliver, the coverage line (T2); what the audit cannot see.
 - `2026-10-20-2330-trace-integrity-review.md` — the owner's trace-integrity finding verified (a mutable row can change without its event), the plan `trace-integrity-plan.md` (Lane T, T1 to T4), backlog L50 to L53.
 - `2026-10-20-2100-open-tools-engine-fixes.md` — engine 0.2.24 for the Xenium open tools: the sidecar run on init from a delivery, is_tabular, exec --help; plugin 0.6.1; what was learned about --set lists and optional inputs.

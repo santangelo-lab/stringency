@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -40,22 +41,36 @@ class Action:
         return Action(**{**self.__dict__, "ticket": ticket})
 
 
-def coerce_value(text: str) -> Any:
-    """`--set k=v` values arrive as text. Numbers, booleans, null become typed; else string."""
-    low = text.strip().lower()
+def coerce_value(text: str, schema: Mapping[str, Any] | None = None) -> Any:
+    """`--set k=v` values arrive as text. Numbers, booleans, null become typed; else string.
+    With the parameter's schema (backlog L47, L39): an array takes `[a,b]` or `a,b`, each
+    element coerced by its items schema; a string parameter keeps the text as given, so an enum
+    member spelled `none` or `null` is that member and not the null value."""
+    raw = text.strip()
+    kind = schema.get("type") if schema else None
+    if kind == "array":
+        inner = raw[1:-1] if raw.startswith("[") and raw.endswith("]") else raw
+        items = schema.get("items") if schema else None
+        item_schema = items if isinstance(items, dict) else None
+        return [coerce_value(p, item_schema) for p in inner.split(",") if p.strip()]
+    if kind == "string":
+        return raw
+    if schema is None and raw.startswith("[") and raw.endswith("]"):
+        return [coerce_value(p) for p in raw[1:-1].split(",") if p.strip()]
+    low = raw.lower()
     if low in {"true", "false"}:
         return low == "true"
     if low in {"null", "none"}:
         return None
     try:
-        return int(text)
+        return int(raw)
     except ValueError:
         pass
     try:
-        return float(text)
+        return float(raw)
     except ValueError:
         pass
-    return text
+    return raw
 
 
 def build_action(

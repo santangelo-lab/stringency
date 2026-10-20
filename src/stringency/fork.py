@@ -13,6 +13,7 @@ with, as `params`).
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from typing import Any
 
 from stringency.actions import build_action, coerce_value
@@ -25,8 +26,14 @@ from stringency.state import State, StepRecord, store_snapshot
 ParamTable = dict[str, dict[str, dict[str, Any]]]  # step -> param -> {value, source}
 
 
-def parse_delta(sets: list[str], pipeline_order: list[str], at: str) -> dict[str, dict[str, Any]]:
-    """`--set <step>.<param>=<value>` entries; every step named must be at or after `--at`."""
+def parse_delta(
+    sets: list[str],
+    pipeline_order: list[str],
+    at: str,
+    schemas: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """`--set <step>.<param>=<value>` entries; every step named must be at or after `--at`.
+    `schemas` maps a step to its module schema's properties, so values are coerced by type."""
     out: dict[str, dict[str, Any]] = {}
     for s in sets:
         if "=" not in s or "." not in s.split("=", 1)[0]:
@@ -39,7 +46,11 @@ def parse_delta(sets: list[str], pipeline_order: list[str], at: str) -> dict[str
             raise ConfigError(
                 f"--set {key}: step {step} is before --at {at}; forks change steps from --at onward"
             )
-        out.setdefault(step, {})[param] = coerce_value(value)
+        props = (schemas or {}).get(step) or {}
+        schema = props.get(param)
+        out.setdefault(step, {})[param] = coerce_value(
+            value, schema if isinstance(schema, dict) else None
+        )
     return out
 
 
@@ -135,7 +146,11 @@ def _prepare(
     order = project.pipeline.order()
     if at not in order:
         raise ConfigError(f"no step {at} in pipeline {project.pipeline.name}")
-    delta = parse_delta(sets, order, at)
+    schemas = {
+        s.id: (project.modules.require(s.module).manifest.params_schema.get("properties") or {})
+        for s in project.pipeline.steps
+    }
+    delta = parse_delta(sets, order, at, schemas)
     statuses = parent.step_status()
     for s in order[: order.index(at)]:
         if statuses.get(s) not in ("completed", "skipped"):

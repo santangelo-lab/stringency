@@ -85,6 +85,9 @@ def egress_coverage(
             used, detail = invocations > 0, f"{invocations} invocations"
         elif key == "operator.session":
             used, detail = c.get("class", 0) > 0, "as reported"
+        elif key == "exec":
+            ran = sorted(i for i in ids if i.endswith("_exec") or i == "exec")
+            used, detail = bool(ran), "ran " + (", ".join(ran) or "none") + "; by enforcement"
         elif key == "operator.steps":
             ran = sorted(ids & operator_steps)
             used, detail = bool(ran), "ran " + (", ".join(ran) or "none") + "; as reported"

@@ -53,6 +53,7 @@ def load(args: argparse.Namespace) -> dict:
             profile=cfg["profile"],
             harness=cfg["judgment_harness"],
             executor=cfg["executor"],
+            execution=cfg.get("execution", "operator"),
             owner=cfg["roles"]["owner"],
             reviewer=cfg["roles"]["reviewer"],
         )
@@ -71,8 +72,9 @@ def load(args: argparse.Namespace) -> dict:
             method_sha=None,
             pipeline=args.pipeline,
             profile=args.profile,
-            harness="subagent",
-            executor="apptainer",
+            harness=args.judgment_harness,
+            executor=args.executor,
+            execution=args.execution,
             owner=None,
             reviewer=None,
         )
@@ -93,6 +95,13 @@ def main() -> None:
     ap.add_argument("--method", help="<url>@<tag>, for an unbound project")
     ap.add_argument("--pipeline", help="pipeline name, for an unbound project")
     ap.add_argument("--profile", default="standard")
+    ap.add_argument("--executor", default="apptainer", help="apptainer | local (unbound projects)")
+    ap.add_argument(
+        "--execution", default="operator", help="operator | engine: who runs the steps (unbound)"
+    )
+    ap.add_argument(
+        "--judgment-harness", default="subagent", help="subagent | api | mock (unbound projects)"
+    )
     ap.add_argument(
         "--image", action="append", help="container image the probe checks (unbound projects)"
     )

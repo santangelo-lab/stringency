@@ -22,7 +22,7 @@ from stringency.artifacts import record_output, step_outputs
 from stringency.clock import now_iso
 from stringency.executor.base import Executor, Job
 from stringency.executor.local import interpreter_for
-from stringency.exit_codes import ConfigError, RefusedError
+from stringency.exit_codes import BlockedError, ConfigError, RefusedError
 from stringency.extract import extract_object
 from stringency.gate import GateResult, evaluate
 from stringency.holds import HoldOutcome, HoldRequest, open_hold
@@ -245,8 +245,8 @@ def bind_inputs(rc: RunContext, module: Module, bindings: dict[str, str]) -> dic
     artifact id>` for what the operator named; an unbound input binds the one delivered project
     input or else the latest produced artifact of its type (an input of the upstream pipeline
     binds only when named); otherwise refused (exit 15) naming the
-    candidates. An optional input left unbound with no candidate stays unbound. Reads: artifacts,
-    steps."""
+    candidates. An optional input binds only what is named or an artifact of this run produced
+    under its own name, else stays unbound (L49). Reads: artifacts, steps."""
     out: dict[str, str] = {}
     inputs_by_name = rc.project.inputs.by_name()
     for name, ref in bindings.items():
@@ -284,12 +284,18 @@ def bind_inputs(rc: RunContext, module: Module, bindings: dict[str, str]) -> dic
                 (rc.run_id, spec.type),
             )
         ]
+        if spec.optional:
+            # an optional input binds nothing by type alone (a table of another purpose bound to
+            # score-pathways' gene sets, 2026-10-20, backlog L49): only --in, or an artifact this
+            # run produced under the input's own name
+            same_name = [p for p in produced if p.endswith(f".{name}")]
+            if same_name:
+                out[name] = same_name[0]
+            continue
         if len(candidates) == 1 and not produced:
             out[name] = candidates[0]
         elif produced:
             out[name] = produced[0]
-        elif spec.optional:
-            continue
         else:
             have = ", ".join(candidates) or "none"
             raise ConfigError(
@@ -354,6 +360,13 @@ def _kind_of_ref(rc: RunContext, ref: str) -> str:
     if row is None:
         raise ConfigError(f"{ref} has not been produced in run {rc.run_id}")
     return str(row["kind"])
+
+
+def exec_egress_class(executor: str) -> int:
+    """What a session script may send off the machine (backlog L40): nothing when the executor
+    isolates its network (apptainer, `--net --network none`, verified at run time and recorded
+    in `executions.network`), anything under the local executor, which enforces nothing."""
+    return 0 if executor == "apptainer" else 4
 
 
 def exec_manifest(
@@ -437,6 +450,17 @@ def propose_exec(
     if profile.open.exec != "allowed":
         raise RefusedError(
             f"exec is refused under profile {rc.project.config.profile} (policy open.exec)"
+        )
+    egress_cfg = rc.project.config.egress
+    exec_class = exec_egress_class(rc.project.config.executor)
+    if egress_cfg.max_class is not None and exec_class > egress_cfg.max_class:
+        from stringency.egress import CLASS_NAMES
+
+        raise BlockedError(
+            "blocked at exec: prov.egress_exceeds_ceiling@1 [block]: a session script under the "
+            f"{rc.project.config.executor} executor is class {exec_class} {CLASS_NAMES[exec_class]} "
+            f"(backlog L40), over the project ceiling class {egress_cfg.max_class} "
+            f"{CLASS_NAMES[egress_cfg.max_class]}; report {rc.project.root / 'prov' / 'egress.md'}"
         )
     if rc.project.config.executor == "local" and not allow_local:
         raise RefusedError(

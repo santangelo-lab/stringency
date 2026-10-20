@@ -269,6 +269,8 @@ def assess(
     operator: OperatorModel | str = "hosted",
     previous_max_class: int | None = None,
     scans: Mapping[str, Sequence[ScanHit]] | None = None,
+    exec_allowed: bool = False,
+    executor: str = "apptainer",
 ) -> EgressAssessment:
     """Assess what this setup sends off the machine.
 
@@ -370,6 +372,25 @@ def assess(
             )
         )
 
+    if exec_allowed:
+        # open mode (backlog L40): a script the operator writes in the session runs under the
+        # executor; the container runs it with no network, the local executor with the host's
+        iso = executor == "apptainer"
+        comps.append(
+            Component(
+                key="exec",
+                label="session scripts (exec)",
+                cls=0 if iso else 4,
+                basis="by enforcement" if iso else "as reported",
+                set_by="project setting",
+                to="nowhere; the container runs with no network"
+                if iso
+                else "anywhere the script reaches; the local executor enforces no isolation",
+                sends="nothing"
+                if iso
+                else "whatever the script reads, which may be the data whole",
+            )
+        )
     return EgressAssessment(
         components=tuple(comps),
         max_class=max_class,

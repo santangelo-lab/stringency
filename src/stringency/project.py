@@ -9,6 +9,7 @@ data egress fingerprint (backlog L1). `Project.load` reads it back.
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import fnmatch
 import getpass
 import json
@@ -575,6 +576,11 @@ class Project:
             max_class=e.max_class,
             operator=e.operator,
             previous_max_class=self._acknowledged_egress_ceiling(),
+            exec_allowed=(
+                self.config.mode == "open"
+                and self.policy.profile(self.config.profile).open.exec == "allowed"
+            ),
+            executor=self.config.executor,
         )
 
     def _acknowledged_egress_ceiling(self) -> int | None:
@@ -800,6 +806,17 @@ def open_tools(modules: ModuleIndex) -> list[Module]:
     return [m for m in modules.all() if "open" in m.manifest.modes]
 
 
+def upstream_egress_ceiling(root: Path) -> int | None:
+    """The upstream project's `egress.max_class` from its `stringency.yml`, or None."""
+    try:
+        cfg = load_yaml(root / "stringency.yml")
+    except (OSError, ValueError):
+        return None
+    e = cfg.get("egress") if isinstance(cfg, dict) else None
+    v = e.get("max_class") if isinstance(e, dict) else None
+    return int(v) if isinstance(v, int) and not isinstance(v, bool) else None
+
+
 def upstream_of_delivery(delivery_dir: Path, upstream: Path | None) -> Path:
     """The upstream project root: `--upstream` when given, else the delivery directory's
     grandparent when it holds `stringency.yml` (`<project>/deliver/<run>/`)."""
@@ -959,6 +976,14 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         derived = declarations_from_delivery(
             Path(req.from_delivery), req.upstream, into=root / ".stringency" / "from-delivery"
         )
+        if req.egress_max is None:
+            # the open project takes the upstream's ceiling unless the person gives one
+            # (backlog L41); a higher value given explicitly is theirs to give
+            inherited = upstream_egress_ceiling(
+                upstream_of_delivery(Path(req.from_delivery), req.upstream)
+            )
+            if inherited is not None:
+                req = dataclasses.replace(req, egress_max=inherited)
         for key, derived_path in derived.items():
             if files[key] is None:
                 files[key] = derived_path

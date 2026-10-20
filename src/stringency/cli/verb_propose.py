@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 import typer
 
 from stringency.actions import coerce_value
@@ -17,15 +20,30 @@ from stringency.steps import execute_engine, starting_params
 from stringency.steps import propose as do_propose
 
 
-def parse_sets(sets: list[str]) -> dict[str, object]:
+def parse_sets(sets: list[str], properties: Mapping[str, Any] | None = None) -> dict[str, object]:
+    """`--set k=v` entries, each coerced by the parameter's schema when `properties` (the
+    module's `params.schema.json` properties) is given: lists as `[a,b]`, string enums as
+    spelled (backlog L47, L39)."""
     out: dict[str, object] = {}
     for s in sets:
         if "=" not in s:
             raise ConfigError(f"--set expects key=value, got {s!r}")
         k, _, v = s.partition("=")
         k = k.split(".", 1)[1] if "." in k else k  # accept <step>.<param>=<value>
-        out[k] = coerce_value(v)
+        schema = properties.get(k) if properties else None
+        out[k] = coerce_value(v, schema if isinstance(schema, dict) else None)
     return out
+
+
+def schema_properties(rc: Any, step: str) -> Mapping[str, Any] | None:
+    """The properties of the step's module schema, or None when the step is not declared."""
+    try:
+        decl = rc.pipeline.step(step)
+        manifest = rc.project.modules.require(decl.module).manifest
+    except Exception:  # noqa: BLE001  (an unknown step is reported by propose itself)
+        return None
+    props = manifest.params_schema.get("properties")
+    return props if isinstance(props, dict) else None
 
 
 @handle_errors
@@ -48,7 +66,13 @@ def propose(
     # admitted, and the fork's own --set delta (design 2.5, 2.6); --set here overrides them all
     inherited = starting_params(rc, step) or {}
     inherited.update({k: (v, "fork") for k, v in rc.delta_for(step).items()})
-    prop = do_propose(rc, step, parse_sets(sets), rationale=reason, inherited=inherited or None)
+    prop = do_propose(
+        rc,
+        step,
+        parse_sets(sets, schema_properties(rc, step)),
+        rationale=reason,
+        inherited=inherited or None,
+    )
     if prop.status == StepStatus.AWAITING_EXECUTION:
         spec = job_spec(prop, rc.env_digests.get(prop.plan.module.manifest.env), rc.executor)
         emit(
