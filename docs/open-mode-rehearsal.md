@@ -18,7 +18,7 @@ project parent, so the first stays as it was.
 | piece | where | state |
 |---|---|---|
 | engine 0.2.22 (branch `open-mode`) with the toy plugin 0.1.3 and the two engine skills | `/data/lab/env/stringency-open-mode/current/` (`bin/stringency`, `skills/stringency-operator/SKILL.md` with section 10, `skills/stringency-declare/SKILL.md`) | installed 2026-10-16 under its own prefix, reinstalled 2026-10-19 with the first drive's fixes; the shared engine `/data/lab/env/stringency/current` is untouched (0.2.21) |
-| toy method with tools | `/home/jrrose5/mytools/stringency/stringency-toy-method` at tag `v0.2.0-rc3` (branch `open-mode`; rc2 restored the image, rc3 routes the raw-values question to code) | `compare-groups` 0.1.1 and `plot-groups` 0.1.0 list `open` with controls; `skills/toy-engine.analyze.yml` carries `tools:` and `open:`; `skills/open.yml`; `skills/toy-engine.questions.yml`; `stringency-analyze-toy-compare/SKILL.md` re-rendered with section 8 |
+| toy method with tools | `/home/jrrose5/mytools/stringency/stringency-toy-method` at tag `v0.2.0-rc6` (branch `open-mode`; rc2 restored the image, rc3 routes the raw-values question to code, rc4 to rc6 the operator's own reply and the report) | `compare-groups` 0.1.1 and `plot-groups` 0.1.0 list `open` with controls; `skills/toy-engine.analyze.yml` carries `tools:` and `open:`; `skills/open.yml`; `skills/toy-engine.questions.yml`; `stringency-analyze-toy-compare/SKILL.md` re-rendered with section 8 |
 | the data | `/home/jrrose5/mytools/stringency/stringency-toy-method/controls/fixtures/groups.csv` (50 rows, groups A, B, C, a unit and a value per row) | copy it under the project parent so the agent reads it from the data root |
 
 Nothing here touches a real project. `stringency probe` under the open-mode prefix says `ready`.
@@ -41,7 +41,7 @@ Nothing here touches a real project. `stringency probe` under the open-mode pref
     E=/data/lab/env/stringency-open-mode/current/bin
     V=$(claude-science --version | awk '{print $2}')
     R=integrations/claude-science/render_brief.py
-    M=/home/jrrose5/mytools/stringency/stringency-toy-method@v0.2.0-rc3
+    M=/home/jrrose5/mytools/stringency/stringency-toy-method@v0.2.0-rc6
     A="$P/toy-compare --provider protseq --method $M --pipeline toy-engine --declare --engine-bin $E"
     $E/python $R $A --rehearsal --app-version $V > $P/brief.md
     $E/python $R $A --context > $P/context.md
@@ -65,7 +65,7 @@ Nothing here touches a real project. `stringency probe` under the open-mode pref
    > current texts are the directories under `/data/lab/env/stringency-open-mode/current/skills/`
    > (one `SKILL.md` each: `stringency-operator`, `stringency-declare`) and
    > `/home/jrrose5/mytools/stringency/stringency-toy-method/skills/stringency-analyze-toy-compare/SKILL.md`
-   > (the toy method at tag `v0.2.0-rc3`). Download each file, publish it under its directory
+   > (the toy method at tag `v0.2.0-rc6`). Download each file, publish it under its directory
    > name with `host.skills.edit` and `host.skills.publish`, overwriting the older copy, and tell
    > me the name of each skill you published and, for `stringency-operator`, its "for engine"
    > line.
@@ -167,7 +167,7 @@ HASH=$(/data/lab/env/stringency-open-mode/current/bin/python -c \
 printf 'design: 1\nunits: {observation: row, sample: unit}\nfactors:\n  group: {column: group, levels: [A, B, C]}\nbatch: []\nreplication_unit: unit\nholdout: []\n' > decl/design.yml
 printf 'objective: 1\nid: toy_process\nquestion: process_rows\ncontrasts: []\nreplication_unit: unit\nmin_n_per_group: 2\ndeliverables: [object]\ndomain: {}\n' > decl/objective.yml
 printf 'inputs: 1\nitems:\n  - {name: groups, path: %s/data/groups.csv, type: frame, blake3: "%s", source: toy fixture}\n' "$PWD" "$HASH" > decl/inputs.yml
-stringency init process --method ~/mytools/stringency/stringency-toy-method@v0.2.0-rc3 --pipeline toy-process \
+stringency init process --method ~/mytools/stringency/stringency-toy-method@v0.2.0-rc6 --pipeline toy-process \
   --objective decl/objective.yml --design decl/design.yml --inputs decl/inputs.yml \
   --judgment-harness mock --executor local --execution engine
 cd process && stringency review --hold <hold id> --verdict accept --reason "the declarations match"
@@ -180,7 +180,7 @@ first deliberately wrong; every admissible one lands in `deliver/<run id>/` as i
 finding, the report and the view:
 
 ```
-stringency init questions-open --method ~/mytools/stringency/stringency-toy-method@v0.2.0-rc3 --mode open \
+stringency init questions-open --method ~/mytools/stringency/stringency-toy-method@v0.2.0-rc6 --mode open \
   --from-delivery $PWD/process/deliver/<run id> --judgment-harness mock --executor local --execution engine
 cd questions-open && cat echo.md
 stringency review --hold <hold id> --verdict accept --reason "yes, open it for questions"
