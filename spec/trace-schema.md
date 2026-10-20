@@ -2,8 +2,9 @@
 
 Design 9.4 with column descriptions, as implemented in `src/stringency/db/schema.sql`. One SQLite
 database per project at `prov/run.db`, WAL mode, never on CIFS. Tables marked append-only have
-triggers that raise on UPDATE and DELETE. Mutable tables change status only through store methods
-that write the matching event row in the same transaction.
+triggers that raise on UPDATE and DELETE. Mutable tables change status through store methods
+that write the matching event row in the same transaction; the schema does not require the
+pairing (a direct UPDATE bypasses it; `stringency audit` reports the disagreement).
 
 | table | append-only | key columns |
 |---|---|---|

@@ -264,7 +264,7 @@ def test_ask_refused_before_the_switch_and_on_a_pipeline_project(
     r = cli(q, "ask", "   ")
     assert r.exit_code == 15
     with pytest.raises(sqlite3.IntegrityError, match="append-only"):
-        q.store.conn.execute("DELETE FROM questions")
+        q.store._conn.execute("DELETE FROM questions")
     # abandon closes the open run; the next ask opens another
     run_id = json.loads(cli(q, "next", "--json").output)["run_id"]
     r = cli(q, "abandon", "--run", run_id, "--reason", "done for today")

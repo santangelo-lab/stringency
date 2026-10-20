@@ -170,9 +170,9 @@ def test_append_only_tables_raise_on_update_and_delete(store: Store, table: str)
         assert set(row) <= set(cols)
         store.insert(table, row)
     with pytest.raises(sqlite3.IntegrityError, match="append-only"):
-        store.conn.execute(f"UPDATE {table} SET {store.columns(table)[-1]} = NULL")
+        store._conn.execute(f"UPDATE {table} SET {store.columns(table)[-1]} = NULL")
     with pytest.raises(sqlite3.IntegrityError, match="append-only"):
-        store.conn.execute(f"DELETE FROM {table}")
+        store._conn.execute(f"DELETE FROM {table}")
 
 
 def test_step_status_mutation_writes_event_in_same_transaction(store: Store) -> None:
@@ -291,3 +291,83 @@ def test_file_hash_matches_bytes(tmp_path: Path) -> None:
     assert hashing.hash_file(f) == hashing.hash_bytes(b"abc" * 100000)
     assert hashing.prefixed("ab") == "blake3:ab"
     assert hashing.strip_prefix("blake3:ab") == "ab"
+
+
+# -- trace integrity T1 (2026-10-20): the Store tells the truth ---------------------------
+
+
+def test_insert_refuses_every_mutable_status_table(store: Store) -> None:
+    for table in ("runs", "steps", "holds", "consensus", "artifacts"):
+        with pytest.raises(ValueError, match="typed writer"):
+            store.insert(table, {"run_id": "r"})
+
+
+def test_row_update_failure_after_the_event_rolls_both_back(store: Store) -> None:
+    """The event is written first; if the row update then fails, the transaction leaves
+    neither (the complement of test_set_step_status_is_atomic_with_event)."""
+    run_id = _seed_project_and_run(store)
+    store.create_step(
+        {"run_id": run_id, "step_id": "s1", "module": "m", "module_version": "1", "operation": "op"}
+    )
+    store._conn.execute(
+        "CREATE TRIGGER t_refuse BEFORE UPDATE ON steps BEGIN SELECT RAISE(ABORT, 'refused'); END"
+    )
+    try:
+        with pytest.raises(sqlite3.IntegrityError, match="refused"):
+            store.set_step_status(run_id, "s1", "proposed")
+    finally:
+        store._conn.execute("DROP TRIGGER t_refuse")
+    assert store.scalar("SELECT status FROM steps WHERE step_id='s1'") == "pending"
+    assert store.scalar("SELECT COUNT(*) FROM step_events WHERE step_id='s1'") == 1
+
+
+def test_failed_transition_leaves_no_action_row(store: Store) -> None:
+    """A proposal writes the action and the transition in one transaction (steps.py); an
+    invalid edge raises inside it, and the action row is gone with it."""
+    from stringency.machine import IllegalTransition, StepStatus, transition
+
+    run_id = _seed_project_and_run(store)
+    store.create_step(
+        {"run_id": run_id, "step_id": "s1", "module": "m", "module_version": "1", "operation": "op"}
+    )
+    cols = {r["name"]: r for r in store._conn.execute("PRAGMA table_info(actions)")}
+    row: dict[str, object] = {"run_id": run_id, "step_id": "s1", "action_id": "A1"}
+    for name, c in cols.items():
+        if (c["notnull"] or c["pk"]) and c["dflt_value"] is None and name not in row:
+            row[name] = 0 if c["type"] == "INTEGER" else "{}" if name.endswith("_json") else "x"
+    with pytest.raises(IllegalTransition), store.transaction():
+        store.insert("actions", row)
+        transition(store, run_id, "s1", StepStatus.COMPLETED)  # pending -> completed: no edge
+    assert store.scalar("SELECT COUNT(*) FROM actions WHERE action_id='A1'") == 0
+    assert store.scalar("SELECT status FROM steps WHERE step_id='s1'") == "pending"
+
+
+def test_reader_is_read_only(store: Store) -> None:
+    _seed_project_and_run(store)
+    r = store.reader()
+    assert r.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 1
+    with pytest.raises(sqlite3.OperationalError, match="readonly"):
+        r.execute("UPDATE runs SET status='completed'")
+    with pytest.raises(sqlite3.OperationalError, match="readonly"):
+        r.execute("INSERT INTO messages(hash, text) VALUES ('h', 't')")
+
+
+def test_no_raw_trace_writes_outside_the_store() -> None:
+    """A guard, not a barrier: no engine module outside db/ reaches the writing connection or
+    executes an UPDATE, INSERT or DELETE through the generic helpers."""
+    import re
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[1] / "src" / "stringency"
+    offenders: list[str] = []
+    for f in src.rglob("*.py"):
+        if f.parent.name in {"db", "migrations"}:
+            continue
+        text = f.read_text()
+        if re.search(r"\._conn\b", text):
+            offenders.append(f"{f.relative_to(src)}: _conn")
+        for m in re.finditer(
+            r'\b(?:one|all|scalar|execute)\(\s*[rf]?"\s*(UPDATE|INSERT|DELETE)\b', text
+        ):
+            offenders.append(f"{f.relative_to(src)}: {m.group(1)}")
+    assert not offenders, offenders

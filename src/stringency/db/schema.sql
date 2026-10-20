@@ -1,7 +1,9 @@
 -- stringency trace schema (design 9.4, 9.5). One database per project at prov/run.db.
 -- Tables marked append-only get triggers that raise on UPDATE and DELETE.
 -- Mutable tables (runs, steps, holds, consensus, artifacts) have status columns whose
--- mutation is coupled to an event row by the store API, not by the schema.
+-- mutation is coupled to an event row by the store API (its typed writers), not by the schema:
+-- nothing here refuses a direct UPDATE on them, and `stringency audit` is what notices one
+-- (trace-integrity-plan.md; T3 of that plan would make the schema require the event).
 
 PRAGMA foreign_keys = ON;
 

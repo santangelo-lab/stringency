@@ -867,7 +867,7 @@ One database per project at `prov/run.db`, WAL mode, never on CIFS. A thin index
 
 ### 9.5 Append-only enforcement
 
-Triggers raise on `UPDATE` and `DELETE` for every table marked append-only above. `runs`, `steps`, `holds`, `consensus`, and `artifacts` have mutable status columns, and each mutation writes its event row first, in the same transaction. Migrations are forward-only and recorded in `schema_migrations`.
+Triggers raise on `UPDATE` and `DELETE` for every table marked append-only above. `runs`, `steps`, `holds`, `consensus`, and `artifacts` have mutable status columns; the Store's typed writers write each mutation's event row first, in the same transaction. The schema itself does not require that pairing: a direct `UPDATE` on a mutable table changes it without an event, which `stringency audit` reports and `prov.trace_inconsistent` blocks (2026-10-20; making the schema require the event is `spec/plans/trace-integrity-plan.md` T3). Migrations are forward-only and recorded in `schema_migrations`.
 
 ### 9.6 Artifacts and sidecars
 

@@ -646,7 +646,7 @@ def test_driver_block_and_timeline(server: tuple[str, Project]) -> None:
     refs = references([p.root])
     assert refs[("toy-engine", "01_filter")] >= 0  # a completed step gives the reference
     current = {"step_id": "03_label", "title": "Label the groups", "status": "held"}
-    d = driver(p.store.conn, run, current, "toy-engine", refs)
+    d = driver(p.store.reader(), run, current, "toy-engine", refs)
     assert d["user"] == run["user"] and d["host"] == run["host"]
     assert d["last_call"] is not None and d["step"] == "Label the groups" and d["status"] == "held"
     assert d["elapsed"] and not d["stale"]  # a held step is the person's, never stale
@@ -654,14 +654,14 @@ def test_driver_block_and_timeline(server: tuple[str, Project]) -> None:
     # when the same step took fifteen minutes elsewhere (twice that is the limit)
     later = datetime.now(UTC) + timedelta(hours=1)
     running = {"step_id": "03_label", "title": "Label the groups", "status": "dispatching"}
-    assert driver(p.store.conn, run, running, "toy-engine", refs, now=later)["stale"]
+    assert driver(p.store.reader(), run, running, "toy-engine", refs, now=later)["stale"]
     soon = datetime.now(UTC) + timedelta(minutes=20)
     slow = {("toy-engine", "03_label"): 15 * 60.0}
-    assert not driver(p.store.conn, run, running, "toy-engine", slow, now=soon)["stale"]
-    assert driver(p.store.conn, run, running, "toy-engine", {}, now=soon)["stale"]
+    assert not driver(p.store.reader(), run, running, "toy-engine", slow, now=soon)["stale"]
+    assert driver(p.store.reader(), run, running, "toy-engine", {}, now=soon)["stale"]
     # the timeline: one run, opened, held at the labelling step; the page shows it
     titles = {s: p.pipeline.title(s) for s in p.pipeline.order()}
-    tl = timeline(p.store.conn, titles)
+    tl = timeline(p.store.reader(), titles)
     assert len(tl) == 1 and tl[0]["status"] == "held" and not tl[0]["fork"]
     texts = [e["text"] for e in tl[0]["events"]]
     assert texts[0].startswith("opened by ")

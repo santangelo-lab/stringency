@@ -997,7 +997,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     ),
                     "driver": self._driver(site, entry, references(self.state.roots)),
                     "holds": self._cards(root, site),
-                    "timeline": timeline(site.store.conn, titles),
+                    "timeline": timeline(site.store.reader(), titles),
                 }
             finally:
                 site.store.close()
@@ -1095,7 +1095,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         if run is None:
             return _NO_DRIVER
         d = driver(
-            site.store.conn,
+            site.store.reader(),
             run,
             entry.get("step"),
             site.config.pipeline or "open",
@@ -1135,7 +1135,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         try:
             drv = self._driver(site, entry, references(self.state.roots))
             titles = {sid: site.pipeline.title(sid) for sid in site.pipeline.order()}
-            runs = timeline(site.store.conn, titles)
+            runs = timeline(site.store.reader(), titles)
             steps: list[dict[str, str]] = []
             step_views: list[dict[str, Any]] = []
             if entry.get("run"):

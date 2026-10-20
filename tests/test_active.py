@@ -73,13 +73,13 @@ def test_driver_reads_the_mark_not_the_clock(make_project: InitFn) -> None:
 
     # alive: a long quiet step is computing, not stale
     _write_mark(p.root, rid, active.os.getpid())
-    d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=hours_later, root=p.root)
+    d = driver(p.store.reader(), run, STEP, "toy-engine", {}, now=hours_later, root=p.root)
     assert d["engine"] == "computing" and not d["stale"]
     # the step's last printed line answers "still running?"
     out = p.root / "runs" / rid / "02_summarize" / "stdout.txt"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("neighbours on pca dims 1:35, k 20\n10:26:01 clustering at 0.2, 0.4\n\n")
-    d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=datetime.now(UTC), root=p.root)
+    d = driver(p.store.reader(), run, STEP, "toy-engine", {}, now=datetime.now(UTC), root=p.root)
     assert d["progress"].startswith("10:26:01 clustering at 0.2, 0.4 (")
 
     # gone: stale at once, whatever the clock says
@@ -87,14 +87,14 @@ def test_driver_reads_the_mark_not_the_clock(make_project: InitFn) -> None:
     dead.wait()
     _write_mark(p.root, rid, dead.pid)
     soon = datetime.now(UTC) + timedelta(minutes=1)
-    d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=soon, root=p.root)
+    d = driver(p.store.reader(), run, STEP, "toy-engine", {}, now=soon, root=p.root)
     assert d["engine"] == "gone" and d["stale"]
 
     # another host: the console cannot tell, so the time rule applies
     _write_mark(p.root, rid, active.os.getpid(), host="elsewhere.invalid")
-    d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=hours_later, root=p.root)
+    d = driver(p.store.reader(), run, STEP, "toy-engine", {}, now=hours_later, root=p.root)
     assert d["engine"] == "" and d["stale"]
-    d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=soon, root=p.root)
+    d = driver(p.store.reader(), run, STEP, "toy-engine", {}, now=soon, root=p.root)
     assert not d["stale"]
 
 
@@ -109,9 +109,9 @@ def test_without_a_mark_a_run_process_in_the_project_counts(
     assert run is not None
     later = datetime.now(UTC) + timedelta(hours=3)
     assert active.run_process_in(p.root) is None
-    d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=later, root=p.root)
+    d = driver(p.store.reader(), run, STEP, "toy-engine", {}, now=later, root=p.root)
     assert d["stale"] and d["engine"] == ""
     monkeypatch.setattr(active, "run_process_in", lambda root: True)
     monkeypatch.setattr("stringency.console.engine_alive", active.engine_alive)
-    d = driver(p.store.conn, run, STEP, "toy-engine", {}, now=later, root=p.root)
+    d = driver(p.store.reader(), run, STEP, "toy-engine", {}, now=later, root=p.root)
     assert d["engine"] == "computing" and not d["stale"]

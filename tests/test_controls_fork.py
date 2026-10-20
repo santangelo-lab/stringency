@@ -310,7 +310,7 @@ def test_fork_inherits_the_parents_admitted_parameters(cproject: Project, review
     from stringency.console import timeline
 
     titles = {s: cproject.pipeline.title(s) for s in cproject.pipeline.order()}
-    texts = [e["text"] for run in timeline(cproject.store.conn, titles) for e in run["events"]]
+    texts = [e["text"] for run in timeline(cproject.store.reader(), titles) for e in run["events"]]
     assert any("with 04_compare.correction=bonferroni" in t for t in texts), texts
 
 

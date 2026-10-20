@@ -2,8 +2,13 @@
 
 One database per project at `prov/run.db` (design 9.4). Every writer's docstring names the
 table(s) it writes. Status mutations on the mutable tables (`runs`, `steps`, `holds`,
-`consensus`, `artifacts`) go through methods that write the matching event row in the same
-transaction (design 9.5); the raw connection is not exposed for writes.
+`consensus`, `artifacts`) go through typed writers that write the matching event row in the
+same transaction (design 9.5). That pairing is this class's, not the schema's: the append-only
+triggers protect the history tables, and a direct `UPDATE` on a mutable table changes it without
+an event (the owner's review of 2026-10-20, `spec/plans/trace-integrity-plan.md`). The writing
+connection is `_conn`, reached only from this module; `reader()` hands out read-only
+connections; `all`, `one` and `scalar` are the engine's own readers and a test greps the source
+for writes outside this module. `stringency audit` reads the trace back against its events.
 """
 
 from __future__ import annotations
@@ -44,6 +49,8 @@ APPEND_ONLY = frozenset(
 )
 
 MUTABLE = frozenset({"runs", "steps", "holds", "consensus", "artifacts", "projects"})
+# the five whose status changes write an event; `insert` refuses them (the typed writers only)
+MUTABLE_STATUS = frozenset({"runs", "steps", "holds", "consensus", "artifacts"})
 
 REFUSED_FSTYPES = frozenset({"cifs", "smb3", "smbfs"})
 
@@ -92,9 +99,10 @@ class Store:
     """A connection to one project's trace database."""
 
     def __init__(self, conn: sqlite3.Connection, path: Path) -> None:
-        self.conn = conn
+        self._conn = conn
         self.path = path
         self._columns: dict[str, tuple[str, ...]] = {}
+        self._readers: list[sqlite3.Connection] = []
 
     # -- lifecycle -----------------------------------------------------------------
 
@@ -115,7 +123,20 @@ class Store:
         return store
 
     def close(self) -> None:
-        self.conn.close()
+        for r in self._readers:
+            r.close()
+        self._readers.clear()
+        self._conn.close()
+
+    def reader(self) -> sqlite3.Connection:
+        """A read-only connection to the same database (`mode=ro`), for readers outside this
+        module (the console's timeline and driver, `audit`). Closed with the store. Reads on it
+        do not see this store's uncommitted writes; a writer's own reads stay on `_conn`."""
+        conn = sqlite3.connect(f"{self.path.resolve().as_uri()}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout=5000")
+        self._readers.append(conn)
+        return conn
 
     def __enter__(self) -> Store:
         return self
@@ -129,18 +150,18 @@ class Store:
         Writes: schema_migrations. `executescript` commits on its own, so the schema and
         each migration are applied as their own implicit transactions.
         """
-        self.conn.executescript(SCHEMA_SQL.read_text())
-        applied = {r[0] for r in self.conn.execute("SELECT version FROM schema_migrations")}
+        self._conn.executescript(SCHEMA_SQL.read_text())
+        applied = {r[0] for r in self._conn.execute("SELECT version FROM schema_migrations")}
         if 1 not in applied:
-            self.conn.execute(
+            self._conn.execute(
                 "INSERT INTO schema_migrations(version, applied) VALUES (1, ?)", (now_iso(),)
             )
         for sql_file in sorted(MIGRATIONS_DIR.glob("*.sql")):
             version = int(sql_file.name.split("_", 1)[0])
             if version in applied:
                 continue
-            self.conn.executescript(sql_file.read_text())
-            self.conn.execute(
+            self._conn.executescript(sql_file.read_text())
+            self._conn.execute(
                 "INSERT INTO schema_migrations(version, applied) VALUES (?, ?)",
                 (version, now_iso()),
             )
@@ -148,23 +169,23 @@ class Store:
     @contextmanager
     def transaction(self) -> Iterator[None]:
         """One SQLite transaction. Nested calls join the outer transaction."""
-        if self.conn.in_transaction:
+        if self._conn.in_transaction:
             yield
             return
-        self.conn.execute("BEGIN IMMEDIATE")
+        self._conn.execute("BEGIN IMMEDIATE")
         try:
             yield
         except BaseException:
-            self.conn.execute("ROLLBACK")
+            self._conn.execute("ROLLBACK")
             raise
         else:
-            self.conn.execute("COMMIT")
+            self._conn.execute("COMMIT")
 
     # -- generic --------------------------------------------------------------------
 
     def columns(self, table: str) -> tuple[str, ...]:
         if table not in self._columns:
-            rows = self.conn.execute(f"PRAGMA table_info({table})").fetchall()
+            rows = self._conn.execute(f"PRAGMA table_info({table})").fetchall()
             if not rows:
                 raise ValueError(f"unknown table {table}")
             self._columns[table] = tuple(r["name"] for r in rows)
@@ -176,7 +197,7 @@ class Store:
         Refuses to insert into `runs`, `steps`, `holds`, `consensus`, `artifacts`: those go
         through the typed writers so their event rows are written alongside.
         """
-        if table in {"runs", "steps", "holds"}:
+        if table in MUTABLE_STATUS:
             raise ValueError(f"use the typed writer for {table}")
         cols = self.columns(table)
         unknown = set(row) - set(cols)
@@ -192,14 +213,14 @@ class Store:
         verb = "INSERT OR IGNORE" if or_ignore else "INSERT"
         sql = f"{verb} INTO {table} ({', '.join(keys)}) VALUES ({', '.join('?' * len(keys))})"
         with self.transaction():
-            self.conn.execute(sql, values)
+            self._conn.execute(sql, values)
 
     def one(self, sql: str, params: tuple[Any, ...] = ()) -> sqlite3.Row | None:
-        row: sqlite3.Row | None = self.conn.execute(sql, params).fetchone()
+        row: sqlite3.Row | None = self._conn.execute(sql, params).fetchone()
         return row
 
     def all(self, sql: str, params: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
-        return self.conn.execute(sql, params).fetchall()
+        return self._conn.execute(sql, params).fetchall()
 
     def scalar(self, sql: str, params: tuple[Any, ...] = ()) -> Any:
         row = self.one(sql, params)
@@ -232,7 +253,7 @@ class Store:
             seq = self.scalar(
                 "SELECT COALESCE(MAX(seq), 0) + 1 FROM run_events WHERE run_id = ?", (run_id,)
             )
-            self.conn.execute(
+            self._conn.execute(
                 "INSERT INTO run_events(run_id, seq, event, payload_json, ts) VALUES (?,?,?,?,?)",
                 (run_id, seq, event, _json(payload or {}), now_iso()),
             )
@@ -250,12 +271,12 @@ class Store:
         with self.transaction():
             self.run_event(run_id, f"status:{status}", dict(payload or {}))
             if ended:
-                self.conn.execute(
+                self._conn.execute(
                     "UPDATE runs SET status = ?, ended = ? WHERE run_id = ?",
                     (status, now_iso(), run_id),
                 )
             else:
-                self.conn.execute("UPDATE runs SET status = ? WHERE run_id = ?", (status, run_id))
+                self._conn.execute("UPDATE runs SET status = ? WHERE run_id = ?", (status, run_id))
 
     def set_run_field(self, run_id: str, field: str, value: Any) -> None:
         """Writes: run_events (`set:<field>`) then runs.<field>. For env_digest and delta."""
@@ -263,7 +284,7 @@ class Store:
             raise ValueError(f"cannot set runs.{field}")
         with self.transaction():
             self.run_event(run_id, f"set:{field}", {field: value})
-            self.conn.execute(f"UPDATE runs SET {field} = ? WHERE run_id = ?", (value, run_id))
+            self._conn.execute(f"UPDATE runs SET {field} = ? WHERE run_id = ?", (value, run_id))
 
     # -- steps ----------------------------------------------------------------------
 
@@ -291,7 +312,7 @@ class Store:
                 "WHERE run_id = ? AND step_id = ?",
                 (run_id, step_id),
             )
-            self.conn.execute(
+            self._conn.execute(
                 "INSERT INTO step_events(run_id, step_id, seq, event, payload_json, ts) "
                 "VALUES (?,?,?,?,?,?)",
                 (run_id, step_id, seq, event, _json(payload or {}), now_iso()),
@@ -336,7 +357,7 @@ class Store:
                 sets.append("ended = ?")
                 vals.append(now_iso())
             vals += [run_id, step_id]
-            self.conn.execute(
+            self._conn.execute(
                 f"UPDATE steps SET {', '.join(sets)} WHERE run_id = ? AND step_id = ?", vals
             )
 
@@ -371,7 +392,7 @@ class Store:
                 self.step_event(h["run_id"], h["step_id"], "hold_resolved", ev)
             elif h["run_id"]:
                 self.run_event(h["run_id"], "hold_resolved", ev)
-            self.conn.execute(
+            self._conn.execute(
                 "UPDATE holds SET resolved_by_review = ?, resolved_via = ? WHERE hold_id = ?",
                 (review_id, via, hold_id),
             )
@@ -396,7 +417,7 @@ class Store:
                     self.step_event(h["run_id"], h["step_id"], "hold_withdrawn", ev)
                 elif h["run_id"]:
                     self.run_event(h["run_id"], "hold_withdrawn", ev)
-                self.conn.execute(
+                self._conn.execute(
                     "UPDATE holds SET resolved_via = 'withdrawn' WHERE hold_id = ?", (hid,)
                 )
                 n += 1
@@ -455,7 +476,7 @@ class Store:
                 {"artifact_id": artifact_id, field: value},
             )
             v = int(value) if isinstance(value, bool) else value
-            self.conn.execute(
+            self._conn.execute(
                 f"UPDATE artifacts SET {field} = ? WHERE artifact_id = ?", (v, artifact_id)
             )
 
@@ -492,6 +513,6 @@ class Store:
             for v in (row[k] for k in keys)
         ]
         verb = "INSERT OR REPLACE" if replace else "INSERT"
-        self.conn.execute(
+        self._conn.execute(
             f"{verb} INTO {table} ({', '.join(keys)}) VALUES ({', '.join('?' * len(keys))})", values
         )
