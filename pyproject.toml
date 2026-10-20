@@ -1,6 +1,6 @@
 [project]
 name = "stringency"
-version = "0.2.22"
+version = "0.2.23"
 description = "Admissibility gates, provenance trace, and review for agent-assisted analysis pipelines"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -76,4 +76,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
-markers = ["apptainer: needs apptainer on PATH"]
+markers = [
+  "apptainer: needs apptainer on PATH",
+  "egress: the project-level egress hold is live (it is acknowledged for every other test)",
+]

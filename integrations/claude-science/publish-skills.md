@@ -55,9 +55,11 @@ repository wins.
 ## When to republish
 
 - The operator skill: on every engine version that changes a verb, a flag or the hold protocol
-  (last revision 2026-10-16 for engine 0.2.22: section 10, open mode, and its intents; before it
-  2026-10-14 for 0.2.19; the copy synced to the owner's instance is of 2026-10-08).
+  (last revision 2026-10-20 for engine 0.2.23: the egress hold in section 6 and the wait as a job
+  in mode B; before it 2026-10-16 for 0.2.22, section 10, open mode; the copy synced to the
+  owner's instance is of 2026-10-08).
 - The declare skill: when the declaration grammar or the echo-back changes (last revision
+  2026-10-16: section 3a, the ceiling question, `--egress-max` and `--operator-model`; before it
   2026-10-14: `params:` in `objective.yml`; the synced copy is the 2026-09-14 text and needs
   republishing).
 - An analysis skill: on every tag of its method repository. The rendered file is committed there;

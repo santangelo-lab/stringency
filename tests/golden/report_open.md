@@ -17,7 +17,7 @@ A is higher than B: the difference is 59.22 (adjusted p 1.33e-75).
 | A_vs_B | 59.22 | 74.99 | 15.77 | 3 | 3 | 1.33e-75 | 4.44e-76 |
 
 Label: trusted. Produced by compare-groups (compare-groups@0.1.1), a tool shipped with the method, run by the engine on the delivered data. Numbers checked against the cited cells: 2 of 2. Everything else in this answer is the assistant's reading.
-Marked as a finding by jrrose5 on <DATE>: "this is the comparison I wanted".
+Marked as a finding by <USER> on <DATE>: "this is the comparison I wanted".
 Full record: `q01-which-group-is-higher-a-or-b.md`.
 
 ## Other questions

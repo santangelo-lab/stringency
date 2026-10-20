@@ -12,6 +12,7 @@ from pathlib import Path
 from stringency import __version__
 from stringency.config import Design
 from stringency.controls import load_control
+from stringency.egress import scan_module
 from stringency.executor.apptainer import resolve_image
 from stringency.exit_codes import ConfigError
 from stringency.gate import in_scope_specs
@@ -112,6 +113,15 @@ def lint_module(
     for label, script in (("entry", module.entry_script), ("post", module.post_script)):
         if script is not None and not script.exists():
             report.error(where, f"{label} script {script.name} is missing")
+    # data egress (backlog L1): a warning until module.yml can declare egress
+    hits = scan_module(module.path)
+    if hits:
+        found = ", ".join(h.describe() for h in hits[:3]) + (" ..." if len(hits) > 3 else "")
+        report.warn(
+            where,
+            f"scripts reach the network but the module declares no egress ({found}); "
+            "the egress report counts it as class 4",
+        )
 
     # judgment modules
     if m.kind == "judgment":

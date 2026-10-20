@@ -19,6 +19,7 @@ from stringency.exit_codes import ConfigError, RefusedError
 from stringency.project import Project
 from stringency.provenance import TRUSTED_MEANS, UNTESTED_MEANS
 from stringency.report import NO_FINDING_YET
+from stringency.review import current_user
 from stringency.runs import load_run
 from tests.conftest import InitFn, MethodRepo, accept_hold
 from tests.test_deliver import GOLDEN, normalise
@@ -268,7 +269,12 @@ def test_answers_land_in_the_report_as_filed_and_findings_lead(
     )
     report = (dest / "report.md").read_text()
     golden = GOLDEN / "report_open.md"
-    got = normalise(report).replace(str(up.root), "<UPSTREAM>").replace(str(q.root), "<PROJECT>")
+    got = (
+        normalise(report)
+        .replace(str(up.root), "<UPSTREAM>")
+        .replace(str(q.root), "<PROJECT>")
+        .replace(f"finding by {current_user()} on", "finding by <USER> on")
+    )
     if request.config.getoption("--update-golden"):
         golden.write_text(got)
     assert got == golden.read_text()

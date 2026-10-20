@@ -74,7 +74,7 @@ any other way and do not reimplement any of its behavior in Python.
 The container runtime is `apptainer` or `singularity`; the engine finds either, and `probe`
 reports which and whether every image the project's method names is present and readable.
 
-**Which text of this skill to follow.** This text is for engine 0.2.22. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.23. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -183,7 +183,9 @@ it refuses (exit 16) when the step is not dispatching, when the count differs fr
 
 **10, a hold.** Follow section 6, and at every hold, without being asked, start the command the
 payload names as `wait_command` (`stringency wait --hold <id> --timeout 86400 --json`; engine 0.2.7
-or later) as a background command when your harness has one, so you are woken when it returns. The
+or later) as a background command when your harness has one, so you are woken when it returns. In
+mode B start it as a job on the compute host, not through `call_command`, whose commands end
+after 60 seconds (measured 2026-10-20). The
 person may answer on the console, at a terminal, or here, and you cannot tell which in advance; the
 wait is how an answer given elsewhere reaches you. Do not poll `run`. It reads the
 trace every five seconds and writes nothing; exit 0 means the hold was resolved or withdrawn and
@@ -214,15 +216,26 @@ the packet file the message names) and says, in this order and nothing else:
 
 1. Where and what: "The analysis paused at {step title}. The engine is asking: {for a flag, 'is
    this acceptable: ' plus the predicate's reason verbatim; for a confirm, 'does this reading of
-   your experiment match'; for an item hold, 'which of these calls for {item} should stand'; for a
-   sign-off, 'which label {item} takes: {the packet's choices}'}."
+   your experiment match'; for an egress hold, 'is it acceptable that this leaves the machine';
+   for an item hold, 'which of these calls for {item} should stand'; for a sign-off, 'which label
+   {item} takes: {the packet's choices}'}."
 2. The record: the packet's reason and evidence lines verbatim under "What the engine recorded";
-   for item holds, each replicate's call, confidence, and rationale verbatim. No summary, no
-   reordering.
+   for item holds, each replicate's call, confidence, and rationale verbatim; for an egress hold,
+   the report's `ceiling:` and `assessed:` lines and every entry under "What leaves the machine"
+   verbatim. No summary, no reordering.
 3. The options: every entry of `verdicts`, as "{verdict}: {effect}", verbatim, in the engine's
    order. Nothing added.
 4. The ask: "Which do you choose, and why? I will not choose for you. Your decision and your reason
    are recorded under your name in the project's record."
+
+**The egress hold** (engine with backlog L1). `init` opens it beside the confirm hold, and `run`
+opens a new one when what the project sends changed (another judgment harness, another ceiling, a
+module that now reaches the network); the message ends with `report <path>`. Relay the confirm
+hold first, then the egress hold, each by steps 1 to 4. Do not say whether the class is high or
+low, do not propose another ceiling, harness or operator model, and do not offer a way past the
+hold; if the person asks what decides a class, read the entry's `set by` and `to` words verbatim.
+A `run` that exits 11 naming `prov.egress_exceeds_ceiling` is not a hold: report the message
+verbatim, name the report, and stop.
 
 Then wait. Accept only a reply containing one listed verdict word and a reason. "Ok", "fine", "go
 ahead" get: "To record this I need one of {verdicts} and your reason in your own words." No verdict
@@ -252,7 +265,8 @@ console, when the held payload's `review_page` is set (engine 0.2.11 or later), 
 engine 0.2.8 or later). Then, at a hold, instead of steps 1 to 4 and
 `present --hold`: say one sentence, "The analysis paused at {step title}: {for a flag, the
 predicate's reason verbatim; for a confirm, 'does this reading of your experiment match'; for an
-item hold, 'which call for {item} should stand'}. Answer on the console ({review_page}, or {page_url}/hold/{id})
+egress hold, 'is it acceptable that this leaves the machine'; for an item hold, 'which call for
+{item} should stand'}. Answer on the console ({review_page}, or {page_url}/hold/{id})
 or here." Then arm `stringency wait --hold {id} --timeout 86400 --json` as a background command
 and say once "waiting on the console for the {step title} hold". When it returns, read
 `verdict`, `via` and `reason` and relay them verbatim; on an item hold also `label`, the label the

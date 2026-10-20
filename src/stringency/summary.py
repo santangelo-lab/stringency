@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from stringency.coverage import egress_line
 from stringency.methods import number_word
 from stringency.runs import RunContext
 from stringency.steps import action_from_row
@@ -155,6 +156,7 @@ def what_was_checked(rc: RunContext, cov: dict[str, Any]) -> list[str]:
         lines.append(
             f"- {f['predicate']} on {title}: {f['verdict']} by {f['reviewer']} via {f['via']} on {f['date']}{reason}."
         )
+    lines.append(egress_line(cov.get("egress")))
     return lines
 
 

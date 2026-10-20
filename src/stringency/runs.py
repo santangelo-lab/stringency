@@ -6,6 +6,7 @@ row, the executor, the environment digests resolved at open, and the policy dige
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import socket
@@ -291,6 +292,25 @@ def require_confirmed(project: Project) -> None:
     )
 
 
+def require_egress_acknowledged(project: Project) -> None:
+    """`run` refuses to open until the owner has acknowledged the data egress report for the
+    current fingerprint (backlog L1). Reads: holds, reviews, the module scripts. Writes, when
+    the profile changed since the last report: the report files and one `holds` row (kind
+    `egress`). A setup over the ceiling passes here and is blocked by the run-open gate
+    (`prov.egress_exceeds_ceiling`)."""
+    a = project.egress_assessment()
+    status = project.egress_status(a)
+    if status in ("accepted", "exceeds"):
+        return
+    hold = project.egress_hold(a)
+    assert hold is not None
+    raise HeldError(
+        f"held: hold {hold['hold_id']} (egress); waits on owner {project.config.roles.owner}; "
+        f"run `stringency review --hold {hold['hold_id']}` in {project.root}; "
+        f"report {project.egress_report_path(a)}"
+    )
+
+
 def module_script_blobs(project: Project) -> dict[str, str]:
     """blake3 of every module entry script in the bound pipeline as it is on disk now.
     Captured at run open (design 9.1); `exec.script_drift` compares against it later."""
@@ -421,6 +441,20 @@ def captured_plugins(store: Store, run_id: str) -> dict[str, str]:
     return {str(k): str(v) for k, v in plugins.items()} if isinstance(plugins, dict) else {}
 
 
+def captured_egress(store: Store, run_id: str) -> dict[str, Any] | None:
+    """The egress assessment recorded when the run opened, from its `captures` event (backlog
+    L1); None for a run opened before it was recorded. Reads: run_events."""
+    row = store.one(
+        "SELECT payload_json FROM run_events WHERE run_id = ? AND event = 'captures' "
+        "ORDER BY seq DESC LIMIT 1",
+        (run_id,),
+    )
+    if row is None:
+        return None
+    egress = json.loads(row["payload_json"] or "{}").get("egress")
+    return dict(egress) if isinstance(egress, dict) else None
+
+
 def _digest_or_none(executor: Executor, env: str) -> str | None:
     try:
         return executor.env_digest(env)
@@ -435,6 +469,7 @@ def open_or_resume(
     closed unless `new` is set (design 2.6, improvement B3). Writes on open: runs, run_events,
     steps, step_events, policy_snapshots, predicate_results (run_open phase)."""
     require_confirmed(project)
+    require_egress_acknowledged(project)
     last = latest_run(project.store)
     if last is not None and last["status"] in OPEN_STATUSES:
         if new:
@@ -460,8 +495,13 @@ def open_run(
     kind: str = "run",
 ) -> RunContext:
     """Open a new run with every capture in design 9.1. Refuses (exit 15) when the installed
-    engine or plugins no longer satisfy the method's `requires` (backlog L28)."""
+    engine or plugins no longer satisfy the method's `requires` (backlog L28). An analysis
+    run or a fork also needs the egress report acknowledged; a control run is gated only by the
+    ceiling (backlog L1)."""
     require_confirmed(project)
+    if kind != "control":
+        require_egress_acknowledged(project)
+    egress = project.egress_assessment()
     installed = installed_plugin_versions()
     if project.policy.requires is not None:
         problems = check_requires(project.policy.requires, __version__, installed)
@@ -512,6 +552,7 @@ def open_run(
         proposed_by="pipeline",
     )
     ctx = rc.gate_context("run_open", action, project.initial_state(run_id, rc.input_objects()))
+    ctx = dataclasses.replace(ctx, project=dataclasses.replace(ctx.project, egress=egress))
     result = evaluate(
         ctx, registry=registry, store=None, policy_digest=policy_digest, module=None, runner=None
     )
@@ -521,7 +562,10 @@ def open_run(
             raise DirtyTreeError(
                 'dirty tree: the method repo has uncommitted changes; commit them, or pass --allow-dirty "<reason>"'
             )
-        raise BlockedError("blocked at run open: " + "; ".join(r.line() for r in result.blocked))
+        msg = "blocked at run open: " + "; ".join(r.line() for r in result.blocked)
+        if "prov.egress_exceeds_ceiling" in ids:
+            msg += f"; report {project.write_egress_report(egress)}"
+        raise BlockedError(msg)
     used = sorted(f"{k}={v or 'unpinned'}" for k, v in env_digests.items())
     store.record_policy_snapshot(
         policy_digest, project.policy.version, project.policy.raw, registry.refs()
@@ -572,6 +616,15 @@ def open_run(
                     "tag": project.config.method.tag,
                     "sha": sha,
                     "dirty": dirty,
+                },
+                "egress": {
+                    "fingerprint": hashing.prefixed(egress.fingerprint),
+                    "assessed_class": egress.assessed_class,
+                    "max_class": egress.max_class,
+                    "operator": egress.operator,
+                    "harness": egress.harness,
+                    "report": str(project.egress_report_path(egress).relative_to(project.root)),
+                    "components": [c.to_json() for c in egress.components],
                 },
             },
         )

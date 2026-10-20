@@ -678,6 +678,12 @@ def present_hold(
         "files": [],
         "never_show": [],
     }
+    if h["kind"] == "egress":
+        report = ctx.get("report_path")
+        if report and Path(report).exists():
+            payload["sections"].append(
+                {"title": "Data egress", "kind": "text", "text": Path(report).read_text()}
+            )
     if h["kind"] == "confirm":
         echo = ctx.get("echo_path")
         if echo and Path(echo).exists():

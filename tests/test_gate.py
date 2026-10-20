@@ -489,8 +489,13 @@ def test_every_registered_predicate_has_a_case() -> None:
         - covered
         - {s.id for s in registry.all() if s.id.startswith("init.")}
     )
-    # repro.seed_unset and judg.considered_set_missing are covered below with a synthetic module
-    assert missing <= {"repro.seed_unset", "judg.considered_set_missing"}, missing
+    # repro.seed_unset and judg.considered_set_missing are covered below with a synthetic module;
+    # prov.egress_exceeds_ceiling in tests/test_egress.py
+    assert missing <= {
+        "repro.seed_unset",
+        "judg.considered_set_missing",
+        "prov.egress_exceeds_ceiling",
+    }, missing
 
 
 def test_seed_unset_and_considered_set(project: Project) -> None:

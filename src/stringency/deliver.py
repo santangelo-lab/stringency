@@ -285,6 +285,14 @@ def deliver(
         "coverage": {"file": "coverage.md", "blake3": hashing.hash_text(coverage_text)},
         "methods": {"file": "methods.md", "blake3": hashing.hash_text(methods_text)},
         "summary": {"file": "summary.md", "blake3": hashing.hash_text(summary_text)},
+        "egress": (
+            None
+            if cov.get("egress") is None
+            else {
+                k: cov["egress"][k]
+                for k in ("fingerprint", "report", "max_class", "highest_reached")
+            }
+        ),
     }
     index_text = json.dumps(index, indent=2, sort_keys=True) + "\n"
     (dest / "index.json").write_text(index_text)

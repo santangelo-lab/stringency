@@ -25,6 +25,7 @@ Deliverables: comparison_table, group_labels.
 ## What was checked and decided
 
 Twenty-five checks were evaluated over five steps; no blocks and no flags were raised.
+Data egress: the highest class reached was 3 derived; no ceiling was declared (report prov/egress-<HASH12>.md).
 
 ## Judgments
 

@@ -39,6 +39,17 @@ def init(
     judgment_harness: str = typer.Option("subagent", "--judgment-harness"),
     execution: str = typer.Option("operator", "--execution"),
     executor: str = typer.Option("apptainer", "--executor"),
+    egress_max: int | None = typer.Option(
+        None,
+        "--egress-max",
+        help="the highest data egress class this project allows: 0 none, 1 reference, "
+        "2 terms, 3 derived, 4 data",
+    ),
+    operator_model: str = typer.Option(
+        "hosted",
+        "--operator-model",
+        help="hosted | local | none: the model of the agent that operates the project",
+    ),
     drafted_by: str = typer.Option(
         "person", "--drafted-by", help="person | agent: who wrote the three declaration files"
     ),
@@ -64,6 +75,8 @@ def init(
             judgment_harness=judgment_harness,
             execution=execution,
             executor=executor,
+            egress_max=egress_max,
+            operator_model=operator_model,
             drafted_by=drafted_by,
             brief=brief,
             from_delivery=from_delivery,
@@ -71,6 +84,8 @@ def init(
         )
     )
     hold = project.confirm_hold()
+    egress = project.egress_assessment()
+    ehold = project.egress_hold(egress)
     payload = {
         "schema": "stringency.init/1",
         "project_id": project.config.project_id,
@@ -78,6 +93,13 @@ def init(
         "method_sha": project.config.method.sha,
         "confirm_hold": hold["hold_id"] if hold else None,
         "echo": str(project.echo_path()),
+        "egress_hold": ehold["hold_id"] if ehold else None,
+        "egress": {
+            "max_class": egress.max_class,
+            "assessed_class": egress.assessed_class,
+            "within": egress.within,
+            "report": str(project.egress_report_path(egress)),
+        },
         "declarations": project.config.declarations.model_dump()
         if project.config.declarations
         else None,
@@ -87,16 +109,24 @@ def init(
         + (" (open mode)" if project.open_ended else "")
         + "\n"
         f"method {project.config.method.repo} @ {project.config.method.tag} ({project.config.method.sha[:12]})\n"
-        f"echo-back written to {project.echo_path()}"
+        f"echo-back written to {project.echo_path()}\n"
+        f"{egress.summary_line()}; report {project.egress_report_path(egress)}"
     )
     if hold is not None:
         human += (
             f"\nheld: hold {hold['hold_id']} (confirm); waits on owner {project.config.roles.owner}; "
             f"run `stringency review --hold {hold['hold_id']}` in {project.root}"
         )
+    if ehold is not None and ehold["resolved_by_review"] is None:
+        human += (
+            f"\nheld: hold {ehold['hold_id']} (egress); waits on owner "
+            f"{project.config.roles.owner}; run `stringency review --hold {ehold['hold_id']}` "
+            f"in {project.root}"
+        )
     refresh_if_present(project.root)
     notify_after(project)
     emit(payload, as_json, human)
-    if hold is not None and hold["resolved_by_review"] is None:
+    open_hold = any(h is not None and h["resolved_by_review"] is None for h in (hold, ehold))
+    if open_hold:
         # init leaves a hold open: exit 10 like every other verb that stops on a hold (design 14.2)
         raise typer.Exit(code=int(Exit.HELD))

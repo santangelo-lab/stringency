@@ -43,6 +43,8 @@ delivered on rc12 and rc12.1 (2026-10-08 to 2026-10-12).
 | B bulk RNA-seq | dormant since 2026-09-23 | `bulkrna-plan.md` | nothing until the owner reopens it |
 | egress | unscheduled; the gate before the first PROTECT project | `egress-and-remeasurement.md`; backlog L1 to L4 | L3 (the judge on control results) is pulled into J; the rest waits |
 | K open mode | **S1 to S7 built 2026-10-16** on branch `open-mode` (engine 0.2.22, untagged, unmerged); O1 to O6 open | `open_mode_plan.md` | the owner reads the design amendments (applied on the branch, section 6 of the plan) and merges; then O1 (the operator skill's section 10 and the analyze-skill template's section 8, `render_skill.py` `tools:`/`open:`), O2 (the toy rehearsal), O4 (the Xenium tools), O3, O5, O6 |
+| egress | L1 built in part 2026-10-16 on branch `egress` (phases 1 to 3, skills); not merged; the gate before the first PROTECT project | `egress-and-remeasurement.md`; backlog L1 to L4 | L3 (the judge on control results) is pulled into J; the rest waits |
+| K open mode | **approved 2026-10-16**, nothing built | `open_mode_plan.md` | S1 (binding: `mode: open`, `init --from-delivery`, `tools list --context`) by an agent on the workstation against the installed engine; the owner reads the design amendments of the plan's section 6 |
 
 ## The lanes
 

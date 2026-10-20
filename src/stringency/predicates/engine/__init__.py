@@ -2,6 +2,7 @@
 
 from stringency.predicates.engine import (  # noqa: F401
     ans,
+    egress_,
     exec_,
     init_,
     judg,

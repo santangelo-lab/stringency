@@ -3,7 +3,17 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-19, night)
+## Current state (2026-10-20, afternoon)
+
+- The egress drive and the merge (`notes/2026-10-20-1600-egress-drive-and-merge.md`): the owner
+  drove branch `egress` through Claude Science as a person and was satisfied; `open-mode` merged
+  into `egress` (`43efd2b`, eight additive conflicts) and the follow-up commit fixes the scan's
+  XML-namespace false positive, bumps the engine to 0.2.23 and says the mode B wait is a job.
+  Every check green. Next: the merge train (push `egress`; `main` to `open-mode`, tag
+  `v0.2.22`; `egress` into `main`, tag `v0.2.23`; install; republish; the toy and Xenium
+  methods re-rendered and tagged).
+
+## Earlier state (2026-10-19, night)
 
 - The report replaces `deliver --answer` (`notes/2026-10-19-2100-open-mode-report.md`): every
   admissible answer lands in `deliver/<run>/` as it is filed; `report.md` leads with the
@@ -32,6 +42,12 @@ it is the first thing a new session reads.
   engine installed at `/data/lab/env/stringency-open-mode` (the shared engine untouched). Next:
   the owner's agent-operated test drive (`docs/open-mode-rehearsal.md`), then the merge
   decision; backlog L39 (the `--set none` wart).
+- Data egress at init built on branch `egress` (worktree `../stringency-egress`, not merged;
+  `notes/2026-10-16-1420-egress-at-init.md`): the person sets a ceiling at init
+  (`--egress-max`), the engine assesses the setup, saves `prov/egress.md`, and opens an `egress`
+  hold the operator relays beside the confirm hold, asked again only when the profile changes;
+  over the ceiling, init is refused and run open blocked. Open: the merge after open mode S2, the
+  `module.yml` `egress` DEVIATIONS entry, the design amendments.
 - The open-mode plan approved (`spec/plans/open_mode_plan.md`, Lane K;
   `notes/2026-10-16-1330-open-mode-plan.md`): after a pipeline delivers, the operator reviews
   the method's tools and the project's questions, proposes paths, and on the person's yes
@@ -225,9 +241,11 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-20-1600-egress-drive-and-merge.md` — the owner's egress drive through Claude Science (passed; the findings), `open-mode` merged into `egress`, the scan's XML-namespace fix, engine 0.2.23, the wait as a job in mode B; the merge train for the owner.
 - `2026-10-19-2100-open-mode-report.md` — the report replaces `deliver --answer`: automatic delivery of every answer, `report.md` with the findings first, the `findings` table and verb, the skills' two new sentences; the probe that was never blocked; what was altered.
 - `2026-10-19-1400-open-mode-drive-findings.md` — the owner's first open-mode drive on the toy: the paste and image failures before it, and the six findings after it (no control ever ran, a tool's answer called code, the raw input out of reach, the delivery's names, the directory, the long delivery message), each built and recorded.
 - `2026-10-16-2200-open-mode-s1-s7.md` — open mode S1 to S7 built on branch `open-mode` (engine 0.2.22): binding, on-demand steps, exec, controls for tools, answers and labels, deliver and present, the chain test and the design amendments; what was learned (the read-only bind that was not, a tool controlled alone, the `--set none` wart); O1 to O6 open.
+- `2026-10-16-1420-egress-at-init.md` — data egress at init (backlog L1): the owner's two answers (acknowledge once; the person's ceiling at init), the assessment, report, hold and blocks, the delivery record, the skill text; built on branch `egress` beside the open-mode session; merge and DEVIATIONS open.
 - `2026-10-16-1330-open-mode-plan.md` — the open-mode plan: three explorations, three design passes, the owner's five decisions and the pre-switch review; what the code already has (design 5's sentence, `modes`, on-demand steps as the one addition) and what it lacks (the deliver gate's dropped verdicts, read-write input binds, no timeout, no `--net`, a completion-only control scorer); implementation handed to the workstation.
 - `2026-10-16-1210-commons-assessment.md` — posit-dev/commons read against the design: the provenance outcome derived from the path, the citation match, the kernel sandbox for model code, the OTel trajectories and review documents, the cross-language fixtures; four borrowings (L35 to L38), the G2 proposal, and what commons lacks.
 - `2026-10-15-1000-install-for-people-and-ci.md` — the install for people (README message, bootstrap, the guides' two halves), the site-neutral repository and the lab directory, engine 0.2.21, the first CI runs and their five fixes, the install of `0.2.21-sc0.5.1`.
