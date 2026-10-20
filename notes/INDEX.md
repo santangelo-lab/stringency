@@ -5,6 +5,9 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-20, night)
 
+- Trace integrity (`notes/2026-10-20-2330-trace-integrity-review.md`): the owner's finding
+  verified, a mutable row can be changed by direct SQL without its event; the plan
+  `spec/plans/trace-integrity-plan.md` (Lane T), T1 and T2 ready to build, T3 and T4 the owner's.
 - Engine 0.2.24 (`notes/2026-10-20-2100-open-tools-engine-fixes.md`): init from a delivery takes
   each file's run from its sidecar, the report names the delivery run, cited cells and table
   views from any csv or tsv artifact, `exec --help` fixed (L43). Behind it the Xenium method's
@@ -260,6 +263,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-20-2330-trace-integrity-review.md` — the owner's trace-integrity finding verified (a mutable row can change without its event), the plan `trace-integrity-plan.md` (Lane T, T1 to T4), backlog L50 to L53.
 - `2026-10-20-2100-open-tools-engine-fixes.md` — engine 0.2.24 for the Xenium open tools: the sidecar run on init from a delivery, is_tabular, exec --help; plugin 0.6.1; what was learned about --set lists and optional inputs.
 - `2026-10-20-1700-egress-plan-retired.md` — egress in open mode probed (three gaps), the egress plan archived, backlog L1 done and L40 to L46 added, the roadmap's duplicated rows collapsed, the skill description cap in the renderer, the Xenium method rc18.
 - `2026-10-20-1600-egress-drive-and-merge.md` — the owner's egress drive through Claude Science (passed; the findings), `open-mode` merged into `egress`, the scan's XML-namespace fix, engine 0.2.23, the wait as a job in mode B; the merge train for the owner.
