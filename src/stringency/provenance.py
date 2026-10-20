@@ -82,12 +82,14 @@ UNTESTED_MEANS = (
 # Said once, when the first answer lands, and once when the person says they are done
 # (open mode, the report; 2026-10-19). Pinned with the rest by the same test.
 REPORT_SENTENCE = (
-    "Everything you ask goes into the report, on disk beside the results as it is answered; "
-    "tell me whenever you want an answer marked as a finding, the ones the report leads with."
+    "Everything you ask goes into the report, on disk beside the results as it is answered, "
+    "with its figures. Tell me whenever an answer is an important finding: it then goes into "
+    "the report in full, at the top."
 )
 FINDINGS_SENTENCE = (
-    "Which of these answers are findings, the ones the report should lead with? You can name "
-    "them by number, say all, or none."
+    "Which of these answers are important findings? Each one you name goes into the report in "
+    "full, at the top, with its tables and figures; the others stay in the report in short. "
+    "Name them by number, say all, or say none."
 )
 QUALIFIER_LINE = (
     "flags accepted on the path: {flags} | parameters outside range: {ranges} | "

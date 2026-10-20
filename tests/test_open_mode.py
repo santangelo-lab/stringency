@@ -191,7 +191,8 @@ def test_open_mode_end_to_end(
     ]
     report = (dest / "report.md").read_text()
     assert "No answer has been marked as a finding yet." in report
-    assert "Shall I open it" not in report and "![" not in report  # no finding, no figure yet
+    # figures belong to the findings; none is marked yet (the owner, 2026-10-19)
+    assert "Shall I open it" not in report and "![" not in report
     assert cli(q, "deliver", "--answer", a1["answer_id"]).exit_code == 16
     # the person marks the first answer; the report leads with it
     r = cli(q, "finding", a1["answer_id"], "--reason", "that is what I asked")
