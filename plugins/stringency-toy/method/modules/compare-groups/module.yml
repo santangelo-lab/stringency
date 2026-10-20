@@ -1,10 +1,10 @@
 contract: 1
 name: compare-groups
-version: 0.1.0
+version: 0.1.1
 kind: deterministic
 operation: compare_groups
 domain: stringency-toy
-modes: [pipeline]
+modes: [pipeline, open]
 env: toy-py
 runner: engine
 inputs:

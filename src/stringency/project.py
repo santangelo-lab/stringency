@@ -34,16 +34,21 @@ from stringency.config import (
     load_yaml,
 )
 from stringency.db.store import Store
-from stringency.echo import render_echo, render_inherited_echo
+from stringency.echo import render_echo, render_inherited_echo, render_open_echo
 from stringency.executor.base import Executor
 from stringency.executor.local import LocalExecutor
 from stringency.exit_codes import ConfigError
 from stringency.extract import extract_object
 from stringency.gate import GateResult, evaluate
 from stringency.ids import new_id
-from stringency.modules import ModuleIndex
+from stringency.modules import Module, ModuleIndex
 from stringency.operator_id import operator_env
-from stringency.pipelines import Pipeline, find_pipeline, load_pipeline
+from stringency.pipelines import (
+    Pipeline,
+    find_pipeline,
+    load_pipeline,
+    open_pipeline,
+)
 from stringency.plugins import Plugin, installed_plugin_versions, require_plugin
 from stringency.policy import Policy, load_policy
 from stringency.predicates import registry
@@ -63,10 +68,10 @@ def _ensure_engine_predicates() -> None:
 class InitRequest:
     path: Path
     method: str  # <url>@<tag>
-    pipeline: str
-    objective: Path
-    design: Path
-    inputs: Path
+    pipeline: str | None  # None in open mode
+    objective: Path | None
+    design: Path | None
+    inputs: Path | None
     mode: str = "pipeline"
     profile: str = "standard"
     owner: str | None = None
@@ -77,6 +82,9 @@ class InitRequest:
     drafted_by: str = "person"  # person | agent (design 2.7)
     brief: Path | None = None  # the person's own words, kept beside the declarations
     check_only: bool = False  # `declare --check`: every init check, no project record
+    # open mode (open_mode_plan.md 2.1): derive the declarations from a delivery directory
+    from_delivery: Path | None = None
+    upstream: Path | None = None  # the upstream project root; default: derived from the directory
 
 
 @dataclass
@@ -101,14 +109,40 @@ class Project:
         self.design = load_model(Design, self.root / "design.yml")
         self.objective = load_model(Objective, self.root / "objective.yml")
         self.method_root = self.root / "method"
-        self.pipeline: Pipeline = load_pipeline(
-            find_pipeline(self.method_root, self.config.pipeline)
-        )
         self.modules = ModuleIndex(self.method_root)
         _ensure_engine_predicates()
+        # open mode (open_mode_plan.md 2.1): no declared topology; the tools are the method's
+        # modules listing `open`, and the run's topology grows one on-demand step at a time
+        self.open_ended: bool = self.config.pipeline is None
+        self.pipeline: Pipeline
+        if self.open_ended:
+            self.pipeline = open_pipeline(
+                self.config.domain or "",
+                self.config.method.tag,
+                require_plugin(self.config.domain or "").objective_questions,
+            )
+        else:
+            assert self.config.pipeline is not None
+            self.pipeline = load_pipeline(find_pipeline(self.method_root, self.config.pipeline))
         self.plugin: Plugin = require_plugin(self.pipeline.domain)
         self.policy: Policy = load_policy(self.root / self.config.policy)
         self._store: Store | None = None
+
+    # -- tools (open mode) -----------------------------------------------------------
+
+    def tools(self) -> list[Module]:
+        """The method's modules that list `open` in their `modes`: what an open project may
+        run on demand (open_mode_plan.md 1). Empty on a pipeline project whose method ships
+        none. Reads the module index only."""
+        return open_tools(self.modules)
+
+    def tool(self, name: str) -> Module:
+        """The tool named `name` (a module name), or a ConfigError naming the tools there are."""
+        for m in self.tools():
+            if m.manifest.name == name:
+                return m
+        have = ", ".join(m.manifest.name for m in self.tools()) or "none"
+        raise ConfigError(f"no tool named {name} in this method; tools: {have}")
 
     @classmethod
     def load(cls, path: Path | str) -> Project:
@@ -167,7 +201,18 @@ class Project:
     def env_for_input(self, name: str) -> str:
         """The environment the init extractor runs in for input `name` (Lane A item 5,
         2026-09-23): the env of the first pipeline step that binds `$inputs.<name>`, since that
-        module's image is the one that can read the object; else the first env in the pipeline."""
+        module's image is the one that can read the object; else the first env in the pipeline.
+        An open project has no steps: the first tool whose input type matches, else the first
+        tool's env."""
+        if self.open_ended:
+            item = self.inputs.by_name().get(name)
+            for tool in self.tools():
+                if item is not None and any(
+                    spec.type == item.type for spec in tool.manifest.inputs.values()
+                ):
+                    return tool.manifest.env
+            names = self.env_names()
+            return names[0] if names else "default"
         for step in self.pipeline.steps:
             for rs in step.refs().values():
                 for r in rs:
@@ -183,6 +228,11 @@ class Project:
 
     def env_names(self) -> list[str]:
         names: list[str] = []
+        if self.open_ended:
+            for tool in self.tools():
+                if tool.manifest.env not in names:
+                    names.append(tool.manifest.env)
+            return names
         for step in self.pipeline.steps:
             m = self.modules.get(step.module)
             if m and m.manifest.env not in names:
@@ -196,16 +246,19 @@ class Project:
         return {m.ref: m.manifest for m in self.modules.all()}
 
     def project_config(self, **runtime: Any) -> ProjectConfig:
-        return ProjectConfig(
-            config=self.config,
-            pipeline=self.pipeline,
-            modules=self.manifests(),
-            inputs=self.inputs,
-            plugin_modes=tuple(self.plugin.modes),
-            vocabularies=self.plugin.vocabularies,
-            object_types=tuple(self.plugin.object_types),
-            **runtime,
-        )
+        """The static facts a gate reads; a run context passes its own `pipeline` and `modules`
+        when the topology has grown on demand (open mode)."""
+        fields: dict[str, Any] = {
+            "config": self.config,
+            "pipeline": self.pipeline,
+            "modules": self.manifests(),
+            "inputs": self.inputs,
+            "plugin_modes": tuple(self.plugin.modes),
+            "vocabularies": self.plugin.vocabularies,
+            "object_types": tuple(self.plugin.object_types),
+        }
+        fields.update(runtime)
+        return ProjectConfig(**fields)
 
     # -- declarations and the confirm hold -------------------------------------------
 
@@ -308,6 +361,11 @@ class Project:
         return self.root / "echo.md"
 
     def render_echo(self, objects: dict[str, ObjectState] | None = None) -> str:
+        if self.open_ended:
+            # the switch paragraph and the bound delivery (open_mode_plan.md 1, decision 4)
+            return render_open_echo(
+                self.objective, self.inputs, self.declaration_hashes(), self.tools()
+            )
         inherited = self.inherited_confirmation()
         if inherited is not None:
             return render_inherited_echo(
@@ -338,7 +396,10 @@ class Project:
         (`upstreams`: project, run_id, hold_id, review_id, reviewer, ts), or None when any input
         is raw, any upstream is unconfirmed, differently owned, differently designed, or on
         another method major version. Reads, read-only: each upstream's `stringency.yml`,
-        `design.yml` and `prov/run.db` (runs, holds, reviews)."""
+        `design.yml` and `prov/run.db` (runs, holds, reviews). Never for an open project: the
+        switch to questions is one relayed yes on the pinned paragraph (owner, 2026-10-16)."""
+        if self.config.mode == "open":
+            return None
         if not self.inputs.items:
             return None
         if self.objective.params:
@@ -499,8 +560,19 @@ def init_project(req: InitRequest) -> Project:
         raise ConfigError(f"refusing to init: {root} is not empty")
     if req.mode == "open" and req.profile == "strict":
         raise ConfigError("mode open with profile strict is refused")
-    if req.mode != "pipeline":
-        raise ConfigError(f"mode {req.mode} is reserved; v1 accepts only pipeline")
+    if req.mode == "open" and req.pipeline is not None:
+        raise ConfigError(
+            "mode open binds no pipeline: its tools are the method's modules that list open; "
+            "drop --pipeline"
+        )
+    if req.mode == "pipeline" and req.pipeline is None:
+        raise ConfigError("--pipeline is required in pipeline mode")
+    if req.mode not in ("pipeline", "open"):
+        raise ConfigError(f"mode {req.mode} is reserved")
+    if req.from_delivery is not None and req.mode != "open":
+        raise ConfigError(
+            "--from-delivery derives an open project's declarations; it needs --mode open"
+        )
     root.mkdir(parents=True, exist_ok=True)
     try:
         return _init_in(root, req)[0]
@@ -569,6 +641,138 @@ def _verify_derived_from(item: InputItem) -> None:
         )
 
 
+def _verify_upstream_input(item: InputItem) -> None:
+    """An upstream pipeline's input bound in an open project must be one that project declared,
+    with the same hash (2026-10-19). Reads the upstream's `inputs.yml`."""
+    u = item.upstream_input
+    assert u is not None
+    path = Path(u.project) / "inputs.yml"
+    if not path.exists():
+        raise ConfigError(
+            f"input {item.name}: upstream_input names {u.project}, which has no inputs.yml"
+        )
+    declared = load_model(InputsManifest, path).by_name().get(u.input)
+    if declared is None:
+        raise ConfigError(
+            f"input {item.name}: the upstream {u.project} declares no input {u.input}"
+        )
+    if declared.blake3 != item.blake3:
+        raise ConfigError(
+            f"input {item.name}: hash {item.blake3[:12]} differs from the upstream's "
+            f"{declared.blake3[:12]} for {u.input}"
+        )
+
+
+def open_tools(modules: ModuleIndex) -> list[Module]:
+    """Every module of the index that lists `open` in its `modes`, in index order."""
+    return [m for m in modules.all() if "open" in m.manifest.modes]
+
+
+def upstream_of_delivery(delivery_dir: Path, upstream: Path | None) -> Path:
+    """The upstream project root: `--upstream` when given, else the delivery directory's
+    grandparent when it holds `stringency.yml` (`<project>/deliver/<run>/`)."""
+    if upstream is not None:
+        root = Path(upstream).resolve()
+        if not (root / "stringency.yml").exists():
+            raise ConfigError(f"--upstream {root} is not a stringency project (no stringency.yml)")
+        return root
+    cand = delivery_dir.resolve().parent.parent
+    if (cand / "stringency.yml").exists():
+        return cand
+    raise ConfigError(
+        f"cannot tell which project delivered {delivery_dir}: pass --upstream <project root>"
+    )
+
+
+def declarations_from_delivery(
+    delivery_dir: Path, upstream: Path | None, *, into: Path
+) -> dict[str, Path]:
+    """Write the three declaration files of an open project from a delivery (open_mode_plan.md
+    2.1, 2026-10-16): `inputs.yml` with one item per delivered file (`name` the output name, the
+    step id prefixed on a clash; `type` the recorded kind, `prose` read as `text`; `derived_from`
+    the run, step, output and upstream project), then one item per input the upstream declared
+    (`upstream_<name>`, its `upstream_input` naming it), `design.yml` byte for byte from the upstream,
+    `objective.yml` from the upstream's with `id` suffixed `-open`, no deliverables and no params.
+    Reads `<dir>/index.json` and the upstream's `inputs.yml`, `design.yml` and `objective.yml`; writes the
+    three files under `into` and returns them by key (`objective`, `design`, `inputs`)."""
+    delivery_dir = Path(delivery_dir).resolve()
+    index_path = delivery_dir / "index.json"
+    if not index_path.exists():
+        raise ConfigError(f"{delivery_dir} is not a delivery directory (no index.json)")
+    try:
+        index = json.loads(index_path.read_text())
+    except json.JSONDecodeError as e:
+        raise ConfigError(f"{index_path}: not JSON ({e})") from None
+    if not isinstance(index, dict) or not isinstance(index.get("files"), list):
+        raise ConfigError(f"{index_path}: expected an object with a files list")
+    root = upstream_of_delivery(delivery_dir, upstream)
+    run_id = str(index.get("run_id") or "")
+    if not run_id:
+        raise ConfigError(f"{index_path} names no run_id")
+    names: dict[str, int] = {}
+    for f in index["files"]:
+        names[str(f.get("output"))] = names.get(str(f.get("output")), 0) + 1
+    items: list[dict[str, Any]] = []
+    for f in index["files"]:
+        output, step_id = str(f.get("output")), str(f.get("step_id"))
+        name = output if names.get(output, 0) == 1 else f"{step_id}_{output}"
+        kind = str(f.get("kind") or "text")
+        path = delivery_dir / str(f.get("file"))
+        if not path.exists():
+            raise ConfigError(f"delivered file {path} is missing")
+        items.append(
+            {
+                "name": name,
+                "path": str(path),
+                "type": "text" if kind == "prose" else kind,
+                "blake3": str(f.get("blake3") or hashing.hash_path(path)),
+                "source": f"delivered by run {run_id} of {root}",
+                "derived_from": {
+                    "run_id": run_id,
+                    "step_id": step_id,
+                    "output": output,
+                    "project": str(root),
+                },
+            }
+        )
+    if not items:
+        raise ConfigError(f"{index_path} lists no files; nothing to ask questions of")
+    # the upstream pipeline's own inputs, read-only beside the delivery (2026-10-19): a question
+    # about what the pipeline removed or changed needs the data from before it ran
+    taken = {str(i["name"]) for i in items}
+    up_inputs = load_model(InputsManifest, root / "inputs.yml")
+    for u in up_inputs.items:
+        name = f"upstream_{u.name}"
+        if name in taken:
+            continue
+        entry: dict[str, Any] = {
+            **u.model_dump(exclude_none=True),
+            "name": name,
+            "source": f"input {u.name} of the upstream pipeline {root}, before it ran",
+            "upstream_input": {"project": str(root), "input": u.name},
+        }
+        items.append(entry)
+    up_objective = load_yaml(root / "objective.yml")
+    if not isinstance(up_objective, dict):
+        raise ConfigError(f"{root / 'objective.yml'}: expected a mapping")
+    objective = {
+        **up_objective,
+        "id": f"{up_objective.get('id', 'project')}-open",
+        "deliverables": [],
+        "params": {},
+    }
+    into.mkdir(parents=True, exist_ok=True)
+    out = {
+        "inputs": into / "inputs.yml",
+        "design": into / "design.yml",
+        "objective": into / "objective.yml",
+    }
+    dump_yaml({"inputs": 1, "items": items}, out["inputs"])
+    shutil.copyfile(root / "design.yml", out["design"])
+    dump_yaml(objective, out["objective"])
+    return out
+
+
 def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectState], GateResult]:
     """Returns the project, the init extractor states, and the init gate result."""
     from stringency.git import clone_at
@@ -581,16 +785,55 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
     url, tag = _parse_method(req.method)
     sha = clone_at(url, tag, root / "method")
 
-    pipeline = load_pipeline(find_pipeline(root / "method", req.pipeline))
-    plugin = require_plugin(pipeline.domain)
+    modules = ModuleIndex(root / "method")
+    tools: list[Module] = []
+    if req.mode == "open":
+        # the tools are the modules listing `open`; the domain is theirs (open_mode_plan.md 2.1)
+        tools = open_tools(modules)
+        if not tools:
+            raise ConfigError(
+                f"method {url}@{tag} ships no module that lists open in its modes; "
+                "an open project has nothing to run"
+            )
+        domains = sorted({m.manifest.domain for m in tools})
+        if len(domains) != 1:
+            raise ConfigError(f"the tools belong to more than one domain: {', '.join(domains)}")
+        plugin = require_plugin(domains[0])
+        pipeline = open_pipeline(domains[0], tag, plugin.objective_questions)
+        pipeline_digest = hashing.hash_json(sorted(m.ref for m in tools))
+    else:
+        assert req.pipeline is not None
+        pipeline_path = find_pipeline(root / "method", req.pipeline)
+        pipeline = load_pipeline(pipeline_path)
+        plugin = require_plugin(pipeline.domain)
+        pipeline_digest = hashing.hash_file(pipeline_path)
     if req.mode not in plugin.modes:
         raise ConfigError(f"plugin {plugin.name} does not support mode {req.mode}")
 
+    # the declaration files: given, or derived from a delivery (open mode)
+    files: dict[str, Path | None] = {
+        "objective": req.objective,
+        "design": req.design,
+        "inputs": req.inputs,
+    }
+    if req.from_delivery is not None:
+        derived = declarations_from_delivery(
+            Path(req.from_delivery), req.upstream, into=root / ".stringency" / "from-delivery"
+        )
+        for key, derived_path in derived.items():
+            if files[key] is None:
+                files[key] = derived_path
+    for key, given in files.items():
+        if given is None:
+            raise ConfigError(f"--{key} is required (or --from-delivery <dir> in open mode)")
+    req_objective, req_design, req_inputs = files["objective"], files["design"], files["inputs"]
+    assert req_objective is not None and req_design is not None and req_inputs is not None
+
     # declarations: validate, then copy in
-    inputs = load_model(InputsManifest, req.inputs)
-    design_raw = load_yaml(req.design)
-    design = load_model(Design, req.design)
-    objective = load_model(Objective, req.objective)
+    inputs = load_model(InputsManifest, req_inputs)
+    design_raw = load_yaml(req_design)
+    design = load_model(Design, req_design)
+    objective = load_model(Objective, req_objective)
     problems = validate(design_raw, plugin.design_schema)
     if problems:
         raise ConfigError("design.yml fails the plugin schema: " + "; ".join(problems))
@@ -599,10 +842,19 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
             f"objective question {objective.question} is not in the plugin vocabulary "
             f"{list(plugin.objective_questions)}"
         )
+    if req.mode == "open" and objective.params:
+        raise ConfigError(
+            "an open objective declares no params: a tool's parameters are settled per question"
+        )
+    if req.mode == "open" and objective.deliverables:
+        raise ConfigError(
+            "an open objective declares no deliverables: the person chooses which answers to "
+            "deliver at the end"
+        )
     for name, src in (
-        ("design.yml", req.design),
-        ("objective.yml", req.objective),
-        ("inputs.yml", req.inputs),
+        ("design.yml", req_design),
+        ("objective.yml", req_objective),
+        ("inputs.yml", req_inputs),
     ):
         shutil.copyfile(src, root / name)
 
@@ -616,21 +868,28 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
             raise ConfigError(
                 f"input {item.name}: hash mismatch (recorded {item.blake3[:12]}, actual {actual[:12]})"
             )
-        if item.type not in plugin.object_types and item.type not in {
-            "json",
-            "table",
-            "tsv",
-            "csv",
-            "text",
-        }:
+        # a delivered artifact's kind was recorded by the engine that produced it; a declared
+        # raw input's type must be one the plugin or the engine can read
+        if (
+            item.derived_from is None
+            and item.type not in plugin.object_types
+            and item.type not in {"json", "table", "tsv", "csv", "text"}
+        ):
             raise ConfigError(
                 f"input {item.name}: type {item.type} is unknown to plugin {plugin.name}"
             )
         if item.derived_from is not None:
             _verify_derived_from(item)
+        if item.upstream_input is not None:
+            _verify_upstream_input(item)
 
-    # modules resolve and admit the mode
-    modules = ModuleIndex(root / "method")
+    # modules resolve and admit the mode (the pipeline's steps, or in open mode the tools)
+    if req.mode == "open":
+        for m in tools:
+            if m.manifest.domain != pipeline.domain:
+                raise ConfigError(
+                    f"tool {m.ref} belongs to domain {m.manifest.domain}, not {pipeline.domain}"
+                )
     for step in pipeline.steps:
         m = modules.require(step.module)
         if req.mode not in m.manifest.modes:
@@ -697,6 +956,7 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         method=MethodRef(repo=url, tag=tag, sha=sha),
         pipeline=req.pipeline,
         mode=req.mode,
+        domain=pipeline.domain if req.mode == "open" else None,
         profile=req.profile,
         roles=Roles(owner=owner, reviewer=reviewer),
         judgment_harness=req.judgment_harness,
@@ -727,7 +987,7 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
             "path": str(root),
             "pipeline_name": pipeline.name,
             "pipeline_version": pipeline.version,
-            "pipeline_digest": hashing.hash_file(find_pipeline(root / "method", req.pipeline)),
+            "pipeline_digest": pipeline_digest,
             "method_repo": url,
             "method_tag": tag,
             "mode": req.mode,

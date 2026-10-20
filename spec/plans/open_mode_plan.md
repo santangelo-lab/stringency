@@ -1,9 +1,12 @@
 # Open mode: interactive downstream analysis on a delivered dataset
 
-**Status 2026-10-16.** Approved by the owner 2026-10-16 (plan mode, this engine checkout;
-`notes/2026-10-16-1330-open-mode-plan.md`). Nothing built. The implementation (sessions S1 to
-S7 and O1 to O6 of section 7) is to be driven by an agent on the lab's workstation against the
-installed engine; the design amendments of section 6 await the owner's reading. Lane K in
+**Status 2026-10-16, evening.** Approved by the owner 2026-10-16 (plan mode, this engine
+checkout; `notes/2026-10-16-1330-open-mode-plan.md`). S1 to S7 built the same day on branch
+`open-mode` (engine 0.2.22, not tagged, not merged; `notes/2026-10-16-2200-open-mode-s1-s7.md`):
+every engine change of section 2, the toy's tools and controls of section 4, the six predicates,
+the trace tables, and the design amendments of section 6 applied to `spec/stringency-design.md`
+for the owner's reading at merge. Open: O1 to O6 (the skill text, the toy rehearsal, the console,
+the Xenium tools, the acceptance run, the promotion loop) and the owner's merge. Lane K in
 `roadmap-2026-10.md`.
 
 ## Context
@@ -536,3 +539,40 @@ and a commit naming it.
   real `exec`.
 - Real data (O4, O5): one organ's delivery through the Xenium tools; the acceptance run and
   the baseline arm; the measurement row.
+
+## 9. Amendments after the owner's test drive (2026-10-19)
+
+The drive (`docs/open-mode-rehearsal.md`, toy method `v0.2.0-rc2`) found six things; each is
+built on branch `open-mode` and recorded in `spec/DECISIONS.md` under "Open mode O2 findings":
+
+- Every answer was untested: no control ever ran in the open project. A deterministic tool's
+  controls now run inside `call` before its first step (`controls.ensure_current`).
+- The untested label of a tool's answer said "code written in this session". A third pinned
+  sentence names the tool and why it missed trusted; `{data}` names what the path rests on.
+- The upstream's raw input was out of reach. `init --from-delivery` binds the upstream
+  pipeline's own inputs as `upstream_<name>`, read-only, bound only when named.
+- The open delivery shared file names with the pipeline delivery and used ids for names:
+  `deliver/answers-<NN>/`, `q<NN>-<words>.md`, `answers-summary.md` and its siblings,
+  `deliver --answer all`; the summary no longer carries the switch question.
+- The project directory was hard to read: an engine-written `README.md` in every project, and
+  the open project named `<upstream>-open` (sections 2.1 and 3 say `-questions`; read `-open`).
+- The delivery message was long: one reporting rule in the skills, the brief's engine-record
+  list behind `--rehearsal`, and answers delivered once after the pinned deliver sentence.
+
+## 10. The report replaces `deliver --answer` (2026-10-19, after the second drive)
+
+The second drive showed that answers reach the person in the chat before anything reaches
+disk, so a session that ends after "that's what I wanted" left `deliver/` empty. The owner's
+reading of what delivery is for: put forward the fruitful avenues, keep everything attempted on
+record. Built on branch `open-mode` (`spec/DECISIONS.md`, "Open mode, the report"):
+
+- `report.py`: every admissible answer is written into `deliver/<run>/` as it is filed
+  (`verb_answer` calls `write_open_delivery`); `report.md` leads with the findings in full and
+  ends with the other questions as short paragraphs; `index.json` carries `report` and the
+  finding fields per answer; deterministic content, a `deliveries` row only on change.
+- `findings` table (migration 0006, append-only) and `stringency finding <answer id>...
+  [--reason] [--remove]`; `plain` counts findings; the README shows them.
+- `deliver` in open mode regenerates; `--answer` refused. The open summary is gone (the report
+  is the reader's file); coverage says "cited by findings".
+- The operator says the report sentence once at the first answer, the findings sentence once
+  when the person is done, and offers once in a later session with unmarked answers (10.7).

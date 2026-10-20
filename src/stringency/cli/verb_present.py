@@ -1,4 +1,5 @@
-"""`stringency present [--run <id>] [--hold <id>] [--skills-dir <dir>] [--json]` (design 14.3)."""
+"""`stringency present [--run <id>] [--hold <id>] [--answer <id> [--details]] [--answers]
+[--skills-dir <dir>] [--json]` (design 14.3)."""
 
 from __future__ import annotations
 
@@ -7,7 +8,14 @@ from pathlib import Path
 import typer
 
 from stringency.cli.common import emit, handle_errors
-from stringency.present import Site, present_hold, present_run, render_markdown
+from stringency.present import (
+    Site,
+    present_answer,
+    present_answers,
+    present_hold,
+    present_run,
+    render_markdown,
+)
 
 
 @handle_errors
@@ -15,6 +23,13 @@ def present(
     run_id: str | None = typer.Option(None, "--run", help="a completed run (default: the latest)"),
     hold_id: str | None = typer.Option(
         None, "--hold", help="an open hold (default: the newest open one)"
+    ),
+    answer_id: str | None = typer.Option(None, "--answer", help="open mode: one answer"),
+    answers: bool = typer.Option(False, "--answers", help="open mode: list every answer"),
+    details: bool = typer.Option(
+        False,
+        "--details",
+        help="with --answer: add the qualifier line, the cells checked, every decision, the ids",
     ),
     skills_dir: Path | None = typer.Option(
         None,
@@ -24,7 +39,11 @@ def present(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Site.find()
-    if hold_id is not None or (run_id is None and _has_open_hold(project)):
+    if answers:
+        payload = present_answers(project, run_id)
+    elif answer_id is not None:
+        payload = present_answer(project, answer_id, skills_dir, details=details)
+    elif hold_id is not None or (run_id is None and _has_open_hold(project)):
         payload = present_hold(project, hold_id, skills_dir)
     else:
         payload = present_run(project, run_id, skills_dir)

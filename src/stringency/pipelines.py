@@ -281,6 +281,23 @@ class Pipeline(BaseModel):
         return self.successors(step_id)
 
 
+OPEN_PIPELINE_NAME = "open"
+
+
+def open_pipeline(domain: str, version: str, answers: list[str] | tuple[str, ...]) -> Pipeline:
+    """The empty topology of an open project (open_mode_plan.md 2.1, 2026-10-16): no declared
+    steps, the plugin's questions as `answers`. The one place an empty topology is made; an
+    open run grows it one on-demand step at a time (`RunContext.pipeline`)."""
+    return Pipeline(
+        pipeline=1,
+        name=OPEN_PIPELINE_NAME,
+        version=version,
+        domain=domain,
+        answers=list(answers),
+        steps=[],
+    )
+
+
 def load_pipeline(path: Path) -> Pipeline:
     data = load_yaml(path)
     if not isinstance(data, dict):

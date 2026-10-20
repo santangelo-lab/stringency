@@ -25,6 +25,8 @@ def describe(action: Action) -> str:
         )
     if op == "report":
         return f"a report was generated from the comparison table and the group labels (step {action.step_id})"
+    if op == "plot_groups":
+        return f"the group differences were drawn as a bar chart (step {action.step_id})"
     return f"{op} was run (step {action.step_id})"
 
 

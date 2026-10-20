@@ -11,7 +11,21 @@ from collections.abc import Mapping
 from typing import Any
 
 from stringency.config import Design, InputsManifest, Objective
+from stringency.modules import Module
 from stringency.plugins import Plugin
+
+# The switch paragraph (open_mode_plan.md 1, "The pinned sentences"; owner's decision 4,
+# 2026-10-16): the confirm echo of an open project is this paragraph and the bound delivery.
+# The operator says it as written and relays the person's yes with `--attest`. Held identical to
+# the operator skill's copy by a test.
+OPEN_SWITCH = (
+    "Your results are delivered. You can ask questions of them here. Nothing you ask is "
+    "declared in advance and nothing here is a pre-registered result. Some questions I answer "
+    "with tools shipped with this method, which are tested; some with code written in this "
+    "session, which is not; the engine labels each answer trusted or untested from what ran, "
+    "counts every run of the same tool on the same data, and nothing you ask changes the "
+    "delivered files. Shall I open it for questions?"
+)
 
 
 def contrast_sentence(objective: Objective) -> str:
@@ -137,3 +151,63 @@ def render_inherited_echo(
             "This is what is new here."
         ),
     )
+
+
+def render_open_echo(
+    objective: Objective,
+    inputs: InputsManifest,
+    hashes: Mapping[str, str],
+    tools: list[Module],
+) -> str:
+    """The echo-back of an open project (open_mode_plan.md 1 and 2.1, 2026-10-16): the switch
+    paragraph, then the bound delivery (the upstream run and project, the files by name and
+    type) and the tools the method ships, then the hashes the accept is bound to."""
+    lines = open_echo_lines(objective, inputs, tools)
+    bound = "\n".join(f"  {k}: {v}" for k, v in sorted(hashes.items()))
+    return (
+        "# Echo-back (open mode)\n\n"
+        + wrap_text(OPEN_SWITCH)
+        + "\n\n"
+        + wrap_text("\n".join(lines))
+        + f"\n\nBound to:\n{bound}\n"
+    )
+
+
+def open_echo_lines(objective: Objective, inputs: InputsManifest, tools: list[Module]) -> list[str]:
+    """What an open project is bound to, without the switch paragraph: the delivery, the
+    upstream pipeline's own inputs, other inputs, the upstream question and the tools. The
+    echo-back says it after the switch; the open summary's "What was analyzed" is it."""
+    lines: list[str] = []
+    runs: dict[tuple[str, str], list[str]] = {}
+    raw: list[str] = []
+    before: dict[str, list[str]] = {}
+    for i in inputs.items:
+        if i.upstream_input is not None:
+            before.setdefault(i.upstream_input.project, []).append(
+                f"{i.upstream_input.input} ({i.type}) as {i.name}"
+            )
+            continue
+        d = i.derived_from
+        if d is None:
+            raw.append(f"{i.name} ({i.type})")
+            continue
+        runs.setdefault((d.run_id, d.project or "an unrecorded project"), []).append(
+            f"{i.name} ({i.type}, step {d.step_id}, output {d.output})"
+        )
+    for (run_id, project), files in runs.items():
+        lines.append(f"Delivery bound: run {run_id} of {project}: " + "; ".join(files) + ".")
+    for project, names in before.items():
+        lines.append(
+            f"The pipeline's own inputs, read-only, from before it ran: {'; '.join(names)} of "
+            f"{project}."
+        )
+    if raw:
+        lines.append("Inputs that are not a delivery: " + ", ".join(raw) + ".")
+    lines.append(f"The upstream project asked {objective.question}.")
+    if tools:
+        lines.append(
+            "Tools shipped with the method: "
+            + ", ".join(f"{m.manifest.name} ({m.manifest.operation})" for m in tools)
+            + "."
+        )
+    return lines

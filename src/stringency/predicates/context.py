@@ -50,6 +50,12 @@ class ProjectConfig:
     plugin_modes: tuple[str, ...] = ("pipeline",)
     vocabularies: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     object_types: tuple[str, ...] = ()  # types that have a state extractor
+    # open mode (2026-10-16): the kind recorded for every input and produced artifact of the run,
+    # by bare digest, so `topo.input_type_mismatch` reads facts and does no I/O
+    artifact_kinds: Mapping[str, str] = field(default_factory=dict)
+    # open mode: per tool ref, `{status: current | stale | none, last_passing}` from
+    # `controls.current_for`, so `prov.controls_stale` reads facts and does no I/O
+    controls_current: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
 
     @property
     def mode(self) -> str:

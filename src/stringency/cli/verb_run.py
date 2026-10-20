@@ -12,7 +12,7 @@ import typer
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.deliver import deliver as do_deliver
-from stringency.exit_codes import ConfigError
+from stringency.exit_codes import ConfigError, RefusedError
 from stringency.judgment import check_responses, check_text
 from stringency.notify import notify_after
 from stringency.project import Project
@@ -67,6 +67,11 @@ def run(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Project.find()
+    if project.open_ended:
+        raise RefusedError(
+            "run is not a verb of an open project: there is no declared topology to run; "
+            "`stringency ask` files a question and `call` or `exec` answers it one step at a time"
+        )
     if check:
         if responses is None:
             raise ConfigError("--check needs --responses <file>")

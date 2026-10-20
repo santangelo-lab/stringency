@@ -10,6 +10,7 @@ breaks the verb).
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,8 @@ def _who(cfg: StringencyConfig, role: str) -> str:
 def _titles(root: Path, cfg: StringencyConfig) -> dict[str, str]:
     """Step titles from the method's pipeline file; empty when it cannot be read."""
     try:
+        if cfg.pipeline is None:
+            return {}  # an open project's steps are on demand; their titles are their ids
         pipeline = load_pipeline(find_pipeline(root / "method", cfg.pipeline))
         return {s: pipeline.title(s) for s in pipeline.order()}
     except Exception:  # noqa: BLE001
@@ -76,7 +79,9 @@ def project_entry(root: Path) -> dict[str, Any]:
         entry["error"] = f"{type(e).__name__}: {e}"
         return entry
     try:
-        entry.update(pipeline=cfg.pipeline, method_tag=cfg.method.tag, profile=cfg.profile)
+        entry.update(
+            pipeline=cfg.pipeline or "open", method_tag=cfg.method.tag, profile=cfg.profile
+        )
         status, hold_id = _confirm(store)
         entry["confirm"] = status
         holds: list[dict[str, Any]] = []
@@ -245,8 +250,13 @@ def write_board(root: Path) -> Path:
 
 
 def refresh_if_present(project_root: Path) -> None:
-    """Rewrite `<project>/../STATUS.md` when one exists. Never raises: the board is a convenience
-    and must not turn a successful verb into a failure."""
+    """Rewrite the project's `README.md` (2026-10-19) and `<project>/../STATUS.md` when one
+    exists. Never raises: both are conveniences and must not turn a successful verb into a
+    failure."""
+    from stringency.readme import write_readme
+
+    with contextlib.suppress(Exception):
+        write_readme(Path(project_root))
     try:
         parent = Path(project_root).resolve().parent
         if (parent / BOARD_FILE).exists():

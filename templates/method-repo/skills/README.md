@@ -48,6 +48,13 @@ the intended outcome (`analyze`, `declare-only`, `operator-only`, `none`). Run b
 Claude Science session after each revision of the description until a skill evaluation tool is
 confirmed there; record the results in `<pipeline>.phrasings.results.md`.
 
+`tools:` and `open:` in the `.analyze.yml` (open mode, engine 0.2.22) are the words for the
+tools the method ships for questions after delivery and the paths the operator proposes before
+the switch; `open.yml` is the answer view `present --answer` renders; `<pipeline>.questions.yml`
+is the routing test set for questions (`tool:<name>`, `exec`, `cannot`, `fork`, `explain`).
+`--check` requires each tool to be a module listing `open`, every decision point of it to be
+asked or proposed, and every path's `needs` to be a pipeline output.
+
 `decisions:` in the `.analyze.yml` names the decision points a person settles: `how: declared`
 ones are asked before the echo-back and written to `objective.yml` `params:`; `how: proposed` ones
 the operator proposes after the named step from the named evidence, and the person approves at

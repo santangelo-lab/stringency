@@ -14,7 +14,7 @@ from stringency_toy import phrasing
 from stringency_toy.schemas import DESIGN_SCHEMA, OPERATIONS
 
 NAME = "stringency-toy"
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 _HERE = Path(__file__).parent
 
 VOCABULARIES = {
@@ -24,7 +24,7 @@ VOCABULARIES = {
 PLUGIN = Plugin(
     name=NAME,
     version=VERSION,
-    modes=("pipeline",),
+    modes=("pipeline", "open"),
     predicates_module="stringency_toy.predicates",
     operations={k: Operation(name=k, params_schema=v) for k, v in OPERATIONS.items()},
     object_types={

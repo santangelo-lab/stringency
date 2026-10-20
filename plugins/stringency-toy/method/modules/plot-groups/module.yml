@@ -1,0 +1,17 @@
+contract: 1
+name: plot-groups
+version: 0.1.0
+kind: deterministic
+operation: plot_groups
+domain: stringency-toy
+modes: [open]
+env: toy-py
+runner: engine
+inputs:
+  comparison: {type: table, format: tsv, hash: true}
+outputs:
+  figure: {type: figure, format: svg}
+decision_points: []
+stochastic: false
+gates:
+  - obj.feasibility@1

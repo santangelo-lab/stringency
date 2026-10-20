@@ -72,6 +72,7 @@ def make_ctx(
     profile: str | None = None,
     action: Action | None = None,
     script_blobs: Mapping[str, str] | None = None,
+    artifact_kinds: Mapping[str, str] | None = None,
 ) -> GateContext:
     if action is None:
         action, _ = make_action(project, step_id, proposed=proposed)
@@ -98,6 +99,7 @@ def make_ctx(
         env_digests=env_digests,
         step_status=step_status,
         script_blobs=dict(script_blobs or {}),
+        artifact_kinds=dict(artifact_kinds or {}),
         plugin_modes=tuple(project.plugin.modes),
         vocabularies=project.plugin.vocabularies,
         object_types=tuple(project.plugin.object_types),

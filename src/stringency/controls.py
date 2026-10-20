@@ -24,7 +24,7 @@ class FixtureTruth(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     path: str
     key: str
-    column: str
+    column: str | None = None  # the label column (judgment); `expect.equals` names its own
     mapping: str | None = None
 
 
@@ -48,15 +48,38 @@ class ControlSpec(BaseModel):
     fixture: Fixture
     generator: Generator | None = None
     expect: dict[str, Any]
+    # the parameters the control runs the module with, admitted as the synthetic step's defaults
+    # so no `param.agent_proposed` hold opens (open_mode_plan.md 2.6, 2026-10-16)
+    params: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check(self) -> ControlSpec:
         if self.control != 1:
             raise ValueError("control must be 1")
-        if self.kind == "positive" and self.fixture.truth is None:
-            raise ValueError("a positive control needs fixture.truth")
+        if (
+            self.kind == "positive"
+            and self.fixture.truth is None
+            and not self.expect.get("completed")
+        ):
+            raise ValueError("a positive control needs fixture.truth (or expect.completed: true)")
         if self.kind in ("negative", "planted") and self.generator is None:
             raise ValueError(f"a {self.kind} control needs a generator")
+        if "equals" in self.expect:
+            eq = self.expect["equals"]
+            if not isinstance(eq, dict) or not eq.get("output") or not eq.get("columns"):
+                raise ValueError("expect.equals needs output and columns")
+            if self.fixture.truth is None:
+                raise ValueError("expect.equals needs fixture.truth (the table to compare with)")
+        if "count" in self.expect:
+            ct = self.expect["count"]
+            if (
+                not isinstance(ct, dict)
+                or not ct.get("output")
+                or not isinstance(ct.get("where"), dict)
+            ):
+                raise ValueError("expect.count needs output and where: {column, below | above}")
+            if "max" not in ct and "min" not in ct:
+                raise ValueError("expect.count needs max or min")
         return self
 
 
@@ -77,6 +100,7 @@ def load_control(path: Path) -> ControlSpec:
 # pipeline's steps up to and including the module's step, with the object input replaced by
 # the (generated) fixture, every step engine-run.
 
+import contextlib  # noqa: E402
 import csv  # noqa: E402
 import json  # noqa: E402
 from collections.abc import Iterator  # noqa: E402
@@ -132,11 +156,20 @@ class ControlProject(Project):
         inputs: InputsManifest,
         run_root: Path,
         summaries: dict[str, Any],
+        mode: str | None = None,
     ) -> None:
         self.__dict__.update(base.__dict__)
         self.pipeline = pipeline
+        self.open_ended = False  # a control run is a declared one-off, never open-ended
         self.inputs = inputs
-        self.config = base.config.model_copy(update={"execution": "engine"})
+        # the control is about the module: it runs under a mode the module admits, so a tool that
+        # lists `open` only is controlled from a pipeline project too (2026-10-16)
+        update: dict[str, Any] = {"execution": "engine"}
+        if mode is not None and mode != base.config.mode:
+            update.update(mode=mode, pipeline=None if mode == "open" else base.config.pipeline)
+            if mode == "open":
+                update["domain"] = base.pipeline.domain
+        self.config = base.config.model_copy(update=update)
         self._run_root = run_root
         self._summaries = summaries
         self._store = base.store
@@ -212,13 +245,49 @@ def run_generator(project: Project, spec: ControlSpec, fixture: Path, out_dir: P
     return out
 
 
+def _one_step_pipeline(
+    project: Project, module: Module, fixture_type: str, params: dict[str, Any]
+) -> tuple[Pipeline, str, str]:
+    m = module.manifest
+    required = [n for n, s in m.inputs.items() if not s.optional]
+    matching = [n for n in required if m.inputs[n].type == fixture_type]
+    if len(matching) != 1:
+        raise ConfigError(
+            f"a one-step control of {m.ref} needs exactly one required input of type "
+            f"{fixture_type}; it has {len(matching)}"
+        )
+    unwired = [n for n in required if n != matching[0]]
+    if unwired:
+        raise ConfigError(
+            f"a one-step control of {m.ref} leaves required input(s) unwired: {', '.join(unwired)}"
+        )
+    step = StepDecl(
+        id=f"01_{m.name}",
+        module=m.ref,
+        title=m.name,
+        inputs={matching[0]: "$inputs.control_input"},
+        params={k: {"default": v} for k, v in params.items()},
+        runner="engine",
+    )
+    pipe = project.pipeline.model_copy(update={"name": f"control-{m.name}", "steps": [step]})
+    return pipe, step.id, "control_input"
+
+
 def synthetic_pipeline(
-    project: Project, module: Module, fixture_type: str
+    project: Project, module: Module, fixture_type: str, params: dict[str, Any] | None = None
 ) -> tuple[Pipeline, str, str]:
     """The ancestors of the module's step plus the step itself, engine-run, with the object
-    input rewired to `control_input`. Returns (pipeline, step id of the module, replaced input name)."""
+    input rewired to `control_input`. Returns (pipeline, step id of the module, replaced input name).
+    A module in no pipeline step that lists `open` (a tool; open_mode_plan.md 2.6) runs as a
+    one-step pipeline: its one required input of the fixture's type bound to `control_input`,
+    the other inputs left unwired (phase 1: they must be optional)."""
     pipe = project.pipeline
     target = next((s for s in pipe.steps if s.module_name == module.manifest.name), None)
+    required_types = {s.type for s in module.manifest.inputs.values() if not s.optional}
+    if "open" in module.manifest.modes and fixture_type in required_types:
+        # a tool is controlled alone, whatever pipeline also uses it: the truth table describes
+        # the tool's output on the fixture, not the fixture after some upstream step (2026-10-16)
+        return _one_step_pipeline(project, module, fixture_type, params or {})
     if target is None:
         raise ConfigError(f"module {module.ref} is not used by pipeline {pipe.name}")
     keep: set[str] = {target.id}
@@ -244,7 +313,21 @@ def synthetic_pipeline(
                     inputs[k] = "$inputs.control_input"
                     replaced = ref.name
                     break
-        steps.append(s.model_copy(update={"inputs": inputs, "runner": "engine"}))
+        update: dict[str, Any] = {"inputs": inputs, "runner": "engine"}
+        if s.id == target.id and params:
+            # the control's parameters as the step's defaults: admitted, no hold
+            from stringency.pipelines import ParamDecl
+
+            merged = dict(s.params)
+            for k, v in params.items():
+                prior = merged.get(k)
+                merged[k] = ParamDecl(
+                    default=v,
+                    range=prior.range if prior else None,
+                    options=prior.options if prior else None,
+                )
+            update["params"] = merged
+        steps.append(s.model_copy(update=update))
     if replaced is None:
         raise ConfigError(
             f"no input of type {fixture_type} feeds {module.ref}; the control fixture cannot be wired"
@@ -256,7 +339,8 @@ def synthetic_pipeline(
     )
 
 
-def _truth(project: Project, spec: ControlSpec) -> dict[str, str]:
+def _truth_rows(project: Project, spec: ControlSpec) -> dict[str, dict[str, str]]:
+    """The truth table's rows keyed by `truth.key`."""
     assert spec.fixture.truth is not None
     t = spec.fixture.truth
     path = project.method_root / t.path
@@ -264,7 +348,16 @@ def _truth(project: Project, spec: ControlSpec) -> dict[str, str]:
         path = project.root / t.path
     with open(path, newline="") as f:
         rows = list(csv.DictReader(f, delimiter="\t" if path.suffix == ".tsv" else ","))
-    truth = {str(r[t.key]): str(r[t.column]) for r in rows}
+    return {str(r[t.key]): dict(r) for r in rows}
+
+
+def _truth(project: Project, spec: ControlSpec) -> dict[str, str]:
+    assert spec.fixture.truth is not None
+    t = spec.fixture.truth
+    if t.column is None:
+        raise ConfigError(f"control {spec.name}: fixture.truth.column is needed for a label truth")
+    rows = _truth_rows(project, spec)
+    truth = {k: str(r[t.column]) for k, r in rows.items()}
     if t.mapping:
         mp = project.method_root / t.mapping
         with open(mp, newline="") as f:
@@ -278,14 +371,28 @@ def _truth(project: Project, spec: ControlSpec) -> dict[str, str]:
 def evaluate_expectations(
     project: Project, spec: ControlSpec, run_id: str, step_id: str, module: Module
 ) -> tuple[bool, dict[str, Any], list[str]]:
-    """Metrics from the trace (judgments and consensus), then `expect`."""
+    """Metrics from the trace (judgments and consensus), then `expect`. A deterministic module
+    is scored by `expect.equals` (the output table against the truth table, keyed by
+    `truth.key`), `expect.count` (rows of the output meeting a condition, at most or at least)
+    and `expect.completed` (the step completed, the implicit score before 2026-10-16)."""
     store = project.store
     notes: list[str] = []
     if module.manifest.kind != "judgment":
         st = store.scalar(
             "SELECT status FROM steps WHERE run_id=? AND step_id=?", (run_id, step_id)
         )
-        return st == "completed", {"step_status": st}, notes
+        metrics_d: dict[str, Any] = {"step_status": st}
+        passed_d = st == "completed"
+        exp_d = spec.expect
+        if "equals" in exp_d and passed_d:
+            ok, m = _expect_equals(project, spec, run_id, step_id, exp_d["equals"])
+            metrics_d.update(m)
+            passed_d = passed_d and ok
+        if "count" in exp_d and passed_d:
+            ok, m = _expect_count(project, run_id, step_id, exp_d["count"])
+            metrics_d.update(m)
+            passed_d = passed_d and ok
+        return passed_d, metrics_d, notes
     items = {
         r["item_id"]: r
         for r in store.all(
@@ -341,10 +448,135 @@ def evaluate_expectations(
     return passed, metrics, notes
 
 
+def _output_rows(project: Project, run_id: str, step_id: str, output: str) -> list[dict[str, str]]:
+    row = project.store.one(
+        "SELECT path FROM artifacts WHERE run_id=? AND step_id=? AND name=? AND status='produced' "
+        "ORDER BY rowid DESC LIMIT 1",
+        (run_id, step_id, output),
+    )
+    if row is None:
+        raise ConfigError(f"control: step {step_id} produced no output {output}")
+    path = Path(row["path"])
+    with open(path, newline="") as f:
+        return list(csv.DictReader(f, delimiter="\t" if path.suffix in (".tsv", ".tab") else ","))
+
+
+def _close(a: str, b: str, tol: float) -> bool:
+    try:
+        return abs(float(a) - float(b)) <= tol
+    except (TypeError, ValueError):
+        return a.strip() == b.strip()
+
+
+def _expect_equals(
+    project: Project, spec: ControlSpec, run_id: str, step_id: str, eq: dict[str, Any]
+) -> tuple[bool, dict[str, Any]]:
+    """`expect.equals: {output, columns, tolerance: <abs> | {column: abs}}`: every truth row has
+    an output row with the same key whose named columns agree (numbers within the tolerance,
+    text exactly). Metrics: rows_compared, rows_matching, missing_keys, max_abs_diff."""
+    assert spec.fixture.truth is not None
+    key = spec.fixture.truth.key
+    truth = _truth_rows(project, spec)
+    out = {str(r.get(key)): r for r in _output_rows(project, run_id, step_id, str(eq["output"]))}
+    columns = [str(c) for c in eq["columns"]]
+    tol = eq.get("tolerance", 0)
+
+    def tol_for(c: str) -> float:
+        return float(tol.get(c, 0)) if isinstance(tol, dict) else float(tol)
+
+    matching, missing, max_diff = 0, [], 0.0
+    for k, trow in truth.items():
+        orow = out.get(k)
+        if orow is None:
+            missing.append(k)
+            continue
+        ok = True
+        for c in columns:
+            a, b = str(orow.get(c, "")), str(trow.get(c, ""))
+            if not _close(a, b, tol_for(c)):
+                ok = False
+            with contextlib.suppress(TypeError, ValueError):
+                max_diff = max(max_diff, abs(float(a) - float(b)))
+        matching += int(ok)
+    metrics = {
+        "rows_compared": len(truth),
+        "rows_matching": matching,
+        "missing_keys": missing,
+        "max_abs_diff": round(max_diff, 6),
+    }
+    return (matching == len(truth) and not missing), metrics
+
+
+def _expect_count(
+    project: Project, run_id: str, step_id: str, ct: dict[str, Any]
+) -> tuple[bool, dict[str, Any]]:
+    """`expect.count: {output, where: {column, below | above}, max | min}`: how many rows of
+    the output satisfy the condition, against a ceiling or a floor (a negative control: "no
+    contrast passes adj_p below 0.05 after shuffling")."""
+    where = ct["where"]
+    col = str(where["column"])
+    rows = _output_rows(project, run_id, step_id, str(ct["output"]))
+    n = 0
+    for r in rows:
+        try:
+            v = float(r.get(col, ""))
+        except (TypeError, ValueError):
+            continue
+        below = "below" in where and v < float(where["below"])
+        above = "above" in where and v > float(where["above"])
+        if below or above:
+            n += 1
+    ok = True
+    if "max" in ct:
+        ok = ok and n <= int(ct["max"])
+    if "min" in ct:
+        ok = ok and n >= int(ct["min"])
+    return ok, {"count": n, "rows": len(rows)}
+
+
+def current_for(store: Any, module: Module, env_digest: str | None) -> dict[str, Any]:
+    """Whether a tool's last passing control still speaks for it (open_mode_plan.md 2.5):
+    `{status: current | stale | failed | none, last_passing}`. `current` when a passing `controls_runs`
+    row exists for `name@version` and it ran under the environment digest given (recorded in
+    its metrics as `env_digest`); `stale` when the digest differs or either is unknown; `failed`
+    when the version's controls ran and none passed; `none` when none ran. Reads:
+    controls_runs."""
+    row = store.one(
+        "SELECT control_name, kind, ts, metrics_json FROM controls_runs WHERE module=? AND "
+        "module_version=? AND passed=1 ORDER BY ts DESC, rowid DESC LIMIT 1",
+        (module.manifest.name, module.manifest.version),
+    )
+    if row is None:
+        ran = store.scalar(
+            "SELECT COUNT(*) FROM controls_runs WHERE module=? AND module_version=?",
+            (module.manifest.name, module.manifest.version),
+        )
+        return {"status": "failed" if ran else "none", "last_passing": None}
+    metrics = json.loads(row["metrics_json"] or "{}")
+    ran_under = metrics.get("env_digest")
+    status = "current" if env_digest and ran_under == env_digest else "stale"
+    return {
+        "status": status,
+        "last_passing": {
+            "control": row["control_name"],
+            "kind": row["kind"],
+            "ts": row["ts"],
+            "env_digest": ran_under,
+        },
+    }
+
+
 def regression_against(previous: dict[str, Any] | None, metrics: dict[str, Any]) -> bool:
-    """A metric moved in the bad direction relative to the last passing result."""
+    """A metric moved in the bad direction relative to the last passing result: a lower
+    agreement, a higher abstain rate, fewer matching rows, a null output lost."""
     if not previous:
         return False
+    if (
+        "rows_matching" in previous
+        and "rows_matching" in metrics
+        and metrics["rows_matching"] < previous["rows_matching"]
+    ):
+        return True
     if (
         "agreement" in previous
         and "agreement" in metrics
@@ -366,7 +598,13 @@ def run_control(
 ) -> ControlResult:
     """Execute one control end to end and record it. Writes: controls_runs, and everything a
     run writes, under `controls/<module>/<control>/`."""
-    if project.config.judgment_harness == "mock" and not allow_mock:
+    # a deterministic tool's control never reaches the harness, so the mock answers nothing
+    # there (2026-10-19, open mode: controls run before a tool's first use)
+    if (
+        project.config.judgment_harness == "mock"
+        and not allow_mock
+        and module.manifest.kind == "judgment"
+    ):
         raise RefusedError(
             "controls must exercise the real judgment harness; the mock is refused (use --allow-mock in tests)"
         )
@@ -379,7 +617,9 @@ def run_control(
     )
     input_digest = hashing.hash_path(input_path)
     refuse_holdout(project, input_digest, f"control {spec.name} generated input")
-    pipeline, step_id, replaced = synthetic_pipeline(project, module, spec.fixture.input.type)
+    pipeline, step_id, replaced = synthetic_pipeline(
+        project, module, spec.fixture.input.type, spec.params
+    )
     items = [
         InputItem(
             name="control_input",
@@ -393,17 +633,21 @@ def run_control(
     inputs = InputsManifest(items=items)
     from stringency.extract import extract_object
 
-    ext = extract_object(
-        project.plugin,
-        project.executor(),
-        object_type=spec.fixture.input.type,
-        object_path=input_path,
-        design=project.design.model_dump(),
-        env_name=project.env_names()[0],
-        workdir=ctrl_dir / "extract",
-    )
-    summaries = {**project.input_summaries(), "control_input": ext.summary}
-    cp = ControlProject(project, pipeline, inputs, ctrl_dir, summaries)
+    summaries = dict(project.input_summaries())
+    if spec.fixture.input.type in project.plugin.object_types:
+        ext = extract_object(
+            project.plugin,
+            project.executor(),
+            object_type=spec.fixture.input.type,
+            object_path=input_path,
+            design=project.design.model_dump(),
+            env_name=module.manifest.env,
+            workdir=ctrl_dir / "extract",
+        )
+        summaries["control_input"] = ext.summary
+    modes = module.manifest.modes
+    mode = project.config.mode if project.config.mode in modes else (modes[0] if modes else None)
+    cp = ControlProject(project, pipeline, inputs, ctrl_dir, summaries, mode=mode)
 
     from stringency.runloop import run_loop
     from stringency.runs import open_run
@@ -437,6 +681,9 @@ def run_control(
             notes=["dispatching: answer the requests and run controls again"],
         )
     passed, metrics, notes = evaluate_expectations(project, spec, rc.run_id, step_id, module)
+    # the environment the control ran under, so `current_for` can tell a stale pass from a
+    # current one (open_mode_plan.md 2.5); additive in the metrics, no schema change
+    metrics["env_digest"] = rc.env_digests.get(module.manifest.env)
     prev = project.store.one(
         "SELECT metrics_json FROM controls_runs WHERE module=? AND module_version=? AND control_name=? AND passed=1 ORDER BY ts DESC, rowid DESC LIMIT 1",
         (module.manifest.name, module.manifest.version, spec.name),
@@ -484,3 +731,17 @@ def run_controls(
     for module, spec, _ in iter_controls(project, module_name):
         results.append(run_control(project, module, spec, allow_mock=allow_mock))
     return results
+
+
+def ensure_current(project: Project, module: Module, env_digest: str | None) -> list[ControlResult]:
+    """Open mode (2026-10-19): before a tool's step, run its controls when none speaks for it
+    under this environment (`current_for` is not `current`), so a tool the method tested is
+    labelled trusted without the operator having to remember `controls run`. Deterministic
+    tools only: a judgment tool's control dispatches to the harness and is the operator's
+    `controls run`. Returns the results ([] when nothing ran). Writes what `run_control`
+    writes."""
+    if module.manifest.kind != "deterministic" or not module.control_files():
+        return []
+    if current_for(project.store, module, env_digest)["status"] == "current":
+        return []
+    return run_controls(project, module.manifest.name)

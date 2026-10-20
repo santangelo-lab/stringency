@@ -152,8 +152,9 @@ Body rules, each testable against a transcript:
    a step as done, skipped, or satisfied otherwise.
 6. On a hold, follow the protocol in section 5 exactly. Never choose. Never look for another way
    past the stop.
-7. On completion, deliver, then report in three parts from `summary.md`: what was analyzed, what
-   was decided, what was delivered. Offer `methods.md` and the coverage report; do not paste.
+7. On completion, deliver, then show the results: `stringency present` relayed whole, at most
+   three sentences from `summary.md` on what was decided, and the saved files by name. Offer
+   `summary.md`, `methods.md` and the coverage report; do not paste them.
 8. Interpretation begins "This paragraph is my reading of the delivered tables, not an engine
    output" and cites table and row for every value. Saved as an artifact if asked; never written
    into the project directory.

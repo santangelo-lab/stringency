@@ -7,10 +7,15 @@ import typer
 from stringency import __version__
 from stringency.cli import (
     verb_abandon,
+    verb_answer,
+    verb_ask,
     verb_board,
+    verb_call,
     verb_controls,
     verb_declare,
     verb_deliver,
+    verb_exec,
+    verb_finding,
     verb_fork,
     verb_init,
     verb_lint,
@@ -24,6 +29,7 @@ from stringency.cli import (
     verb_run,
     verb_status,
     verb_submit,
+    verb_tools,
     verb_wait,
 )
 
@@ -38,6 +44,11 @@ app = typer.Typer(
 app.command("init")(verb_init.init)
 app.command("declare")(verb_declare.declare)
 app.command("run")(verb_run.run)
+app.command("ask")(verb_ask.ask)
+app.command("finding")(verb_finding.finding)
+app.command("call")(verb_call.call)
+app.command("exec")(verb_exec.exec_)
+app.command("answer")(verb_answer.answer)
 app.command("next")(verb_next.next_)
 app.command("propose")(verb_propose.propose)
 app.command("submit")(verb_submit.submit)
@@ -52,6 +63,7 @@ app.command("wait")(verb_wait.wait)
 app.command("lint")(verb_lint.lint)
 app.command("probe")(verb_probe.probe)
 app.add_typer(verb_controls.app, name="controls")
+app.add_typer(verb_tools.app, name="tools")
 app.add_typer(verb_policy.app, name="policy")
 app.add_typer(verb_plugins.app, name="plugins")
 

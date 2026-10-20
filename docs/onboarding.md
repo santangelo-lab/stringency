@@ -55,3 +55,12 @@ labelled as its reading and never enters the delivered files. At the end you rec
 deliverables, a methods paragraph naming the engine, plugin and method versions, a coverage
 report naming every check that ran and every one that did not, and a one-page summary written
 for a reader who did not watch the run.
+
+After a delivery you can ask questions of the results (open mode, engine 0.2.22). The assistant
+first proposes a few paths it could take, says in one paragraph what asking means (nothing you
+ask is declared in advance, and nothing you ask changes the delivered files), and waits for your
+yes. Each answer then carries a label the engine prints: trusted when it came from a tool the
+method ships, tested and run by the engine; untested when it came from code the assistant wrote
+in the session. Every number in an answer is a cell of a table you can see; an answer with a
+number that is not is refused by the engine before you see it. At the end you say which answers
+to keep, and they are delivered beside the results with their labels (`docs/open-mode.md`).

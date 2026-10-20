@@ -20,11 +20,15 @@ def declare(
         False, "--check", help="validate the declarations and print the echo-back"
     ),
     method: str = typer.Option(..., "--method", help="<git-url>@<tag> of the method repo"),
-    pipeline: str = typer.Option(..., "--pipeline"),
+    pipeline: str | None = typer.Option(None, "--pipeline", help="not in open mode"),
     objective: Path | None = typer.Option(None, "--objective"),
     design: Path | None = typer.Option(None, "--design"),
     inputs: Path | None = typer.Option(None, "--inputs"),
-    mode: str = typer.Option("pipeline", "--mode"),
+    mode: str = typer.Option("pipeline", "--mode", help="pipeline | open"),
+    from_delivery: Path | None = typer.Option(
+        None, "--from-delivery", help="open mode: derive the declarations from a delivery"
+    ),
+    upstream: Path | None = typer.Option(None, "--upstream"),
     profile: str = typer.Option("standard", "--profile"),
     judgment_harness: str = typer.Option("subagent", "--judgment-harness"),
     execution: str = typer.Option("operator", "--execution"),
@@ -33,13 +37,16 @@ def declare(
 ) -> None:
     if not check:
         raise ConfigError("declare does one thing for now: --check")
-    files = {
+    files: dict[str, Path | None] = {
         "objective": objective or directory / "objective.yml",
         "design": design or directory / "design.yml",
         "inputs": inputs or directory / "inputs.yml",
     }
     for name, p in files.items():
-        if not p.exists():
+        if p is not None and not p.exists():
+            if from_delivery is not None:
+                files[name] = None  # derived from the delivery
+                continue
             raise ConfigError(f"no {name} file at {p}")
     result = check_declarations(
         InitRequest(
@@ -54,6 +61,8 @@ def declare(
             judgment_harness=judgment_harness,
             execution=execution,
             executor=executor,
+            from_delivery=from_delivery,
+            upstream=upstream,
         )
     )
     n = len(result.predicates)

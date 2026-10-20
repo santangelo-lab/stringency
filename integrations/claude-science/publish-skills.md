@@ -55,15 +55,16 @@ repository wins.
 ## When to republish
 
 - The operator skill: on every engine version that changes a verb, a flag or the hold protocol
-  (last revision 2026-10-14 for engine 0.2.19: `probe`, the shared install's path, forks and
-  declared parameters; the copy synced to the owner's instance is of 2026-10-08).
+  (last revision 2026-10-16 for engine 0.2.22: section 10, open mode, and its intents; before it
+  2026-10-14 for 0.2.19; the copy synced to the owner's instance is of 2026-10-08).
 - The declare skill: when the declaration grammar or the echo-back changes (last revision
   2026-10-14: `params:` in `objective.yml`; the synced copy is the 2026-09-14 text and needs
   republishing).
 - An analysis skill: on every tag of its method repository. The rendered file is committed there;
   render it again with `render_skill.py <method repo> --pipeline <name> --write` before tagging
   when the `.analyze.yml`, the pipeline titles, or the engine template changed.
-  `stringency-analyze-toy-compare`: published on the owner's instance 2026-09-23 (toy method `v0.1.4`).
+  `stringency-analyze-toy-compare`: published on the owner's instance 2026-09-23 (toy method `v0.1.4`);
+  re-rendered 2026-10-16 with section 8 (open mode) for toy method `v0.2.0-rc1`, not yet published.
 
 A publish is recorded nowhere by the engine; the session's transcript is the only record. Note
 the date in this file's table when a republish is done on the lab's instances.

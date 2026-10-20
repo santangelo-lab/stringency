@@ -38,3 +38,22 @@ decisions:
     param: delimiter
     how: declared        # asked before the echo-back, written to objective.yml params:
     ask: Which character separates the columns of the file?
+# optional: the tools this method ships for questions after delivery (open mode, engine 0.2.22;
+# spec/method-skills.md section 3). Each is a module whose `modes` list `open`; the engine reads
+# the module for what it is, these are the words the skill says about it. Every decision point
+# of the module is settled by an `asks` entry (the person's words, passed with --asked-by person)
+# or a `proposed` entry (the operator proposes it from evidence and a hold asks the person).
+tools:
+  - module: example-tool
+    title: Compare two groups
+    use_when: the person asks which group is higher or how two groups differ
+    asks:
+      correction: Which multiple-testing correction do you want?
+# optional: the method's suggested paths forward, said before the switch in the pinned form;
+# `needs` names the pipeline outputs a path needs delivered (a path is never offered when the
+# delivery lacks them); `asks` is what the path needs from the person, in one sentence
+open:
+  intro: The example method answers questions of the comparison table and the measurements it rests on.
+  paths:
+    - {answers: which groups differ and by how much, tool: example-tool, needs: [comparison_table]}
+    - {answers: anything else about the measurements, code: true}

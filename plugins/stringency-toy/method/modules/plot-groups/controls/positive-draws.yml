@@ -1,0 +1,9 @@
+# A figure has no truth table: the control is that the tool completes on a known comparison
+# table (expect.completed, the explicit form of the implicit score; open_mode_plan.md 2.6).
+control: 1
+name: positive-draws
+kind: positive
+fixture:
+  input: {type: table, blake3: "32136946fe3e913a1d37d9bbd3d1baf9fb925b647f81f46c3897e2d68e55a772", path: controls/fixtures/compare_truth.tsv}
+expect:
+  completed: true

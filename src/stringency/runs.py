@@ -10,17 +10,21 @@ import json
 import os
 import socket
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from stringency import __version__, git, hashing
 from stringency.actions import Action
+from stringency.controls import current_for
 from stringency.db.store import Store
 from stringency.executor.base import Executor
 from stringency.exit_codes import BlockedError, ConfigError, DirtyTreeError, HeldError, RefusedError
 from stringency.gate import evaluate
 from stringency.ids import new_id
 from stringency.machine import all_step_status, derive_run_status
+from stringency.modules import Module, ModuleManifest
 from stringency.operator_id import operator_env
+from stringency.pipelines import Pipeline, StepDecl
 from stringency.plugins import installed_plugin_versions
 from stringency.predicates import registry
 from stringency.predicates.context import GateContext
@@ -48,6 +52,109 @@ class RunContext:
     # hashed on first read, not at load: a read-only view (a hold page, `review --hold`) never
     # reads it, and hashing every declared input took 55 s on a large project (backlog L23)
     _input_digests: dict[str, str] | None = field(default=None, repr=False)
+    # -- the run's topology ----------------------------------------------------------
+
+    @property
+    def open_ended(self) -> bool:
+        return self.project.open_ended
+
+    def on_demand(self) -> list[dict[str, Any]]:
+        """The run's on-demand steps in creation order (open mode): each `{step_id, kind:
+        tool | exec, decl, manifest?, question_id}` from the `created` step event whose payload
+        carries `on_demand`. Reads: step_events, every time: a context that outlives a `call`
+        made through another must see the step it added."""
+        out: list[dict[str, Any]] = []
+        for r in self.store.all(
+            "SELECT step_id, payload_json FROM step_events WHERE run_id = ? AND "
+            "event = 'created' ORDER BY ts, rowid",
+            (self.run_id,),
+        ):
+            payload = json.loads(r["payload_json"] or "{}")
+            od = payload.get("on_demand")
+            if isinstance(od, dict):
+                out.append({"step_id": r["step_id"], **od})
+        return out
+
+    @property
+    def pipeline(self) -> Pipeline:
+        """The topology this run is gated against: the project's declared steps, then the
+        on-demand steps so far in creation order (open_mode_plan.md 2.2). Every predicate, the
+        planner and the run loop read this, never `project.pipeline`, so an open run's tool and
+        exec steps are inside the bound topology the moment they are proposed."""
+        od = self.on_demand()
+        if not od:
+            return self.project.pipeline
+        steps = [*self.project.pipeline.steps, *(StepDecl.model_validate(x["decl"]) for x in od)]
+        return self.project.pipeline.model_copy(update={"steps": steps})
+
+    def order(self) -> list[str]:
+        return self.pipeline.order()
+
+    def decl(self, step_id: str) -> StepDecl:
+        return self.pipeline.step(step_id)
+
+    def on_demand_entry(self, step_id: str) -> dict[str, Any] | None:
+        for x in self.on_demand():
+            if x["step_id"] == step_id:
+                return x
+        return None
+
+    def module_for(self, step_id: str) -> Module:
+        """The module a step runs: from the method index for a declared step or a tool; for an
+        exec step the manifest recorded at proposal over the step directory (`script.<ext>`
+        is its entry)."""
+        entry = self.on_demand_entry(step_id)
+        if entry is not None and entry.get("kind") == "exec" and entry.get("manifest"):
+            manifest = ModuleManifest.model_validate(entry["manifest"])
+            return Module(self.project.step_dir(self.run_id, step_id), manifest)
+        return self.project.modules.require(self.decl(step_id).module)
+
+    def next_step_id(self, name: str) -> str:
+        """`<nn>_<name>`, numbered after every step of the run so far."""
+        return f"{len(self.pipeline.steps) + 1:02d}_{name}"
+
+    def create_on_demand_step(
+        self,
+        decl: StepDecl,
+        kind: str,
+        module: Module,
+        *,
+        manifest: dict[str, Any] | None = None,
+        question_id: str | None = None,
+    ) -> None:
+        """Add a step to an open run (open_mode_plan.md 2.2). Writes: steps (pending) and the
+        `created` step event, whose payload carries `on_demand: {kind, decl, manifest?,
+        question_id}` (no new column; the `captures` precedent)."""
+        if not self.open_ended:
+            raise RefusedError("steps are added on demand only in an open project")
+        self.store.create_step(
+            {
+                "run_id": self.run_id,
+                "step_id": decl.id,
+                "module": module.manifest.name,
+                "module_version": module.manifest.version,
+                "operation": module.manifest.operation,
+            },
+            extra={
+                "on_demand": {
+                    "kind": kind,
+                    "decl": decl.model_dump(mode="json", exclude_none=True),
+                    "manifest": manifest,
+                    "question_id": question_id,
+                }
+            },
+        )
+
+    def artifact_kinds(self) -> dict[str, str]:
+        """The recorded kind of every declared input and produced artifact of the run, by bare
+        digest (`topo.input_type_mismatch`). Reads: artifacts."""
+        out = {i.blake3: i.type for i in self.project.inputs.items}
+        for r in self.store.all(
+            "SELECT hash, kind FROM artifacts WHERE run_id = ? AND status = 'produced'",
+            (self.run_id,),
+        ):
+            out[str(r["hash"])] = str(r["kind"])
+        return out
 
     @property
     def input_digests_now(self) -> dict[str, str]:
@@ -68,7 +175,7 @@ class RunContext:
         return all_step_status(self.store, self.run_id)
 
     def status(self) -> str:
-        return derive_run_status(self.step_status(), self.project.pipeline.order())
+        return derive_run_status(self.step_status(), self.order(), open_ended=self.open_ended)
 
     def refresh_status(self) -> str:
         """Derive the run status from its steps and record it when it changed.
@@ -117,14 +224,36 @@ class RunContext:
         return self.delta_for_all().get(step_id, {})
 
     def project_config(self) -> Any:
+        """The static facts predicates read (design 6.1): the run's topology (declared and
+        on-demand steps), every manifest including an exec step's synthetic one, and the
+        recorded kinds of the run's inputs and artifacts."""
+        modules = self.project.manifests()
+        for x in self.on_demand():
+            if x.get("manifest"):
+                m = ModuleManifest.model_validate(x["manifest"])
+                modules[m.ref] = m
         return self.project.project_config(
+            pipeline=self.pipeline,
+            modules=modules,
             git_dirty=self.git_dirty,
             allow_dirty_reason=self.allow_dirty_reason,
             input_digests_now=self.input_digests_now,
             env_digests=self.env_digests,
             step_status=self.step_status(),
             script_blobs=self.script_blobs,
+            artifact_kinds=self.artifact_kinds(),
+            controls_current=self.controls_current(),
         )
+
+    def controls_current(self) -> dict[str, dict[str, Any]]:
+        """Per tool of an open project, whether its last passing control still speaks for it
+        under the environment digest of this run (`controls.current_for`). Reads: controls_runs."""
+        if not self.open_ended:
+            return {}
+        return {
+            m.ref: current_for(self.store, m, self.env_digests.get(m.manifest.env))
+            for m in self.project.tools()
+        }
 
     def gate_context(
         self, phase: str, action: Action, state: State, output: Any = None
@@ -168,8 +297,15 @@ def module_script_blobs(project: Project) -> dict[str, str]:
     from stringency.steps import script_blob
 
     out: dict[str, str] = {}
-    for sid in project.pipeline.order():
-        module = project.modules.require(project.pipeline.step(sid).module)
+    modules = (
+        project.tools()
+        if project.open_ended
+        else [
+            project.modules.require(project.pipeline.step(sid).module)
+            for sid in project.pipeline.order()
+        ]
+    )
+    for module in modules:
         blob = script_blob(module)
         if blob is not None:
             out[module.ref] = blob
@@ -207,6 +343,67 @@ def _context_for(project: Project, run_row: Any, *, executor_kind: str | None = 
         operator=operator_env(),
         script_blobs=captured_script_blobs(project.store, run_row["run_id"]),
     )
+
+
+def upstream_lineage(project: Project) -> list[dict[str, Any]]:
+    """For an open project, the upstream runs its inputs came from: each run's ancestor chain
+    (`parent_run_id`), its status and its deliveries' timestamps, read from the upstream
+    project's `prov/run.db` read-only (open_mode_plan.md 2.7, `captures.upstream_lineage`).
+    An unreadable upstream is reported as such, not raised."""
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in project.inputs.items:
+        d = item.derived_from
+        if d is None or not d.project:
+            continue
+        key = (d.project, d.run_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        entry: dict[str, Any] = {"input": item.name, "project": d.project, "run_id": d.run_id}
+        db = Path(d.project) / "prov" / "run.db"
+        try:
+            with Store.open(db, create=False) as up:
+                chain: list[dict[str, Any]] = []
+                cur: str | None = d.run_id
+                while cur and len(chain) < 50:
+                    row = up.one(
+                        "SELECT run_id, parent_run_id, status, started, ended FROM runs WHERE run_id=?",
+                        (cur,),
+                    )
+                    if row is None:
+                        break
+                    chain.append(
+                        {
+                            k: row[k]
+                            for k in ("run_id", "parent_run_id", "status", "started", "ended")
+                        }
+                    )
+                    cur = row["parent_run_id"]
+                entry["chain"] = chain
+                entry["deliveries"] = [
+                    r["ts"]
+                    for r in up.all(
+                        "SELECT ts FROM deliveries WHERE run_id=? ORDER BY ts", (d.run_id,)
+                    )
+                ]
+                entry["upstream_pipeline"] = up.scalar("SELECT pipeline_name FROM projects LIMIT 1")
+        except Exception as e:  # noqa: BLE001
+            entry["error"] = f"{type(e).__name__}: {e}"
+        out.append(entry)
+    return out
+
+
+def captured_upstream_lineage(store: Store, run_id: str) -> list[dict[str, Any]]:
+    row = store.one(
+        "SELECT payload_json FROM run_events WHERE run_id = ? AND event = 'captures' ORDER BY seq LIMIT 1",
+        (run_id,),
+    )
+    if row is None:
+        return []
+    payload = json.loads(row["payload_json"] or "{}")
+    ul = payload.get("upstream_lineage")
+    return list(ul) if isinstance(ul, list) else []
 
 
 def captured_plugins(store: Store, run_id: str) -> dict[str, str]:
@@ -368,6 +565,8 @@ def open_run(
                 "executor": executor.kind,
                 "plugins": installed,
                 "plugin_changes": plugin_changes,
+                "tools": [m.ref for m in project.tools()] if project.open_ended else [],
+                "upstream_lineage": upstream_lineage(project) if project.open_ended else [],
                 "method": {
                     "repo": project.config.method.repo,
                     "tag": project.config.method.tag,
@@ -434,7 +633,7 @@ def abandon(project: Project, run_id: str, reason: str) -> None:
     if rc.run["status"] in CLOSED_STATUSES:
         raise RefusedError(f"run {run_id} is already {rc.run['status']}")
     store = rc.store
-    for sid in rc.project.pipeline.order():
+    for sid in rc.order():
         st = step_status(store, run_id, sid)
         if st in OPEN_STEP:
             transition(store, run_id, sid, StepStatus.ABANDONED, payload={"reason": reason})
@@ -459,7 +658,7 @@ def write_summary(rc: RunContext) -> None:
         "",
         f"status: {run['status']}",
         f"project: {rc.project.config.project_id}",
-        f"pipeline: {rc.project.pipeline.name}@{rc.project.pipeline.version}",
+        f"pipeline: {rc.pipeline.name}@{rc.pipeline.version}",
         f"method: {run['git_sha']} ({'dirty' if run['git_dirty'] else 'clean'})",
         f"policy: {run['policy_version']} ({run['policy_digest'][:12]})",
         f"started: {run['started']}  ended: {run['ended']}",

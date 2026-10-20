@@ -50,4 +50,5 @@ OPERATIONS: dict[str, dict[str, Any]] = {
         "additionalProperties": False,
     },
     "report": {"type": "object", "properties": {}, "additionalProperties": False},
+    "plot_groups": {"type": "object", "properties": {}, "additionalProperties": False},
 }

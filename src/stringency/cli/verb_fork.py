@@ -8,6 +8,7 @@ from __future__ import annotations
 import typer
 
 from stringency.cli.common import emit, handle_errors
+from stringency.exit_codes import RefusedError
 from stringency.fork import check as do_check
 from stringency.fork import fork as do_fork
 from stringency.fork import render_params, resolved_params
@@ -26,6 +27,11 @@ def fork(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Project.find()
+    if project.open_ended:
+        raise RefusedError(
+            "fork is not a verb of an open project: a question is asked again with `call` or "
+            "`exec`, and every run on the same inputs is counted"
+        )
     if check:
         table = do_check(project, from_run=from_run, at=at, sets=list(sets))
         emit(
