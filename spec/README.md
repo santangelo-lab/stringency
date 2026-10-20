@@ -22,7 +22,7 @@ What each file is, and how much weight it carries.
 | `commons-assessment.md` | assessed 2026-10-16; no integration | `posit-dev/commons` read against the design: what it is, a side-by-side, the shared instincts; four borrowings as backlog L35 to L38 (a trust label per delivered artifact, harness conformance fixtures, a method-author skill over the override corpus, quoted text verified), a G2 proposal (`exec --step`), and what commons lacks that the engine has |
 | `ux-two-audiences.md` | history of Track 1 (Lane E); its rules still bind the skills | the two audiences, the hold protocol, the analysis-skill rules; built in full; superseded as a work list by the roadmap's W5 and W6 |
 | `trace-integrity-plan.md` | **proposed 2026-10-20 (Lane T)** | a mutable row can change without its event (the owner's review, verified): T1 the Store API and the docstrings, T2 `stringency audit`, T3 the database requiring the event (9.4, 9.5 via DEVIATIONS), T4 the OS boundary against the operator; backlog L50 to L53 |
-| `trace-integrity-review-2026-10-20.md` | the owner's review, kept as written | the finding, the reproduction, the five options |
+| `trace-integrity-review-2026-10-20.md` | the owner's review, kept as written (ruff reformatted its two code blocks) | the finding, the reproduction, the five options |
 | `bulkrna-plan.md` | dormant (Lane B) | Track 2 in detail, kept as written since 2026-09-23 |
 
 Every live plan opens with a dated **Status** line; a document without one has not been reviewed
