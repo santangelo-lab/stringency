@@ -84,7 +84,8 @@ NETWORK_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("nextflow run", r"\bnextflow\s+run\b"),
         ("cloud copy", r"\baws\s+s3\b|\bgsutil\b|\bazcopy\b"),
         ("remote shell", r"(^|[\s;|&(`])(scp|ssh|sftp)\s"),
-        ("URL", r"\b(https?|ftp)://"),
+        # an XML namespace (xmlns="http://www.w3.org/2000/svg") is a name, not a connection
+        ("URL", r"\b(https?|ftp)://(?!www\.w3\.org/)"),
     )
 )
 

@@ -3,7 +3,17 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-19, night)
+## Current state (2026-10-20, afternoon)
+
+- The egress drive and the merge (`notes/2026-10-20-1600-egress-drive-and-merge.md`): the owner
+  drove branch `egress` through Claude Science as a person and was satisfied; `open-mode` merged
+  into `egress` (`43efd2b`, eight additive conflicts) and the follow-up commit fixes the scan's
+  XML-namespace false positive, bumps the engine to 0.2.23 and says the mode B wait is a job.
+  Every check green. Next: the merge train (push `egress`; `main` to `open-mode`, tag
+  `v0.2.22`; `egress` into `main`, tag `v0.2.23`; install; republish; the toy and Xenium
+  methods re-rendered and tagged).
+
+## Earlier state (2026-10-19, night)
 
 - The report replaces `deliver --answer` (`notes/2026-10-19-2100-open-mode-report.md`): every
   admissible answer lands in `deliver/<run>/` as it is filed; `report.md` leads with the
@@ -231,6 +241,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-20-1600-egress-drive-and-merge.md` — the owner's egress drive through Claude Science (passed; the findings), `open-mode` merged into `egress`, the scan's XML-namespace fix, engine 0.2.23, the wait as a job in mode B; the merge train for the owner.
 - `2026-10-19-2100-open-mode-report.md` — the report replaces `deliver --answer`: automatic delivery of every answer, `report.md` with the findings first, the `findings` table and verb, the skills' two new sentences; the probe that was never blocked; what was altered.
 - `2026-10-19-1400-open-mode-drive-findings.md` — the owner's first open-mode drive on the toy: the paste and image failures before it, and the six findings after it (no control ever ran, a tool's answer called code, the raw input out of reach, the delivery's names, the directory, the long delivery message), each built and recorded.
 - `2026-10-16-2200-open-mode-s1-s7.md` — open mode S1 to S7 built on branch `open-mode` (engine 0.2.22): binding, on-demand steps, exec, controls for tools, answers and labels, deliver and present, the chain test and the design amendments; what was learned (the read-only bind that was not, a tool controlled alone, the `--set none` wart); O1 to O6 open.

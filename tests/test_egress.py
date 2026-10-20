@@ -133,6 +133,7 @@ def test_scan_module_reads_scripts_and_skips_controls(tmp_path: Path) -> None:
     (d / "lib" / "fetch.R").write_text("download.file(u, d)\n")
     (d / "controls" / "gen.py").write_text("import requests\n")
     (d / "notes.md").write_text("curl https://x\n")
+    (d / "plot.py").write_text("parts = ['<svg xmlns=\"http://www.w3.org/2000/svg\">']\n")
     assert [h.describe() for h in scan_module(d)] == ["lib/fetch.R:1 download.file"]
 
 

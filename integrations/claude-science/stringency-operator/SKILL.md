@@ -74,7 +74,7 @@ any other way and do not reimplement any of its behavior in Python.
 The container runtime is `apptainer` or `singularity`; the engine finds either, and `probe`
 reports which and whether every image the project's method names is present and readable.
 
-**Which text of this skill to follow.** This text is for engine 0.2.22. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.23. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -183,7 +183,9 @@ it refuses (exit 16) when the step is not dispatching, when the count differs fr
 
 **10, a hold.** Follow section 6, and at every hold, without being asked, start the command the
 payload names as `wait_command` (`stringency wait --hold <id> --timeout 86400 --json`; engine 0.2.7
-or later) as a background command when your harness has one, so you are woken when it returns. The
+or later) as a background command when your harness has one, so you are woken when it returns. In
+mode B start it as a job on the compute host, not through `call_command`, whose commands end
+after 60 seconds (measured 2026-10-20). The
 person may answer on the console, at a terminal, or here, and you cannot tell which in advance; the
 wait is how an answer given elsewhere reaches you. Do not poll `run`. It reads the
 trace every five seconds and writes nothing; exit 0 means the hold was resolved or withdrawn and
