@@ -715,7 +715,48 @@ def present_hold(
         payload["sections"] += render_items(project, h["run_id"], matching, None, hold_info)[0]
         ns = skill.get("never_show")
         payload["never_show"] = [str(x) for x in ns] if isinstance(ns, list) else []
+    if h["run_id"] and h["step_id"] and not payload["sections"]:
+        # a judgment hold with no view from the method's skill (backlog K5): the replicates'
+        # calls, as written at judgment time, are what the person decides on
+        sec = _judgments_section(project, h["run_id"], h["step_id"], h["item_id"])
+        if sec is not None:
+            payload["sections"].append(sec)
     return payload
+
+
+def _judgments_section(
+    project: Site, run_id: str, step_id: str, item_id: str | None
+) -> dict[str, Any] | None:
+    """The step's `judgments` output (one line per item and replicate) as a table, narrowed to
+    the hold's item when it has one. Reads: artifacts, the file. None when the step has none."""
+    art = project.store.one(
+        "SELECT path FROM artifacts WHERE run_id=? AND step_id=? AND kind='judgments' AND "
+        "status='produced' ORDER BY rowid DESC LIMIT 1",
+        (run_id, step_id),
+    )
+    if art is None:
+        return None
+    try:
+        lines = Path(str(art["path"])).read_text().splitlines()
+    except OSError:
+        return None
+    rows: list[dict[str, Any]] = []
+    for line in lines:
+        try:
+            d = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(d, dict):
+            continue
+        if item_id is not None and str(d.get("item_id", d.get("item"))) != str(item_id):
+            continue
+        rows.append(d)
+    if not rows:
+        return None
+    preferred = ["item_id", "item", "replicate", "label", "confidence", "abstain", "rationale"]
+    cols = [c for c in preferred if any(c in r for r in rows)]
+    title = "The replicates' judgments" + (f" for {item_id}" if item_id is not None else "")
+    return {"title": title, "kind": "table", **_table(rows, cols, {})}
 
 
 # -- answers (open mode, open_mode_plan.md 2.7) ------------------------------------------------

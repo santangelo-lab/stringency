@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -25,6 +26,11 @@ def submit(
         None, "--command", help="the exact command you ran; recorded as reported"
     ),
     as_json: bool = typer.Option(False, "--json"),
+    deliver: bool = typer.Option(
+        False,
+        "--deliver",
+        help="deliver in this invocation when this submit completes the run (backlog J2)",
+    ),
     failed: bool = typer.Option(
         False, "--failed", help="the external run failed; close the attempt with --reason"
     ),
@@ -67,17 +73,26 @@ def submit(
     out = do_submit(rc, ticket, outs, list(evidence), command=command)
     nx = next_step(rc)
     refresh_if_present(project.root)
-    notify_after(project, run_id=rc.run_id, nx=nx)
-    emit(
-        {
-            "schema": "stringency.submit/1",
-            "run_id": rc.run_id,
-            "step_id": out.step_id,
-            "status": str(out.status),
-            "next": nx.to_json(),
-        },
-        as_json,
-        f"run {rc.run_id}\n{out.message}\n{nx.message}",
-    )
+    payload: dict[str, Any] = {
+        "schema": "stringency.submit/1",
+        "run_id": rc.run_id,
+        "step_id": out.step_id,
+        "status": str(out.status),
+        "next": nx.to_json(),
+    }
+    human = f"run {rc.run_id}\n{out.message}\n{nx.message}"
+    # the same guard as `run --deliver`: a last operator ticket completes the run inside submit
+    if deliver and nx.kind == "completed" and rc.run["status"] == "completed":
+        from stringency.deliver import deliver as do_deliver
+
+        d = do_deliver(rc)
+        payload["delivery"] = {
+            "delivery_id": d.delivery_id,
+            "path": str(d.path),
+            "files": [str(f) for f in d.files],
+        }
+        human += f"\ndelivered run {rc.run_id} to {d.path}\n{len(d.files)} file(s)"
+    notify_after(project, run_id=rc.run_id, nx=nx, delivery=payload.get("delivery"))
+    emit(payload, as_json, human)
     if nx.exit_code:
         raise typer.Exit(code=nx.exit_code)

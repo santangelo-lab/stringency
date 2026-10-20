@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from stringency.board import BOARD_FILE, board, project_entry, refresh_if_present, write_board
@@ -275,3 +276,33 @@ def test_hold_view_where_filters_a_table_by_the_proposed_parameter(make_project:
         "(where organ = $param.ndim: this hold proposes no value for ndim; every row is shown)"
         in text
     )
+
+
+def test_present_hold_shows_the_replicates_judgments_by_default(
+    make_project: InitFn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A judgment item hold with no view from the method's skill shows the replicates' calls for
+    the item (backlog K5), so the person decides on what was written at judgment time."""
+    from stringency.review import queue, record_review
+    from tests.conftest import accept_hold
+    from tests.test_run import HARNESS, MOCK, cli
+
+    monkeypatch.setattr("stringency.review.detect_via", lambda: "tty")
+    monkeypatch.setattr("stringency.review.current_user", lambda: "tester")
+    p = make_project(pipeline="toy-engine", execution="engine")
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+    env = {**MOCK, "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml")}
+    r = cli(p, "propose", "01_filter", "--set", "min_value=12", "--reason", "t", "--json", env=env)
+    assert r.exit_code == 10, r.output
+    record_review(p, queue(p)[0]["hold_id"], "accept", reason="fine")
+    cli(p, "run", env=env)
+    item = queue(p)[0]
+    assert item["kind"] == "run_disagreement" and item["item_id"]
+    payload = present_hold(Site.load(p.root), item["hold_id"], skills_dir=None)
+    titles = [s["title"] for s in payload["sections"]]
+    assert any(t.startswith("The replicates' judgments for") for t in titles), titles
+    sec = next(s for s in payload["sections"] if s["title"].startswith("The replicates"))
+    assert sec["kind"] == "table" and "replicate" in sec["columns"]
+    assert all(
+        row[sec["columns"].index("item_id")] == item["item_id"] for row in sec["rows"]
+    ) or all(row[sec["columns"].index("item")] == item["item_id"] for row in sec["rows"])

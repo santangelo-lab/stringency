@@ -16,6 +16,11 @@ def declare(
     directory: Path = typer.Argument(
         ..., help="directory holding objective.yml, design.yml, inputs.yml"
     ),
+    print_hashes: bool = typer.Option(
+        False,
+        "--print-hashes",
+        help="print the blake3 of every input item that lacks one and exit 15 naming them (the declare skill fills the manifest from this output)",
+    ),
     check: bool = typer.Option(
         False, "--check", help="validate the declarations and print the echo-back"
     ),
@@ -48,6 +53,8 @@ def declare(
 ) -> None:
     if not check:
         raise ConfigError("declare does one thing for now: --check")
+    if print_hashes:
+        _print_missing_hashes(Path(inputs) if inputs else directory / "inputs.yml", as_json)
     files: dict[str, Path | None] = {
         "objective": objective or directory / "objective.yml",
         "design": design or directory / "design.yml",
@@ -87,3 +94,44 @@ def declare(
         f"method {result.method_sha[:12]}. Nothing was created; `stringency init` binds the project."
     )
     emit(result.to_json(), as_json, human)
+
+
+def _print_missing_hashes(path: Path, as_json: bool) -> None:
+    """`--print-hashes` (backlog L47's neighbour J1): every item of `inputs.yml` whose `blake3`
+    is missing or not 64 hex gets its hash computed from the file and printed; when any was
+    missing the command exits 15 naming the items, so the skill writes the hashes it was given
+    instead of computing them with its own Python. Reads the files; writes nothing."""
+    import re
+
+    import yaml
+
+    from stringency import hashing
+
+    try:
+        data = yaml.safe_load(path.read_text())
+    except (OSError, yaml.YAMLError) as e:
+        raise ConfigError(f"{path}: cannot read ({e})") from None
+    items = (data or {}).get("items") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        raise ConfigError(f"{path}: no items list")
+    missing: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict) or "path" not in item:
+            continue
+        h = str(item.get("blake3") or "")
+        if re.fullmatch(r"[0-9a-f]{64}", h):
+            continue
+        p = Path(str(item["path"]))
+        if not p.exists():
+            raise ConfigError(f"{path}: input {item.get('name')}: no file at {p}")
+        missing.append(
+            {"name": str(item.get("name")), "path": str(p), "blake3": hashing.hash_path(p)}
+        )
+    if not missing:
+        return
+    human = "\n".join(f"{m['name']}: {m['blake3']}" for m in missing)
+    emit({"schema": "stringency.hashes/1", "items": missing}, as_json, human)
+    raise ConfigError(
+        f"{path}: {len(missing)} item(s) lack blake3 ({', '.join(m['name'] for m in missing)}); "
+        "the hashes above are theirs, write them into the manifest"
+    )

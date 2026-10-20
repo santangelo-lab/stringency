@@ -663,3 +663,39 @@ def test_dispatched_judgment_records_its_time_usage_and_a_clean_model_id(
         "WHERE a.step_id = '03_label'"
     )
     assert wall is not None and wall >= 0
+
+
+def test_submit_deliver_delivers_when_the_last_ticket_completes_the_run(
+    make_project: InitFn,
+) -> None:
+    """Backlog J2: when the last step is an operator ticket the run completes inside `submit`,
+    so `submit --deliver` delivers in the same call, as `run --deliver` would."""
+    p = confirmed(make_project)
+
+    def run_json(expect: int) -> dict:
+        r = cli(p, "run", "--json", env=MOCK_DISPATCH)
+        assert r.exit_code == expect, r.output
+        return json.loads(r.output)
+
+    def submit_json(spec: dict, names: list[str], *extra: str) -> dict:
+        outputs, log = play_agent(spec)
+        args = ["submit", spec["ticket"]]
+        for n in names:
+            args += ["--outputs", f"{n}={outputs[n]}"]
+        args += ["--evidence", str(log), "--json", *extra]
+        r = cli(p, *args, env=MOCK_DISPATCH)
+        assert r.exit_code == 0, r.output
+        return json.loads(r.output)
+
+    nx = run_json(21)
+    # --deliver on a ticket that does not complete the run delivers nothing
+    first = submit_json(nx["job_spec"], ["object"], "--deliver")
+    assert "delivery" not in first
+    submit_json(run_json(21)["job_spec"], ["table"])
+    run_json(20)
+    nx = run_json(21)
+    assert nx["step_id"] == "05_report"
+    sj = submit_json(nx["job_spec"], ["report", "group_labels"], "--deliver")
+    assert sj["status"] == "completed" and sj["next"]["kind"] == "completed"
+    assert sj["delivery"]["path"].endswith(sj["run_id"]) and sj["delivery"]["files"]
+    assert (Path(sj["delivery"]["path"]) / "summary.md").exists()

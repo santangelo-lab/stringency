@@ -90,9 +90,10 @@ plugin's `design_schema` names them):
 `inputs.yml`: one item per file the person named, plus the manifest (section 2). `name` is the
 handle the pipeline's first step binds (read `pipelines/<name>.yml`: `inputs: {object:
 $inputs.groups}` means the handle is `groups`); `path` is absolute; `type` from the plugin's
-object types; `blake3` computed with `python3 -c "import blake3,sys;
-print(blake3.blake3(open(sys.argv[1],'rb').read()).hexdigest())" <path>` (the engine's venv has
-it); `source` is what the person said the file is. If a file is a delivered artifact of an
+object types; `blake3` from the engine: leave it empty and run `stringency declare --check ... --print-hashes`,
+which prints `<name>: <blake3>` for every item lacking one and exits 15; write those in (engine
+0.2.27; before it, `python3 -c "import blake3,sys;
+print(blake3.blake3(open(sys.argv[1],'rb').read()).hexdigest())" <path>` in the engine's venv); `source` is what the person said the file is. If a file is a delivered artifact of an
 earlier stringency run (a sidecar `<file>.stringency.json` sits beside it), add `derived_from`
 with `run_id`, `step_id`, and `output` copied from that sidecar's `run_id`, `step_id`, `name`,
 and `project` set to the upstream project's root directory (the parent of its `deliver/`).

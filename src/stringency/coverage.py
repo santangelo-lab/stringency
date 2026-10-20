@@ -205,6 +205,14 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             )
         )
         sources = Counter(c["source"] for c in cons)
+        # abstention stability (backlog L2): items whose replicates split between a label and
+        # abstaining, out of the items judged
+        split = store.all(
+            "SELECT item_id, COUNT(DISTINCT COALESCE(abstain, 0)) AS ways FROM judgments "
+            "WHERE run_id=? AND step_id=? AND schema_valid=1 GROUP BY item_id",
+            (rc.run_id, step.id),
+        )
+        abstain_split = sum(1 for r in split if r["ways"] > 1)
         cum = store.all(
             "SELECT r.verdict, COUNT(*) n FROM reviews r JOIN holds h ON h.hold_id=r.hold_id JOIN steps s ON s.run_id=h.run_id AND s.step_id=h.step_id "
             "WHERE h.item_id IS NOT NULL AND s.module=? AND s.module_version=? GROUP BY r.verdict",
@@ -227,6 +235,7 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
                 "agreed": sources.get("agreed", 0),
                 "self_uncertain": kinds.get("self_uncertain", 0),
                 "run_disagreement": kinds.get("run_disagreement", 0),
+                "abstain_split": abstain_split,
                 "sign_off": kinds.get("sign_off", 0),
                 "accepted": sources.get("accepted", 0),
                 "override": sources.get("override", 0),
@@ -398,6 +407,9 @@ def render_coverage(d: dict[str, Any]) -> str:
         for j in d["judgment"]:
             lines.append(
                 f"  {j['module']}: {j['items']} items x {j['replicates']} replicates; {j['agreed']} agreed, {j['self_uncertain']} self_uncertain, {j['run_disagreement']} run_disagreement"
+            )
+            lines.append(
+                f"    abstention stability: {j['items'] - j.get('abstain_split', 0)}/{j['items']} items judged the same way by every replicate (label or abstain); {j.get('abstain_split', 0)} split"
             )
             lines.append(
                 f"    reviews: {j['accepted']} accepted, {j['override']} override, {j['unresolved']} unresolved; override rate this run {j['override']}/{j['items']}; cumulative for this module version {j['cumulative_overrides']}/{j['cumulative_items']}"

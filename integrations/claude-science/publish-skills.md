@@ -59,7 +59,8 @@ repository wins.
   in mode B; before it 2026-10-16 for 0.2.22, section 10, open mode; the copy synced to the
   owner's instance is of 2026-10-08).
 - The declare skill: when the declaration grammar or the echo-back changes (last revision
-  2026-10-16: section 3a, the ceiling question, `--egress-max` and `--operator-model`; before it
+  2026-10-21: `declare --check --print-hashes` fills the blake3 hashes; before it 2026-10-16:
+  section 3a, the ceiling question, `--egress-max` and `--operator-model`; before it
   2026-10-14: `params:` in `objective.yml`; the synced copy is the 2026-09-14 text and needs
   republishing).
 - An analysis skill: on every tag of its method repository. The rendered file is committed there;

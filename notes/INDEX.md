@@ -5,9 +5,10 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-21)
 
-- Engine 0.2.26 (`notes/2026-10-21-0200-triage-pass-3.md`): the triage's pass 3 done (L39, L40,
-  L41, L44, L47, L49) after 0.2.25's trace integrity T1 and T2. T3 and T4 wait on the owner.
-  Next: pass 4 (J1, J2, K5, L2).
+- Engine 0.2.27 (`notes/2026-10-21-0400-triage-pass-4.md`): the triage of 2026-10-20 is complete:
+  trace integrity T1 and T2 (0.2.25), pass 3 (0.2.26), pass 4 (0.2.27). What is left on the
+  backlog waits on the owner (T3, T4, L42, L45, L46, K6, confirm-once, Codex, H5, A5, L48) or is
+  a larger design (L3, L4, L9, L11). The declare skill wants republishing.
 
 ## Earlier state (2026-10-20, night)
 
@@ -269,6 +270,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-21-0400-triage-pass-4.md` — engine 0.2.27: declare --check --print-hashes, submit --deliver, the judgments shown at a judgment hold by default, the abstention stability line; J1, J2, K5, L2 done; the triage of 2026-10-20 complete.
 - `2026-10-21-0200-triage-pass-3.md` — engine 0.2.26: --set by the parameter's schema (lists, enums as spelled), optional inputs by name, the upstream's ceiling inherited, session scripts in the egress assessment and blocked over the ceiling, the brief renderer's run flags; L39, L40, L41, L44, L47, L49 done.
 - `2026-10-21-0030-trace-integrity-t1-t2.md` — engine 0.2.25: the Store's connection private with a read-only reader, insert refusing all five tables, the docstrings and 9.5 told the truth (T1); `stringency audit`, `prov.trace_inconsistent` at run open and deliver, the coverage line (T2); what the audit cannot see.
 - `2026-10-20-2330-trace-integrity-review.md` — the owner's trace-integrity finding verified (a mutable row can change without its event), the plan `trace-integrity-plan.md` (Lane T, T1 to T4), backlog L50 to L53.

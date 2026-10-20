@@ -13,7 +13,7 @@ What each file is, and how much weight it carries.
 | file | state (2026-10-14) | what |
 |---|---|---|
 | `roadmap-2026-10.md` | **current** | the one-page state of every lane (A engine, I integration and CI, E skills and onboarding, F spatial method, H console, J harnesses, G judge sources, B bulk, egress) with its plan document and next step; how the plans are kept; the design amendment texts awaiting the owner; written from the code review of 2026-10-14 and the owner's asks |
-| `backlog.md` | current | open items not owned by a lane (A5, E2, J1, J2, K3 to K6, L2 to L7, L9, L11, L24 to L34, L42, L45, L46, L48, L52, L53, H5), the measurement table; done rows are in `archive/backlog-done.md` |
+| `backlog.md` | current | open items not owned by a lane (A5, E2, K3, K4, K6, L3 to L7, L9, L11, L34, L35 to L38, L42, L45, L46, L48, L52, L53, H5), the measurement table; done rows are in `archive/backlog-done.md` |
 | `spatial-method-plan.md` | **active (Lane F)** | the spatial method after QC with Lyons CLP as the pilot: phase 0 as run, `xenium-upstream` as designed through rc10, every owner decision (1 to 25; 21 to 25 are Lyons v2 with ROSC controls); the method's `PLAN.md` is current for rc11 to rc13 |
 | `console-and-fleet-plan.md` | released (v0.2.8 to v0.2.16); second cut unscheduled (Lane H) | the console: its design as decided 2026-10-07, "What is open" at the top (batch cards, gallery, history, the resource cap), section 8 the pick-up guide; mockup in `plans/mockups/` |
 | `confirm-once.md` | proposed (Lane A, after W1 to W4) | why one design was confirmed five times and one parameter set sixteen; five rules to make a chained study one acceptance; L5, L6; four owner decisions |

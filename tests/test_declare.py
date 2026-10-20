@@ -443,3 +443,33 @@ def test_confirmation_is_not_inherited_when_design_or_owner_differs(
         inputs=f3["inputs.yml"],
     )
     assert p3.confirm_status() == "pending"
+
+
+def test_declare_check_print_hashes_fills_missing_blake3(
+    method_repo: MethodRepo, declarations: dict[str, Path], tmp_path: Path
+) -> None:
+    """`--print-hashes` (backlog J1): an item without a blake3 gets its hash printed and the
+    check exits 15 naming it; with every hash present the check proceeds."""
+    import re
+    import shutil
+
+    import yaml
+
+    src = declarations["design.yml"].parent
+    decl_dir = tmp_path / "decl-without-hashes"
+    shutil.copytree(src, decl_dir)
+    inputs = decl_dir / "inputs.yml"
+    data = yaml.safe_load(inputs.read_text())
+    name = data["items"][0]["name"]
+    data["items"][0]["blake3"] = ""
+    inputs.write_text(yaml.safe_dump(data))
+    r = runner.invoke(app, [*_declare_args(decl_dir, method_repo), "--print-hashes"])
+    assert r.exit_code == 15, r.output
+    m = re.search(rf"{name}: ([0-9a-f]{{64}})", r.output)
+    assert m, r.output
+    assert "lack blake3" in r.output and name in r.output
+    data["items"][0]["blake3"] = m.group(1)
+    inputs.write_text(yaml.safe_dump(data))
+    r = runner.invoke(app, [*_declare_args(decl_dir, method_repo), "--print-hashes"])
+    assert r.exit_code == 0, r.output
+    assert "declarations check out" in r.output
