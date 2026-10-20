@@ -52,3 +52,11 @@ combinations:
     date: 2026-10-20
     host: the lab's Linux workstation (apptainer)
     evidence: "open mode (v0.2.22) and data egress (v0.2.23) merged after the owner's test drives on the branch builds (the toy at v0.2.0: the open-mode drives of 2026-10-19 and the egress drive through Claude Science of 2026-10-20); installed as 0.2.23-sc0.5.1 on the workstation from the GitHub tags; probe --method ready for rc17 with every image present; CI green in the engine and the method repositories"
+  - engine: v0.2.24
+    plugins:
+      stringency-singlecell: v0.6.2
+    methods:
+      stringency-xenium-method: v0.6.0-rc19
+    date: 2026-10-20
+    host: the lab's Linux workstation (apptainer)
+    evidence: "the method's open tools end to end on the Lyons CLP liver delivery (controls/open_tools_check.sh: an open project from the delivery, the seven tools with every positive and negative control passing, an answer labelled trusted, a finding, the delivery; six tools in 5 min 35 s, CellChat in 15 min); installed as 0.2.24-sc0.6.2 on the workstation from the GitHub tags; probe --method ready"
