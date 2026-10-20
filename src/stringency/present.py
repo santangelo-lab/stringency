@@ -19,13 +19,13 @@ from typing import Any
 import yaml
 from jinja2 import Environment, StrictUndefined
 
-from stringency.tables import is_tabular
 from stringency.config import StringencyConfig, load_model
 from stringency.db.store import Store
 from stringency.exit_codes import ConfigError
 from stringency.modules import ModuleIndex
 from stringency.pipelines import Pipeline, find_pipeline, load_pipeline, open_pipeline
 from stringency.plain import progress_sentence
+from stringency.tables import is_tabular
 
 KINDS = ("table", "json_table", "jsonl", "text", "file", "figure", "figures", "chart")
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp", ".pdf")
