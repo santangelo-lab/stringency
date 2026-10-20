@@ -19,6 +19,7 @@ from typing import Any
 import yaml
 from jinja2 import Environment, StrictUndefined
 
+from stringency.tables import is_tabular
 from stringency.config import StringencyConfig, load_model
 from stringency.db.store import Store
 from stringency.exit_codes import ConfigError
@@ -814,7 +815,7 @@ def answer_sections(
             continue
         shown.add(aid)
         cells = (prov.get("cells") or {}).get(aid)
-        if art["kind"] == "table" and cells:
+        if is_tabular(str(art["kind"]), str(art["path"])) and cells:
             # the row names lead the table: without them a column of counts says nothing
             key = _key_column(Path(str(art["path"])), str(art["name"]))
             rows = [{key: k, **dict(r)} for k, r in cells.items()]
@@ -928,7 +929,7 @@ def _artifact_section(project: Site, art: Any, view: dict[str, Any]) -> dict[str
             "beside_caption": None,
             "beside_missing": None,
         }
-    if kind == "file" or art["kind"] not in ("table",):
+    if kind == "file" or not is_tabular(str(art["kind"]), path):
         return {"title": title, "kind": "file", "path": str(path)}
     try:
         rows = _rows_from_table(path)

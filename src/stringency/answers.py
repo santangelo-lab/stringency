@@ -40,7 +40,7 @@ from stringency.provenance import (
 )
 from stringency.questions import question
 from stringency.runs import RunContext
-from stringency.tables import load_table
+from stringency.tables import is_tabular, load_table
 
 CITE = re.compile(r"^(?P<id>[0-9A-HJKMNP-TV-Z]{26})(?::(?P<row>[^:]*))?(?::(?P<col>.*))?$")
 
@@ -124,7 +124,7 @@ def cited_cells(
         if art is None:
             missing.append(c.artifact_id)
             continue
-        if art["kind"] != "table":
+        if not is_tabular(str(art["kind"]), str(art["path"])):
             if c.row is not None or c.column is not None:
                 missing.append(f"{c.artifact_id}:{c.row or ''}:{c.column or ''}")
             continue

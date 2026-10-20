@@ -51,7 +51,7 @@ def exec_(
         help="<name>=<$inputs.x | $steps.id.out>; repeatable; added to every delivered "
         "input, which is always bound (an upstream_* input only when named)",
     ),
-    outs: list[str] = typer.Option([], "--out", help="<name>=<type>[/<format>]; repeatable"),
+    outs: list[str] = typer.Option([], "--out", help="<name>=<type>\\[/<format>]; repeatable"),
     env: str | None = typer.Option(None, "--env", help="the environment to run in"),
     seed: int | None = typer.Option(None, "--seed", help="recorded and passed as job seed"),
     reason: str | None = typer.Option(None, "--reason", help="why this code, in a sentence"),

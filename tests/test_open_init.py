@@ -372,3 +372,48 @@ def test_init_cli_from_delivery_and_declare_check(
 
     e = project_entry(tmp_path / "q")
     assert e["pipeline"] == "open" and e["confirm"] == "pending"
+
+
+def test_init_from_delivery_takes_each_files_producing_run_from_its_sidecar(
+    tmp_path: Path, toy_data: Path, make_project: InitFn, method_repo: MethodRepo
+) -> None:
+    """A resumed or forked run delivers steps an earlier run completed; the file's sidecar names
+    that run, and `derived_from.run_id` must agree with it or `init` refuses the input (seen on
+    the Lyons liver delivery, 2026-10-20)."""
+    up, delivery = delivered_process(tmp_path, toy_data, make_project)
+    index = json.loads((delivery / "index.json").read_text())
+    first = index["files"][0]
+    sidecar = delivery / first["sidecar"]
+    meta = json.loads(sidecar.read_text())
+    meta["run_id"] = "01AAAAAAAAAAAAAAAAAAAAAAAA"
+    sidecar.write_text(json.dumps(meta))
+    r = cli(
+        up,
+        "init",
+        str(tmp_path / "q"),
+        "--method",
+        method_repo.spec,
+        "--mode",
+        "open",
+        "--from-delivery",
+        str(delivery),
+        "--judgment-harness",
+        "mock",
+        "--executor",
+        "local",
+        "--execution",
+        "engine",
+        "--owner",
+        "tester",
+        "--reviewer",
+        "tester",
+        "--json",
+    )
+    assert r.exit_code == 10, r.output + str(r.stderr)
+    inputs = yaml.safe_load(
+        (tmp_path / "q" / ".stringency" / "from-delivery" / "inputs.yml").read_text()
+    )
+    by_name = {i["name"]: i for i in inputs["items"]}
+    assert by_name[first["output"]]["derived_from"]["run_id"] == "01AAAAAAAAAAAAAAAAAAAAAAAA"
+    others = [i for i in inputs["items"] if "derived_from" in i and i["name"] != first["output"]]
+    assert all(i["derived_from"]["run_id"] == index["run_id"] for i in others)

@@ -25,6 +25,16 @@ def _coerce(v: str) -> Any:
     return float(v)
 
 
+TABULAR_SUFFIXES = (".csv", ".tsv", ".tab")
+
+
+def is_tabular(kind: str, path: str | Path) -> bool:
+    """Whether an artifact can be read as a table: kind `table`, or any csv or tsv file whatever
+    its kind (a method's own table types such as `punch_table`, open mode 2026-10-20). Cited
+    cells and the answer views of kind table come from these."""
+    return kind == "table" or Path(path).suffix.lower() in TABULAR_SUFFIXES
+
+
 def load_table(path: Path, name: str, key_column: str | None = None) -> EvidenceTable:
     """Rows keyed by the key column's text exactly as read; the key cell is never coerced, so
     a reviewer who cites the key as rendered cites the row's key (L12)."""

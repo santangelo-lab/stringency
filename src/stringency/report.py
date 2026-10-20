@@ -365,8 +365,14 @@ def _provenance(rc: RunContext, artifact_id: str) -> dict[str, Any]:
 
 
 def _upstream(rc: RunContext) -> tuple[str | None, str | None]:
+    """The upstream project and the run that delivered: the delivery directory's name when the
+    first chained input sits under `deliver/<run>/` (a file's own `derived_from.run_id` may name
+    an earlier run that produced it, 2026-10-20), else that input's `derived_from.run_id`."""
     for i in rc.project.inputs.items:
         if i.derived_from is not None:
+            p = Path(i.path)
+            if p.parent.parent.name == "deliver":
+                return i.derived_from.project, p.parent.name
             return i.derived_from.project, i.derived_from.run_id
     return None, None
 

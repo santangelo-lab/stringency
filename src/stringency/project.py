@@ -8,6 +8,7 @@ data egress fingerprint (backlog L1). `Project.load` reads it back.
 
 from __future__ import annotations
 
+import contextlib
 import fnmatch
 import getpass
 import json
@@ -851,6 +852,13 @@ def declarations_from_delivery(
         path = delivery_dir / str(f.get("file"))
         if not path.exists():
             raise ConfigError(f"delivered file {path} is missing")
+        # the run that produced the file: a resumed or forked run delivers steps an earlier run
+        # completed, and the file's sidecar names that run (2026-10-20, the Lyons liver delivery)
+        produced_by = run_id
+        sc = delivery_dir / str(f.get("sidecar") or f"{f.get('file')}.stringency.json")
+        if sc.exists():
+            with contextlib.suppress(json.JSONDecodeError, OSError):
+                produced_by = str(json.loads(sc.read_text()).get("run_id") or run_id)
         items.append(
             {
                 "name": name,
@@ -859,7 +867,7 @@ def declarations_from_delivery(
                 "blake3": str(f.get("blake3") or hashing.hash_path(path)),
                 "source": f"delivered by run {run_id} of {root}",
                 "derived_from": {
-                    "run_id": run_id,
+                    "run_id": produced_by,
                     "step_id": step_id,
                     "output": output,
                     "project": str(root),
