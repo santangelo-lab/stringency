@@ -12,7 +12,7 @@ your site's values filled in:
 > texts are the directories under `<prefix>/current/skills/` (one `SKILL.md` each)
 > and, for each method, `skills/stringency-analyze-*/SKILL.md` in the method repository at its
 > tag (the Xenium method is `https://github.com/santangelo-lab/stringency-xenium-method`, tag
-> `v0.6.0-rc16`). Download each file, publish it under its directory name with
+> `v0.6.0-rc17`). Download each file, publish it under its directory name with
 > `host.skills.edit` and `host.skills.publish`, overwriting an older copy, and tell me the name
 > and the "for engine" line of each skill you published.
 
@@ -24,7 +24,7 @@ what was published. Four skills today:
 | `stringency-operator` | `integrations/claude-science/stringency-operator/SKILL.md` (engine repo) | the session, to drive a project |
 | `stringency-declare` | `integrations/claude-science/stringency-declare/SKILL.md` (engine repo) | the session, to draft declarations from a brief |
 | `stringency-analyze-<name>` | `skills/stringency-analyze-<name>/SKILL.md` in the method repo, rendered by `integrations/claude-science/render_skill.py` from `skills/<pipeline>.analyze.yml` (Track 1d, built 2026-09-23) | a lab member, as the entry point for one analysis |
-| `stringency-analyze-toy-compare` | `skills/stringency-analyze-toy-compare/SKILL.md` in `stringency-toy-method` at `v0.1.5` | the first instance, on the toy `toy-engine` pipeline; the Track 1 acceptance test runs through it |
+| `stringency-analyze-toy-compare` | `skills/stringency-analyze-toy-compare/SKILL.md` in `stringency-toy-method` at `v0.2.0` | the first instance, on the toy `toy-engine` pipeline; the Track 1 acceptance test runs through it |
 
 ## What the session runs
 

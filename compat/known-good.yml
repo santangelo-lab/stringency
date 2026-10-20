@@ -44,3 +44,11 @@ combinations:
     date: 2026-10-15
     host: the lab's Linux workstation (apptainer)
     evidence: "installed as 0.2.21-sc0.5.1 on the workstation from the GitHub tags; probe --method ready with every image present; CI green in all three repositories and the compat workflow green on this engine"
+  - engine: v0.2.23
+    plugins:
+      stringency-singlecell: v0.5.1
+    methods:
+      stringency-xenium-method: v0.6.0-rc17
+    date: 2026-10-20
+    host: the lab's Linux workstation (apptainer)
+    evidence: "open mode (v0.2.22) and data egress (v0.2.23) merged after the owner's test drives on the branch builds (the toy at v0.2.0: the open-mode drives of 2026-10-19 and the egress drive through Claude Science of 2026-10-20); installed as 0.2.23-sc0.5.1 on the workstation from the GitHub tags; probe --method ready for rc17 with every image present; CI green in the engine and the method repositories"
