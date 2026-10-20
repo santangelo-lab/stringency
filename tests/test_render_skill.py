@@ -477,3 +477,13 @@ def test_questions_file_shape_is_checked(tmp_path):
     assert any("expects tool `ghost`" in p for p in problems) and any(
         "`expect` must be" in p for p in problems
     )
+
+
+def test_description_over_the_registry_cap_is_a_problem():
+    data = yaml.safe_load(EXAMPLE.read_text())
+    data["summary"] = "x" * 1100
+    _, problems = rs.validate(data, EXAMPLE, None)
+    assert any("description:" in p and "1024" in p for p in problems), problems
+    data["summary"] = "short"
+    _, problems = rs.validate(data, EXAMPLE, None)
+    assert not [p for p in problems if "description:" in p], problems

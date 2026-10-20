@@ -3,7 +3,7 @@
 A plan note, written 2026-10-16 after reading `github.com/posit-dev/commons` (HEAD `15de530`,
 2026-10-12; an R package and a Python package, both marked experimental, under one contract).
 Not the spec. The method is the one used for ClawBio (`judge-sources-plan.md` section 9,
-`egress-and-remeasurement.md`): say what the other project is, put it beside the design, name
+`archive/egress-and-remeasurement.md`): say what the other project is, put it beside the design, name
 what is worth taking and where it lands, and record what is not. Items marked *design* change
 design text and need the owner; the rest are DECISIONS-level or skill-level. Backlog rows L35 to
 L38 point here.
@@ -134,7 +134,7 @@ Reached independently, worth noting because they are evidence the instinct is ri
   method SHA and `captures.script_blobs`).
 - Rules before measurement, held-out cases, and a refusal to tune to the visible set
   (commons' evaluation reference; `design.holdout` and the ClawBio borrowing in
-  `egress-and-remeasurement.md` part 2 item 4).
+  `archive/egress-and-remeasurement.md` part 2 item 4).
 
 ## 4. Worth borrowing
 

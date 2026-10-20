@@ -1,5 +1,10 @@
 # Data egress classes and judgment re-measurement
 
+**Archived 2026-10-20.** Part 1 (data egress classes) is built and merged: engine 0.2.23, PR #15,
+after the owner's drive through Claude Science; what it left open is backlog L40 to L46. Part 2
+(judgment re-measurement) is unbuilt and unscheduled; backlog L2 to L4 point here for its design.
+History, not instructions; the open items live in `spec/plans/backlog.md`.
+
 A plan note, drafted 2026-09-23 evening after reading ClawBio (`github.com/ClawBio/ClawBio`,
 `v0.7.1`, HEAD `8a09183`). Not the spec. Two mechanisms are worth borrowing; the rest of that
 project is assessed in `judge-sources-plan.md` section 9 and not integrated. Items marked

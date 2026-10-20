@@ -12,7 +12,7 @@ your site's values filled in:
 > texts are the directories under `<prefix>/current/skills/` (one `SKILL.md` each)
 > and, for each method, `skills/stringency-analyze-*/SKILL.md` in the method repository at its
 > tag (the Xenium method is `https://github.com/santangelo-lab/stringency-xenium-method`, tag
-> `v0.6.0-rc17`). Download each file, publish it under its directory name with
+> `v0.6.0-rc18`). Download each file, publish it under its directory name with
 > `host.skills.edit` and `host.skills.publish`, overwriting an older copy, and tell me the name
 > and the "for engine" line of each skill you published.
 

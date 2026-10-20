@@ -125,7 +125,7 @@ current policy, and per-item confidence.
 Competent means: agreement with the owner's verdicts at least equal to the Claude panel's,
 schema validity above 95 percent, and the negative control abstaining or splitting rather than
 labelling. Two further endpoints, borrowed from ClawBio's lifecycle page
-(`egress-and-remeasurement.md` part 2): over-answer rate on ill-formed evidence once the
+(`archive/egress-and-remeasurement.md` part 2): over-answer rate on ill-formed evidence once the
 `ill_formed` control kind exists, and abstention stability across the three replicates, which
 is computable from the `judgments` table today. Rule: this definition is committed before the
 evaluation runs and is not revised to fit its result. Results go to `backlog.md` measurements. If the local judge is not competent at 32b,
@@ -189,7 +189,7 @@ S4's panel already covers the case where the whole project wants enforced isolat
 - **Data routing.** Projects under `/data/protect` may bind only direct adapters whose
   `base_url` is loopback or a host inside the lab network. First written as a path check that
   refuses `subagent` and `api` under `/data/protect`; superseded the same evening by the egress
-  classes and `policy.yml` `egress.max_class` in `egress-and-remeasurement.md` part 1, which
+  classes and `policy.yml` `egress.max_class` in `archive/egress-and-remeasurement.md` part 1, which
   cover the harness, module scripts and the operator runner together. The path check survives
   there as a lint warning when a PROTECT project binds a policy above class 1. Build before any
   PROTECT project is initialised.
@@ -259,4 +259,4 @@ published as a ClawBio skill: zero format cost (Lane E's skills are already Agen
 folders), but a distribution and licensing decision, not now. Stringency as ClawBio's judgment
 layer (a `stringency_clawbio` plugin gating their interpretation steps): the right conceptual fit
 and the largest scope, in their domain, dependent on their appetite; a conversation, not a build.
-Decision: no integration lane. Two mechanisms borrowed into `egress-and-remeasurement.md`.
+Decision: no integration lane. Two mechanisms borrowed into `archive/egress-and-remeasurement.md`.

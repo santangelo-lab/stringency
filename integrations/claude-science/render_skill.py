@@ -50,6 +50,11 @@ HOW = ("declared", "proposed")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
+# Claude Science's skill registry refuses a description over this many characters (seen
+# 2026-10-20 on stringency-analyze-xenium-upstream, 1,077).
+DESCRIPTION_MAX = 1024
+
+
 class Problems(list[str]):
     def add(self, msg: str) -> None:
         self.append(msg)
@@ -153,6 +158,11 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
         f"Do not load for {'; '.join(negative)}. "
         f"Runs the `{pipeline}` pipeline under stringency and shows the CLI only on request."
     )
+    if len(description) > DESCRIPTION_MAX:
+        problems.add(
+            f"description: {len(description)} characters; the skill registry caps it at "
+            f"{DESCRIPTION_MAX} (shorten summary or phrasings by {len(description) - DESCRIPTION_MAX})"
+        )
     ctx = {
         "skill_name": f"stringency-analyze-{name}",
         "name": name,
