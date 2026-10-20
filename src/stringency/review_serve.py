@@ -487,7 +487,8 @@ _KIND_TYPES = {
 
 def served_files(deliver_dir: Path) -> dict[str, tuple[str, str, str]]:
     """The names `index.json` lists, each with its content type, recorded kind and step: the
-    delivered files, their sidecars, and the three reports. Anything else is not served."""
+    delivered files, their sidecars, the reports, and an open project's answer files. Anything
+    else is not served."""
     idx = json.loads((deliver_dir / "index.json").read_text())
     out: dict[str, tuple[str, str, str]] = {}
     for f in idx.get("files", []):
@@ -496,10 +497,13 @@ def served_files(deliver_dir: Path) -> dict[str, tuple[str, str, str]]:
         out[name] = (_content_type(name, kind), kind, str(f.get("step_id") or ""))
         if f.get("sidecar"):
             out[str(f["sidecar"])] = ("application/json", "sidecar", str(f.get("step_id") or ""))
-    for key in ("coverage", "methods", "summary"):
+    for key in ("coverage", "methods", "summary", "report"):
         entry = idx.get(key)
         if isinstance(entry, dict) and entry.get("file"):
             out[str(entry["file"])] = ("text/markdown; charset=utf-8", key, "")
+    for a in idx.get("answers") or []:
+        if a.get("file"):
+            out[str(a["file"])] = ("text/markdown; charset=utf-8", "answer", "")
     return out
 
 
@@ -1202,8 +1206,11 @@ class ReviewHandler(BaseHTTPRequestHandler):
         files: list[dict[str, str]] = []
         if d is not None and (Path(d["path"]) / "index.json").exists():
             ddir = Path(d["path"])
-            if (ddir / "summary.md").exists():
-                summary = (ddir / "summary.md").read_text()
+            idx_all = json.loads((ddir / "index.json").read_text())
+            idx_summary = idx_all.get("report") or idx_all.get("summary") or {}
+            sname = str(idx_summary.get("file") or "summary.md")  # report.md when open
+            if (ddir / sname).exists():
+                summary = (ddir / sname).read_text()
             for name, (_ctype, kind, step) in served_files(ddir).items():
                 if kind == "sidecar":
                     continue

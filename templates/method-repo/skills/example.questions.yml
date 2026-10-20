@@ -1,0 +1,16 @@
+# Routing test set for open mode (spec/method-skills.md section 5; open_mode_plan.md section 3):
+# questions a person might ask after this pipeline delivers, each with the route the operator
+# should take: `tool:<name>` (a listed tool), `exec` (code written in the session), `cannot`
+# (not answerable from the delivery, or a judgment), `fork` (a change to the pipeline run, not a
+# question), `explain` (a question about how the analysis was done, answered from the reports).
+# `render_skill.py --check` checks the shape; it is run by hand in a session and the results go
+# in <pipeline>.questions.results.md.
+questions: 1
+skill: stringency-analyze-example
+positive:
+  - {text: "Which group is higher, and by how much?", expect: "tool:example-tool"}
+  - {text: "How many measurements does each group have?", expect: exec}
+negative:
+  - {text: "Is this result good enough to publish?", expect: cannot}
+  - {text: "Run it again without the smallest group", expect: fork}
+  - {text: "How was the comparison corrected for multiple tests?", expect: explain}

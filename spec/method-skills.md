@@ -111,6 +111,8 @@ are per step and show on the project page once the step has produced its outputs
 | `deliverables` | output name to one sentence saying what the person receives; names are module outputs |
 | `asks` | the declare questions this pipeline always needs, in lay words, asked one at a time in this order |
 | `defaults_to_say` | plugin default key to its lay phrase; the skill reads the value from `plugins list --json` and says it aloud before the echo-back |
+| `tools` | optional (open mode, engine 0.2.22): the words for each tool the method ships for questions after delivery, `{module, title, use_when, asks: {param: question}, proposed: [{param, evidence, ask}], defaults_to_say}`. `--check` requires the module to list `open`, every `asks` and `proposed` key to be a parameter of its schema, and every decision point of the module to be settled by one of them |
+| `open` | optional (open mode): `{intro, paths: [{answers, tool \| code, needs, asks}]}`, the method's suggested paths forward, said by the operator in the pinned form before the switch; `needs` names pipeline outputs (`--check` requires them to exist), `asks` what the path needs from the person |
 | `decisions` | optional; the decision points a person settles, each `{step, param, how, ask, evidence, after}`. `how: declared`: asked before the echo-back and written to `objective.yml` `params:` (engine 0.2.18), never proposed. `how: proposed`: the operator proposes it after the step `after` has run, from the `evidence` named (sources as in the delivery skill), and the person approves it at the hold; the rendered skill lists them and carries the operator skill's section 9 verbatim (2026-10-14, backlog L32). `--check` requires the parameter to be a decision point of the step's module or a parameter the pipeline declares |
 
 What the template supplies and the source must not: the two-audiences preamble, the nine body
@@ -154,6 +156,17 @@ rendered `SKILL.md` is read from the method repository at its tag and published 
 skills cell; republish on every method tag that changed it. The engine records no publish; the
 transcript is the record.
 
+### Open mode files
+
+`skills/open.yml` (`skill: 1`, `answer_view: [{tool, title, output, kind: table | figure | file,
+columns, head}]`) is what `present --answer` renders for an answer that rests on the tool: the
+named output, in the columns given, at most `head` rows; without an entry, the cited rows of
+every cited table and every cited figure. `skills/<pipeline>.questions.yml` is the routing test
+set for questions (section 5). The rendered analysis skill's section 8 carries the tools with
+their words, the suggested paths, and the pinned sentences of open mode verbatim (the operator
+skill's section 10.7; `tests/test_render_skill.py` keeps the two and the engine's constants
+identical).
+
 ## 5. The routing test, `skills/<pipeline>.phrasings.yml`
 
 Twenty positive and ten negative first messages, each with the outcome it should produce:
@@ -162,6 +175,12 @@ session after each revision of the description, until a skill evaluation tool is
 one row per phrasing tried in `skills/<pipeline>.phrasings.results.md` with the method tag. The
 engine skills loading alongside the analysis skill is the expected outcome, not a miss: the
 analysis skill defers to them.
+
+For open mode, `skills/<pipeline>.questions.yml` (`questions: 1`; `positive` and `negative`
+lists of `{text, expect}` with `expect` one of `tool:<name>`, `exec`, `cannot`, `fork`,
+`explain`) holds the questions a person might ask after delivery and the route each should take;
+`render_skill.py --check` checks its shape, and it is run by hand the same way, results in
+`skills/<pipeline>.questions.results.md`.
 
 ## 6. What is measured
 

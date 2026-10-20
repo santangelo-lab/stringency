@@ -26,6 +26,9 @@ from stringency.modules import Module
 from stringency.present import Site
 
 UNTESTED_NOTE = "none: outputs will be labelled untested"
+# a deterministic tool with declared controls: `call` runs them before its first step
+# (controls.ensure_current, 2026-10-19), so no pass on record yet is not an untested label
+BEFORE_USE_NOTE = "runs before the tool's first use; its outputs are trusted if it passes"
 
 
 def _env_status(site: Site, env: str) -> str:
@@ -61,7 +64,16 @@ def _candidates(site: Site) -> list[dict[str, Any]]:
     if site.open_ended:
         inputs = load_model(InputsManifest, site.root / "inputs.yml")
         for i in inputs.items:
-            out.append({"ref": f"$inputs.{i.name}", "name": i.name, "type": i.type, "path": i.path})
+            c: dict[str, Any] = {
+                "ref": f"$inputs.{i.name}",
+                "name": i.name,
+                "type": i.type,
+                "path": i.path,
+            }
+            if i.upstream_input is not None:
+                # read-only, from before the pipeline ran; binds only with --in
+                c["upstream_input"] = i.upstream_input.input
+            out.append(c)
         run = site.store.one(
             "SELECT run_id FROM runs WHERE kind='run' ORDER BY started DESC, rowid DESC LIMIT 1"
         )
@@ -167,7 +179,8 @@ def _tool_entry(
         "declared": [p.stem for p in module.control_files()],
     }
     if last is None:
-        control["note"] = UNTESTED_NOTE
+        auto = m.kind == "deterministic" and bool(control["declared"])
+        control["note"] = BEFORE_USE_NOTE if auto else UNTESTED_NOTE
     entry = {
         "ref": m.ref,
         "name": m.name,

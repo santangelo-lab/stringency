@@ -100,11 +100,22 @@ def bind_set(job: Job) -> list[str]:
     # read-write bind nested under one (the module directory) is dropped and the module sees its
     # own files read-only; a read-only bind nested under a kept read-write one is redundant.
     mappings: dict[Path, tuple[Path, bool]] = {}
+    # a directory the job lists in `ro_bind_paths` stays read-only even when a path under it
+    # is named by the command or the stdin document (an exec step's inputs, open mode 2026-10-16):
+    # only an explicit `bind_paths` entry or the working directory binds read-write there
+    explicit_ro = {Path(d).resolve() for d in job.ro_bind_paths}
+    explicit_rw = {Path(d).resolve() for d in job.bind_paths} | {job.cwd.resolve()}
+
+    def forced_ro(host: Path) -> bool:
+        if host in explicit_rw or any(h in host.parents for h in explicit_rw):
+            return False
+        return host in explicit_ro or any(h in host.parents for h in explicit_ro)
 
     def add(d: Path, ro: bool) -> None:
         host = d.resolve()
         if _is_system(host):
             return
+        ro = ro or forced_ro(host)
         if host not in mappings or not ro:
             mappings[host] = (host, ro and mappings.get(host, (host, True))[1])
         if d.is_absolute() and d != host and (d not in mappings or not ro):
@@ -176,6 +187,34 @@ def resolve_image(image: str, envs_root: Path) -> Path:
     return candidates[0]
 
 
+_ISOLATION: dict[tuple[str, str], bool] = {}
+
+
+def network_isolation(binary: str, image: Path | None) -> bool | None:
+    """Whether unprivileged `<binary> exec --net --network none <image> /bin/true` works on
+    this host (open_mode_plan.md 2.4): True, False, or None when it cannot be tried (no binary,
+    no image). Tried once per binary and image for the life of the process; `probe` reports it
+    and the executor adds the flags to an `exec` step's line only when it is True."""
+    if image is None or not image.exists() or shutil.which(binary) is None:
+        return None
+    key = (binary, str(image))
+    if key not in _ISOLATION:
+        try:
+            proc = subprocess.run(
+                [binary, "exec", "--net", "--network", "none", str(image), "/bin/true"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            _ISOLATION[key] = proc.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            _ISOLATION[key] = False
+    return _ISOLATION[key]
+
+
+NETWORK_FLAGS = ["--net", "--network", "none"]
+
+
 def find_binary() -> str:
     """`STRINGENCY_APPTAINER_BIN` if set, else the first of apptainer, singularity on PATH,
     else `apptainer` so the failure names the expected tool."""
@@ -224,6 +263,8 @@ class ApptainerExecutor:
         `run` executes, and the line an operator ticket prints."""
         image = self.image_for(job.env_name)
         cmd: list[str] = [self.binary, "exec", "--containall", "--pwd", str(job.cwd)]
+        if self.network_for(job) == "none":
+            cmd += NETWORK_FLAGS
         for b in bind_set(job):
             cmd += ["--bind", b]
         # `--containall` gives the container a 64 MB tmpfs at /tmp; module code that uses
@@ -232,6 +273,15 @@ class ApptainerExecutor:
         cmd += ["--bind", f"{job.cwd / 'tmp'}:/tmp"]
         cmd += [str(image) if image else "<no image>", *[str(c) for c in job.command]]
         return cmd
+
+    def network_for(self, job: Job) -> str | None:
+        """`none` when the job asks for isolation and the host enforces it, `unenforced` when it
+        asks and the host cannot, None when it does not ask."""
+        if job.network != "none":
+            return None
+        return (
+            "none" if network_isolation(self.binary, self.image_for(job.env_name)) else "unenforced"
+        )
 
     def run(self, job: Job) -> ExecResult:
         job.cwd.mkdir(parents=True, exist_ok=True)
@@ -268,4 +318,5 @@ class ApptainerExecutor:
             env_digest=self.env_digest(job.env_name),
             command=" ".join(cmd),
             timed_out=timed_out,
+            network=self.network_for(job),
         )

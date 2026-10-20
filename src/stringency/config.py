@@ -109,6 +109,15 @@ class DerivedFrom(Strict):
     project: str | None = None  # informational: where the upstream project lives
 
 
+class UpstreamInput(Strict):
+    """An input the upstream pipeline project itself declared, bound read-only beside its
+    delivery in an open project (2026-10-19), so a question can reach the data before the
+    pipeline ran. `init` verifies it against the upstream's `inputs.yml`."""
+
+    project: str
+    input: str  # its name in the upstream's inputs.yml
+
+
 class InputItem(Strict):
     name: str
     path: str
@@ -117,6 +126,7 @@ class InputItem(Strict):
     source: str | None = None
     build: str | None = None  # reference build, checked by init.reference_mismatch
     derived_from: DerivedFrom | None = None
+    upstream_input: UpstreamInput | None = None
     # `reference`: the input describes other studies' observations (a table of earlier punches,
     # an atlas), not this design's; init.column_missing does not require the design columns in it
     role: Literal["observation", "reference"] = "observation"

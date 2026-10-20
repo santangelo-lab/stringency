@@ -1,0 +1,12 @@
+# What a person sees of an answer in open mode (open_mode_plan.md 2.7; engine 0.2.22). Read by
+# `stringency present --answer`. One entry per tool: which output to show beside the answer, in
+# which columns, at most `head` rows. Without an entry for the tool, the engine shows the cited
+# rows of every cited table and every cited figure. Nothing here changes what runs.
+skill: 1
+answer_view:
+  - tool: example-tool
+    title: "The comparison this answer rests on"
+    output: comparison_table
+    kind: table            # table | figure | file
+    columns: [contrast, diff, p_adj]
+    head: 20

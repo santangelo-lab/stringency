@@ -56,6 +56,28 @@ experiment. `render_skill.py <repo> --pipeline <name> --check` fails when the sk
 pipeline disagree. Title every step: the skills, the progress sentences and the summary speak in
 titles.
 
+## Tools for questions
+
+A module whose `modes` list `open` is a tool: after a pipeline delivers, the operator may run it
+on demand on the delivered files or on what earlier tools produced, and an answer that rests on
+it is labelled trusted when the tool has a current control (open mode, engine 0.2.22,
+`docs/open-mode.md`). A tool is an ordinary module (`module.yml`, `params.schema.json`,
+`pre.*`, `decision_points`); what makes it trustable is `controls/`: a positive control with
+`params` (the values it runs with) and `expect.equals` against a truth table keyed by a column
+(`columns`, `tolerance`), and a negative control with a generator and `expect.count`. A figure
+tool has `expect.completed: true`. `lint` warns on a tool with no positive control, in the words
+the person will read: its outputs will be labelled untested. A tool is controlled alone, on its
+fixture, whatever pipeline also uses it. The words the skill says about a tool go in
+`skills/<pipeline>.analyze.yml` `tools:` (title, use-when, the asks for its decision points) and
+`open:` (the paths the operator proposes before the switch); `skills/open.yml` says what
+`present --answer` shows beside an answer; `skills/<pipeline>.questions.yml` is the routing test
+set. The worked example is `compare-groups` and `plot-groups` in the toy method.
+
+Promoting a session's code into a tool (open_mode_plan.md phase 4, not built): an answer the
+operator keeps giving with `exec` is the candidate; the script is in the trace
+(`runs/<run>/<step>/script.<ext>`, `messages` under its hash) and the exec's inputs and outputs
+are the fixture and the truth table of its first control.
+
 ## Check, run, tag
 
     stringency lint .                       # errors fail; read the warnings

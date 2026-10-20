@@ -35,8 +35,11 @@ APPEND_ONLY = frozenset(
         "messages",
         "judgments",
         "controls_runs",
+        "findings",
         "deliveries",
         "policy_snapshots",
+        "questions",
+        "answers",
     }
 )
 
@@ -264,14 +267,19 @@ class Store:
 
     # -- steps ----------------------------------------------------------------------
 
-    def create_step(self, row: Mapping[str, Any]) -> None:
-        """Writes: steps (status `pending` unless given), step_events (`created`)."""
+    def create_step(
+        self, row: Mapping[str, Any], *, extra: Mapping[str, Any] | None = None
+    ) -> None:
+        """Writes: steps (status `pending` unless given), step_events (`created`, whose payload
+        carries `extra`: an on-demand step's declaration, open_mode_plan.md 2.2)."""
         r = dict(row)
         r.setdefault("status", "pending")
         r.setdefault("attempt", 0)
         with self.transaction():
             self._raw_insert("steps", r)
-            self.step_event(r["run_id"], r["step_id"], "created", {"status": r["status"]})
+            self.step_event(
+                r["run_id"], r["step_id"], "created", {"status": r["status"], **dict(extra or {})}
+            )
 
     def step_event(
         self, run_id: str, step_id: str, event: str, payload: Mapping[str, Any] | None = None

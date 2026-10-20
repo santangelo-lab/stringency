@@ -112,10 +112,28 @@ the run is complete.
 If `--deliver` did not run, `sx("stringency deliver --json", intent="Collect the finished results,
 methods text, and coverage report for {{ name }}.")`.
 
-Download `summary.md`, `coverage.md`, `methods.md`, and `index.json` from `deliver/<run_id>/` and
-save them as artifacts. Show me `summary.md` as it is. Then report: how many approval cards the
+Download the delivered files, `summary.md`, `coverage.md`, `methods.md`, and `index.json` from
+`deliver/<run_id>/` and save them as artifacts. Show me the results with `stringency present`,
+relayed whole, then at most three sentences on what was decided, and the names of the saved files.
+Do not paste `summary.md` unless I ask.
+{% if rehearsal %}
+
+This is a rehearsal, so add a short report for the engine's record: how many approval cards the
 run needed, whether delegates were used and whether each saw only its request, what model
 identity each reported, your frame id, and where the saved artifacts live.
+{% endif %}
+
+## Phase 4: questions of the delivered dataset (open mode)
+
+After the report, follow section 10 of the `stringency-operator` skill: `tools list --context
+--json` in `{{ project }}`, three to five paths forward in the pinned form, the switch paragraph,
+and wait for my yes. On it, the open project is `{{ project }}-open` beside this one
+(`init --mode open --from-delivery`, the same method, harness and executor), and every question
+goes `ask`, one route, `answer` citing cells, then your reply in your own words: what the
+result shows, the table or figure, and how far to trust it. Code of your own runs only through
+`exec`. Every answer lands in the report on disk as it is filed; tell me so once, when the first
+answer lands. When I say I am done, ask me once which answers are findings, mark the ones I name,
+and hand me `report.md`.
 {% if declare %}
 ## Brief
 

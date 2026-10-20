@@ -14,7 +14,7 @@ from stringency import __version__
 from stringency.egress import CLASS_NAMES
 from stringency.gate import in_scope_specs
 from stringency.predicates import registry
-from stringency.runs import RunContext, captured_egress, captured_plugins
+from stringency.runs import RunContext, captured_egress, captured_plugins, captured_upstream_lineage
 from stringency.when import skip_reason
 
 
@@ -25,13 +25,13 @@ def decision_point_coverage(rc: RunContext) -> tuple[list[str], list[str]]:
     store = rc.store
     uncovered: list[str] = []
     ungated: list[str] = []
-    for step in rc.project.pipeline.steps:
+    for step in rc.pipeline.steps:
         st = store.scalar(
             "SELECT status FROM steps WHERE run_id=? AND step_id=?", (rc.run_id, step.id)
         )
         if st not in ("completed", "held", "rejected"):
             continue
-        module = rc.project.modules.require(step.module)
+        module = rc.module_for(step.id)
         rows = store.all(
             "SELECT DISTINCT pr.predicate_id FROM predicate_results pr JOIN actions a ON a.action_id = pr.action_id "
             "WHERE a.run_id=? AND a.step_id=?",
@@ -49,10 +49,14 @@ def decision_point_coverage(rc: RunContext) -> tuple[list[str], list[str]]:
 
 
 def in_scope_for_pipeline(rc: RunContext) -> set[str]:
+    """The predicates in scope for the run's topology; in open mode for every tool the method
+    ships (the topology is whatever was asked) plus the steps run so far."""
     ids: set[str] = set()
-    for step in rc.project.pipeline.steps:
-        m = rc.project.modules.require(step.module).manifest
-        runner = step.runner or m.runner or rc.project.config.execution
+    manifests = [(rc.module_for(s.id).manifest, s.runner) for s in rc.pipeline.steps]
+    if rc.open_ended:
+        manifests += [(m.manifest, "engine") for m in rc.project.tools()]
+    for m, step_runner in manifests:
+        runner = step_runner or m.runner or rc.project.config.execution
         for phase in ("pre", "post"):
             for s in in_scope_specs(
                 registry, phase, operation=m.operation, module=m, runner=runner
@@ -170,8 +174,8 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
     uncovered, ungated = decision_point_coverage(rc)
 
     judgment: list[dict[str, Any]] = []
-    for step in project.pipeline.steps:
-        m = project.modules.require(step.module).manifest
+    for step in rc.pipeline.steps:
+        m = rc.module_for(step.id).manifest
         if m.kind != "judgment":
             continue
         cons = store.all(
@@ -238,18 +242,14 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
     )
     operator = [e for e in execs if e["runner"] == "operator"]
     drift = sum(1 for r in results if r["fired"] and r["predicate_id"] == "exec.plan_drift")
-    stochastic = [
-        s.id
-        for s in project.pipeline.steps
-        if project.modules.require(s.module).manifest.stochastic
-    ]
+    stochastic = [s.id for s in rc.pipeline.steps if rc.module_for(s.id).manifest.stochastic]
     seeded = 0
     for sid in stochastic:
         a = store.one(
             "SELECT params_json FROM actions WHERE run_id=? AND step_id=? ORDER BY attempt DESC LIMIT 1",
             (rc.run_id, sid),
         )
-        m = project.modules.require(project.pipeline.step(sid).module).manifest
+        m = rc.module_for(sid).manifest
         if a and json.loads(a["params_json"]).get(m.seed_param) is not None:
             seeded += 1
     invs = store.all(
@@ -265,10 +265,29 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "models": sorted({i["model_resolved"] for i in invs}),
             "harness": sorted({i["harness_kind"] for i in invs}),
         }
+    # open mode: tools run without a current control (their outputs are untested), and the
+    # upstream delivery's lineage captured at run open
+    uncontrolled: list[str] = []
+    if rc.open_ended:
+        cur = rc.controls_current()
+        for x in rc.on_demand():
+            if x.get("kind") == "tool":
+                ref = str(x["decl"].get("module"))
+                if cur.get(ref, {}).get("status") != "current":
+                    uncontrolled.append(
+                        f"{x['step_id']} ({ref}: {cur.get(ref, {}).get('status', 'none')})"
+                    )
     return {
         "run_id": rc.run_id,
         "project_id": project.config.project_id,
         "pipeline": f"{project.pipeline.name}@{project.pipeline.version}",
+        "open": {
+            "uncontrolled_tools": uncontrolled,
+            "exec_steps": [x["step_id"] for x in rc.on_demand() if x.get("kind") == "exec"],
+            "upstream_lineage": captured_upstream_lineage(store, rc.run_id),
+        }
+        if rc.open_ended
+        else None,
         "mode": project.config.mode,
         "profile": project.config.profile,
         "policy_version": run["policy_version"],
@@ -428,5 +447,43 @@ def render_coverage(d: dict[str, Any]) -> str:
         hr = eg["highest_reached"]
         lines.append(f"  highest class reached: {hr} {CLASS_NAMES[hr]}")
     lines.append("")
+    op = d.get("open")
+    if op:
+        lines.append("open mode:")
+        lines.append(
+            "  tools run without current controls: "
+            + (", ".join(op["uncontrolled_tools"]) or "none")
+        )
+        lines.append("  scripts written in the session: " + (", ".join(op["exec_steps"]) or "none"))
+        ex = d.get("explored") or {}
+        for e in ex.get("rerun_counts", []):
+            lines.append(
+                f"  explored: {e['module']} {e['runs']} run(s), {e['distinct_params']} distinct parameter set(s), "
+                f"{e.get('findings', 0)} cited by findings (steps {', '.join(e['steps'])})"
+            )
+        q = ex.get("questions") or {}
+        lines.append(
+            f"  questions: {q.get('person', 0)} in the person's own words, {q.get('suggested', 0)} suggested by the operator"
+        )
+        lines.append("  upstream lineage:")
+        for u in op["upstream_lineage"] or []:
+            if u.get("error"):
+                lines.append(
+                    f"    {u['input']}: run {u['run_id']} of {u['project']}: not readable ({u['error']})"
+                )
+                continue
+            chain = " <- ".join(c["run_id"] for c in u.get("chain", []))
+            dts = ", ".join(str(t)[:10] for t in u.get("deliveries", [])) or "none"
+            lines.append(
+                f"    {u['input']}: run {u['run_id']} of {u['project']} ({u.get('upstream_pipeline') or 'unknown'}); "
+                f"ancestors {chain}; delivered {dts}"
+            )
+        if not op["upstream_lineage"]:
+            lines.append("    none recorded")
+        lines.append("")
+        from stringency.summary import NOT_CHECKED_OPEN
+
+        lines.append(NOT_CHECKED_OPEN)
+        return "\n".join(lines) + "\n"
     lines.append("not checked: anything not listed above")
     return "\n".join(lines) + "\n"

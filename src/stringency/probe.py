@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from stringency import __version__, siteconfig
-from stringency.executor.apptainer import find_binary, resolve_image, sha256_file
+from stringency.executor.apptainer import find_binary, network_isolation, resolve_image, sha256_file
 from stringency.operator_exec.envcheck import load_env_manifest
 from stringency.plugins import installed_plugin_versions
 from stringency.policy import load_policy
@@ -178,6 +178,25 @@ def _probe_method(
                     )
                 )
             report["envs"][name] = env
+        # open mode (open_mode_plan.md 2.4): can an `exec` step's network be isolated here?
+        # Tried against the first image present; None when there is none to try with.
+        images = [Path(e["image"]) for e in report["envs"].values() if e.get("image")]
+        present = next((i for i in images if i.exists()), None)
+        iso = network_isolation(find_binary(), present)
+        report["network_isolation"] = iso
+        if iso is None:
+            detail = (
+                "no image present to try `--net --network none` with; an exec step records "
+                "network as unenforced until one is"
+            )
+        elif iso:
+            detail = "`--net --network none` works unprivileged; exec steps run with no network"
+        else:
+            detail = (
+                "`--net --network none` is refused on this host; exec steps run with the host's "
+                "network and record network as unenforced"
+            )
+        checks.append(Check("network isolation", iso, detail))
         return report
 
 

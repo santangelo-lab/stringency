@@ -120,12 +120,18 @@ def transition(
     )
 
 
-def derive_run_status(statuses: Mapping[str, str], order: list[str]) -> str:
+def derive_run_status(
+    statuses: Mapping[str, str], order: list[str], *, open_ended: bool = False
+) -> str:
     """Design 7.1: held if any step is held; blocked or failed if the frontier is; completed
-    when every step is completed or skipped; otherwise running."""
+    when every step is completed or skipped; otherwise running. An open-ended run (open mode,
+    7.1 amended 2026-10-16) is `held` when any step is held, else `running`: it never completes
+    by itself, and a blocked, rejected or failed on-demand step is that step's state only."""
     vals = [statuses.get(s, "pending") for s in order]
     if any(v == "held" for v in vals):
         return "held"
+    if open_ended:
+        return "running"
     if all(v in DONE for v in vals):
         return "completed"
     for v in vals:

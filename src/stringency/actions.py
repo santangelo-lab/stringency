@@ -25,11 +25,13 @@ class Action:
     operation: str
     module: str
     parameters: dict[str, Any]
-    param_source: dict[str, str]  # per parameter: default | agent | fork | inherited (design 2.6)
+    param_source: dict[
+        str, str
+    ]  # per parameter: default | agent | person | fork | inherited | declared
     inputs: dict[str, str]  # input name -> blake3:<hex>
     input_digest: str
     params_hash: str
-    proposed_by: str  # pipeline | agent | fork | inherited | declared
+    proposed_by: str  # pipeline | agent | person | fork | inherited | declared
     rationale_ref: str | None = None
     ticket: str | None = None
     proposed_at: str = field(default_factory=now_iso)
@@ -112,8 +114,14 @@ def build_action(
         params[name] = value
         source[name] = source_label
     labels = {v for v in source.values() if v != "default"}
+    # `person` (open mode, design 5 amended 2026-10-16): a value the person dictated in their own
+    # words, recorded with their words as the reason; it opens no `param.agent_proposed` hold
     if source_label in labels:
         proposed_by = source_label
+    elif "agent" in labels:
+        proposed_by = "agent"
+    elif "person" in labels:
+        proposed_by = "person"
     elif "inherited" in labels:
         proposed_by = "inherited"
     elif "declared" in labels:

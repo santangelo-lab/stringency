@@ -17,11 +17,19 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
     sentences: list[str] = []
     plugin_version = captured_plugins(store, rc.run_id).get(project.plugin.name)
     with_plugin = f" (plugin {project.plugin.name} {plugin_version})" if plugin_version else ""
-    sentences.append(
-        f"Analysis was run with stringency {__version__}{with_plugin} using the {project.pipeline.name} pipeline "
-        f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile "
-        f"and policy {run['policy_version']}."
-    )
+    if rc.open_ended:
+        tools = ", ".join(m.ref for m in project.tools()) or "none"
+        sentences.append(
+            f"Questions were answered with stringency {__version__}{with_plugin} in open mode using the "
+            f"tools of method {project.config.method.tag} ({tools}; commit {run['git_sha'][:7]}) under the "
+            f"{project.config.profile} profile and policy {run['policy_version']}."
+        )
+    else:
+        sentences.append(
+            f"Analysis was run with stringency {__version__}{with_plugin} using the {project.pipeline.name} pipeline "
+            f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile "
+            f"and policy {run['policy_version']}."
+        )
     for item in project.inputs.items:
         if item.derived_from is not None:
             d = item.derived_from
@@ -31,13 +39,13 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
             )
     described: list[str] = []
     not_run: list[str] = []
-    for step in project.pipeline.steps:
+    for step in rc.pipeline.steps:
         st = store.scalar(
             "SELECT status FROM steps WHERE run_id=? AND step_id=?", (rc.run_id, step.id)
         )
         if st == "skipped":
             reason = (skip_reason(store, rc.run_id, step.id) or "").removeprefix("skipped: ")
-            title = project.pipeline.title(step.id)
+            title = rc.pipeline.title(step.id)
             not_run.append(
                 f"{title} (step {step.id}) was not run" + (f": {reason}" if reason else "")
             )
@@ -51,7 +59,19 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
         if row is None:
             continue
         action = action_from_row(row)
-        m = project.modules.require(step.module).manifest
+        m = rc.module_for(step.id).manifest
+        entry = rc.on_demand_entry(step.id)
+        if entry is not None and entry.get("kind") == "exec":
+            # the engine's own sentence: a plugin describes its operations, not a session script
+            blob = store.scalar(
+                "SELECT script_blob FROM executions WHERE action_id=? ORDER BY rowid DESC LIMIT 1",
+                (action.action_id,),
+            )
+            described.append(
+                f"a script written in the session (blake3 {str(blob or '')[:12]}) was run by the engine "
+                f"in environment {m.env} and its outputs were recorded untested (step {step.id})"
+            )
+            continue
         text = project.plugin.describe(action).strip().rstrip(".")
         if m.kind == "judgment":
             j = next((x for x in coverage["judgment"] if x["step"] == step.id), None)

@@ -59,3 +59,38 @@ def predecessor_incomplete(ctx: GateContext) -> Verdict:
             True, "an input references a step that is not completed", {"predecessors": incomplete}
         )
     return Verdict(False)
+
+
+@predicate(
+    id="topo.input_type_mismatch",
+    version=1,
+    scope=["*"],
+    phase="pre",
+    default=Disposition.BLOCK,
+    invariant=True,
+)
+def input_type_mismatch(ctx: GateContext) -> Verdict:
+    """Open mode (open_mode_plan.md 2.5, 2026-10-16): a bound input whose recorded kind differs
+    from the type the module declares for it. Reads `project.artifact_kinds` (digest to kind as
+    the engine recorded it); an input whose digest is not there (an `arity: many` list, a run
+    opened before the capture) is not judged."""
+    m = ctx.project.module_for(ctx.action.module)
+    if m is None:
+        return Verdict(False)
+    bad: dict[str, dict[str, str]] = {}
+    for name, digest in ctx.action.inputs.items():
+        spec = m.inputs.get(name)
+        if spec is None:
+            continue
+        bare = digest.removeprefix("blake3:")
+        kind = ctx.project.artifact_kinds.get(bare)
+        if kind is not None and kind != spec.type:
+            bad[name] = {"declared": spec.type, "bound": kind}
+    if bad:
+        names = ", ".join(
+            f"{k} ({v['bound']} bound, {v['declared']} declared)" for k, v in bad.items()
+        )
+        return Verdict(
+            True, f"an input is bound to the wrong kind of artifact: {names}", {"inputs": bad}
+        )
+    return Verdict(False)

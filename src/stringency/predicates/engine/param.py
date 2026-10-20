@@ -133,3 +133,33 @@ def agent_proposed(ctx: GateContext) -> Verdict:
             {"proposed": proposed, "rationale_ref": ctx.action.rationale_ref},
         )
     return Verdict(False)
+
+
+@predicate(
+    id="param.schema_invalid",
+    version=1,
+    scope=["*"],
+    phase="pre",
+    default=Disposition.BLOCK,
+    invariant=True,
+)
+def schema_invalid(ctx: GateContext) -> Verdict:
+    """Open mode (open_mode_plan.md 2.5, 2026-10-16): the action's declared parameters fail the
+    module's `params.schema.json` (enum, bounds, type). A tool run on demand has no pipeline
+    declaration with a range, so the module schema is the one bound on its values; undeclared
+    names are `param.undeclared`'s and are left out here."""
+    from stringency.schemas import validate
+
+    m = ctx.project.module_for(ctx.action.module)
+    if m is None or not m.params_schema:
+        return Verdict(False)
+    declared = set(m.declared_params)
+    instance = {k: v for k, v in ctx.action.parameters.items() if k in declared}
+    problems = validate(instance, m.params_schema)
+    if problems:
+        return Verdict(
+            True,
+            "a parameter fails the module's schema: " + "; ".join(problems),
+            {"problems": problems, "parameters": instance},
+        )
+    return Verdict(False)

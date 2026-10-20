@@ -115,7 +115,7 @@ def test_tools_list_on_a_delivered_pipeline_project(
     payload = json.loads(r.output)
     assert payload["schema"] == "stringency.tools/1" and payload["mode"] == "pipeline"
     names = [t["name"] for t in payload["tools"]]
-    assert names == ["compare-groups"]  # the one toy module that lists open
+    assert names == ["compare-groups", "plot-groups"]  # the toy modules that list open
     tool = payload["tools"][0]
     assert tool["ref"] == "compare-groups@0.1.1" and tool["kind"] == "deterministic"
     assert tool["env_status"] == "verified"  # the local executor digests the lock file
@@ -127,7 +127,10 @@ def test_tools_list_on_a_delivered_pipeline_project(
     assert set(tool["params"]) == {"replicate_unit", "correction"}
     assert tool["params"]["correction"]["decision_point"] is True
     assert tool["controls"]["last_passing"] is None
-    assert "untested" in tool["controls"]["note"]
+    # a deterministic tool with declared controls: they run before its first use
+    assert "before the tool's first use" in tool["controls"]["note"]
+    plot = payload["tools"][1]
+    assert plot["controls"]["declared"] == ["positive-draws"]
     assert tool["words"] is None  # the toy method ships no analyze skill file here
     ctx = payload["context"]
     assert ctx["objective"]["question"] == "process_rows"
@@ -183,7 +186,7 @@ def test_init_from_delivery_binds_an_open_project_with_the_switch_paragraph(
     q = open_project(tmp_path, method_repo, delivery)
     assert q.open_ended and q.config.mode == "open" and q.config.pipeline is None
     assert q.config.domain == "stringency-toy" and q.pipeline.steps == []
-    assert [m.manifest.name for m in q.tools()] == ["compare-groups"]
+    assert [m.manifest.name for m in q.tools()] == ["compare-groups", "plot-groups"]
     assert q.env_names() == ["toy-py"] and q.env_for_input("object") == "toy-py"
     # the declarations derived from the delivery
     item = q.inputs.items[0]
@@ -203,7 +206,7 @@ def test_init_from_delivery_binds_an_open_project_with_the_switch_paragraph(
     echo = q.echo_path().read_text()
     assert " ".join(OPEN_SWITCH.split()) in " ".join(echo.split())
     assert f"run {item.derived_from.run_id} of {up.root}" in " ".join(echo.split())
-    assert "compare-groups (compare_groups)" in echo
+    assert "compare-groups (compare_groups), plot-groups (plot_groups)" in echo
     # the init predicates all passed against the empty topology
     rows = q.store.all("SELECT predicate_id, fired FROM predicate_results WHERE run_id='init'")
     assert {r["predicate_id"] for r in rows} >= {
@@ -252,7 +255,9 @@ def test_open_project_tools_list_names_the_inputs(
     payload = json.loads(cli(q, "tools", "list", "--context", "--json").output)
     assert payload["mode"] == "open" and payload["pipeline"] is None
     cands = payload["tools"][0]["inputs"]["object"]["candidates"]
-    assert [c["ref"] for c in cands] == ["$inputs.object"]
+    # the upstream pipeline's own input is listed, marked, and binds only when named
+    assert [c["ref"] for c in cands] == ["$inputs.object", "$inputs.upstream_groups"]
+    assert "upstream_input" not in cands[0] and cands[1]["upstream_input"] == "groups"
     assert payload["context"]["objective"]["deliverables"] == []
 
 
@@ -302,6 +307,9 @@ def test_open_mode_refusals(
     # a method that ships no tool cannot open
     for pf in (method_repo.path / "modules" / "compare-groups" / "module.yml",):
         pf.write_text(pf.read_text().replace("modes: [pipeline, open]", "modes: [pipeline]"))
+    import shutil
+
+    shutil.rmtree(method_repo.path / "modules" / "plot-groups")
     method_repo.commit("no open tools")
     from stringency import git
 
