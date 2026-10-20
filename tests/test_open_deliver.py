@@ -175,9 +175,10 @@ def test_answers_land_in_the_report_as_filed_and_findings_lead(
         "SELECT predicate_id, fired FROM predicate_results WHERE run_id=? AND phase='deliver'",
         (run_id,),
     )
-    assert {r_["predicate_id"] for r_ in rows} == {"prov.orphan_artifact"} and not any(
-        r_["fired"] for r_ in rows
-    )
+    assert {r_["predicate_id"] for r_ in rows} == {
+        "prov.orphan_artifact",
+        "prov.trace_inconsistent",
+    } and not any(r_["fired"] for r_ in rows)
     # refusals: --answer is gone; a blocked, unknown or pipeline answer cannot be a finding
     r = cli(q, "deliver", "--answer", ids["a1"])
     assert r.exit_code == 16 and "finding" in str(r.stderr)

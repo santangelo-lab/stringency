@@ -1,6 +1,6 @@
 # Trace integrity: a mutable row can change without its event
 
-**Status 2026-10-20.** Proposed, not started. Lane T. The finding is the owner's review
+**Status 2026-10-20, later.** T1 and T2 built (engine 0.2.25; backlog L50 and L51 done); T3 and T4 wait on the owner, who chose on 2026-10-20 to stop at T2 for now. Lane T. The finding is the owner's review
 `trace-integrity-review-2026-10-20.md` (reviewed commit `b593ea5`), verified against the code
 the same day: every claim holds. T1 and T2 are engine work at DECISIONS level; T3 changes a
 frozen contract (9.5, trace-schema) and needs the owner; T4 is an operations decision.

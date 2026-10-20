@@ -131,6 +131,9 @@ def egress_line(e: dict[str, Any] | None) -> str:
 
 def coverage_data(rc: RunContext) -> dict[str, Any]:
     store, run = rc.store, rc.run
+    from stringency.audit import audit_lines
+
+    trace_audit = list(audit_lines(store))
     project = rc.project
     steps = store.all(
         "SELECT step_id, status FROM steps WHERE run_id=? ORDER BY rowid", (rc.run_id,)
@@ -278,6 +281,7 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
                         f"{x['step_id']} ({ref}: {cur.get(ref, {}).get('status', 'none')})"
                     )
     return {
+        "trace_audit": trace_audit,
         "run_id": rc.run_id,
         "project_id": project.config.project_id,
         "pipeline": f"{project.pipeline.name}@{project.pipeline.version}",
@@ -427,6 +431,18 @@ def render_coverage(d: dict[str, Any]) -> str:
         )
     else:
         lines.append("  no judgment invocations")
+    lines.append("")
+    ta = d.get("trace_audit")
+    if ta is None:
+        lines.append("trace audited: not recorded for this run")
+    elif not ta:
+        lines.append("trace audited: no disagreement between the rows and their events")
+    else:
+        lines.append(f"trace audited: {len(ta)} disagreement(s) between the rows and their events:")
+        for t in ta[:3]:
+            lines.append(f"  {t}")
+        if len(ta) > 3:
+            lines.append(f"  and {len(ta) - 3} more; run `stringency audit`")
     lines.append("")
     eg = d.get("egress")
     if eg is None:

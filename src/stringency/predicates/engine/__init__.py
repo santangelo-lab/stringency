@@ -12,4 +12,5 @@ from stringency.predicates.engine import (  # noqa: F401
     prov,
     repro,
     topo,
+    trace_,
 )

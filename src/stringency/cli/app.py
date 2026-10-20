@@ -9,6 +9,7 @@ from stringency.cli import (
     verb_abandon,
     verb_answer,
     verb_ask,
+    verb_audit,
     verb_board,
     verb_call,
     verb_controls,
@@ -61,6 +62,7 @@ app.command("fork")(verb_fork.fork)
 app.command("abandon")(verb_abandon.abandon)
 app.command("wait")(verb_wait.wait)
 app.command("lint")(verb_lint.lint)
+app.command("audit")(verb_audit.audit_verb)
 app.command("probe")(verb_probe.probe)
 app.add_typer(verb_controls.app, name="controls")
 app.add_typer(verb_tools.app, name="tools")

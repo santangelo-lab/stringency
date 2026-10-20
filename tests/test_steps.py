@@ -243,7 +243,12 @@ def test_run_open_captures(rc: RunContext) -> None:
             (rc.run_id,),
         )
     }
-    assert ids == {"repro.dirty_tree", "repro.input_digest_mismatch", "prov.egress_exceeds_ceiling"}
+    assert ids == {
+        "repro.dirty_tree",
+        "repro.input_digest_mismatch",
+        "prov.egress_exceeds_ceiling",
+        "prov.trace_inconsistent",
+    }
 
 
 # -- evidence parsers ---------------------------------------------------------------------

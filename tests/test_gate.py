@@ -491,10 +491,12 @@ def test_every_registered_predicate_has_a_case() -> None:
     )
     # repro.seed_unset and judg.considered_set_missing are covered below with a synthetic module;
     # prov.egress_exceeds_ceiling in tests/test_egress.py
+    # prov.trace_inconsistent in tests/test_audit.py
     assert missing <= {
         "repro.seed_unset",
         "judg.considered_set_missing",
         "prov.egress_exceeds_ceiling",
+        "prov.trace_inconsistent",
     }, missing
 
 

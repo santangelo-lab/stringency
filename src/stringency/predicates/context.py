@@ -58,6 +58,9 @@ class ProjectConfig:
     # `controls.current_for`, so `prov.controls_stale` reads facts and does no I/O
     controls_current: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     egress: EgressAssessment | None = None  # what the setup sends off the machine (L1)
+    # the trace audited before a run-open or deliver gate: one line per disagreement between
+    # a mutable row and its events (`audit.audit_lines`; T2, L51); empty when consistent
+    trace_findings: tuple[str, ...] = ()
 
     @property
     def mode(self) -> str:

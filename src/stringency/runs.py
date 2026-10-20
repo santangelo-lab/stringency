@@ -259,9 +259,14 @@ class RunContext:
     def gate_context(
         self, phase: str, action: Action, state: State, output: Any = None
     ) -> GateContext:
+        project = self.project_config()
+        if phase in ("run_open", "deliver"):
+            from stringency.audit import audit_lines
+
+            project = dataclasses.replace(project, trace_findings=audit_lines(self.store))
         return GateContext(
             phase=phase,  # type: ignore[arg-type]
-            project=self.project_config(),
+            project=project,
             objective=self.project.objective,
             design=self.project.design,
             state=state,
