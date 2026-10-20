@@ -225,6 +225,7 @@ For a separate reporting reader, the basic SQLite opening pattern could be:
 from pathlib import Path
 import sqlite3
 
+
 def open_trace_reader(path: Path) -> sqlite3.Connection:
     uri = path.resolve().as_uri() + "?mode=ro"
     connection = sqlite3.connect(uri, uri=True)
@@ -330,11 +331,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-schema_path = (
-    Path(sys.argv[1])
-    if len(sys.argv) > 1
-    else Path("src/stringency/db/schema.sql")
-)
+schema_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("src/stringency/db/schema.sql")
 db = sqlite3.connect(":memory:", isolation_level=None)
 db.executescript(schema_path.read_text())
 
@@ -342,15 +339,9 @@ db.executescript(schema_path.read_text())
 def seed(table, **row):
     # Fill required fields without defaults using synthetic fixture values.
     # Table names below are fixed demonstration constants, not user input.
-    for _, name, kind, required, default, primary_key in db.execute(
-        f"PRAGMA table_info({table})"
-    ):
+    for _, name, kind, required, default, primary_key in db.execute(f"PRAGMA table_info({table})"):
         if (required or primary_key) and default is None and name not in row:
-            row[name] = (
-                0 if kind == "INTEGER"
-                else "{}" if name.endswith("_json")
-                else "demo"
-            )
+            row[name] = 0 if kind == "INTEGER" else "{}" if name.endswith("_json") else "demo"
     columns = ", ".join(row)
     placeholders = ", ".join("?" for _ in row)
     db.execute(
@@ -373,9 +364,7 @@ seed(
 
 
 def snapshot():
-    status = db.execute(
-        "SELECT status FROM steps WHERE run_id='R' AND step_id='S'"
-    ).fetchone()[0]
+    status = db.execute("SELECT status FROM steps WHERE run_id='R' AND step_id='S'").fetchone()[0]
     events = db.execute(
         "SELECT seq, event, payload_json FROM step_events "
         "WHERE run_id='R' AND step_id='S' ORDER BY seq"
@@ -387,10 +376,7 @@ print("foreign_keys:", db.execute("PRAGMA foreign_keys").fetchone()[0])
 before = snapshot()
 print("before:", before)
 
-db.execute(
-    "UPDATE steps SET status='completed' "
-    "WHERE run_id='R' AND step_id='S'"
-)
+db.execute("UPDATE steps SET status='completed' WHERE run_id='R' AND step_id='S'")
 after = snapshot()
 print("after:", after)
 assert after["status"] == "completed"
@@ -398,8 +384,7 @@ assert after["event_count"] == 1
 assert after["events"] == before["events"]
 
 for statement in [
-    "UPDATE step_events SET event='changed' "
-    "WHERE run_id='R' AND step_id='S'",
+    "UPDATE step_events SET event='changed' WHERE run_id='R' AND step_id='S'",
     "DELETE FROM step_events WHERE run_id='R' AND step_id='S'",
 ]:
     try:
