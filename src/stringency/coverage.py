@@ -231,12 +231,22 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "ORDER BY model_resolved, via, isolation",
             (rc.run_id, step.id),
         )
+        prompt_variants = (
+            store.scalar(
+                "SELECT COUNT(DISTINCT prompt_hash) FROM invocations WHERE run_id=? AND step_id=?",
+                (rc.run_id, step.id),
+            )
+            or 0
+        )
         judgment.append(
             {
                 "module": m.ref,
                 "step": step.id,
                 "items": n_items,
                 "replicates": n_rep,
+                # distinct prompts across the replicates (backlog L83): more than one means
+                # each replicate read its own ordering of the items and the vocabulary
+                "prompt_variants": prompt_variants,
                 # who judged (backlog L70): each distinct (model, via, isolation) of the step's
                 # invocations, so a reader knows whether the replicates came from one model
                 "judges": [
@@ -467,6 +477,11 @@ def render_coverage(d: dict[str, Any]) -> str:
         for j in d["judgment"]:
             lines.append(
                 f"  {j['module']}: {j['items']} items x {j['replicates']} replicates; {j['agreed']} agreed, {j['self_uncertain']} self_uncertain, {j['run_disagreement']} run_disagreement"
+                + (
+                    f"; prompts: {j['prompt_variants']} distinct orderings"
+                    if j.get("prompt_variants")
+                    else ""
+                )
             )
             lines.append(
                 f"    abstention stability: {j['items'] - j.get('abstain_split', 0)}/{j['items']} items judged the same way by every replicate (label or abstain); {j.get('abstain_split', 0)} split"

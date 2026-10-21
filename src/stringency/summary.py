@@ -172,6 +172,11 @@ def judgments(rc: RunContext, cov: dict[str, Any]) -> list[str]:
         lines.append(
             f"- {title} (step {j['step']}): {_plural(j['items'], 'item')} judged by "
             f"{_plural(j['replicates'], 'replicate')} in separate contexts"
+            + (
+                ", each reading its own ordering of the items"
+                if j.get("prompt_variants", 0) > 1
+                else ""
+            )
             + (f" ({judges})" if judges else "")
             + f"; {_count(j['agreed'])} agreed, "
             f"{_count(j['self_uncertain'])} self-uncertain, {_count(j['run_disagreement'])} in disagreement"

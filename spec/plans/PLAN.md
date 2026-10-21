@@ -38,7 +38,7 @@ Nothing in it is built beyond what the State section says.
 
 ## State (2026-10-21)
 
-Engine 0.2.29 on `main` (triage pass 5 and decision points first cut, 2026-10-21); plugin singlecell 0.6.2; the Xenium method
+Engine 0.2.30 on `main` (triage pass 5, decision points first cut and judgment replicates, 2026-10-21); plugin singlecell 0.6.2; the Xenium method
 `stringency-xenium-method` at `v0.6.0-rc19` (its six open tools pass on the Lyons liver
 delivery under 0.2.26 and plugin 0.6.2); the toy method at `v0.2.0`. `0.2.27-sc0.6.2` is installed in the
 shared prefix on the lab workstation (`/data/lab/env/stringency/current`, 2026-10-20 17:05) and
@@ -58,10 +58,9 @@ or two sessions and ends with its rows in `archive/backlog-done.md` and a releas
    `ndim`, `resolution`, `method`, `scale_factor`, `integration` and `cluster_method`, raise
    `requires.engine`, re-render the skills; `sc.decision_unreviewed` retires where `hold:
    always` is declared. The menu keys (L63 to L66) wait on that first run.
-3. Judgment replicates, the owner's picks from the literature check: L83 per-replicate prompt
-   perturbation (design text for 3.5, then the build) and L84 sampled sign-off
-   (`sign_off: {when: sample, fraction}`, its DEVIATIONS entry approved in advance). One
-   session each.
+3. Judgment replicates: done 2026-10-21 (engine 0.2.30; L83 per-replicate orderings, L84
+   sampled sign-off with its DEVIATIONS entry). L82, the unanimous-but-wrong rate, waits for
+   enough runs (the owner).
 4. Confirm once, approved: L67 the study-level acceptance (design text for 2.7 and 7.2 with the
    `study:` field, then the build), L6 batch review of identical flag holds and accept-once
    within a module version, and the three rows beside them (L5, L68, L69). Two sessions.
@@ -108,8 +107,6 @@ console rows until asked) and what waits on a person (the skill republish, the t
 | L71 | one judgment harness per project; a panel of judges from several sources has no specification | `panel:` of judge slots in `stringency.yml` (harness, model, count, `role: vote \| check`), `judgment.replicates` as the module's minimum, mixed families in one step; `judgment_harness:` kept as the one-slot shorthand. After the Qwen3 evaluation (in L34); the owner, 2026-10-21 (decision 4 of `judge-sources-plan.md` section 6): a disagreeing `role: check` replicate adds a consensus note only, under strict as under any profile, no hold; weighed against the literature check of 2026-10-21 (`notes/2026-10-21-1300-judgment-replicates-evidence.md` proposal 3): under a unanimity rule a weaker second family cannot lower the quality of agreed labels, only raise the hold rate | *design* (10.1, 10.2, 17); `judge-sources-plan.md` S4 |
 | L73 | a high-stakes judgment step cannot demand a direct adapter while routine steps use the project's panel | `module.yml` `harness:` beside `model:`; deferred until a module needs it, since L71's panel covers a project that wants enforced isolation throughout | *design* (module contract via `DEVIATIONS.md`); `judge-sources-plan.md` S6 |
 | L82 | the unanimous-but-wrong rate of a judgment module is unmeasured: replicates of one model with one prompt are unanimous on the errors the model makes consistently, and sampling-based detectors miss them (the literature check of 2026-10-21) | in positive controls, report accuracy on unanimous items separately from held items, per module version; the `judgments` and `consensus` tables hold the data; one line on the controls report. The owner, 2026-10-21: not yet, too few runs to measure | engine, low; deferred by the owner; `notes/2026-10-21-1300-judgment-replicates-evidence.md` proposal 1 |
-| L83 | every replicate of a judgment step reads the same rendered prompt, so fresh contexts give isolation, not independent errors | per-replicate prompt perturbation (a different item order under `all_items`, a different vocabulary order): the prompt becomes per replicate, which touches 3.5 step 3 and the prompt hashing. The owner, 2026-10-21: this is the replicates proposal to pursue first; design text for 3.5 to draft | *design* (3.5), the owner's pick; `notes/2026-10-21-1300-judgment-replicates-evidence.md` proposal 2 |
-| L84 | an agreed label is never seen by a person unless the module declares `sign_off: always`; agreement is the weak half of the signal | sign off a random sample of agreed items (`sign_off: {when: sample, fraction}`), the confidence-driven inference pattern. The owner, 2026-10-21: build it; the DEVIATIONS entry for the field is approved in advance | *design* (7.2, module contract via `DEVIATIONS.md`), approved; `notes/2026-10-21-1300-judgment-replicates-evidence.md` proposal 4 |
 
 ### Engine: delivery, trace and inputs
 

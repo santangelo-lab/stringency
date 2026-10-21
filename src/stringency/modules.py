@@ -42,8 +42,19 @@ class SignOffSpec(Frozen):
     narrows what a person may choose, at every item hold of the module; empty means the whole
     vocabulary."""
 
-    when: Literal["always", "never"] = "never"
+    when: Literal["always", "never", "sample"] = "never"
     labels: list[str] = Field(default_factory=list)
+    # `sample` (backlog L84, module contract 3.2 via DEVIATIONS 2026-10-21): a seeded sample of
+    # the agreed items, this fraction of them (at least one), is signed off
+    fraction: float | None = None
+
+    @model_validator(mode="after")
+    def _shape(self) -> SignOffSpec:
+        if self.when == "sample" and not (self.fraction is not None and 0 < self.fraction <= 1):
+            raise ValueError("sign_off `when: sample` needs `fraction` in (0, 1]")
+        if self.when != "sample" and self.fraction is not None:
+            raise ValueError("sign_off `fraction` is read only with `when: sample`")
+        return self
 
 
 class JudgmentSpec(Frozen):

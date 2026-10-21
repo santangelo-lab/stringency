@@ -81,6 +81,34 @@ def sign_off(ic: ItemConsensus, labels: list[str]) -> ItemConsensus:
     return ic
 
 
+def apply_sign_off(items: list[ItemConsensus], spec: Any, *, seed: str) -> list[str]:
+    """The module's `judgment.sign_off` over decided items (L10, and L84 for `when: sample`):
+    `always` holds every agreed item; `sample` holds a seeded sample of the agreed items, at
+    least one, `round(fraction * agreed)` of them, the seed being the run and step so a resume
+    and `--check` pick the same items; `never` or no spec holds none. Mutates the items; returns
+    the ids held for sign-off."""
+    if spec is None or spec.when == "never":
+        return []
+    labels = list(spec.labels)
+    agreed = [ic for ic in items if ic.source == "agreed"]
+    if spec.when == "always":
+        chosen = agreed
+    else:
+        import random
+
+        frac = float(spec.fraction or 0)
+        k = min(len(agreed), max(1, round(frac * len(agreed)))) if agreed else 0
+        rng = random.Random(hashing.hash_text(seed))
+        chosen = rng.sample(agreed, k) if k else []
+        for ic in chosen:
+            ic.notes.append(
+                f"sampled for sign-off: {k} of {len(agreed)} agreed item(s), fraction {frac}"
+            )
+    for ic in chosen:
+        sign_off(ic, labels)
+    return [ic.item_id for ic in chosen]
+
+
 def decide(
     item_id: str, replicates: list[Replicate], rule: AgreementRule, *, invalid_held: bool = False
 ) -> ItemConsensus:
@@ -179,17 +207,18 @@ def settle_items(
     rule: AgreementRule,
     tables: Mapping[str, EvidenceTable],
     invalid_held: bool = False,
-    sign_off_labels: list[str] | None = None,
+    sign_off: Any = None,
 ) -> tuple[list[ItemConsensus], list[HoldOutcome]]:
     """Consensus per item; a hold per disagreeing or abstaining item, with rebind of prior
-    verdicts. `sign_off_labels` (a list, possibly empty) when the module signs off every item:
-    agreed items hold too, as `sign_off`, waiting on the owner. Writes: consensus, holds."""
+    verdicts. `sign_off` is the module's `judgment.sign_off` spec: agreed items hold too, as
+    `sign_off`, waiting on the owner, every one under `always` or a seeded sample under
+    `sample` (L84). Writes: consensus, holds."""
     out: list[ItemConsensus] = []
     holds: list[HoldOutcome] = []
-    for item in items:
-        ic = decide(item, replicates, rule, invalid_held=invalid_held)
-        if sign_off_labels is not None:
-            ic = sign_off(ic, sign_off_labels)
+    decided = [decide(item, replicates, rule, invalid_held=invalid_held) for item in items]
+    apply_sign_off(decided, sign_off, seed=f"{run_id}:{step_id}")
+    for ic in decided:
+        item = ic.item_id
         if ic.hold_kind is not None:
             h = open_hold(
                 store,

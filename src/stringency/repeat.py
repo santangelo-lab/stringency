@@ -122,7 +122,8 @@ def record_invocations(
                     "replicate": rep.index,
                     "template_path": template_path,
                     "template_blob": template_blob,
-                    "prompt_hash": prompt_hash,
+                    # each replicate's own prompt (L83: its ordering of items and vocabulary)
+                    "prompt_hash": hashing.hash_text(req.prompt) if req.prompt else prompt_hash,
                     "model_requested": inv.model_requested,
                     "model_resolved": inv.model_resolved,
                     "harness_kind": inv.harness_kind,
@@ -134,7 +135,10 @@ def record_invocations(
                     "request_path": inv.request_path,
                     "response_path": inv.response_path,
                     "reported_json": inv.reported,
-                    "sampling_json": sampling.to_json(),
+                    "sampling_json": {
+                        **sampling.to_json(),
+                        **({"perturbation": dict(req.perturbation)} if req.perturbation else {}),
+                    },
                     "response_hash": resp_hash,
                     "schema_valid": inv.schema_valid,
                     "tokens_in": inv.tokens_in,

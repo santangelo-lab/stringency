@@ -5,6 +5,10 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-21)
 
+- Engine 0.2.30, judgment replicates (`notes/2026-10-21-2300-judgment-replicates.md`): each
+  replicate reads its own seeded ordering of items, rows and vocabulary, with its own prompt
+  hash (L83); `sign_off: {when: sample, fraction}` holds a seeded sample of agreed items (L84,
+  DEVIATIONS). Pass 4 is confirm once (L67, L6, L5, L68, L69).
 - Engine 0.2.29, decision points first cut (`notes/2026-10-21-2100-decision-points-first-cut.md`):
   `decision:` on a pipeline parameter (evidence, hold always, the menu keys parsed), lint,
   `propose --cite` and `--considered`, `param.agent_proposed@2`, `param.reason_unmatched`,
@@ -297,6 +301,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-21-2300-judgment-replicates.md` — engine 0.2.30: per-replicate prompt orderings (L83) and sampled sign-off (L84).
 - `2026-10-21-2100-decision-points-first-cut.md` — engine 0.2.29: the `decision:` block, lint, `propose --cite`/`--considered`, the three `param.*` predicates, the default hold view, the `presented` event (L61, L55, L62, L9).
 - `2026-10-21-1800-triage-pass-5.md` — engine 0.2.28: L72 operator self-answer recorded, L46 module egress declaration and lint, L3 judge on controls, L70 judge per replicate, L59 fork sweep line, L60 answer --cannot; L86 filed.
 - `2026-10-21-1500-owner-answers.md` — the owner's answers to every waiting row: DEVIATIONS acknowledged, Codex go, confirm once approved, L83/L84 picked, L85 applied; Next rewritten as seven passes.

@@ -168,17 +168,85 @@ def prompt_values(rc: RunContext, plan: StepPlan, ev: Evidence) -> dict[str, Any
     return {k: available[k] for k in m.prompt.vars if k in available}
 
 
-def build_requests(
-    action_id: str,
-    prompt: str,
-    schema: dict[str, Any],
-    ev: Evidence,
-    plan: StepPlan,
-    template_ref: str,
-) -> list[Request]:
+def perturbation_for(
+    action_id: str, rep: int, items: list[str], vocab: list[str]
+) -> dict[str, Any] | None:
+    """The ordering replicate `rep` reads (backlog L83, design 3.5 step 3): replicate 1 reads
+    the canonical order; every later replicate reads the items (and the evidence table's rows)
+    and the vocabulary in a permutation seeded by the action id and the replicate number, so
+    fresh contexts do not all see one prompt and share its order effects, and the same
+    permutation is rebuilt on resume and by `--check`. None for the canonical order."""
+    import random
+
+    if rep <= 1:
+        return None
+    seed = hashing.hash_text(f"{action_id}:{rep}")
+    rng = random.Random(seed)
+    order = list(items)
+    rng.shuffle(order)
+    vorder = list(vocab)
+    rng.shuffle(vorder)
+    return {"seed": seed[:16], "items": order, "vocabulary": vorder}
+
+
+def perturbed_values(
+    values: dict[str, Any], ev: Evidence, items_from: str, pert: dict[str, Any] | None
+) -> dict[str, Any]:
+    """The prompt values with the replicate's ordering applied: `items`, `vocabulary`, and the
+    rows of the items table in `evidence_table` and `evidence_tables`. Other tables keep their
+    order."""
+    if pert is None:
+        return values
+    out = dict(values)
+    order = list(pert["items"])
+    if "items" in out:
+        out["items"] = order
+    if "vocabulary" in out:
+        out["vocabulary"] = list(pert["vocabulary"])
+    main = ev.tables[items_from]
+    rows = [main.rows[k] for k in order if k in main.rows] + [
+        v for k, v in main.rows.items() if k not in set(order)
+    ]
+    tsv = table_to_tsv(list(main.columns), rows)
+    if "evidence_table" in out:
+        out["evidence_table"] = tsv
+    if "evidence_tables" in out:
+        out["evidence_tables"] = {**out["evidence_tables"], items_from: tsv}
+    return out
+
+
+def assemble_requests(
+    rc: RunContext, plan: StepPlan, ev: Evidence, action_id: str, template_rel: str
+) -> tuple[list[Request], str, dict[str, Any]]:
+    """Every request of a judgment step with its own rendered prompt (design 3.5 step 3; one
+    ordering per replicate, L83): the requests, the canonical prompt's hash, and the schema.
+    Used by `execute_judgment` and by `check_responses` so the two cannot drift. Writes:
+    messages (each rendered prompt, content-addressed; the evidence texts)."""
     m = plan.module.manifest
-    assert m.judgment is not None
+    assert m.judgment is not None and m.prompt is not None
+    store = rc.store
+    template_text = plan.module.prompt_template or ""
+    base = prompt_values(rc, plan, ev)
+    vocab = list(base.get("vocabulary") or [])
+    suffix = evidence_suffix(rc.project.policy.confidence_criteria)
+    schema = wrap_schema(plan.module.output_schema or {}, m.judgment.batching)
     evidence = {n: {r: dict(v) for r, v in t.rows.items()} for n, t in ev.tables.items()}
+    for text in ev.texts.values():
+        store.store_message(hashing.hash_text(text), text)  # exactly what the model saw
+    prompts: dict[int, str] = {}
+    perts: dict[int, dict[str, Any] | None] = {}
+    for rep in range(1, m.judgment.replicates + 1):
+        pert = perturbation_for(action_id, rep, list(ev.items), vocab)
+        prompt = (
+            render(
+                template_text,
+                m.prompt.vars,
+                perturbed_values(base, ev, m.judgment.items_from, pert),
+            )
+            + suffix
+        )
+        store_prompt(store, prompt)
+        prompts[rep], perts[rep] = prompt, pert
     reqs: list[Request] = []
     n = 0
     for rep in range(1, m.judgment.replicates + 1):
@@ -189,13 +257,14 @@ def build_requests(
                     Request(
                         n,
                         f"{action_id}-{n}",
-                        prompt,
+                        prompts[rep],
                         schema,
                         tuple(ev.items),
                         plan.module.ref,
-                        template_ref,
+                        template_rel,
                         evidence,
                         idx,
+                        perturbation=perts[rep],
                     )
                 )
         else:
@@ -203,15 +272,16 @@ def build_requests(
                 Request(
                     rep,
                     f"{action_id}-{rep}",
-                    prompt,
+                    prompts[rep],
                     schema,
                     tuple(ev.items),
                     plan.module.ref,
-                    template_ref,
+                    template_rel,
                     evidence,
+                    perturbation=perts[rep],
                 )
             )
-    return reqs
+    return reqs, hashing.hash_text(prompts[1]), schema
 
 
 def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
@@ -230,18 +300,9 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
     plan.step_dir.mkdir(parents=True, exist_ok=True)
 
     ev = prepare_evidence(rc, plan)
-    template_text = plan.module.prompt_template or ""
     template_rel = str((plan.module.path / m.prompt.template).relative_to(rc.project.method_root))
     template_blob = git.blob_hash(rc.project.method_root, template_rel)
-    prompt = render(template_text, m.prompt.vars, prompt_values(rc, plan, ev)) + evidence_suffix(
-        rc.project.policy.confidence_criteria
-    )
-    prompt_hash = store_prompt(store, prompt)
-    for text in ev.texts.values():
-        store.store_message(hashing.hash_text(text), text)  # exactly what the model saw
-    item_schema = plan.module.output_schema or {}
-    schema = wrap_schema(item_schema, m.judgment.batching)
-    requests = build_requests(action.action_id, prompt, schema, ev, plan, template_rel)
+    requests, prompt_hash, schema = assemble_requests(rc, plan, ev, action.action_id, template_rel)
     harness = harness_for(rc, m.model)
     sampling = Sampling(model=m.model)
     dispatch_dir = plan.step_dir / "dispatch"
@@ -343,11 +404,7 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
         rule=rule,
         tables=ev.tables,
         invalid_held=bool(step_holds),
-        sign_off_labels=(
-            list(m.judgment.sign_off.labels)
-            if m.judgment and m.judgment.sign_off and m.judgment.sign_off.when == "always"
-            else None
-        ),
+        sign_off=m.judgment.sign_off if m.judgment else None,
     )
     item_holds = step_holds + item_holds
     considered = considered_set_record(m.judgment, ev.items, ev.digests)
@@ -431,7 +488,7 @@ def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
     step's evidence. Writes nothing: no trace row, no file in the dispatch directory, and the
     pre-script is not run again; a module's `post.*` is not run, so the gates see the raw
     replicates (the result says so)."""
-    from stringency.consensus import decide, sign_off
+    from stringency.consensus import decide
     from stringency.gate import in_scope_specs
     from stringency.harness.subagent import response_path
     from stringency.runloop import dispatch_target
@@ -451,11 +508,7 @@ def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
         raise ConfigError(f"module {plan.module.ref} is not a judgment module")
     ev = prepare_evidence(rc, plan, run_pre=False)
     template_rel = str((plan.module.path / m.prompt.template).relative_to(rc.project.method_root))
-    prompt = render(
-        plan.module.prompt_template or "", m.prompt.vars, prompt_values(rc, plan, ev)
-    ) + evidence_suffix(rc.project.policy.confidence_criteria)
-    schema = wrap_schema(plan.module.output_schema or {}, m.judgment.batching)
-    requests = build_requests(action.action_id, prompt, schema, ev, plan, template_rel)
+    requests, _, schema = assemble_requests(rc, plan, ev, action.action_id, template_rel)
     harness = harness_for(rc, m.model)
     import tempfile
 
@@ -467,15 +520,10 @@ def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
     rule = rc.project.policy.agreement_rule(rc.project.config.profile)
     invalid = [r.index for r in replicates if not r.valid]
     invalid_held = bool(invalid) and "any_invalid" in set(rule.hold_on)
-    labels = (
-        list(m.judgment.sign_off.labels)
-        if m.judgment.sign_off and m.judgment.sign_off.when == "always"
-        else None
-    )
-    items = []
-    for item in ev.items:
-        ic = decide(item, replicates, rule, invalid_held=invalid_held)
-        items.append(sign_off(ic, labels) if labels is not None else ic)
+    from stringency.consensus import apply_sign_off
+
+    items = [decide(item, replicates, rule, invalid_held=invalid_held) for item in ev.items]
+    apply_sign_off(items, m.judgment.sign_off, seed=f"{rc.run_id}:{step_id}")
     bundle = OutputBundle(
         outputs={},
         replicates=tuple(r.structured or {} for r in replicates),

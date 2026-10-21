@@ -132,3 +132,82 @@ def test_lint_checks_sign_off_labels(make_project: InitFn) -> None:
     p = signed_project(make_project, ["abundant", "nonsense"])
     r = cli(p, "lint", str(p.method_root))
     assert r.exit_code != 0 and "sign_off label nonsense is not in vocabulary" in r.output
+
+
+def sampled_project(make_project: InitFn, fraction: str) -> Project:
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    mod = p.method_root / "modules" / "label-groups" / "module.yml"
+    extra = f"  sign_off: {{when: sample, fraction: {fraction}}}\n"
+    text = mod.read_text().replace("  considered_set: false\n", "  considered_set: false\n" + extra)
+    mod.write_text(text)
+    git.commit_all(p.method_root, "sample the sign-off")
+    return Project.load(p.root)
+
+
+def test_sampled_sign_off_holds_a_seeded_sample_of_the_agreed_items(make_project: InitFn) -> None:
+    """L84: `when: sample, fraction` holds round(fraction x agreed) items, at least one, chosen
+    by a seed of the run and step, so `--check` and the run pick the same; the rest stay
+    agreed; the consensus notes say so."""
+    p = sampled_project(make_project, "0.34")
+    r = cli(p, "run", "--json", env=MOCK)
+    assert r.exit_code == 10, r.output
+    holds = item_holds(p)
+    assert len(holds) == 1 and next(iter(holds.values()))["kind"] == "sign_off"
+    held = next(iter(holds))
+    rows = {r["item_id"]: dict(r) for r in p.store.all("SELECT * FROM consensus")}
+    assert rows[held]["source"] == "unresolved" and rows[held]["label"] is None
+    others = [k for k in rows if k != held]
+    assert len(others) == 2 and all(rows[k]["source"] == "agreed" for k in others)
+    art = p.store.one(
+        "SELECT path FROM artifacts WHERE kind='consensus' AND status='produced' ORDER BY rowid DESC LIMIT 1"
+    )
+    doc = json.loads(open(art["path"]).read())
+    notes = {i["item_id"]: i["notes"] for i in doc["items"]}
+    assert any(
+        "sampled for sign-off: 1 of 3 agreed item(s), fraction 0.34" in n for n in notes[held]
+    )
+    # the whole set under fraction 1 is `always` in effect
+    p2 = sampled_project(make_project, "1.0")
+    assert cli(p2, "run", env=MOCK).exit_code == 10
+    assert len(item_holds(p2)) == 3
+
+
+def test_sampled_sign_off_is_predicted_by_check_and_validated(make_project: InitFn) -> None:
+    from tests.test_run import (
+        MOCK_DISPATCH,
+        harvested_responses,
+        responses_doc,
+    )
+
+    answers = harvested_responses(make_project)
+    p = sampled_project(make_project, "0.5")
+    r = cli(p, "run", "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 20, r.output
+    nx = json.loads(r.output)
+    doc = responses_doc(nx, answers)
+    chk = cli(
+        p, "run", "--responses", "-", "--check", "--json", env=MOCK_DISPATCH, input=json.dumps(doc)
+    )
+    assert chk.exit_code == 0, chk.output
+    would = [h for h in json.loads(chk.output)["would_hold"] if h["kind"] == "sign_off"]
+    assert len(would) == 2  # round(0.5 x 3) = 2
+    r = cli(p, "run", "--responses", "-", "--json", env=MOCK_DISPATCH, input=json.dumps(doc))
+    assert r.exit_code == 10, r.output
+    assert sorted(item_holds(p)) == sorted(h["item_id"] for h in would)
+    # the manifest refuses a sample without a fraction, and a fraction without sample
+    p3 = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    mod = p3.method_root / "modules" / "label-groups" / "module.yml"
+    mod.write_text(
+        mod.read_text().replace(
+            "  considered_set: false\n", "  considered_set: false\n  sign_off: {when: sample}\n"
+        )
+    )
+    with pytest.raises(ConfigError, match="needs `fraction`"):
+        Project.load(p3.root).modules.require("label-groups@0.1.1")
+    mod.write_text(
+        mod.read_text().replace(
+            "  sign_off: {when: sample}\n", "  sign_off: {when: always, fraction: 0.5}\n"
+        )
+    )
+    with pytest.raises(ConfigError, match="read only with"):
+        Project.load(p3.root).modules.require("label-groups@0.1.1")

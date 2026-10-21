@@ -32,6 +32,10 @@ class Request:
     # in-memory only; never written to a request file. The mock reads cell values from it.
     evidence: Mapping[str, Mapping[str, Mapping[str, Any]]] = field(default_factory=dict)
     item_index: int | None = None  # per_item batching: which item this request is for
+    # the ordering this replicate's prompt was rendered with (backlog L83): None for the
+    # canonical order (replicate 1), else {seed, items, vocabulary}; recorded in the
+    # invocation's sampling_json
+    perturbation: Mapping[str, Any] | None = None
 
 
 @dataclass

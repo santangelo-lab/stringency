@@ -30,3 +30,17 @@ Once acknowledged: the assessment uses the declared class; `lint` fails a module
 match the network scan and declare no egress or class 0, and warns on a class above 0 with no
 match. Acknowledged by Jim, 2026-10-21: build the field, `assess` reading it and the lint rule
 (`PLAN.md` L46).
+
+
+## Module contract 3.2: `judgment.sign_off.when: sample` (2026-10-21, backlog L84)
+
+An additional value of the optional `sign_off.when` inside the frozen manifest's `judgment`
+block, with its companion `fraction` (a number in (0, 1], required with `sample`, refused
+otherwise): a seeded sample of the agreed items, `round(fraction x agreed)` of them and at
+least one, is held for sign-off as `always` holds every one. Additive: a manifest without it
+behaves as before; a manifest with it is refused by engines before 0.2.30 (the literal is
+closed), the intended failure for a method that relies on the sample. Needed because agreement
+is the weak half of the replicate signal (the literature check of 2026-10-21): replicates of one
+model with one prompt agree on the errors the model makes consistently, and nothing put an
+agreed label before a person unless the module signed off every one. Approved in advance by
+Jim, 2026-10-21 (the owner's answer on the replicates proposals); built in engine 0.2.30.

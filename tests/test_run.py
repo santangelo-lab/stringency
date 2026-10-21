@@ -13,7 +13,7 @@ from stringency import git
 from stringency.cli.app import app
 from stringency.machine import EDGES, IllegalTransition, StepStatus, transition
 from stringency.project import Project
-from stringency.runs import open_or_resume
+from stringency.runs import load_run, open_or_resume
 from stringency.schemas import validate
 from tests.conftest import InitFn, accept_hold
 from tests.test_steps import play_agent
@@ -897,3 +897,70 @@ def test_uncited_proposal_and_numeral_reason_open_their_own_holds(make_project: 
     assert "cites nothing from `02_summarize/table`" in by["param.agent_proposed"]
     assert "carries numerals (3) and cites nothing" in by["param.reason_unmatched"]
     assert "correction (02_summarize/table)" in by["param.uncited"]
+
+
+def dispatching_project_of(p: Project) -> dict:
+    r = cli(p, "run", "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 20, r.output
+    return json.loads(r.output)
+
+
+def test_each_replicate_reads_its_own_ordering(make_project: InitFn) -> None:
+    """L83 (design 3.5 step 3): replicate 1 reads the canonical order; every later replicate
+    reads a seeded permutation of the items, the evidence rows and the vocabulary; each
+    replicate's prompt is stored under its own hash, the invocation's sampling records the
+    ordering, and the coverage report counts the distinct prompts."""
+    from stringency.coverage import coverage_data, render_coverage
+    from stringency.judgment import perturbation_for
+
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    r = cli(p, "run", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    run_id = json.loads(r.output)["run_id"]
+    invs = p.store.all(
+        "SELECT replicate, prompt_hash, sampling_json FROM invocations WHERE run_id=? AND step_id='03_label' ORDER BY replicate",
+        (run_id,),
+    )
+    assert [i["replicate"] for i in invs] == [1, 2, 3]
+    assert len({i["prompt_hash"] for i in invs}) == 3
+    s1, s2 = json.loads(invs[0]["sampling_json"]), json.loads(invs[1]["sampling_json"])
+    assert "perturbation" not in s1
+    pert = s2["perturbation"]
+    assert sorted(pert["items"]) == ["A", "B", "C"] and len(pert["seed"]) == 16
+    assert sorted(pert["vocabulary"]) == sorted(
+        json.loads(invs[2]["sampling_json"])["perturbation"]["vocabulary"]
+    )
+    p1 = p.store.message(invs[0]["prompt_hash"]) or ""
+    p2 = p.store.message(invs[1]["prompt_hash"]) or ""
+    assert "Assign each of these items a label: A, B, C." in p1
+    assert "Assign each of these items a label: " + ", ".join(pert["items"]) + "." in p2
+    # the items table's rows follow the replicate's order in its prompt
+    first_row = next(
+        ln for ln in p2.splitlines() if ln.startswith(tuple(pert["items"])) and "\t" in ln
+    )
+    assert first_row.startswith(pert["items"][0])
+    # the same action and replicate give the same ordering, whatever the process
+    a = p.store.scalar(
+        "SELECT action_id FROM actions WHERE run_id=? AND step_id='03_label'", (run_id,)
+    )
+    again = perturbation_for(a, 2, ["A", "B", "C"], list(pert["vocabulary"]))
+    assert again is not None and again["items"] == pert["items"] and again["seed"] == pert["seed"]
+    assert perturbation_for(a, 1, ["A", "B", "C"], ["x", "y"]) is None
+    d = coverage_data(load_run(p, run_id))
+    j = next(x for x in d["judgment"] if x["step"] == "03_label")
+    assert j["prompt_variants"] == 3
+    assert "prompts: 3 distinct orderings" in render_coverage(d)
+
+
+def test_dispatch_requests_carry_each_replicates_prompt(make_project: InitFn) -> None:
+    """Under dispatch the request files hold the replicate's own prompt and `--check` rebuilds
+    the same orderings, so the nonces and the files agree on resume."""
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    nx = dispatching_project_of(p)
+    manifest = json.loads((Path(nx["dispatch_dir"]) / "manifest.json").read_text())
+    prompts = [json.loads(Path(rp).read_text())["prompt"] for rp in manifest["requests"]]
+    assert len(set(prompts)) == 3
+    r = cli(p, "run", "--json", env=MOCK_DISPATCH)  # the mock answers on collect
+    assert r.exit_code == 0, r.output
+    hashes = p.store.all("SELECT DISTINCT prompt_hash FROM invocations WHERE step_id='03_label'")
+    assert len(hashes) == 3
