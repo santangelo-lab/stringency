@@ -17,7 +17,8 @@ completed run (the example runs with their real paths live in the lab's private 
 | `stringency-operator/SKILL.md` | the skill: find the engine, the rules, the run loop, in two modes |
 | `agent-context.md` | generic agent context; prefer the rendered one |
 | `stringency-declare/SKILL.md` | drafts the three declaration files from a brief and a sample manifest, checks them with `declare --check`, runs `init --drafted-by agent` |
-| `render_skill.py`, `templates/analyze-skill.md.j2` | render a method repository's `skills/<pipeline>.analyze.yml` to its analysis skill `skills/stringency-analyze-<name>/SKILL.md` (design 10.4); `--check` validates against the pipeline and modules |
+| `render_skill.py`, `templates/analyze-skill.md.j2` | render a method repository's `skills/<pipeline>.analyze.yml` to its analysis skill `skills/stringency-analyze-<name>/SKILL.md` (design 10.4); `--check` validates against the pipeline and modules; `--harness claude-science\|claude-code\|codex` picks the mechanics (2026-10-21) |
+| `../codex/README.md`, `../conformance.py` | the Codex survey and appendix (the operator skill is one text; the appendix is read beside it) and the conformance runner over `tests/shared/` for any harness |
 
 ## Machine install
 

@@ -38,7 +38,7 @@ Nothing in it is built beyond what the State section says.
 
 ## State (2026-10-21)
 
-Engine 0.2.31 on `main` (triage pass 5, decision points, judgment replicates and confirm once, 2026-10-21); plugin singlecell 0.6.2; the Xenium method
+Engine 0.2.32 on `main` (triage pass 5, decision points, judgment replicates, confirm once and Codex as a harness, 2026-10-21); plugin singlecell 0.6.2; the Xenium method
 `stringency-xenium-method` at `v0.6.0-rc19` (its six open tools pass on the Lyons liver
 delivery under 0.2.26 and plugin 0.6.2); the toy method at `v0.2.0`. `0.2.27-sc0.6.2` is installed in the
 shared prefix on the lab workstation (`/data/lab/env/stringency/current`, 2026-10-20 17:05) and
@@ -64,10 +64,9 @@ or two sessions and ends with its rows in `archive/backlog-done.md` and a releas
 4. Confirm once: done 2026-10-21 (engine 0.2.31; L67, L6, L5, L68, L69 in the done ledger).
    The Lyons CLP projects name no study yet: add `study: lyons_clp` to each `stringency.yml`
    when the engine is installed (one line per project; nothing else changes).
-5. Codex as a harness (L34): H1 the survey of Codex CLI on PROTSEQ (reading, half a session;
-   independent of passes 1 to 4 and can be pulled forward), then H2 the harness-neutral skills,
-   H3 the `openai-compatible` and `command` adapters with L36 conformance; then the Qwen3
-   evaluation as sibling projects, whose "competent" the owner defines after H1.
+5. Codex as a harness: H1 to H3 and L36 done 2026-10-21 (engine 0.2.32). What remains of L34 is
+   the Qwen3 evaluation (a local model on the GPU, the Lyons re-judgment as sibling projects
+   under both harnesses) after the owner defines "competent".
 6. L54, the seven downstream predicates the design names, as plugin singlecell 0.7.
 7. L56 and L57, the judgment and report citation checks; L58 and L38 wait on them.
 
@@ -119,8 +118,7 @@ console rows until asked) and what waits on a person (the skill republish, the t
 
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
-| L34 | **one operator harness, one subscription-funded judge route.** `operator_id.py` knows Claude Code's environment only; the skills are written for Claude Science and Claude Code; judgments on the lab's subscription go through `subagent` dispatch only, and the `openai-compatible` adapter is a stub although design 17's trigger (the Qwen3 evaluation) is satisfiable on PROTSEQ. The owner, 2026-10-14: the lab has an OpenAI Codex team plan; open Codex as a harness and build in as much flexibility on the harness side as possible | `archive/roadmap-2026-10.md` Lane J (W7): H1 a survey of Codex CLI on PROTSEQ (`integrations/codex/README.md`); H2 the operator and declare skills split into a harness-neutral core and per-harness appendices rendered by `render_skill.py --harness`, `operator_id.py` recognising Codex; H3 judgment adapters `openai-compatible` (`judge-sources-plan.md` S1) and `command` (the engine runs a configured command per replicate against the request file: `codex exec`, headless Claude Code), with L3 so control results name the judge; the Qwen3 evaluation (S2) and its "competent" definition, the owner's decisions 2 and 3 of `judge-sources-plan.md` section 6; design text for 10.1 and 10.2 drafted after H1 | *design* (10.1, 10.2); the owner's go given and Codex CLI 0.163.0 logged in on PROTSEQ (ChatGPT login, 2026-10-21); the Qwen3 evaluation runs as sibling projects under both harnesses (decision 2); the definition of "competent" (decision 3) waits until the survey is done. H1 is next |
-| L36 | the dispatch envelope and the hold protocol are pinned only by engine-side tests and skill prose, so a new operator harness (Codex) implements both from reading and nothing it can run says whether it did | `commons-assessment.md` 4.2: `tests/shared/dispatch.json` and `holds.json` (cases in, the envelopes and `review --attest` calls out, the refusals), enumerated by the engine's tests and by `integrations/<harness>/conformance.py`; a harness enters `compat/known-good.yml` with a passing run; a runner asserts the set it enumerated is not empty | engine and integrations, DECISIONS-level; with L34 |
+| L34 | **one operator harness, one subscription-funded judge route** (as it stood 2026-10-14; the owner: open Codex as a harness and build in as much flexibility on the harness side as possible). H1 to H3 built 2026-10-21 (engine 0.2.32): the survey (`integrations/codex/README.md`), Codex recognised by `operator_id`, `render_skill.py --harness`, the `openai-compatible` and `command` adapters, L36 conformance | what remains: the Qwen3 evaluation (`judge-sources-plan.md` S2) as sibling projects under both harnesses, which needs a local model served on the GPU and the Lyons re-judgment; the owner defines "competent" (decision 3) first; design 10.1 and 10.2 carry the dated text | method and owner; `judge-sources-plan.md` 6 (3) |
 
 ### Method and plugin
 

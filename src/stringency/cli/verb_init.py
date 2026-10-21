@@ -37,6 +37,19 @@ def init(
     owner: str | None = typer.Option(None, "--owner"),
     reviewer: str | None = typer.Option(None, "--reviewer"),
     judgment_harness: str = typer.Option("subagent", "--judgment-harness"),
+    judgment_model: str | None = typer.Option(
+        None, "--judgment-model", help="the judge's model (api, openai-compatible, command)"
+    ),
+    judgment_base_url: str | None = typer.Option(
+        None,
+        "--judgment-base-url",
+        help="openai-compatible: the server, e.g. http://localhost:11434/v1",
+    ),
+    judgment_command: str | None = typer.Option(
+        None,
+        "--judgment-command",
+        help="command: the command run per replicate with {schema}, {response}, {prompt_file}, {dir}",
+    ),
     execution: str = typer.Option("operator", "--execution"),
     executor: str = typer.Option("apptainer", "--executor"),
     egress_max: int | None = typer.Option(
@@ -79,6 +92,9 @@ def init(
             owner=owner,
             reviewer=reviewer,
             judgment_harness=judgment_harness,
+            judgment_model=judgment_model,
+            judgment_base_url=judgment_base_url,
+            judgment_command=judgment_command,
             execution=execution,
             executor=executor,
             egress_max=egress_max,

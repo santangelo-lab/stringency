@@ -5,6 +5,12 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-22)
 
+- Engine 0.2.32, Codex as a harness (`notes/2026-10-22-0300-codex-harness.md`): the survey
+  (`integrations/codex/README.md`), Codex recognised by the engine, `render_skill.py
+  --harness`, the `command` and `openai-compatible` adapters with a `judgment:` block in
+  `stringency.yml`, conformance fixtures under `tests/shared/` with `integrations/conformance.py`
+  (L34 H1 to H3, L36). The Qwen3 evaluation remains the owner's. Pass 6 is plugin singlecell
+  0.7 (L54).
 - Engine 0.2.31, confirm once (`notes/2026-10-22-0100-confirm-once.md`): `study:` in
   `stringency.yml`, the inheritance rules (derived, inputs matched, re-declared, study), the
   advance sentence from `init` and `declare --check`, batch review of identical parameter
@@ -306,6 +312,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-22-0300-codex-harness.md` — engine 0.2.32: the Codex survey and appendix, Codex recognised, the renderer's harness switch, the command and openai-compatible adapters, conformance fixtures (L34 H1 to H3, L36).
 - `2026-10-22-0100-confirm-once.md` — engine 0.2.31: the study field, the four inheritance rules, the advance sentence, flag batches and accept-once, the console's inherited list (L67, L6, L5, L68, L69).
 - `2026-10-21-2300-judgment-replicates.md` — engine 0.2.30: per-replicate prompt orderings (L83) and sampled sign-off (L84).
 - `2026-10-21-2100-decision-points-first-cut.md` — engine 0.2.29: the `decision:` block, lint, `propose --cite`/`--considered`, the three `param.*` predicates, the default hold view, the `presented` event (L61, L55, L62, L9).

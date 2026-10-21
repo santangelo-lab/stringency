@@ -29,6 +29,7 @@ from stringency.config import (
     EgressSetting,
     InputItem,
     InputsManifest,
+    JudgmentSetting,
     MethodRef,
     Objective,
     Roles,
@@ -84,6 +85,9 @@ class InitRequest:
     owner: str | None = None
     reviewer: str | None = None
     judgment_harness: str = "subagent"
+    judgment_model: str | None = None  # the judge's model (api, openai-compatible, command)
+    judgment_base_url: str | None = None  # openai-compatible: the server
+    judgment_command: str | None = None  # command: the command run per replicate
     execution: str = "operator"
     executor: str = "apptainer"
     egress_max: int | None = None  # the person's ceiling, 0 none to 4 data (backlog L1)
@@ -686,6 +690,7 @@ class Project:
                 and self.policy.profile(self.config.profile).open.exec == "allowed"
             ),
             executor=self.config.executor,
+            harness_endpoint=self.config.judgment.base_url,
         )
 
     def _acknowledged_egress_ceiling(self) -> int | None:
@@ -1234,6 +1239,9 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         profile=req.profile,
         roles=Roles(owner=owner, reviewer=reviewer),
         judgment_harness=req.judgment_harness,
+        judgment=JudgmentSetting(
+            model=req.judgment_model, base_url=req.judgment_base_url, command=req.judgment_command
+        ),
         execution=req.execution,
         executor=req.executor,
         declarations=declarations,

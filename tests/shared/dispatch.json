@@ -1,0 +1,16 @@
+{
+  "shared": 1,
+  "what": "The dispatch envelope (design 10.2): what a response file must carry to parse and what the engine refuses. Enumerated by tests/test_conformance.py and by integrations/conformance.py for every operator harness. A runner asserts the set is not empty.",
+  "request": {"replicate": 1, "nonce": "N-1", "prompt": "p", "schema": {"type": "object"}, "items": ["a"]},
+  "accepted": [
+    {"name": "wrapped", "response": {"nonce": "N-1", "structured": {"items": [{"item_id": "a", "label": "keep"}]}, "reported": {"model": "m", "agent": "x subagent", "tools": [], "saw_conversation": false}}, "structured": {"items": [{"item_id": "a", "label": "keep"}]}, "via": "subagent"},
+    {"name": "flat", "response": {"nonce": "N-1", "items": [{"item_id": "a", "label": "keep"}], "reported": {"model": "m", "agent": "x subagent"}}, "structured": {"items": [{"item_id": "a", "label": "keep"}]}, "via": "subagent"},
+    {"name": "answered by the operator itself", "operator": "codex", "response": {"nonce": "N-1", "structured": {"items": []}, "reported": {"model": "m", "agent": "codex"}}, "structured": {"items": []}, "via": "operator", "isolation": "none"}
+  ],
+  "refused": [
+    {"name": "nonce mismatch", "response": {"nonce": "N-2", "structured": {"items": []}, "reported": {"model": "m"}}, "error": "nonce mismatch"},
+    {"name": "not an object", "text": "[1, 2]", "error": "response is not an object"},
+    {"name": "unparseable", "text": "{not json", "error_prefix": "unparseable response"},
+    {"name": "missing", "error": "response file missing"}
+  ]
+}

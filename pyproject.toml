@@ -1,6 +1,6 @@
 [project]
 name = "stringency"
-version = "0.2.31"
+version = "0.2.32"
 description = "Admissibility gates, provenance trace, and review for agent-assisted analysis pipelines"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -19,6 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 api = ["anthropic>=0.40"]
+openai = ["openai>=1.40"]
 
 [project.scripts]
 stringency = "stringency.cli.app:main"
@@ -70,7 +71,7 @@ plugins = ["pydantic.mypy"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["blake3", "blake3.*", "anthropic", "anthropic.*"]
+module = ["blake3", "blake3.*", "anthropic", "anthropic.*", "openai", "openai.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

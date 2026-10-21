@@ -47,6 +47,11 @@ REQUIRED = {
 OPTIONAL = {"name": str, "summary": str, "decisions": list, "tools": list, "open": dict}
 QUESTION_OUTCOMES = ("exec", "cannot", "fork", "explain")  # or tool:<name>
 HOW = ("declared", "proposed")
+HARNESSES = (
+    "claude-science",
+    "claude-code",
+    "codex",
+)  # the operator harnesses a rendering targets (L34 H2)
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
@@ -165,6 +170,7 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
         )
     ctx = {
         "skill_name": f"stringency-analyze-{name}",
+        "harness": "claude-science",  # the rendering's operator harness; `--harness` overrides
         "name": name,
         "description": description,
         "title": data["title"].strip(),
@@ -659,6 +665,12 @@ def main() -> None:
         "--write", action="store_true", help="write skills/stringency-analyze-<name>/SKILL.md"
     )
     ap.add_argument("--out", help="write the rendered skill to this path instead")
+    ap.add_argument(
+        "--harness",
+        choices=HARNESSES,
+        default="claude-science",
+        help="the operator harness the rendering is for: its mechanics section differs",
+    )
     args = ap.parse_args()
 
     yml, root = locate(Path(args.source), args.pipeline)
@@ -673,6 +685,7 @@ def main() -> None:
         for p in problems:
             print(p, file=sys.stderr)
         sys.exit(1)
+    ctx["harness"] = args.harness
     if args.check:
         print(f"{yml}: ok ({ctx['skill_name']})")
         return

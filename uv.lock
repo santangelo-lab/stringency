@@ -733,6 +733,23 @@ wheels = [
 ]
 
 [[package]]
+name = "openai"
+version = "3.36.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpx2" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/4f/d06c2dbbe2b4f8798f6d54da77a206875f25fbf31b96ea56ea339b30dad6/openai-3.36.0.tar.gz", hash = "sha256:fbe1df6490985247e542639098cd3c1170cfbd7bbce5fb5bdfe06cc4746c9dbc", size = 2296783, upload-time = "2026-10-21T15:54:34.03Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/22/a9/3db339b9dd01f8cfc7ac7b6a693cb155a4b06ce070046ee4c5a9ad0c4e95/openai-3.36.0-py3-none-any.whl", hash = "sha256:bf99f3be1048df0de9c3a2d66e7328cb7febddd5d84264192b19aebe0d1e34ad", size = 2292466, upload-time = "2026-10-21T15:54:31.178Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "26.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1111,7 +1128,7 @@ wheels = [
 
 [[package]]
 name = "stringency"
-version = "0.2.31"
+version = "0.2.32"
 source = { editable = "." }
 dependencies = [
     { name = "blake3" },
@@ -1127,6 +1144,9 @@ dependencies = [
 [package.optional-dependencies]
 api = [
     { name = "anthropic" },
+]
+openai = [
+    { name = "openai" },
 ]
 
 [package.dev-dependencies]
@@ -1146,13 +1166,14 @@ requires-dist = [
     { name = "blake3", specifier = ">=0.4" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "jsonschema", specifier = ">=4.21" },
+    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.40" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "python-ulid", specifier = ">=2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.7" },
     { name = "typer", specifier = ">=0.12" },
 ]
-provides-extras = ["api"]
+provides-extras = ["api", "openai"]
 
 [package.metadata.requires-dev]
 dev = [

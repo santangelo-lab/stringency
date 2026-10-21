@@ -47,6 +47,7 @@ Each rule is testable against the transcript.
 
 ## 1. Before you start
 
+{% if harness == "claude-science" %}
 Find the engine the way the `stringency-operator` skill says (section 1 there): on a registered
 compute host, every engine command runs through `call_command` from a `repl` cell, with the
 engine's `bin` directory on the PATH and the identity variables exported (`STRINGENCY_OPERATOR`,
@@ -54,6 +55,20 @@ engine's `bin` directory on the PATH and the identity variables exported (`STRIN
 sentence from the operator skill's intent table, naming the project by its directory name and a
 step by its title. Say to the person only that you are checking the analysis engine is ready,
 and report the result in one sentence.
+{% elif harness == "codex" %}
+Find the engine the way the `stringency-operator` skill says (section 1 there, mode A): the
+engine is on this machine, `stringency` on the PATH or under the site's install prefix;
+`stringency probe --method <project>/method --no-hash` says whether it is ready. Identity needs
+no export: the engine reads `CODEX_VERSION` and `CODEX_THREAD_ID` from your session
+(`integrations/codex/README.md`). Say to the person only that you are checking the analysis
+engine is ready, and report the result in one sentence.
+{% else %}
+Find the engine the way the `stringency-operator` skill says (section 1 there, mode A): the
+engine is on this machine, `stringency` on the PATH or under the site's install prefix;
+`stringency probe --method <project>/method --no-hash` says whether it is ready. Identity needs
+no export: the engine reads Claude Code's own session id and version. Say to the person only
+that you are checking the analysis engine is ready, and report the result in one sentence.
+{% endif %}
 
 Ask the person for nothing they have not been asked in section 2. The project's parent directory
 is the one they name, or the data root they were set up with; the project directory takes its
@@ -206,8 +221,8 @@ drift. Before the ask, when the method attaches tables to the predicate that fir
 `stringency present --hold <id>` and relay it, as the operator skill's section 7 says. The review
 page is a route only when it is available on this host; until then every hold is answered here
 and recorded as relayed. At every hold, without being asked, start the `wait_command` the held
-payload names (`stringency wait --hold <id> --timeout 86400 --json`) in the background (on a
-compute host, as a job, not through `call_command`, whose commands end after 60 seconds), so an
+payload names (`stringency wait --hold <id> --timeout 86400 --json`) in the background{% if harness == "claude-science" %} (on a
+compute host, as a job, not through `call_command`, whose commands end after 60 seconds){% endif %}, so an
 answer given at a terminal or on a console reaches you; when it returns, call `run` again. When a
 console is configured (the person says so, the held payload's `review_page` is set, or `page_url`
 is set in `~/.config/stringency/notify.yml`), the operator skill's console mode applies instead: one
@@ -341,9 +356,14 @@ yours on delivered files outside open mode; offer your reading, labelled as in s
 
 The `stringency-operator` skill is the authority on every line below; on conflict it wins.
 
+{% if harness == "claude-science" %}
 - Engine: `stringency` on the compute host, `bin` directory on PATH via a login shell; identity
-  variables exported in every command string (in Claude Code the engine reads the version and
-  session id itself). `review --attest` is refused (exit 16) without a session reference. A
+  variables exported in every command string. `review --attest` is refused (exit 16) without a session reference. A
+{% else %}
+- Engine: `stringency` on this machine, on the PATH; the engine reads the session id and
+  version from {{ "Codex's" if harness == "codex" else "Claude Code's" }} own environment.
+  `review --attest` is refused (exit 16) without a session reference. A
+{% endif %}
   `wait` only reads: never stop one with `pkill -f`.
 - Declare: `stringency plugins list --json` once; `declare --check <parent>/declarations
   --method {{ method }} --pipeline {{ pipeline }}`; `init <project> --method {{ method }}

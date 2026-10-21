@@ -1,0 +1,28 @@
+{
+  "shared": 1,
+  "what": "The hold protocol (operator skill section 6): what an operator must say and run at a hold, and what it must never do. Enumerated by tests/test_conformance.py against the engine's texts and by integrations/conformance.py against a harness's skill rendering or appendix. A runner asserts the set is not empty.",
+  "skill_must_say": [
+    "The analysis paused at",
+    "Which do you choose, and why? I will not choose for you.",
+    "stringency review --verdict",
+    "--attest",
+    "Do not read the prompt text yourself when a",
+    "run --responses - --json"
+  ],
+  "skill_must_not_say": [
+    "work around the hold",
+    "--dangerously"
+  ],
+  "relay": {
+    "verdict": "accept",
+    "hold": "HOLD",
+    "words": "the floor is right",
+    "command": "stringency review --verdict accept --hold HOLD --reason \"the floor is right\" --attest",
+    "needs": ["STRINGENCY_SESSION_REF"]
+  },
+  "never": [
+    "the operator chooses a verdict",
+    "the operator edits a delegate's answer",
+    "the operator writes under prov/"
+  ]
+}

@@ -59,7 +59,26 @@ HARNESS_CLASS: dict[str, tuple[int, str, str]] = {
         "the endpoint the adapter names (no endpoint is declared; assessed as hosted)",
         "the rendered judgment prompt: evidence tables, vocabulary, objective and design",
     ),
+    "command": (
+        3,
+        "wherever the configured command's model runs (as reported)",
+        "the rendered judgment prompt: evidence tables, vocabulary, objective and design",
+    ),
 }
+
+
+def harness_class(harness: str, endpoint: str | None = None) -> tuple[int, str, str]:
+    """The class of a judgment harness: the table above, except that an `openai-compatible`
+    endpoint on this machine (a loopback host, backlog L34 H3) sends nothing off it."""
+    if harness == "openai-compatible" and endpoint:
+        from urllib.parse import urlparse
+
+        host = (urlparse(endpoint).hostname or "").lower()
+        if host in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+            return (0, f"this machine ({endpoint})", "nothing")
+        return (3, endpoint, HARNESS_CLASS["openai-compatible"][2])
+    return HARNESS_CLASS.get(harness, (3, f"unknown harness {harness}", "the prompt"))
+
 
 SCRIPT_SUFFIXES = {".py", ".r", ".sh", ".bash", ".nf", ".jl"}
 
@@ -271,6 +290,7 @@ def assess(
     scans: Mapping[str, Sequence[ScanHit]] | None = None,
     exec_allowed: bool = False,
     executor: str = "apptainer",
+    harness_endpoint: str | None = None,
 ) -> EgressAssessment:
     """Assess what this setup sends off the machine.
 
@@ -298,7 +318,7 @@ def assess(
         return tuple(s.id for s in ss if s.when is not None)
 
     if judgment_steps:
-        cls, to, sends = HARNESS_CLASS.get(harness, (3, f"unknown harness {harness}", "the prompt"))
+        cls, to, sends = harness_class(harness, harness_endpoint)
         comps.append(
             Component(
                 key="harness",

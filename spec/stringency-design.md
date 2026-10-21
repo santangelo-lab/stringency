@@ -74,7 +74,8 @@ profile: standard                  # strict | standard | exploratory
 roles:
   owner: jrrose5
   reviewer: jrrose5                # may equal owner; the record is the point, not the separation
-judgment_harness: subagent         # 10.2; api | openai-compatible | subagent | mock
+judgment_harness: subagent         # 10.2; api | openai-compatible | subagent | mock | command
+judgment: {model: null, base_url: null, temperature: null, seed: null, command: null, timeout_s: null}   # 10.2 (2026-10-21): the harness's settings; read-only after init
 execution: operator                # 10.3; operator | engine; per-module override via manifest runner:
 executor: apptainer                # 10.3; used for engine-run steps, extractors, and judgment evidence
 policy: method/policy.yml          # 6.4; digest recorded on every run
@@ -889,11 +890,11 @@ Every distinct policy digest is stored with its full content and predicate set. 
 
 The implementation plan's list of harness implementations (`claude-science`, `claude-code`, `api`, `openai-compatible`, `mock`) mixes two roles.
 
-The operator harness is whatever drives the CLI: a Claude Science session, Claude Code, or a person at a shell. The engine does not call it; it calls the engine. The run records it (`operator_harness`, `operator_version`, `operator_session_ref`) from environment variables the skill wrapper sets (`STRINGENCY_OPERATOR`, `STRINGENCY_OPERATOR_VERSION`, `STRINGENCY_SESSION_REF`).
+The operator harness is whatever drives the CLI: a Claude Science session, Claude Code, Codex CLI (surveyed 2026-10-21, `integrations/codex/README.md`, backlog L34), or a person at a shell. The engine does not call it; it calls the engine. The run records it (`operator_harness`, `operator_version`, `operator_session_ref`) from environment variables the skill wrapper sets (`STRINGENCY_OPERATOR`, `STRINGENCY_OPERATOR_VERSION`, `STRINGENCY_SESSION_REF`), or from the harness's own (Claude Code's `CLAUDE_CODE_*`, Codex's `CODEX_VERSION` and `CODEX_THREAD_ID`) when those are unset. The operator skill is one text; a rendering of an analysis skill names its harness (`render_skill.py --harness`), and a harness's appendix (`integrations/<harness>/`) says what differs; `integrations/conformance.py` enumerates `tests/shared/dispatch.json` and `holds.json` against a harness's texts and the engine's reader (L36), and a harness enters `compat/known-good.yml` with a passing run.
 
 The judgment harness is how a rendered judgment prompt gets answered. Two families exist, bound at init:
 
-Direct adapters (`api`, `openai-compatible`, `mock`): the engine calls the model itself, in-process, and receives the response. The engine controls what the judge sees and how many independent calls are made.
+Direct adapters (`api`, `openai-compatible`, `mock`, and `command`, 2026-10-21): the engine calls the model itself, in-process or as one fresh process per replicate, and receives the response. The engine controls what the judge sees and how many independent calls are made.
 
 The dispatch adapter (`subagent`): the engine writes request files and stops; the operator harness spawns one fresh-context subagent per request; each subagent writes a response file; the engine resumes and validates. The operator's subscription pays for the calls and no API key is needed.
 
@@ -919,7 +920,7 @@ Invocation:
   structured: dict | None      raw_text: str        schema_valid: bool
   model_requested: str         model_resolved: str  harness_kind: str    harness_version: str
   tokens_in: int | None        tokens_out: int | None                    duration_ms: int | None
-  via: direct | subagent | operator   isolation: enforced | as_reported | none   nonce_ok: bool | None
+  via: direct | subagent | operator | command   isolation: enforced | as_reported | none   nonce_ok: bool | None
   tool_calls: list
 ```
 
@@ -929,7 +930,9 @@ Invocation:
 
 `api`: the Anthropic Messages API with `schema.json` enforced as structured output. Claude Code should read the current SDK documentation for the structured-output mechanism at build time rather than rely on memory. The model alias is set per project (and may be overridden per module); the resolved model string from the response is what gets recorded. Installed as the `stringency[api]` extra.
 
-`openai-compatible`: Phase D.
+`openai-compatible` (built 2026-10-21, L34 H3): any server speaking the OpenAI chat completions shape, Ollama's `/v1` and vLLM first; `schema.json` as `response_format: json_schema` with `strict: true`; `model`, `base_url`, `temperature` and `seed` from the project's `judgment:` block (`init --judgment-model --judgment-base-url`); the response's `model` recorded as resolved; a server that returns no JSON object leaves the invocation invalid with its error named. Installed as `stringency[openai]`. A loopback `base_url` is egress class 0.
+
+`command` (built 2026-10-21, L34 H3): the engine runs the project's `judgment.command` once per replicate in a fresh process, the rendered prompt on stdin (or in `{prompt_file}`), the schema in `{schema}`, and reads `{response}` (or the last JSON object on stdout); token counts from a `turn.completed` JSON Lines event when the command prints one (`codex exec --json`); `via: command`, `isolation: as_reported`, `model_resolved: unknown` unless reported. The first command is Codex CLI (`integrations/codex/README.md`).
 
 `subagent`: the dispatch adapter. The request and response contract:
 
@@ -1121,7 +1124,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 
 | Verb | Arguments | Gate | Trace | Eval |
 |---|---|---|---|---|
-| `init <path>` | `--method <git-url>@<tag> [--pipeline <name>] --mode --profile --owner --reviewer [--objective <file> --design <file> --inputs <file>] [--from-delivery <dir> [--upstream <root>]] [--judgment-harness api] [--executor apptainer] [--drafted-by person\|agent] [--brief <file>] [--study <name>]` | binds; refuses open+strict and `--pipeline` with `--mode open`; runs lint; prints which acceptance the confirmation inherits and by which rule, or why none (2026-10-21) | opens the project record | none |
+| `init <path>` | `--method <git-url>@<tag> [--pipeline <name>] --mode --profile --owner --reviewer [--objective <file> --design <file> --inputs <file>] [--from-delivery <dir> [--upstream <root>]] [--judgment-harness api\|openai-compatible\|command [--judgment-model <m>] [--judgment-base-url <url>] [--judgment-command "<cmd>"]] [--executor apptainer] [--drafted-by person\|agent] [--brief <file>] [--study <name>]` | binds; refuses open+strict and `--pipeline` with `--mode open`; runs lint; prints which acceptance the confirmation inherits and by which rule, or why none (2026-10-21) | opens the project record | none |
 | `declare <dir>` | `--check --method <git-url>@<tag> --pipeline <name> [--objective --design --inputs] [--profile] [--executor] [--study <name>] [--json]` | every `init` check, in a temporary directory; the siblings looked for beside `<dir>` | none; prints the echo-back and the inheritance sentence (2026-10-21) | none |
 | `run` | `[--until <step>] [--allow-dirty "<reason>"] [--new] [--json] [--responses <file\|->] [--check] [--deliver]` | evaluates predicates; halts on hold or block; `--responses` files dispatch responses from one document; with `--check` it only reports what filing them would do (validity, the `judg.*` gates, the holds that would open) and writes nothing; `--deliver` delivers on completion | writes everything (nothing with `--check`) | triggers replicates |
 | `next` | `[--json]` | reports the next step with its plan template (operation, parameter schema with defaults and ranges, vocabulary, declared outputs, expected evidence), or the current hold | reads | none |
@@ -1274,7 +1277,7 @@ Everything in the eval column is either a control, a rate computed from the trac
 | open mode | built 2026-10-16 (`spec/archive/open_mode_plan.md`, phase 1: tools, `exec`, answers with labels, deliver); `budgets` and `splits` stay reserved | phase 2 (judgment tools on demand, budgets, structured claims, the console's questions page, the promotion loop) when the first real open project has run |
 | staged mode | `mode` field, `splits` | someone wants a confirmatory claim from an open project (backlog H5) |
 | free-text, ungated steps | nothing | open mode |
-| `openai-compatible` adapter | harness protocol | the Qwen3 evaluation |
+| `openai-compatible` adapter | built 2026-10-21 (L34 H3) | the Qwen3 evaluation measures it |
 | re-audit | `policy_snapshots`, full state and action records | a predicate is added after real runs exist |
 | Nextflow executor | executor protocol | application 2 |
 | `trace` verb | `status --trace` | someone asks the question `status` cannot answer |

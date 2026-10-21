@@ -17,7 +17,7 @@ from stringency.exit_codes import ConfigError
 
 Mode = Literal["pipeline", "staged", "open"]
 Profile = Literal["strict", "standard", "exploratory"]
-JudgmentHarness = Literal["api", "openai-compatible", "subagent", "mock"]
+JudgmentHarness = Literal["api", "openai-compatible", "subagent", "mock", "command"]
 Runner = Literal["operator", "engine"]
 ExecutorKind = Literal["local", "apptainer"]
 
@@ -59,6 +59,20 @@ class EgressSetting(Strict):
     operator: Literal["hosted", "local", "none"] = "hosted"
 
 
+class JudgmentSetting(Strict):
+    """How the judgment harness is reached (design 10.2; backlog L34 H3): `model` for `api`
+    and `openai-compatible`; `base_url`, `temperature` and `seed` for `openai-compatible`;
+    `command` and `timeout_s` for `command` (the command the engine runs per replicate, with
+    `{schema}`, `{response}`, `{prompt_file}` and `{dir}` placeholders). Read-only after init."""
+
+    model: str | None = None
+    base_url: str | None = None
+    temperature: float | None = None
+    seed: int | None = None
+    command: str | None = None
+    timeout_s: int | None = None
+
+
 class StringencyConfig(Strict):
     """stringency.yml. Written by init, read-only after."""
 
@@ -73,6 +87,7 @@ class StringencyConfig(Strict):
     profile: Profile = "standard"
     roles: Roles
     judgment_harness: JudgmentHarness = "subagent"
+    judgment: JudgmentSetting = Field(default_factory=JudgmentSetting)  # the harness's settings
     execution: Runner = "operator"
     executor: ExecutorKind = "apptainer"
     policy: str = "method/policy.yml"

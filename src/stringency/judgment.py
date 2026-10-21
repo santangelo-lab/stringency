@@ -65,12 +65,23 @@ from stringency.tables import load_table
 
 def harness_for(rc: RunContext, model: str | None = None) -> Harness:
     kind = rc.project.config.judgment_harness
+    js = rc.project.config.judgment
     if kind == "mock":
         return MockHarness(fixture_path(rc.project.root), operator=rc.operator.get("harness"))
     if kind == "subagent":
         return SubagentHarness(operator=rc.operator.get("harness"))
     if kind == "api":
-        return ApiHarness(model)
+        return ApiHarness(model or js.model)
+    if kind == "openai-compatible":
+        from stringency.harness.openai_compat import OpenAICompatibleHarness
+
+        return OpenAICompatibleHarness(
+            model or js.model, base_url=js.base_url, temperature=js.temperature, seed=js.seed
+        )
+    if kind == "command":
+        from stringency.harness.command import CommandHarness
+
+        return CommandHarness(js.command, model=model or js.model, timeout_s=js.timeout_s)
     raise ConfigError(f"judgment harness {kind} is deferred (design 17)")
 
 
