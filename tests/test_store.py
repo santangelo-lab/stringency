@@ -257,6 +257,7 @@ def test_refuses_cifs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         Store.open(tmp_path / "run.db")
 
 
+@pytest.mark.skipif(not Path("/proc/mounts").exists(), reason="needs /proc/mounts")
 def test_filesystem_type_returns_something_for_tmp(tmp_path: Path) -> None:
     assert filesystem_type(tmp_path) is not None
 

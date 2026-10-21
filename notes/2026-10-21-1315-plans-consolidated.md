@@ -67,12 +67,18 @@ plan documents with one work list, because "something is going to get lost betwe
 
 ## Open
 
-- The suite was not run here: this machine has no `uv`, no `.venv` and only Python 3.9, which the engine does not import under. The one code change is
-  the `UX_NOTE` path in `tests/test_render_skill.py` and the docstring paths in the open-mode
-  tests; run the suite on the workstation before committing (Verify below).
-- Nothing committed; the owner commits. The parallel session's note
-  (`2026-10-21-1300-judgment-replicates-evidence.md`) is uncommitted too and its index line was
-  kept.
+- The suite runs here now (after the commit): `brew install uv` (0.12.11), `uv sync --all-groups`
+  fetched a managed Python 3.14.7 (the machine had only 3.9; the project needs 3.12 or later)
+  and built `.venv`. Green: every test passes, four skipped (apptainer and the singlecell
+  plugin, as before; two Linux-only tests now marked `skipif` where `/proc` is absent:
+  `test_a_reused_pid_is_not_the_engine`, `test_filesystem_type_returns_something_for_tmp`).
+  Ruff, the format check, mypy and the no-biology check clean. One false failure on the way:
+  `--basetemp` under a path whose last segment ends in twelve hex characters makes the
+  open-delivery golden's `<HASH12>` normaliser rewrite the upstream path before it is replaced;
+  use pytest's default temporary directory.
+- The consolidation is committed as `df2b287` with the parallel session's note
+  (`2026-10-21-1300-judgment-replicates-evidence.md`); the two test skips and this note's
+  update are the second commit.
 - Next: the owner's jobs in `PLAN.md`'s waiting table, then L61 and L55 (decision points, first
   cut), then L54.
 

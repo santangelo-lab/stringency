@@ -51,6 +51,9 @@ def _write_mark(
     m.write_text(json.dumps(body))
 
 
+@pytest.mark.skipif(
+    not Path("/proc/self/stat").exists(), reason="needs /proc for a pid's start time"
+)
 def test_a_reused_pid_is_not_the_engine(tmp_path: Path) -> None:
     """The mark names the pid and its start time; a live process with that pid but another
     start time took the pid after the engine exited."""

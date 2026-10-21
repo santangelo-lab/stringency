@@ -10,7 +10,8 @@ it is the first thing a new session reads.
   points L61 to L66 with `spec/plans/decision-points.md`, the open sections of the plan documents
   L67 to L81, the judgment literature check L82 to L85); the roadmap, the open-mode and bulk
   plans and the trace review archived; `ux-two-audiences.md` is now `spec/ux-two-audiences.md`.
-  Engine unchanged at 0.2.27; the test suite was not run here (no `uv` on this machine).
+  Engine unchanged at 0.2.27; committed as `df2b287`. The suite runs on this machine now
+  (`uv` from Homebrew, a managed Python 3.14): green, two Linux-only tests skip without `/proc`.
 - Engine 0.2.27 (`notes/2026-10-21-0400-triage-pass-4.md`): the triage of 2026-10-20 is complete:
   trace integrity T1 and T2 (0.2.25), pass 3 (0.2.26), pass 4 (0.2.27). What is left on the
   backlog waits on the owner (T3, T4, L42, L45, L46, K6, confirm-once, Codex, H5, A5, L48) or is
