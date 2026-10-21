@@ -53,6 +53,15 @@ def propose(
     reason: str | None = typer.Option(
         None, "--reason", help="the agent's stated reason for its choices"
     ),
+    cites: list[str] = typer.Option(
+        [],
+        "--cite",
+        help="source:row:column, the evidence the reason reads (a step's output as "
+        "step/output/file; row and column optional); repeatable",
+    ),
+    considered: str | None = typer.Option(
+        None, "--considered", help="the candidate values weighed, comma-separated"
+    ),
     as_json: bool = typer.Option(False, "--json"),
     new: bool = typer.Option(
         False,
@@ -66,12 +75,17 @@ def propose(
     # admitted, and the fork's own --set delta (design 2.5, 2.6); --set here overrides them all
     inherited = starting_params(rc, step) or {}
     inherited.update({k: (v, "fork") for k, v in rc.delta_for(step).items()})
+    from stringency.citations import parse_cite
+
+    weighed = [coerce_value(v) for v in considered.split(",") if v.strip()] if considered else []
     prop = do_propose(
         rc,
         step,
         parse_sets(sets, schema_properties(rc, step)),
         rationale=reason,
         inherited=inherited or None,
+        cites=[parse_cite(c) for c in cites],
+        considered=weighed,
     )
     if prop.status == StepStatus.AWAITING_EXECUTION:
         spec = job_spec(prop, rc.env_digests.get(prop.plan.module.manifest.env), rc.executor)

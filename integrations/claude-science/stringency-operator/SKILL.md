@@ -74,7 +74,7 @@ any other way and do not reimplement any of its behavior in Python.
 The container runtime is `apptainer` or `singularity`; the engine finds either, and `probe`
 reports which and whether every image the project's method names is present and readable.
 
-**Which text of this skill to follow.** This text is for engine 0.2.28. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.29. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -314,11 +314,15 @@ Some steps take a parameter nobody can set before the run has produced the evide
 step's default is `unset` or a sign-off is required, and the operator proposes the value. Run
 `stringency run --until <the step before>` so the evidence exists, read the evidence the method
 names (`present` shows it; never compute from it), then `stringency propose <step> --set
-<parameter>=<value> --reason "<why, citing the evidence by table and row>"`. The proposal opens a
-hold the person answers by the hold protocol: your reason is what they read, so it must be one
-they could check against the tables. You never proceed on your own proposal, never propose a
-value the evidence does not name, and never change a parameter nobody asked about. Then `run`
-again. This text is section 9 of the `stringency-operator` skill; the two must not drift.
+<parameter>=<value> --cite <step>/<output>[:<row>[:<column>]] ... --considered <v1,v2,...>
+--reason "<why, in words the cited cells support>"` (engine 0.2.29). Cite every cell your reason
+rests on, from the evidence the pipeline's `decision:` block names for that parameter, and list
+the candidates you weighed; the engine resolves each citation to its cell, prints them at the
+hold, and opens a hold of its own when a numeral in your reason matches no cited cell or when a
+decision point's evidence is cited nowhere. The proposal opens a hold the person answers by the
+hold protocol: your reason is what they read, so it must be one they could check against the
+tables. You never proceed on your own proposal, never propose a value the evidence does not
+name, and never change a parameter nobody asked about. Then `run` again. This text is section 9 of the `stringency-operator` skill; the two must not drift.
 
 A method's analysis skill lists which steps of its pipeline are proposed this way and from which
 evidence (`skills/<pipeline>.analyze.yml` `decisions:`); a parameter the person settles before

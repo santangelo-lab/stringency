@@ -23,7 +23,13 @@ from stringency.config import StringencyConfig, load_model
 from stringency.db.store import Store
 from stringency.exit_codes import ConfigError
 from stringency.modules import ModuleIndex
-from stringency.pipelines import Pipeline, find_pipeline, load_pipeline, open_pipeline
+from stringency.pipelines import (
+    Pipeline,
+    find_pipeline,
+    load_pipeline,
+    normalise_source,
+    open_pipeline,
+)
 from stringency.plain import progress_sentence
 from stringency.tables import is_tabular
 
@@ -252,6 +258,16 @@ def _resolve(project: Site, run_id: str, source: str, deliver_dir: Path | None) 
         for cand in _dir_variants(base / rest):
             if cand.exists():
                 return cand
+    if step and rest and "/" not in rest:
+        # `<step>/<output>` by the output's name, whatever file the module wrote it to (the
+        # decision block and `propose --cite` name outputs this way; L61, L55)
+        row = project.store.one(
+            "SELECT path FROM artifacts WHERE run_id = ? AND step_id = ? AND name = ? AND "
+            "status = 'produced' ORDER BY rowid DESC LIMIT 1",
+            (run_id, step, rest.split(".")[0]),
+        )
+        if row is not None and Path(str(row["path"])).exists():
+            return Path(str(row["path"]))
     return None
 
 
@@ -287,10 +303,16 @@ def render_items(
     `{item}` placeholders and gives a `chart` its marked parameter value."""
     sections: list[dict[str, Any]] = []
     files: list[str] = []
+    before = 0
+    prev_src = ""
     for item in items:
+        for s in sections[before:]:
+            s.setdefault("source", prev_src)  # the source each section came from (L62)
+        before = len(sections)
         title = str(item.get("title") or item.get("source") or "")
         kind = str(item.get("kind") or "table")
         src = _fill(str(item.get("source") or ""), hold)
+        prev_src = src
         path = _resolve(project, run_id, src, deliver_dir)
         if kind not in KINDS:
             sections.append({"title": title, "kind": kind, "error": f"unknown kind `{kind}`"})
@@ -366,6 +388,8 @@ def render_items(
         if note:
             section["note"] = note
         sections.append(section)
+    for s in sections[before:]:
+        s.setdefault("source", prev_src)
     return sections, files
 
 
@@ -635,6 +659,133 @@ def present_run(
     return payload
 
 
+def record_presented(project: Site, payload: dict[str, Any]) -> int | None:
+    """`present` writes one `run_events` row `presented` (backlog L62): the sources it rendered,
+    the hold if any, the step, the OS user and the operator session. Rendering is not reading;
+    the absence of this event is what the hold's line reports. Writes: run_events. Returns the
+    event's seq, or None when the payload names no run."""
+    import getpass
+    import os
+
+    from stringency.operator_id import operator_env
+
+    run_id = payload.get("run_id")
+    if not run_id:
+        return None
+    sources: list[str] = []
+    for s in payload.get("sections") or []:
+        src = s.get("source")
+        if src and src not in sources:
+            sources.append(str(src))
+    return project.store.run_event(
+        str(run_id),
+        "presented",
+        {
+            "kind": payload.get("kind"),
+            "hold_id": payload.get("hold_id"),
+            "step_id": payload.get("step_id"),
+            "sources": sources,
+            "user": os.environ.get("USER") or os.environ.get("LOGNAME") or getpass.getuser(),
+            "session_ref": operator_env().get("session_ref"),
+        },
+    )
+
+
+def presented_line(
+    store: Store, run_id: str, proposed_at: str, sources: list[str], steps: list[str]
+) -> str:
+    """The parameter hold's line (L62): the latest `presented` event before `proposed_at` that
+    rendered one of `sources` or any output of `steps` (the evidence's steps), or the statement
+    that none did. Reads: run_events."""
+    rows = store.all(
+        "SELECT payload_json, ts FROM run_events WHERE run_id=? AND event='presented' AND ts <= ? "
+        "ORDER BY seq DESC",
+        (run_id, proposed_at),
+    )
+    wanted = {normalise_source(s) for s in sources}
+    for r in rows:
+        p = json.loads(r["payload_json"] or "{}")
+        got = [normalise_source(str(s)) for s in p.get("sources") or []]
+        hit = any(g in wanted or g.split("/")[0] in steps for g in got) or (
+            p.get("step_id") in steps
+        )
+        if hit:
+            who = "the operator session" if p.get("session_ref") else f"user {p.get('user')}"
+            return f"evidence rendered {_hhmm(r['ts'])} by {who}, proposed {_hhmm(proposed_at)}"
+    return "proposed; no evidence of this step rendered in this run"
+
+
+def _hhmm(ts: str) -> str:
+    return ts[11:16] if len(ts) >= 16 else ts
+
+
+def decision_sections(
+    project: Site, run_id: str, step_id: str, proposed: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """The default hold view of a parameter hold (L61), with the method's skill silent: for
+    each proposed parameter, its declared evidence (a source rendered as a table, figure or
+    text by its extension; a `text:` sentence; the method's `because` for none), then the
+    parameter table. Reads the run's files; writes nothing."""
+    if not project.pipeline.has_step(step_id):
+        return []
+    step = project.pipeline.step(step_id)
+    sections: list[dict[str, Any]] = []
+    for name in proposed:
+        decl = step.params.get(name)
+        if decl is None or decl.decision is None:
+            continue
+        ev = decl.decision.evidence
+        if ev.source:
+            suffix = Path(ev.source).suffix.lower()
+            kind = (
+                "figure"
+                if suffix in (".png", ".svg", ".jpg", ".jpeg", ".pdf")
+                else ("table" if suffix in (".csv", ".tsv", ".txt", "") else "text")
+            )
+            sections += render_items(
+                project,
+                run_id,
+                [
+                    {
+                        "title": f"{name}: the evidence the method names ({ev.source})",
+                        "source": ev.source,
+                        "kind": kind,
+                    }
+                ],
+                None,
+                {"step_id": step_id, "evidence": {"proposed": proposed}},
+            )[0]
+        elif ev.text:
+            sections.append(
+                {"title": f"{name}: the evidence the method names", "kind": "text", "text": ev.text}
+            )
+        else:
+            sections.append(
+                {
+                    "title": f"{name}: no evidence, by the method's own words",
+                    "kind": "text",
+                    "text": str(ev.because),
+                }
+            )
+    rows = [
+        {
+            "parameter": name,
+            "default": p.get("default") if isinstance(p, dict) else None,
+            "proposed": p.get("proposed") if isinstance(p, dict) else p,
+        }
+        for name, p in proposed.items()
+    ]
+    if rows:
+        sections.append(
+            {
+                "title": "The decision",
+                "kind": "table",
+                **_table(rows, ["parameter", "default", "proposed"], {}),
+            }
+        )
+    return sections
+
+
 def present_hold(
     project: Site, hold_id: str | None, skills_dir: Path | None = None
 ) -> dict[str, Any]:
@@ -715,13 +866,41 @@ def present_hold(
         payload["sections"] += render_items(project, h["run_id"], matching, None, hold_info)[0]
         ns = skill.get("never_show")
         payload["never_show"] = [str(x) for x in ns] if isinstance(ns, list) else []
+    if h["run_id"] and h["step_id"] and not payload["sections"] and pred_id.startswith("param."):
+        # a parameter hold with no view from the method's skill (backlog L61): the declared
+        # evidence, then the parameter table
+        ev = ctx.get("evidence") or {}
+        proposed = ev.get("proposed") if isinstance(ev, dict) else None
+        if isinstance(proposed, dict):
+            payload["sections"] += decision_sections(project, h["run_id"], h["step_id"], proposed)
     if h["run_id"] and h["step_id"] and not payload["sections"]:
         # a judgment hold with no view from the method's skill (backlog K5): the replicates'
         # calls, as written at judgment time, are what the person decides on
         sec = _judgments_section(project, h["run_id"], h["step_id"], h["item_id"])
         if sec is not None:
             payload["sections"].append(sec)
+    if h["run_id"] and h["step_id"] and pred_id.startswith("param."):
+        payload["presented"] = _presented_for_hold(project, h)
     return payload
+
+
+def _presented_for_hold(project: Site, h: Any) -> str | None:
+    """The `presented` line for a parameter hold: from the action behind the hold and the
+    decision evidence of its proposed parameters. Reads: actions, run_events."""
+    a = project.store.one(
+        "SELECT proposed_at, params_json FROM actions WHERE run_id=? AND step_id=? ORDER BY attempt DESC, rowid DESC LIMIT 1",
+        (h["run_id"], h["step_id"]),
+    )
+    if a is None or not project.pipeline.has_step(h["step_id"]):
+        return None
+    step = project.pipeline.step(h["step_id"])
+    sources = [
+        d.decision.evidence.source
+        for d in step.params.values()
+        if d.decision is not None and d.decision.evidence.source
+    ]
+    steps = sorted({s.split("/")[0] for s in sources if not s.startswith("$inputs.")})
+    return presented_line(project.store, h["run_id"], a["proposed_at"], sources, steps)
 
 
 def _judgments_section(

@@ -222,6 +222,102 @@ def lint_module(
                 report.warn(where, f"in-scope predicate {spec.ref} is not listed in gates")
 
 
+DECISION_ENGINE = "0.2.29"  # the first engine that knows `decision:` (L61)
+
+
+def _requires_decision_engine(policy: Policy | None) -> bool:
+    """True when the method's `requires.engine` admits no engine older than the one that knows
+    the `decision:` block, which is the method opting in to the silent-case error (L61: a
+    warning before, an error after)."""
+    if policy is None or policy.requires is None or not policy.requires.engine:
+        return False
+    try:
+        from stringency.versions import satisfies
+
+        older = "0.2.28"
+        return not satisfies(older, policy.requires.engine)
+    except ConfigError:
+        return False
+
+
+def _lint_decisions(
+    pipeline: Pipeline, modules: ModuleIndex, report: LintReport, where: str, policy: Policy | None
+) -> None:
+    """The `decision:` block (design 3.1, backlog L61): a ranged decision point with none is
+    the silent case (warning, or error once `requires.engine` names an engine that knows the
+    block); the evidence source must be an output of a step upstream or a project input; the
+    menu keys must name what exists; the parameter must be one of the module's decision points."""
+    strict = _requires_decision_engine(policy)
+    order = pipeline.order()
+    for step in pipeline.steps:
+        mod = modules.get(step.module)
+        upstream = order[: order.index(step.id)] if step.id in order else []
+        for name, decl in step.params.items():
+            at = f"step {step.id} parameter {name}"
+            if decl.decision is None:
+                if not decl.fixed:
+                    msg = (
+                        f"{at}: a decision point with no `decision:` block (what evidence a person "
+                        "judges the proposal by); declare one, or `evidence: none` with `because:`"
+                    )
+                    (report.error if strict else report.warn)(where, msg)
+                continue
+            d = decl.decision
+            if decl.fixed:
+                report.warn(where, f"{at}: `decision:` on a fixed parameter is never read")
+            if (
+                mod is not None
+                and mod.manifest.decision_points
+                and name not in mod.manifest.decision_points
+            ):
+                report.error(
+                    where,
+                    f"{at}: `decision:` on a parameter that is not a decision point of {mod.ref}",
+                )
+            if d.evidence.because and not d.evidence.none:
+                report.warn(where, f"{at}: `because` is read only with `evidence: none`")
+            if d.evidence.source:
+                src = d.evidence.source
+                if src.startswith("$inputs."):
+                    pass  # a project input: resolved per project at the hold
+                else:
+                    src_step, _, rest = src.partition("/")
+                    out = rest.split("/")[0].split(".")[0] if rest else ""
+                    if src_step not in upstream:
+                        report.error(
+                            where,
+                            f"{at}: evidence {src} names {src_step}, which is not a step upstream of {step.id}",
+                        )
+                    else:
+                        smod = modules.get(pipeline.step(src_step).module)
+                        if smod is not None and out not in smod.manifest.outputs:
+                            report.error(
+                                where,
+                                f"{at}: evidence {src} names output {out}, which {smod.ref} does not declare",
+                            )
+            for key in ("sweep", "rule"):
+                spec = getattr(d, key)
+                if spec is None:
+                    continue
+                out = str(spec.get("output") or "")
+                if mod is not None and out not in mod.manifest.outputs:
+                    report.error(where, f"{at}: {key}.output {out!r} is not an output of {mod.ref}")
+            if d.judged is not None:
+                ref = str(d.judged.get("module") or "")
+                jm = modules.get(ref) if ref else None
+                if jm is None or jm.manifest.kind != "judgment":
+                    report.error(
+                        where, f"{at}: judged.module {ref!r} is not a judgment module of the repo"
+                    )
+            if d.sensitivity is not None:
+                through = str(d.sensitivity.get("through") or "")
+                if through not in order or order.index(through) <= order.index(step.id):
+                    report.error(
+                        where,
+                        f"{at}: sensitivity.through {through!r} is not a step downstream of {step.id}",
+                    )
+
+
 def lint_pipeline(
     pipeline: Pipeline,
     modules: ModuleIndex,
@@ -229,6 +325,7 @@ def lint_pipeline(
     *,
     plugin: Plugin | None,
     method_root: Path | None = None,
+    policy: Policy | None = None,
 ) -> None:
     where = f"pipeline {pipeline.name}"
     if method_root is not None and (method_root / "skills" / f"{pipeline.name}.yml").exists():
@@ -318,6 +415,7 @@ def lint_pipeline(
                         where, f"step {step.id} input {name} references {ref}, which does not exist"
                     )
     _lint_when(pipeline, modules, report, where)
+    _lint_decisions(pipeline, modules, report, where, policy)
 
 
 def _lint_when(pipeline: Pipeline, modules: ModuleIndex, report: LintReport, where: str) -> None:
@@ -419,7 +517,12 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
                 report.errors.append(str(e))
                 continue
             lint_pipeline(
-                pipeline, modules, report, plugin=plugins.get(pipeline.domain), method_root=path
+                pipeline,
+                modules,
+                report,
+                plugin=plugins.get(pipeline.domain),
+                method_root=path,
+                policy=policy,
             )
     return report
 

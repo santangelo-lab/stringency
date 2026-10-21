@@ -184,15 +184,17 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
         rc,
         "01_filter",
         {"min_value": 12},
-        rationale="12 is the floor here.\nRows below it are noise.",
+        rationale="Twelve is the floor here.\nRows below it are noise.",
     )
     assert str(prop.status) == "held"
     # L8: the operator's reason is in the packet the terminal shows
     view = render(p, queue(p)[0])
-    assert view.operator_reason == "12 is the floor here.\nRows below it are noise."
+    assert view.operator_reason == "Twelve is the floor here.\nRows below it are noise."
     assert (
-        "the operator's reason:\n  12 is the floor here.\n  Rows below it are noise." in view.text
+        "the operator's reason:\n  Twelve is the floor here.\n  Rows below it are noise."
+        in view.text
     )
+    assert "presented: proposed; no evidence of this step rendered in this run" in view.text
     srv = make_server([p.root], port=0, token=TOKEN)
     t = threading.Thread(target=srv.serve_forever, daemon=True)
     t.start()

@@ -10,7 +10,7 @@ pairing (a direct UPDATE bypasses it; `stringency audit` reports the disagreemen
 |---|---|---|
 | `projects` | no | bound configuration at init; `objective_json`, `design_json` as declared |
 | `runs` | status mutable | `parent_run_id`, `fork_at_step`, `delta_json` for forks; `git_sha`, `git_dirty`, `allow_dirty_reason`; `operator_*` from `STRINGENCY_OPERATOR*`; `env_digest` over every env used; `policy_version`, `policy_digest`; `kind` (`run`/`control`); `budgets_json` reserved |
-| `run_events` | yes | every run status change and capture, `seq` ordered; the `captures` payload of an open run adds `tools` (the method's tools at open) and `upstream_lineage` (each upstream run's ancestor chain, status and delivery timestamps); `answer_recorded` per answer filed |
+| `run_events` | yes | every run status change and capture, `seq` ordered; the `captures` payload of an open run adds `tools` (the method's tools at open) and `upstream_lineage` (each upstream run's ancestor chain, status and delivery timestamps); `answer_recorded` per answer filed; `presented` per `present` rendering (sources, hold, step, user, session; backlog L62, 2026-10-21) |
 | `run_events` | yes | every run status change and capture, `seq` ordered; the `captures` event carries `egress` (fingerprint, assessed class, ceiling, operator model, harness, report path relative to the project, components; backlog L1, 2026-10-16) |
 | `steps` | status mutable | `module`, `module_version`, `operation`, `status` (design 7.1), `attempt` |
 | `step_events` | yes | every transition with `from`/`to`, holds, artifacts, consensus; an on-demand step's `created` payload carries `on_demand: {kind: tool | exec, decl, manifest, question_id}` (open mode, 2026-10-16) |

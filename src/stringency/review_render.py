@@ -18,6 +18,7 @@ from typing import Any
 
 from jinja2 import Environment, StrictUndefined
 
+from stringency.actions import rationale_record
 from stringency.holds import open_holds
 from stringency.predicates.context import EvidenceTable
 from stringency.predicates.engine.judg import values_equal
@@ -131,6 +132,8 @@ class HoldView:
     choices: list[str] = field(default_factory=list)  # labels a person may choose (item holds)
     operator_reason: str | None = None  # the `propose --reason` text behind the action (L8)
     resolution: dict[str, Any] | None = None  # how a resolved hold was resolved
+    decision_lines: list[str] = field(default_factory=list)  # L61/L55: evidence, citations
+    presented: str | None = None  # L62: whether the evidence was rendered before the proposal
 
     def to_json(self) -> dict[str, Any]:
         h = self.hold
@@ -155,6 +158,8 @@ class HoldView:
             "operator_reason": self.operator_reason,
             "choices": self.choices,
             "resolution": self.resolution,
+            "decision_lines": self.decision_lines,
+            "presented": self.presented,
             "text": self.text,
         }
 
@@ -574,10 +579,21 @@ def render_flag(
     view = HoldView(h, "", module_ref=module_ref)
     if action:
         lines.append("parameters: " + (_kv(action.parameters) or "none"))
-        reason = project.store.message(action.rationale_ref) if action.rationale_ref else None
-        if reason:
-            view.operator_reason = reason
-            lines += ["", "the operator's reason:", *_quoted(reason)]
+        record = rationale_record(
+            project.store.message(action.rationale_ref) if action.rationale_ref else None
+        )
+        if predicate.startswith("param."):
+            view.decision_lines = _decision_lines(project, rc, h, action, evidence, record)
+            if view.decision_lines:
+                lines += ["", *view.decision_lines]
+        if record and record["text"]:
+            view.operator_reason = record["text"]
+            lines += ["", "the operator's reason:", *_quoted(record["text"])]
+        if record and (record["cited"] or record["considered"]):
+            lines += _citation_lines(record)
+        if predicate.startswith("param."):
+            view.presented = _presented(project, rc, h, action)
+            lines += ["", f"presented: {view.presented}"]
     judg = predicate.startswith("judg.") and plan is not None
     if judg:
         assert plan is not None
@@ -649,6 +665,73 @@ def render_flag(
 def _quoted(text: str) -> list[str]:
     """The operator's words, indented, line breaks kept."""
     return [f"{INDENT}{line}".rstrip() for line in text.strip().splitlines()]
+
+
+def _decision_lines(
+    project: Project, rc: RunContext, h: Any, action: Any, evidence: Any, record: Any
+) -> list[str]:
+    """For a parameter hold (L61): each proposed parameter's declared evidence, as the pipeline
+    names it, before the number. Reads: the pipeline."""
+    proposed = evidence.get("proposed") if isinstance(evidence, dict) else None
+    if not isinstance(proposed, dict) or not rc.pipeline.has_step(h["step_id"]):
+        return []
+    step = rc.pipeline.step(h["step_id"])
+    lines = ["the decision:"]
+    for name, p in proposed.items():
+        decl = step.params.get(name)
+        default = p.get("default") if isinstance(p, dict) else None
+        value = p.get("proposed") if isinstance(p, dict) else p
+        line = f"{INDENT}{name}: default {default}, proposed {value}"
+        if decl is not None and decl.decision is not None:
+            ev = decl.decision.evidence
+            if ev.source:
+                line += f"; evidence {ev.source}"
+            elif ev.text:
+                line += f"; evidence (provenance): {ev.text}"
+            else:
+                line += f"; no evidence, the method says: {ev.because}"
+            if decl.decision.hold == "always":
+                line += "; a person signs off every value"
+        else:
+            line += "; the pipeline names no evidence for this decision"
+        lines.append(line)
+    return lines
+
+
+def _citation_lines(record: Any) -> list[str]:
+    """The citations behind a proposal (L55), each resolved to its cell or named missing, and
+    the candidates considered."""
+    lines: list[str] = []
+    if record["cited"]:
+        lines += ["", "cited:"]
+        for c in record["cited"]:
+            where = (
+                c["source"]
+                + (f":{c['row']}" if c.get("row") is not None else "")
+                + (f":{c['column']}" if c.get("column") is not None else "")
+            )
+            if "missing" in c:
+                lines.append(f"{INDENT}{where}: {c['missing']}")
+            else:
+                v = c.get("value")
+                shown = _kv(v) if isinstance(v, dict) else str(v)
+                lines.append(f"{INDENT}{where} = {shown}")
+    if record["considered"]:
+        lines.append("considered: " + ", ".join(str(v) for v in record["considered"]))
+    return lines
+
+
+def _presented(project: Project, rc: RunContext, h: Any, action: Any) -> str:
+    """The `presented` line (L62) for the hold's step. Reads: run_events."""
+    from stringency.present import presented_line
+
+    sources: list[str] = []
+    if rc.pipeline.has_step(h["step_id"]):
+        for d in rc.pipeline.step(h["step_id"]).params.values():
+            if d.decision is not None and d.decision.evidence.source:
+                sources.append(d.decision.evidence.source)
+    steps = sorted({s.split("/")[0] for s in sources if not s.startswith("$inputs.")})
+    return presented_line(project.store, h["run_id"], action.proposed_at, sources, steps)
 
 
 def _is_pair_list(v: Any) -> bool:

@@ -755,3 +755,145 @@ def test_run_responses_answered_by_the_operator_are_refused_under_strict(
     # without STRINGENCY_OPERATOR nothing is the operator: the same document files
     r = cli(p, "run", "--responses", str(f), "--json", env=MOCK_DISPATCH)
     assert r.exit_code == 0, r.output
+
+
+def test_propose_cites_and_the_hold_shows_them(make_project: InitFn, tmp_path: Path) -> None:
+    """L55 and L62: `propose --cite --considered` resolves the citations to cells, the packet
+    lists them and the considered set, the reason opens with what was cited; the default hold
+    view renders the declared evidence; the presented line says whether the evidence was
+    rendered before the proposal."""
+    import yaml
+
+    from stringency.present import Site, present_hold, record_presented
+    from stringency.review import queue, render
+
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    # declare the decision in the method checkout (a dirty checkout: the run was opened with
+    # --allow-dirty below)
+    pf = p.method_root / "pipelines" / "toy-engine.yml"
+    doc = yaml.safe_load(pf.read_text())
+    for s in doc["steps"]:
+        if s["id"] == "04_compare":
+            s["params"]["correction"]["decision"] = {"evidence": "02_summarize.table"}
+    pf.write_text(yaml.safe_dump(doc, sort_keys=False))
+    p = Project(p.root)  # the edited pipeline
+    r = cli(
+        p,
+        "run",
+        "--until",
+        "02_summarize",
+        "--allow-dirty",
+        "editing the decision block",
+        "--json",
+        env=MOCK,
+    )
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    run_id = json.loads(r.output)["run_id"]
+    # the evidence rendered before the proposal: one presented event
+    site = Site.load(p.root)
+    record_presented(
+        site, {"run_id": run_id, "kind": "run", "sections": [{"source": "02_summarize/table"}]}
+    )
+    r = cli(
+        p,
+        "propose",
+        "04_compare",
+        "--set",
+        "correction=bonferroni",
+        "--cite",
+        "02_summarize/table:A:mean_value",
+        "--cite",
+        "02_summarize/table:Z:mean_value",
+        "--considered",
+        "bh,bonferroni",
+        "--reason",
+        "A's mean is 74.82; bonferroni for three groups",
+        "--json",
+        env=MOCK,
+    )
+    assert r.exit_code == 10, r.output + str(r.stderr)
+    holds = queue(p)
+    assert [h["kind"] for h in holds] == ["flag"]
+    h = holds[0]
+    assert "param.agent_proposed" in h["reason"]
+    assert h["reason"].startswith(
+        "param.agent_proposed: cites 1 cell(s) of `02_summarize/table`; considered bh, bonferroni; the agent chose correction"
+    )
+    ctx = json.loads(h["context_json"])
+    cited = ctx["evidence"]["cited"]
+    assert cited[0]["value"] == "74.82" and cited[1]["missing"] == "no row Z"
+    assert ctx["evidence"]["considered"] == ["bh", "bonferroni"]
+    view = render(p, h)
+    assert (
+        "the decision:\n  correction: default bh, proposed bonferroni; evidence 02_summarize/table"
+        in view.text
+    )
+    assert (
+        "cited:\n  02_summarize/table:A:mean_value = 74.82\n  02_summarize/table:Z:mean_value: no row Z"
+        in view.text
+    )
+    assert "considered: bh, bonferroni" in view.text
+    assert view.presented is not None and view.presented.startswith("evidence rendered ")
+    assert ", proposed " in view.presented
+    # the reason's numerals match cited cells, so no second hold; the one numeral 74.82 is a cell
+    assert p.store.scalar("SELECT COUNT(*) FROM holds WHERE run_id=?", (run_id,)) == 1
+    # the default hold view (the skill names nothing for this hold)
+    hp = present_hold(site, h["hold_id"])
+    titles = [s["title"] for s in hp["sections"]]
+    assert titles[0] == "correction: the evidence the method names (02_summarize/table)"
+    assert hp["sections"][0]["kind"] == "table" and "mean_value" in hp["sections"][0]["columns"]
+    assert titles[-1] == "The decision"
+    assert hp["presented"].startswith("evidence rendered ")
+    # `present --hold` from the CLI records a presented event of its own
+    before = p.store.scalar(
+        "SELECT COUNT(*) FROM run_events WHERE run_id=? AND event='presented'", (run_id,)
+    )
+    r = cli(p, "present", "--hold", h["hold_id"], "--json")
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    after = p.store.scalar(
+        "SELECT COUNT(*) FROM run_events WHERE run_id=? AND event='presented'", (run_id,)
+    )
+    assert after == before + 1
+    ev = json.loads(
+        p.store.one(
+            "SELECT payload_json FROM run_events WHERE run_id=? AND event='presented' ORDER BY seq DESC LIMIT 1",
+            (run_id,),
+        )["payload_json"]
+    )
+    assert ev["hold_id"] == h["hold_id"] and "02_summarize/table" in ev["sources"]
+
+
+def test_uncited_proposal_and_numeral_reason_open_their_own_holds(make_project: InitFn) -> None:
+    """L55: a numeral in the reason with nothing cited opens `param.reason_unmatched`; a decision
+    point with a source proposed without citing it opens `param.uncited`."""
+    import yaml
+
+    from stringency.review import queue
+
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    pf = p.method_root / "pipelines" / "toy-engine.yml"
+    doc = yaml.safe_load(pf.read_text())
+    for s in doc["steps"]:
+        if s["id"] == "04_compare":
+            s["params"]["correction"]["decision"] = {"evidence": "02_summarize.table"}
+    pf.write_text(yaml.safe_dump(doc, sort_keys=False))
+    r = cli(p, "run", "--until", "02_summarize", "--allow-dirty", "editing", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    r = cli(
+        p,
+        "propose",
+        "04_compare",
+        "--set",
+        "correction=bonferroni",
+        "--reason",
+        "3 groups",
+        "--json",
+        env=MOCK,
+    )
+    assert r.exit_code == 10, r.output + str(r.stderr)
+    kinds = sorted(h["reason"].split(":")[0] for h in queue(p))
+    assert kinds == ["param.agent_proposed", "param.reason_unmatched", "param.uncited"]
+    by = {h["reason"].split(":")[0]: h["reason"] for h in queue(p)}
+    assert "cites nothing from `02_summarize/table`" in by["param.agent_proposed"]
+    assert "carries numerals (3) and cites nothing" in by["param.reason_unmatched"]
+    assert "correction (02_summarize/table)" in by["param.uncited"]

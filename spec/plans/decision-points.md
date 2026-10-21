@@ -9,7 +9,7 @@ heavier ones are a menu a method author chooses from per decision point, accordi
 stakes of that step, with lint enforcing lightly that some control is declared. Items marked
 *design* change design text and need the owner; the rest are DECISIONS-level.
 
-**Status 2026-10-21.** Designed, nothing built. `PLAN.md` rows L61 (the block, its evidence
+**Status 2026-10-21, evening.** Sections 2 to 5 built in engine 0.2.29 (L61, L55, L62 and L9 closed; the menu keys L63 to L66 open, waiting on the Xenium method's first run with the block declared). As designed: `PLAN.md` rows L61 (the block, its evidence
 floor, lint, the default hold view; L9 folded in), L55 (the slots on `propose`), L62 (the
 `presented` event), and the menu keys L63 (sweep), L64 (rule), L65 (judged), L66 (sensitivity).
 The two choices taken here without the owner are in section 9; one idea the owner declined is in

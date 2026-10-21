@@ -53,14 +53,109 @@ class Ref(BaseModel):
         return f"${self.kind}.{self.name}" + (f".{self.output}" if self.output else "")
 
 
+def normalise_source(source: str) -> str:
+    """A decision's evidence source in the delivery skill's path form: `<step>/<output>[/<file>]`
+    or `$inputs.<name>[/<file>]`. The analysis skill's `<step>.<output>` spelling is accepted
+    and written as `<step>/<output>`."""
+    s = source.strip()
+    if s.startswith("$inputs.") or "/" in s:
+        return s
+    head, dot, tail = s.partition(".")
+    if dot and head and tail and "." not in tail:
+        return f"{head}/{tail}"
+    return s
+
+
+class DecisionEvidence(BaseModel):
+    """What a person judges a proposal by (design 3.1, backlog L61): exactly one of a `source`
+    (an output a step upstream produces, in the delivery skill's path form), a `text` sentence
+    (the evidence is provenance or a convention), or `none` with `because` (the choice rests on
+    something outside the data; the method says what)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    source: str | None = None
+    text: str | None = None
+    none: bool = False
+    because: str | None = None
+
+    @model_validator(mode="after")
+    def _shape(self) -> DecisionEvidence:
+        kinds = sum(1 for x in (self.source, self.text) if x) + (1 if self.none else 0)
+        if kinds != 1:
+            raise ValueError("decision evidence is one of a source, a text sentence, or none")
+        if self.none and not (self.because or "").strip():
+            raise ValueError("decision evidence `none` needs `because`, the method's reason")
+        return self
+
+    @property
+    def kind(self) -> str:
+        return "source" if self.source else ("text" if self.text else "none")
+
+    def describe(self) -> str:
+        if self.source:
+            return self.source
+        if self.text:
+            return f"text: {self.text}"
+        return f"none: {self.because}"
+
+
+class DecisionDecl(BaseModel):
+    """How a decision point's value is chosen (design 3.1, backlog L61): `evidence` is the
+    floor; `hold` says whether the hold opens on departure from the default only (today's
+    behaviour) or `always`; the menu keys `sweep`, `rule`, `judged` and `sensitivity` are parsed
+    and linted here and acted on by their own rows (L63 to L66)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    evidence: DecisionEvidence
+    hold: str = "departure"
+    sweep: dict[str, Any] | None = None
+    rule: dict[str, Any] | None = None
+    judged: dict[str, Any] | None = None
+    sensitivity: dict[str, Any] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        ev = data.get("evidence")
+        out = dict(data)
+        because = out.pop("because", None)
+        if isinstance(ev, str):
+            if ev.strip().lower() == "none":
+                out["evidence"] = {"none": True, "because": because}
+            else:
+                out["evidence"] = {"source": normalise_source(ev)}
+                if because is not None:
+                    out["evidence"]["because"] = because  # kept so lint can say it is unread
+        elif ev is None:
+            out["evidence"] = {"none": True, "because": because}
+        elif isinstance(ev, dict):
+            evd = dict(ev)
+            if "source" in evd and isinstance(evd["source"], str):
+                evd["source"] = normalise_source(evd["source"])
+            if because is not None and "because" not in evd:
+                evd["because"] = because
+            out["evidence"] = evd
+        return out
+
+    @model_validator(mode="after")
+    def _shape(self) -> DecisionDecl:
+        if self.hold not in ("departure", "always"):
+            raise ValueError("decision.hold is departure or always")
+        return self
+
+
 class ParamDecl(BaseModel):
-    """`{default, range}` or `{default, options}` or `{default}` (fixed).
+    """`{default, range}` or `{default, options}` or `{default}` (fixed), optionally with a
+    `decision:` block saying how the agent's choice is made (L61).
     A bare literal in the pipeline file is normalised to `{default: literal}`."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
     default: Any
     range: list[float] | None = None
     options: list[Any] | None = None
+    decision: DecisionDecl | None = None
 
     @model_validator(mode="after")
     def _shape(self) -> ParamDecl:

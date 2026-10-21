@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -36,6 +37,10 @@ class Action:
     rationale_ref: str | None = None
     ticket: str | None = None
     proposed_at: str = field(default_factory=now_iso)
+    # in memory only, never a column: the rationale record behind `rationale_ref` as the
+    # pre-gate sees it (`{text, cited, considered}`, backlog L55), so predicates read the
+    # resolved citations without I/O. `action_from_row` leaves it None.
+    rationale: Mapping[str, Any] | None = None
 
     def with_ticket(self, ticket: str) -> Action:
         return Action(**{**self.__dict__, "ticket": ticket})
@@ -163,6 +168,25 @@ def build_action(
         proposed_by=proposed_by,
         rationale_ref=rationale_ref,
     )
+
+
+def rationale_record(text: str | None) -> dict[str, Any] | None:
+    """The message behind an action's `rationale_ref`, read back (backlog L55): a JSON object
+    `{text, cited, considered}` written by `propose --cite`, or a plain sentence from before,
+    returned as `{text, cited: [], considered: []}`. None for no rationale."""
+    if text is None:
+        return None
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        doc = None
+    if isinstance(doc, dict) and "text" in doc:
+        return {
+            "text": str(doc.get("text") or ""),
+            "cited": list(doc.get("cited") or []),
+            "considered": list(doc.get("considered") or []),
+        }
+    return {"text": text, "cited": [], "considered": []}
 
 
 def write_action(store: Store, action: Action) -> None:

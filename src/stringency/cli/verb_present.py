@@ -14,6 +14,7 @@ from stringency.present import (
     present_answers,
     present_hold,
     present_run,
+    record_presented,
     render_markdown,
 )
 
@@ -47,6 +48,8 @@ def present(
         payload = present_hold(project, hold_id, skills_dir)
     else:
         payload = present_run(project, run_id, skills_dir)
+    if payload.get("kind") in ("hold", "run"):
+        record_presented(project, payload)  # one `presented` event per rendering (L62)
     emit(payload, as_json, render_markdown(payload))
 
 

@@ -5,6 +5,12 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-21)
 
+- Engine 0.2.29, decision points first cut (`notes/2026-10-21-2100-decision-points-first-cut.md`):
+  `decision:` on a pipeline parameter (evidence, hold always, the menu keys parsed), lint,
+  `propose --cite` and `--considered`, `param.agent_proposed@2`, `param.reason_unmatched`,
+  `param.uncited`, the default hold view, the `presented` event and line (L61, L55, L62, L9).
+  Pass 3 is judgment replicates (L83, L84). The shared install stays at 0.2.27 until the
+  passes are done (the owner).
 - Engine 0.2.28, triage pass 5 (`notes/2026-10-21-1800-triage-pass-5.md`): the operator
   answering its own dispatch is recorded and refused under strict (L72), `module.yml` `egress`
   with the lint rule (L46), the judge on control results (L3) and beside each replicate (L70),
@@ -291,6 +297,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-21-2100-decision-points-first-cut.md` — engine 0.2.29: the `decision:` block, lint, `propose --cite`/`--considered`, the three `param.*` predicates, the default hold view, the `presented` event (L61, L55, L62, L9).
 - `2026-10-21-1800-triage-pass-5.md` — engine 0.2.28: L72 operator self-answer recorded, L46 module egress declaration and lint, L3 judge on controls, L70 judge per replicate, L59 fork sweep line, L60 answer --cannot; L86 filed.
 - `2026-10-21-1500-owner-answers.md` — the owner's answers to every waiting row: DEVIATIONS acknowledged, Codex go, confirm once approved, L83/L84 picked, L85 applied; Next rewritten as seven passes.
 - `2026-10-21-1315-plans-consolidated.md` — one work list: `spec/plans/PLAN.md` replaces the roadmap and the backlog, every open item of nine plan documents a row (L54 to L85), the waiting-on-the-owner table; `decision-points.md` (the `decision:` block, the slots on `propose`, the menu); OmicsBench assessed; four plans archived, the UX rules moved to `spec/`.

@@ -551,11 +551,17 @@ def propose(
     rationale: str | None = None,
     source: str = "agent",
     inherited: dict[str, tuple[Any, str]] | None = None,
+    cites: list[dict[str, Any]] | None = None,
+    considered: list[Any] | None = None,
 ) -> Proposal:
     """Construct the Action, write it, run the pre-gate, and settle the step as admissible,
     held, or blocked (design 3.4 step 1, 7.1). For operator-run steps an admissible action
     becomes a ticket and the step awaits execution. `inherited` is a forked run's starting
     point for the step (`fork.inherited_for`), below `proposed` and above the defaults.
+
+    `cites` and `considered` (backlog L55) are stored with the reason as one message
+    (`{text, cited, considered}`, each citation resolved to its cell) behind `rationale_ref`,
+    and the pre-gate reads them from the action in memory.
 
     Writes: actions, messages (rationale), predicate_results, steps, step_events, holds.
     """
@@ -579,9 +585,23 @@ def propose(
     attempt = int(prev_attempt) + 1
     plan = plan_step(rc, step_id, attempt)
     rationale_ref = None
-    if rationale:
-        rationale_ref = hashing.hash_text(rationale)
-        store.store_message(rationale_ref, rationale)
+    record: dict[str, Any] | None = None
+    if rationale or cites or considered:
+        from stringency.citations import resolve_cites
+
+        record = {
+            "text": rationale or "",
+            "cited": resolve_cites(rc, list(cites or [])),
+            "considered": list(considered or []),
+        }
+        text = (
+            rationale
+            if rationale and not cites and not considered
+            else json.dumps(record, sort_keys=True, default=str)
+        )
+        assert text is not None
+        rationale_ref = hashing.hash_text(text)
+        store.store_message(rationale_ref, text)
     action = build_action(
         run_id=rc.run_id,
         step=plan.step,
@@ -595,6 +615,8 @@ def propose(
     )
     if plan.runner == "operator":
         action = action.with_ticket(action.action_id)
+    if record is not None:
+        action = Action(**{**action.__dict__, "rationale": record})
     with store.transaction():
         write_action(store, action)
         transition(

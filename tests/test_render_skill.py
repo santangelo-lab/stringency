@@ -244,6 +244,36 @@ def test_check_against_toy_method_is_clean(tmp_path):
     assert "- Groups compared\n" in rs.render(ctx)
 
 
+def test_decisions_evidence_must_match_the_pipelines_block(tmp_path):
+    """L61: a `how: proposed` decision whose `evidence` omits the pipeline's `decision.evidence`
+    source is a problem; naming it (in either spelling) is clean."""
+    repo = _toy_repo(tmp_path)
+    pf = repo / "pipelines" / "toy-engine.yml"
+    doc = yaml.safe_load(pf.read_text())
+    for s in doc["steps"]:
+        if s["id"] == "04_compare":
+            s["params"]["correction"]["decision"] = {"evidence": "02_summarize.table"}
+    pf.write_text(yaml.safe_dump(doc, sort_keys=False))
+    data = _toy_analyze()
+    data["decisions"] = [
+        {
+            "step": "04_compare",
+            "param": "correction",
+            "how": "proposed",
+            "ask": "Which correction?",
+            "after": "02_summarize",
+            "evidence": ["02_summarize/other.tsv"],
+        }
+    ]
+    src = repo / "skills" / "toy-engine.analyze.yml"
+    src.write_text(yaml.safe_dump(data))
+    _, problems = rs.validate(data, src, repo)
+    assert any("the pipeline's `decision.evidence` is 02_summarize.table" in p for p in problems)
+    data["decisions"][0]["evidence"] = ["02_summarize/table"]
+    _, problems = rs.validate(data, src, repo)
+    assert not [p for p in problems if "decision.evidence" in p], problems
+
+
 @pytest.mark.parametrize(
     ("change", "fragment"),
     [

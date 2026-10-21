@@ -538,6 +538,33 @@ def _cross_check_decisions(
             problems.add(
                 f"decisions: {d['step']}.{d['param']} is neither a decision point of its module nor a parameter the pipeline declares"
             )
+            continue
+        # the pipeline's `decision.evidence` (engine 0.2.29, L61) and the skill's `evidence`
+        # must name the same source when both name one
+        pdecl = (
+            (s.get("params") or {}).get(d["param"]) if isinstance(s.get("params"), dict) else None
+        )
+        block = pdecl.get("decision") if isinstance(pdecl, dict) else None
+        ev = block.get("evidence") if isinstance(block, dict) else None
+        src = (
+            ev
+            if isinstance(ev, str) and ev.strip().lower() != "none"
+            else (ev.get("source") if isinstance(ev, dict) else None)
+        )
+        if d["how"] == "proposed" and isinstance(src, str) and d["evidence"]:
+            want = _norm_source(src)
+            if want not in {_norm_source(e) for e in d["evidence"]}:
+                problems.add(
+                    f"decisions: {d['step']}.{d['param']} names evidence {d['evidence']}, but the pipeline's `decision.evidence` is {src}"
+                )
+
+
+def _norm_source(source: str) -> str:
+    s = source.strip()
+    if s.startswith("$inputs.") or "/" in s:
+        return s
+    head, dot, tail = s.partition(".")
+    return f"{head}/{tail}" if dot and head and tail and "." not in tail else s
 
 
 def _cross_check(

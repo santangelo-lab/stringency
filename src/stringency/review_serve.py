@@ -324,9 +324,16 @@ HOLD_HTML = _ENV.from_string(
 {% endfor %}
 </table>
 {% endif %}
+{% if decision_lines %}
+<h2>The evidence the method names</h2>
+<pre>{{ decision_lines|join("\n") }}</pre>
+{% endif %}
 {% if operator_reason %}
 <h2>The operator's reason</h2>
 <div class="reason">{{ operator_reason }}</div>
+{% endif %}
+{% if presented %}
+<p class="note">{{ presented }}</p>
 {% endif %}
 {% if reviewers %}
 <h2>The reviewers</h2>
@@ -1392,6 +1399,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
             card_title=title,
             decision=_decision_rows(ctx),
             operator_reason=view.operator_reason,
+            decision_lines=view.decision_lines,
+            presented=view.presented,
             reviewers=view.replicates,
             age=_age(h["created"]),
             predicate=str(ctx.get("predicate") or ""),

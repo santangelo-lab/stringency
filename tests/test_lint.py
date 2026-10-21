@@ -367,3 +367,105 @@ def test_warning_untitled_steps_when_pipeline_has_a_skill(method_copy: Path) -> 
         )
     )
     assert not any("no title" in w for w in lint_path(method_copy).warnings)
+
+
+def _pipeline_param(m: Path, step: str, param: str, fn: Callable[[dict], None]) -> None:
+    def edit(d: dict) -> None:
+        for s in d["steps"]:
+            if s["id"] == step:
+                p = s["params"][param]
+                if not isinstance(p, dict):
+                    p = {"default": p}
+                fn(p)
+                s["params"][param] = p
+
+    _edit_yaml(m / "pipelines/toy-engine.yml", edit)
+
+
+def _decisions_of(report: object) -> list[str]:
+    return [
+        x
+        for x in (report.errors + report.warnings)  # type: ignore[attr-defined]
+        if "decision" in x and "pipeline toy-engine" in x
+    ]
+
+
+def test_lint_decision_block(method_copy: Path) -> None:
+    """L61: a ranged decision point with no `decision:` warns, and errors once `requires.engine`
+    admits only engines that know the block; the evidence source must be an upstream output;
+    `because` outside `evidence: none` warns; `decision:` off the module's decision points
+    errors; a complete declaration is clean."""
+    report = lint_path(method_copy)
+    assert report.ok
+    silent = [w for w in report.warnings if "no `decision:` block" in w]
+    assert any("01_filter parameter min_value" in w for w in silent)
+    assert any("04_compare parameter correction" in w for w in silent)
+
+    _edit_yaml(method_copy / "policy.yml", lambda d: d["requires"].update(engine=">=0.2.29"))
+    report = lint_path(method_copy)
+    assert any("no `decision:` block" in e for e in report.errors)
+    _edit_yaml(method_copy / "policy.yml", lambda d: d["requires"].update(engine=">=0.2.19"))
+
+    # declare every decision point: the silent case is gone
+    _pipeline_param(
+        method_copy,
+        "01_filter",
+        "min_value",
+        lambda p: p.update(decision={"evidence": "none", "because": "a first-step floor"}),
+    )
+    _pipeline_param(
+        method_copy,
+        "04_compare",
+        "correction",
+        lambda p: p.update(decision={"evidence": "02_summarize.table", "hold": "always"}),
+    )
+    _pipeline_param(
+        method_copy,
+        "04_compare",
+        "replicate_unit",
+        lambda p: p.update(decision={"evidence": {"text": "the design names the unit"}}),
+    )
+    report = lint_path(method_copy)
+    assert report.ok, report.render()
+    assert not _decisions_of(report), _decisions_of(report)
+    assert any("pipeline toy:" in w and "no `decision:` block" in w for w in report.warnings)
+
+    # a source no upstream step produces; an output the step's module does not declare
+    _pipeline_param(
+        method_copy,
+        "04_compare",
+        "correction",
+        lambda p: p.update(decision={"evidence": "05_report/report"}),
+    )
+    report = lint_path(method_copy)
+    assert any("not a step upstream of 04_compare" in e for e in report.errors)
+    _pipeline_param(
+        method_copy,
+        "04_compare",
+        "correction",
+        lambda p: p.update(decision={"evidence": "02_summarize/nothing"}),
+    )
+    report = lint_path(method_copy)
+    assert any("output nothing, which summarize-groups" in e for e in report.errors)
+
+    # `because` is read only with `none`; `decision:` off the decision points
+    _pipeline_param(
+        method_copy,
+        "04_compare",
+        "correction",
+        lambda p: p.update(decision={"evidence": "02_summarize/table", "because": "x"}),
+    )
+    _edit_yaml(
+        method_copy / "modules/compare-groups/module.yml",
+        lambda d: d.update(decision_points=["replicate_unit"]),
+    )
+    report = lint_path(method_copy)
+    assert any("`because` is read only" in w for w in report.warnings)
+    assert any("not a decision point of compare-groups" in e for e in report.errors)
+
+    # none without because is refused at load
+    _pipeline_param(
+        method_copy, "01_filter", "min_value", lambda p: p.update(decision={"evidence": "none"})
+    )
+    report = lint_path(method_copy)
+    assert any("needs `because`" in e for e in report.errors)

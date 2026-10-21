@@ -38,7 +38,7 @@ Nothing in it is built beyond what the State section says.
 
 ## State (2026-10-21)
 
-Engine 0.2.28 on `main` (triage pass 5, 2026-10-21: L72, L46, L3, L70, L59, L60); plugin singlecell 0.6.2; the Xenium method
+Engine 0.2.29 on `main` (triage pass 5 and decision points first cut, 2026-10-21); plugin singlecell 0.6.2; the Xenium method
 `stringency-xenium-method` at `v0.6.0-rc19` (its six open tools pass on the Lyons liver
 delivery under 0.2.26 and plugin 0.6.2); the toy method at `v0.2.0`. `0.2.27-sc0.6.2` is installed in the
 shared prefix on the lab workstation (`/data/lab/env/stringency/current`, 2026-10-20 17:05) and
@@ -52,13 +52,12 @@ Rewritten 2026-10-21 after the owner answered every row of the waiting table. Ea
 or two sessions and ends with its rows in `archive/backlog-done.md` and a release.
 
 1. Triage pass 5: done 2026-10-21 (engine 0.2.28; L72, L46, L3, L70, L59, L60 in the done
-   ledger; L86 filed for the Xenium method's `resegment-nextflow` egress block). Install
-   0.2.28 and republish the operator skill (its answer paragraph and the no-delegate rule
-   changed).
-2. Decision points, first cut (`decision-points.md`): L61 the `decision:` block, its evidence
-   floor, the lint rule and the default hold view, with L9 folded in; L55 the citation and
-   considered-set slots on `propose`; L62 the `presented` event. One or two engine sessions,
-   then the Xenium method declares its decisions (method side).
+   ledger; L86 filed for the Xenium method's `resegment-nextflow` egress block).
+2. Decision points, first cut: done 2026-10-21 (engine 0.2.29; L61, L55, L62, L9 in the done
+   ledger). Method side next, when the Xenium method is the work again: declare `decision:` on
+   `ndim`, `resolution`, `method`, `scale_factor`, `integration` and `cluster_method`, raise
+   `requires.engine`, re-render the skills; `sc.decision_unreviewed` retires where `hold:
+   always` is declared. The menu keys (L63 to L66) wait on that first run.
 3. Judgment replicates, the owner's picks from the literature check: L83 per-replicate prompt
    perturbation (design text for 3.5, then the build) and L84 sampled sign-off
    (`sign_off: {when: sample, fraction}`, its DEVIATIONS entry approved in advance). One
@@ -82,10 +81,6 @@ console rows until asked) and what waits on a person (the skill republish, the t
 
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
-| L61 | a decision point's evidence is named in three places (the delivery skill's `hold_view`, the method skill's `decisions`, the operator's reason) and required in none, so a method can ship a parameter hold that shows a number and nothing to judge it by; and the owner wants a person's sign-off on every decision point, which `param.agent_proposed` (departure only) cannot give (L9) | `decision:` beside a parameter's `range` in `pipeline.yml`: `evidence` (a source as the delivery skill names them, a `text:` provenance sentence, or `none` with `because:`), `hold: departure \| always` (default `departure`, the owner's acceptance of 2026-10-21 with the lint grandfathering; `always` retires `sc.decision_unreviewed`); the engine's default hold view renders the source when the skill names none; `lint` errors on the silent case (a ranged decision point with no `decision:`) once the method's `requires.engine` names the engine that knows the block, warns before, errors on `none` without `because:` and on a source no upstream step produces | *design* (3.1 additive, 13); `decision-points.md` 2, 3 |
-| L55 | `propose --reason` is stored (`rationale_ref`), shown at the hold (L8) and checked by nothing, so "ndim 35: cumulative variance 0.82 at 35" is approved without anyone knowing whether the elbow table holds 0.82 at row 35 | `propose --cite <source>[:row[:column]]` (repeatable) and `--considered <v1,v2>`; reason, citations and the considered set stored as one message; `param.agent_proposed@2` carries `cited` and `considered` in its evidence and opens its reason with "cites nothing from `<source>`" or "considered 30, 40"; `param.reason_unmatched@1` (pre, `*`, flag) checks the reason's numerals against the cited cells as `ans.numeral_unmatched` does; the operator skill's section 9 requires both | engine, DECISIONS-level; 14.1 additive; `decision-points.md` 4, `omicsbench-assessment.md` 4.2 |
-| L62 | whether the operator rendered a step's evidence before proposing is nowhere in the trace; `present` reads and writes nothing | a `run_events` row `presented` (source, hold if any, OS user, session ref) written by `present`; the parameter hold's packet reads "evidence rendered 10:42, proposed 10:44" or "proposed; no evidence of this step rendered in this run". Rendering is not reading; the absence is what the line is for | engine, DECISIONS-level; `decision-points.md` 5 |
-| L9 | a decision point taken at its default opens no hold (`param.agent_proposed` fires on departure only) and module.yml `confirm:` is parsed but read by nothing; the owner wants a person's sign-off on every decision point (2026-10-07); the singlecell plugin bridges with `sc.decision_unreviewed` | folded into L61 as `decision.hold: always`; this row closes with it | engine, DECISIONS-level; `decision-points.md` 2 |
 | L63 | menu: a threshold picked from evidence computed for the proposed value only | `decision.sweep: {output: <table>}`: the module computes every candidate and writes a table with a column named for the parameter; `param.not_in_sweep@1` (pre, block) refuses a proposal that is not a row of it; the hold shows the table or chart with the proposal marked. The method author opts in per step; clustering's resolution grid is the existing instance | engine, DECISIONS-level; method per step; `decision-points.md` 6 |
 | L64 | menu: a proposal with no deterministic pick to compare against | `decision.rule: {output: <name>, tolerance}`: the module writes the rule's value; `param.rule_departure@1` (pre, flag) fires when the proposal leaves it by more than the tolerance, evidence carrying both. On the menu for a step that has a rule; the owner judged it too rigid to pursue on its own (2026-10-21), so no date | engine, DECISIONS-level; `decision-points.md` 6 |
 | L65 | menu: a high-stakes pick made by the operator in the session that hoped for it | `decision.judged: {module: <judgment module>}`: a judgment module whose vocabulary is the candidate list picks from the evidence with cited cells, three replicates, abstention; the parameter takes the consensus with `param_source: judged`; disagreement is a hold; every `judg.*` applies | *design* (5 additive, 3.1); `decision-points.md` 6 |
@@ -182,7 +177,7 @@ nobody reads. The row id says where the work is filed; "where" says where the te
 
 | what | row | where | since |
 |---|---|---|---|
-| install engine 0.2.28 (triage pass 5) and restart the console; republish the operator skill (changed for 0.2.28), the declare skill and the Xenium analysis skill (changed in the triage passes of 2026-10-20 and 2026-10-21) | State | `docs/release.md`, `integrations/claude-science/publish-skills.md` | 2026-10-21 |
+| when the passes are done (the owner, 2026-10-21: not before): install the engine, restart the console, republish the operator skill (changed for 0.2.28 and 0.2.29), the declare skill and the Xenium analysis skill | State | `docs/release.md`, `integrations/claude-science/publish-skills.md` | 2026-10-21 |
 | trace integrity: a DEVIATIONS entry for 9.4 and 9.5 (T3), or stay at T2; a service identity for `prov/` (T4). The owner, 2026-10-21: stay at T2, not convinced either is wanted yet; nothing moves until asked | L52, L53 | `trace-integrity-plan.md` | 2026-10-20 |
 | the definition of "competent" for the Qwen3 evaluation (decision 3), after the Codex survey (H1); the go-ahead, the login and the sibling-projects shape (decision 2) were given 2026-10-21 | L34 | `judge-sources-plan.md` 6 (3) | 2026-10-21 |
 | the tester for the acceptance runs (the owner, 2026-10-21: not yet) | L79, L77 | this file | 2026-10-14 |

@@ -141,6 +141,46 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         lambda p: make_ctx(p, "01_filter", proposed={"min_value": 10}),  # equals the default
     ),
     (
+        # L55: a numeral in the reason that no cited cell carries
+        "param.reason_unmatched",
+        lambda p: make_ctx(
+            p,
+            "01_filter",
+            action=with_rationale(p, "01_filter", {"min_value": 20}, "20 is the knee"),
+        ),
+        lambda p: make_ctx(
+            p,
+            "01_filter",
+            action=with_rationale(
+                p,
+                "01_filter",
+                {"min_value": 20},
+                "20 is the knee",
+                cited=[{"source": "02_summarize/table", "row": "A", "column": "n", "value": 20}],
+            ),
+        ),
+    ),
+    (
+        # L55: a decision point whose evidence is a source, proposed without citing it
+        "param.uncited",
+        lambda p: make_ctx(
+            with_decision(p, "04_compare", "correction", {"evidence": "02_summarize/table"}),
+            "04_compare",
+            proposed={"correction": "bonferroni"},
+        ),
+        lambda p: make_ctx(
+            with_decision(p, "04_compare", "correction", {"evidence": "02_summarize/table"}),
+            "04_compare",
+            action=with_rationale(
+                with_decision(p, "04_compare", "correction", {"evidence": "02_summarize/table"}),
+                "04_compare",
+                {"correction": "bonferroni"},
+                "the table says so",
+                cited=[{"source": "02_summarize/table", "row": "A", "value": {"n": 3}}],
+            ),
+        ),
+    ),
+    (
         "out.schema_conformance",
         lambda p: make_ctx(
             p,
@@ -465,6 +505,81 @@ def _dropped_ctx(p: Project) -> GateContext:
     )
     pc = ctx.project.__class__(**{**ctx.project.__dict__, "pipeline": pipe2})
     return GateContext(**{**ctx.__dict__, "project": pc})
+
+
+def with_rationale(
+    project: Project,
+    step_id: str,
+    proposed: dict[str, Any],
+    text: str,
+    cited: list[dict[str, Any]] | None = None,
+    considered: list[Any] | None = None,
+) -> Any:
+    """An agent's action carrying the rationale record the pre-gate reads (L55)."""
+    from stringency.actions import Action
+
+    action, _ = make_action(project, step_id, proposed=proposed)
+    record = {"text": text, "cited": list(cited or []), "considered": list(considered or [])}
+    return Action(**{**action.__dict__, "rationale": record, "rationale_ref": "ref"})
+
+
+def with_decision(project: Project, step_id: str, param: str, decision: dict[str, Any]) -> Project:
+    """The project with a `decision:` block on one pipeline parameter (its method checkout
+    edited in place; the gate tests do not open a run)."""
+    import yaml
+
+    from stringency.pipelines import find_pipeline
+
+    path = find_pipeline(project.method_root, project.config.pipeline or "")
+    doc = yaml.safe_load(path.read_text())
+    for s in doc["steps"]:
+        if s["id"] == step_id:
+            p = s["params"][param]
+            if not isinstance(p, dict):
+                p = {"default": p}
+            p["decision"] = decision
+            s["params"][param] = p
+    path.write_text(yaml.safe_dump(doc, sort_keys=False))
+    return Project(project.root)
+
+
+def test_agent_proposed_fires_at_the_default_under_hold_always(project: Project) -> None:
+    """L61 (L9 folded in): `decision.hold: always` opens the hold whatever the value, with the
+    evidence named; `departure` (the default) stays silent at the default."""
+    p = with_decision(
+        project, "04_compare", "correction", {"evidence": "02_summarize/table", "hold": "always"}
+    )
+    ctx = make_ctx(p, "04_compare", proposed={"correction": "bh"})  # the default
+    v = registry.get("param.agent_proposed").fn(ctx)  # type: ignore[union-attr]
+    assert v.fired and v.evidence["proposed"]["correction"] == {
+        "default": "bh",
+        "proposed": "bh",
+        "evidence": "02_summarize/table",
+        "hold": "always",
+    }
+    assert v.reason.startswith(
+        "cites nothing from `02_summarize/table`; the agent chose correction"
+    )
+    assert registry.get("param.agent_proposed").version == 2  # type: ignore[union-attr]
+    p2 = with_decision(project, "04_compare", "correction", {"evidence": "02_summarize/table"})
+    assert (
+        not registry.get("param.agent_proposed")
+        .fn(make_ctx(p2, "04_compare", proposed={"correction": "bh"}))
+        .fired
+    )  # type: ignore[union-attr]
+    # `evidence: none` needs the method's reason; a text sentence stands on its own
+    with pytest.raises(Exception, match="because"):
+        with_decision(project, "04_compare", "correction", {"evidence": "none"})
+    p3 = with_decision(
+        project, "04_compare", "correction", {"evidence": {"text": "bh is what ROSC used"}}
+    )
+    v = registry.get("param.agent_proposed").fn(
+        make_ctx(p3, "04_compare", proposed={"correction": "none"})
+    )  # type: ignore[union-attr]
+    assert (
+        v.fired and v.evidence["proposed"]["correction"]["evidence"] == "text: bh is what ROSC used"
+    )
+    assert v.reason.startswith("cites nothing; the agent chose")
 
 
 def _run_one(pid: str, ctx: GateContext) -> bool:
