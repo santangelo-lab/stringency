@@ -80,6 +80,9 @@ class StringencyConfig(Strict):
     declarations: Declarations | None = None
     plugins: dict[str, str] = Field(default_factory=dict)  # installed at init, by name (L29)
     egress: EgressSetting = Field(default_factory=EgressSetting)  # the person's ceiling (L1)
+    # the study this project opts into (confirm once, L67): siblings naming the same study
+    # under the same parent directory share one design acceptance and one parameter acceptance
+    study: str | None = None
 
     @model_validator(mode="after")
     def _refuse_open_strict(self) -> StringencyConfig:

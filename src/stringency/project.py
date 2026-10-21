@@ -91,6 +91,8 @@ class InitRequest:
     drafted_by: str = "person"  # person | agent (design 2.7)
     brief: Path | None = None  # the person's own words, kept beside the declarations
     check_only: bool = False  # `declare --check`: every init check, no project record
+    study: str | None = None  # the study the project opts into (confirm once, L67)
+    siblings_root: Path | None = None  # where siblings are looked for (default: the parent)
     # open mode (open_mode_plan.md 2.1): derive the declarations from a delivery directory
     from_delivery: Path | None = None
     upstream: Path | None = None  # the upstream project root; default: derived from the directory
@@ -107,6 +109,7 @@ class DeclarationCheck:
     method_sha: str
     egress: dict[str, Any] | None = None  # the assessment init would save (backlog L1)
     egress_report: str | None = None
+    inheritance: str | None = None  # L69: what the confirmation would inherit, or why not
 
     def to_json(self) -> dict[str, Any]:
         return {"schema": "stringency.declare/1", **self.__dict__}
@@ -138,6 +141,7 @@ class Project:
         self.plugin: Plugin = require_plugin(self.pipeline.domain)
         self.policy: Policy = load_policy(self.root / self.config.policy)
         self._store: Store | None = None
+        self.siblings_root: Path | None = None  # confirm once: where siblings are (the parent)
 
     # -- tools (open mode) -----------------------------------------------------------
 
@@ -385,6 +389,8 @@ class Project:
                 self.declaration_hashes(),
                 inherited,
                 f"{self.pipeline.name} {self.pipeline.version}",
+                self.plugin,
+                self.design,
             )
         counts = {k: v.summary for k, v in (objects or {}).items()}
         if not counts:
@@ -401,70 +407,168 @@ class Project:
         return m.group(1) if m else None
 
     def inherited_confirmation(self) -> dict[str, Any] | None:
-        """Design 2.7 (added 2026-09-23): when every input is `derived_from` a run of a project
-        this owner confirmed, whose `design.yml` is byte-identical and whose method has the same
-        major version, the confirmation is inherited. Returns the upstream holds and acceptances
-        (`upstreams`: project, run_id, hold_id, review_id, reviewer, ts), or None when any input
-        is raw, any upstream is unconfirmed, differently owned, differently designed, or on
-        another method major version. Reads, read-only: each upstream's `stringency.yml`,
-        `design.yml` and `prov/run.db` (runs, holds, reviews). Never for an open project: the
-        switch to questions is one relayed yes on the pinned paragraph (owner, 2026-10-16)."""
+        """Design 2.7: the acceptance this project's confirmation inherits, or None. The rules,
+        tried in order (confirm once, 2026-10-21): `derived` (added 2026-09-23: every input is
+        `derived_from` a run of a project this owner confirmed, same design bytes, same method
+        major version); `inputs matched` (L5: every input is derived as above, or raw and
+        identical in name, type and hash to an input one of those projects bound, or `role:
+        reference`); `re-declared` (L68: a sibling with byte-identical declaration files, same
+        owner, method repository and major version, confirmed); `study` (L67: a sibling naming
+        the same `study:`, same owner, same design bytes, same method repository and major
+        version, confirmed, whatever the inputs). Returns `{rule, upstreams, matched,
+        design_blake3, method_major}`. `inheritance_report` says why none applied. Reads,
+        read-only: the upstreams' and siblings' files and traces. Never for an open project
+        (owner, 2026-10-16)."""
+        return self._inheritance()[0]
+
+    def inheritance_report(self) -> str:
+        """L69: one sentence saying which acceptance the confirmation inherits and by which
+        rule, or the input or field that breaks the match."""
+        found, why = self._inheritance()
+        if found is None:
+            return f"confirmation not inherited: {why}"
+        u = found["upstreams"][0]
+        when = str(u["ts"])[:16].replace("T", " ")
+        more = f" and {len(found['upstreams']) - 1} more" if len(found["upstreams"]) > 1 else ""
+        return (
+            f"confirmation inherited by rule `{found['rule']}` from {u['project']}{more}: "
+            f"accepted by {u['reviewer']} at {when} (hold {u['hold_id']}, review {u['review_id']})"
+        )
+
+    def _inheritance(self) -> tuple[dict[str, Any] | None, str]:
+        from stringency import study as st
+
         if self.config.mode == "open":
-            return None
+            return None, "an open project inherits no confirmation"
         if not self.inputs.items:
-            return None
+            return None, "no inputs are bound"
         if self.objective.params:
-            return None  # a declared parameter is a decision this owner must see (2026-10-14)
+            return None, "the objective declares parameters this owner must see"
         my_design = hashing.hash_file(self.root / "design.yml")
         my_major = self._major(self.config.method.tag)
-        upstreams: list[dict[str, Any]] = []
-        seen: dict[str, dict[str, Any]] = {}
+        if my_major is None:
+            return None, f"the method tag {self.config.method.tag} has no major version"
+        base = {"design_blake3": my_design, "method_major": my_major}
+
+        # rules `derived` and `inputs matched`: the upstreams the derived inputs name
+        upstreams: dict[str, dict[str, Any]] = {}
+        why = ""
         for item in self.inputs.items:
             d = item.derived_from
-            if d is None or not d.project:
-                return None
-            root = Path(d.project)
-            if d.project in seen:
+            if d is None or not d.project or d.project in upstreams:
                 continue
-            cfg_path, design_path, db_path = (
-                root / "stringency.yml",
-                root / "design.yml",
-                root / "prov" / "run.db",
-            )
-            if not (cfg_path.exists() and design_path.exists() and db_path.exists()):
-                return None
-            try:
-                cfg = load_model(StringencyConfig, cfg_path)
-            except Exception:  # noqa: BLE001  (an unreadable upstream is simply not inheritable)
-                return None
-            if cfg.roles.owner != self.config.roles.owner:
-                return None
-            if hashing.hash_file(design_path) != my_design:
-                return None
-            if my_major is None or self._major(cfg.method.tag) != my_major:
-                return None
-            with Store.open(db_path, create=False) as up:
-                if up.one("SELECT 1 FROM runs WHERE run_id = ?", (d.run_id,)) is None:
-                    return None
-                row = up.one(
-                    "SELECT h.hold_id, r.review_id, r.reviewer, r.ts, r.verdict FROM holds h "
-                    "JOIN reviews r ON r.review_id = h.resolved_by_review "
-                    "WHERE h.kind = 'confirm' AND h.run_id IS NULL "
-                    "ORDER BY h.created DESC, h.rowid DESC LIMIT 1"
+            root = Path(d.project)
+            s = st.read_sibling(root)
+            if s is None or not (root / "design.yml").exists():
+                why = why or f"upstream {d.project} of input {item.name} is not a readable project"
+                continue
+            if s["config"].roles.owner != self.config.roles.owner:
+                why = (
+                    why
+                    or f"upstream {d.project} has owner {s['config'].roles.owner}, not {self.config.roles.owner}"
                 )
-            if row is None or row["verdict"] not in ("accept", "override"):
-                return None
-            entry = {
-                "project": d.project,
-                "run_id": d.run_id,
-                "hold_id": row["hold_id"],
-                "review_id": row["review_id"],
-                "reviewer": row["reviewer"],
-                "ts": row["ts"],
-            }
-            seen[d.project] = entry
-            upstreams.append(entry)
-        return {"upstreams": upstreams, "design_blake3": my_design, "method_major": my_major}
+                continue
+            if s["hashes"].get("design.yml") != my_design:
+                why = why or f"upstream {d.project} has a different design.yml"
+                continue
+            if self._major(s["config"].method.tag) != my_major:
+                why = (
+                    why
+                    or f"upstream {d.project} is on method major version {self._major(s['config'].method.tag)}, not {my_major}"
+                )
+                continue
+            with Store.open(s["db"], create=False) as up:
+                if up.one("SELECT 1 FROM runs WHERE run_id = ?", (d.run_id,)) is None:
+                    why = why or f"upstream {d.project} has no run {d.run_id}"
+                    continue
+            acc = st.accepted_confirm(s["db"])
+            if acc is None:
+                why = why or f"upstream {d.project} is not confirmed"
+                continue
+            upstreams[d.project] = {"project": d.project, "run_id": d.run_id, **acc, "root": root}
+        if upstreams:
+            matched: dict[str, str] = {}
+            unmatched: list[str] = []
+            for item in self.inputs.items:
+                d = item.derived_from
+                if d is not None and d.project in upstreams:
+                    matched[item.name] = "derived"
+                    continue
+                if item.role == "reference":
+                    matched[item.name] = "reference"
+                    continue
+                hit = None
+                for u in upstreams.values():
+                    try:
+                        up_inputs = load_model(InputsManifest, u["root"] / "inputs.yml")
+                    except Exception:  # noqa: BLE001
+                        continue
+                    if any(
+                        x.name == item.name and x.type == item.type and x.blake3 == item.blake3
+                        for x in up_inputs.items
+                    ):
+                        hit = u["project"]
+                        break
+                if hit is not None:
+                    matched[item.name] = f"identical to the input {hit} bound"
+                else:
+                    unmatched.append(item.name)
+            ups = [{k: v for k, v in u.items() if k != "root"} for u in upstreams.values()]
+            if not unmatched:
+                rule = (
+                    "derived" if all(v == "derived" for v in matched.values()) else "inputs matched"
+                )
+                return {"rule": rule, "upstreams": ups, "matched": matched, **base}, ""
+            why = why or (f"input {', '.join(unmatched)} is raw and no confirmed upstream bound it")
+
+        # rules `re-declared` and `study`: the siblings beside this project
+        mine = {
+            d: hashing.hash_file(self.root / d) for d in st.DECLARATIONS if (self.root / d).exists()
+        }
+        siblings = [
+            s
+            for s in (st.read_sibling(p) for p in st.sibling_roots(self.root, self.siblings_root))
+            if s
+        ]
+        for s in siblings:
+            cfg = s["config"]
+            if cfg.roles.owner != self.config.roles.owner:
+                continue
+            if (
+                cfg.method.repo != self.config.method.repo
+                or self._major(cfg.method.tag) != my_major
+            ):
+                continue
+            if s["hashes"] == mine:
+                acc = st.accepted_confirm(s["db"])
+                if acc is not None:
+                    entry = {"project": str(s["root"]), "run_id": None, **acc}
+                    return {"rule": "re-declared", "upstreams": [entry], "matched": {}, **base}, ""
+        if self.config.study:
+            for s in siblings:
+                cfg = s["config"]
+                if cfg.study != self.config.study or cfg.roles.owner != self.config.roles.owner:
+                    continue
+                if (
+                    cfg.method.repo != self.config.method.repo
+                    or self._major(cfg.method.tag) != my_major
+                ):
+                    continue
+                if s["hashes"].get("design.yml") != my_design:
+                    continue
+                acc = st.accepted_confirm(s["db"])
+                if acc is not None:
+                    entry = {"project": str(s["root"]), "run_id": None, **acc}
+                    return {"rule": "study", "upstreams": [entry], "matched": {}, **base}, ""
+            why = why or (
+                f"no confirmed sibling of study {self.config.study} with the same design.yml and owner"
+            )
+        if not why:
+            why = (
+                "no input is derived from a confirmed project and no sibling re-declares these files"
+                + ("" if self.config.study else "; the project names no study")
+            )
+        return None, why
 
     def confirm_hold(self) -> Any:
         """Reads: holds. The confirm hold bound to the current declaration digest, or None."""
@@ -527,7 +631,8 @@ class Project:
                     "via": "inherited",
                     "ts": now_iso(),
                     "verdict": "accept",
-                    "reason": "; ".join(
+                    "reason": f"by rule `{inherited.get('rule', 'derived')}`: "
+                    + "; ".join(
                         f"inherited from {u['project']}: hold {u['hold_id']}, review "
                         f"{u['review_id']} accepted by {u['reviewer']} at {u['ts']}"
                         for u in ups
@@ -728,9 +833,14 @@ def check_declarations(req: InitRequest) -> DeclarationCheck:
         root.mkdir()
         probe = InitRequest(**{**req.__dict__, "path": root, "check_only": True})
         project, objects, gate = _init_in(root, probe)
+        # confirm once (L69): the siblings are beside the declarations, not beside the probe
+        project.siblings_root = req.siblings_root or (
+            Path(req.objective).resolve().parent.parent if req.objective else None
+        )
         egress = project.egress_assessment()
         return DeclarationCheck(
             echo=project.render_echo(objects),
+            inheritance=project.inheritance_report(),
             hashes=project.declaration_hashes(),
             inputs={i.name: i.blake3 for i in project.inputs.items},
             predicates=[
@@ -1129,6 +1239,7 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         declarations=declarations,
         plugins=installed_plugin_versions(),
         egress=_egress_setting(req),
+        study=req.study,
     )
     dump_yaml(cfg.model_dump(mode="json"), root / "stringency.yml")
 

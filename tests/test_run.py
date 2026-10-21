@@ -569,12 +569,15 @@ def test_status_json_carries_plain_and_completed_steps(make_project: InitFn) -> 
     assert st["plain"].startswith(
         "Completed: Filter low-value rows, Summarize each group. Stopped: Label the groups waits for the reviewer (tester) to decide on item "
     )
-    # before the confirm hold is accepted, status says what waits
-    p2 = make_project(pipeline="toy-engine", execution="engine")
+    # before the confirm hold is accepted, status says what waits (another owner, so the
+    # re-declared files beside p do not inherit p's acceptance; confirm once L68)
+    p2 = make_project(
+        pipeline="toy-engine", execution="engine", owner="someone", reviewer="someone"
+    )
     st2 = json.loads(cli(p2, "status", "--json").output)
     assert (
         st2["plain"]
-        == "No run has started. The plan for this project waits for the owner (tester) to confirm it."
+        == "No run has started. The plan for this project waits for the owner (someone) to confirm it."
     )
     # an abandoned run says so
     p3 = confirmed(make_project, pipeline="toy-engine", execution="engine")
@@ -922,7 +925,9 @@ def test_each_replicate_reads_its_own_ordering(make_project: InitFn) -> None:
         (run_id,),
     )
     assert [i["replicate"] for i in invs] == [1, 2, 3]
-    assert len({i["prompt_hash"] for i in invs}) == 3
+    # replicate 1 reads the canonical order; 2 and 3 each read another (two of six orderings of
+    # three items may coincide, so only the first's distinctness is guaranteed)
+    assert invs[0]["prompt_hash"] not in {invs[1]["prompt_hash"], invs[2]["prompt_hash"]}
     s1, s2 = json.loads(invs[0]["sampling_json"]), json.loads(invs[1]["sampling_json"])
     assert "perturbation" not in s1
     pert = s2["perturbation"]
@@ -959,8 +964,10 @@ def test_dispatch_requests_carry_each_replicates_prompt(make_project: InitFn) ->
     nx = dispatching_project_of(p)
     manifest = json.loads((Path(nx["dispatch_dir"]) / "manifest.json").read_text())
     prompts = [json.loads(Path(rp).read_text())["prompt"] for rp in manifest["requests"]]
-    assert len(set(prompts)) == 3
+    assert len(set(prompts)) == 3  # the nonce suffix alone makes them distinct
     r = cli(p, "run", "--json", env=MOCK_DISPATCH)  # the mock answers on collect
     assert r.exit_code == 0, r.output
-    hashes = p.store.all("SELECT DISTINCT prompt_hash FROM invocations WHERE step_id='03_label'")
-    assert len(hashes) == 3
+    rows = p.store.all(
+        "SELECT replicate, prompt_hash FROM invocations WHERE step_id='03_label' ORDER BY replicate"
+    )
+    assert rows[0]["prompt_hash"] not in {r["prompt_hash"] for r in rows[1:]}

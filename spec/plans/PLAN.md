@@ -38,7 +38,7 @@ Nothing in it is built beyond what the State section says.
 
 ## State (2026-10-21)
 
-Engine 0.2.30 on `main` (triage pass 5, decision points first cut and judgment replicates, 2026-10-21); plugin singlecell 0.6.2; the Xenium method
+Engine 0.2.31 on `main` (triage pass 5, decision points, judgment replicates and confirm once, 2026-10-21); plugin singlecell 0.6.2; the Xenium method
 `stringency-xenium-method` at `v0.6.0-rc19` (its six open tools pass on the Lyons liver
 delivery under 0.2.26 and plugin 0.6.2); the toy method at `v0.2.0`. `0.2.27-sc0.6.2` is installed in the
 shared prefix on the lab workstation (`/data/lab/env/stringency/current`, 2026-10-20 17:05) and
@@ -61,9 +61,9 @@ or two sessions and ends with its rows in `archive/backlog-done.md` and a releas
 3. Judgment replicates: done 2026-10-21 (engine 0.2.30; L83 per-replicate orderings, L84
    sampled sign-off with its DEVIATIONS entry). L82, the unanimous-but-wrong rate, waits for
    enough runs (the owner).
-4. Confirm once, approved: L67 the study-level acceptance (design text for 2.7 and 7.2 with the
-   `study:` field, then the build), L6 batch review of identical flag holds and accept-once
-   within a module version, and the three rows beside them (L5, L68, L69). Two sessions.
+4. Confirm once: done 2026-10-21 (engine 0.2.31; L67, L6, L5, L68, L69 in the done ledger).
+   The Lyons CLP projects name no study yet: add `study: lyons_clp` to each `stringency.yml`
+   when the engine is installed (one line per project; nothing else changes).
 5. Codex as a harness (L34): H1 the survey of Codex CLI on PROTSEQ (reading, half a session;
    independent of passes 1 to 4 and can be pulled forward), then H2 the harness-neutral skills,
    H3 the `openai-compatible` and `command` adapters with L36 conformance; then the Qwen3
@@ -89,11 +89,6 @@ console rows until asked) and what waits on a person (the skill republish, the t
 
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
-| L5 | inherited confirmation (design 2.7) needs every input `derived_from` a confirmed project, so two kinds of input defeat it although they are not this design's data: (a) a raw input byte-identical to one the confirmed upstream projects bound under the same name and type (`qc2_summary_all` binds the layout and histology files every `qc2_*` project bound, hashes equal; an ordinary confirm hold opened, 2026-10-06); (b) a `role: reference` input (`qc2_outliers_all`, expected the same day) | inherit when every input is either derived from a confirmed project, or raw and identical in name, type and hash to an input of one of those projects, or `role: reference`; the echo-back's inherited paragraph names which inputs were matched that way; a test for each kind | engine, DECISIONS-level; `confirm-once.md` 3(a) |
-| L6 | `review --holds` batch-reviews confirm holds only; `param.agent_proposed` opened sixteen identical flag holds across the eight `qc2_*` projects (eight on the split's pre-filter, eight on the tissue thresholds), each relayed one by one with the owner's one sentence (2026-10-06) | extend batch review to flag holds whose predicate, step and `proposed` evidence are identical across sibling projects, with the differing cells shown as the confirm batch does; refuse a batch whose packets differ; and accept-once: a sibling's accepted proposal under the same module version resolves the new hold `inherited` with a pointer, listed under "inherited today". Also the console's batch cards (`console-and-fleet-plan.md` "What is open" 1). The owner, 2026-10-21 (decision 4 of `confirm-once.md` section 5): one module version only; siblings are projects sharing the `study:` field (decision 2). Ready to build | engine, DECISIONS-level; `confirm-once.md` 3(d) |
-| L67 | one `design.yml` was confirmed five times in one study (Lyons CLP, 2026-10-06); inheritance is per project and any raw input defeats it | a study-level design acceptance: the first accepted confirm hold under a project tree records (owner, design hash, method repository, major version); a later project in the tree with the same design hash and owner inherits whatever its inputs, the hold created and resolved `inherited` with a pointer, the echo-back still written. The owner, 2026-10-21 (decisions 1 to 3 of `confirm-once.md` section 5): approved; the tree is an explicit `study:` field in `stringency.yml` that projects opt into, not the directory; an acceptance never expires (the design hash is the identity). Design text for 2.7 and 7.2 to draft, then build | *design* (2.7, 7.2), approved; `confirm-once.md` 3(b) |
-| L68 | a project re-declared byte-identically on a new method tag after a packaging fix opened a fresh confirm hold (`cluster_liver`, rc1 to rc2) | when the declarations are byte-identical to a project the same owner confirmed under the same method repository and major version, the acceptance carries over, raw inputs included; the echo-back names the project it inherits from | engine, DECISIONS-level; `confirm-once.md` 3(c) |
-| L69 | nothing tells the person in advance whether a project will inherit its confirmation or why not | `declare --check` and `init` print, before the hold decision, which acceptance the project would inherit and by which rule, or the input or field that breaks the match; after L5 and L68 | engine, DECISIONS-level; `confirm-once.md` 3(e) |
 
 ### Engine: judgments and evidence
 

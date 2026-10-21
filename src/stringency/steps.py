@@ -26,6 +26,7 @@ from stringency.exit_codes import BlockedError, ConfigError, RefusedError
 from stringency.extract import extract_object
 from stringency.gate import GateResult, evaluate
 from stringency.holds import HoldOutcome, HoldRequest, open_hold
+from stringency.ids import new_id
 from stringency.machine import RETRYABLE, StepStatus, step_status, transition
 from stringency.modules import IOSpec, Module, ModuleManifest
 from stringency.pipelines import Ref, StepDecl
@@ -670,6 +671,7 @@ def propose(
                     ),
                 )
             )
+        holds = [inherit_flag_acceptance(rc, h, plan) for h in holds]
         if any(not h.rebound for h in holds):
             transition(
                 store,
@@ -695,6 +697,64 @@ def propose(
         status = StepStatus.AWAITING_EXECUTION
     rc.refresh_status()
     return Proposal(action, plan, gate, status, holds)
+
+
+def inherit_flag_acceptance(rc: RunContext, h: HoldOutcome, plan: StepPlan) -> HoldOutcome:
+    """Accept once (backlog L6): an open `param.agent_proposed` hold whose proposed values this
+    project's reviewer already accepted on the same step and module version in a sibling of
+    the same study is resolved at once, `via: inherited`, by a `reviews` row naming the
+    sibling's hold and review. Reads: holds, the siblings' traces. Writes: reviews, holds."""
+    if h.rebound or not rc.project.config.study:
+        return h
+    from stringency import study as st
+
+    store = rc.store
+    row = store.one("SELECT * FROM holds WHERE hold_id = ?", (h.hold_id,))
+    if row is None or row["kind"] != "flag":
+        return h
+    ctx = json.loads(row["context_json"] or "{}")
+    predicate = str(ctx.get("predicate", "")).split("@")[0]
+    if predicate != "param.agent_proposed":
+        return h
+    proposed = (ctx.get("evidence") or {}).get("proposed")
+    if not proposed:
+        return h
+    siblings = st.study_siblings(rc.project.root, rc.project.config.study, rc.project.siblings_root)
+    prior = st.flag_acceptance(
+        siblings,
+        predicate=predicate,
+        step_id=str(row["step_id"]),
+        module_version=plan.module.ref,
+        proposed=proposed,
+        reviewer=rc.project.config.roles.reviewer,
+    )
+    if prior is None:
+        return h
+    import socket
+
+    review_id = new_id()
+    store.insert(
+        "reviews",
+        {
+            "review_id": review_id,
+            "hold_id": h.hold_id,
+            "reviewer": prior["reviewer"],
+            "host": socket.gethostname(),
+            "via": "inherited",
+            "ts": now_iso(),
+            "verdict": "accept",
+            "reason": (
+                f"accept once (study {rc.project.config.study}): the same values were accepted "
+                f"in {prior['project']}, hold {prior['hold_id']}, review {prior['review_id']} by "
+                f"{prior['reviewer']} at {prior['ts']}"
+            ),
+            "bound_module_version": row["bound_module_version"],
+            "bound_input_digest": row["bound_input_digest"],
+            "bound_params_hash": row["bound_params_hash"],
+        },
+    )
+    store.resolve_hold(h.hold_id, review_id, "inherited")
+    return HoldOutcome(h.hold_id, True, review_id)
 
 
 def resume_after_hold(rc: RunContext, step_id: str) -> Proposal:

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import threading
+from pathlib import Path
 
 import pytest
 
@@ -161,7 +162,7 @@ def test_sampled_sign_off_holds_a_seeded_sample_of_the_agreed_items(make_project
     art = p.store.one(
         "SELECT path FROM artifacts WHERE kind='consensus' AND status='produced' ORDER BY rowid DESC LIMIT 1"
     )
-    doc = json.loads(open(art["path"]).read())
+    doc = json.loads(Path(art["path"]).read_text())
     notes = {i["item_id"]: i["notes"] for i in doc["items"]}
     assert any(
         "sampled for sign-off: 1 of 3 agreed item(s), fraction 0.34" in n for n in notes[held]

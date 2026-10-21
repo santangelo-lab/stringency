@@ -186,7 +186,12 @@ def project(make_project: InitFn) -> Project:
 
 
 def accept_hold(store: Store, hold_id: str, reviewer: str = "tester", reason: str = "ok") -> str:
-    """Pre-seed an accept review through the store API (used before M8's `review` exists)."""
+    """Pre-seed an accept review through the store API (used before M8's `review` exists). A
+    hold already resolved (a sibling project re-declared byte for byte inherits its
+    acceptance, confirm once L68) is left as it is and its review id returned."""
+    done = store.one("SELECT resolved_by_review FROM holds WHERE hold_id = ?", (hold_id,))
+    if done is not None and done["resolved_by_review"] is not None:
+        return str(done["resolved_by_review"])
     rid = new_id()
     store.insert(
         "reviews",

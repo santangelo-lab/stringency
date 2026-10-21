@@ -183,7 +183,10 @@ def perturbation_for(
     seed = hashing.hash_text(f"{action_id}:{rep}")
     rng = random.Random(seed)
     order = list(items)
-    rng.shuffle(order)
+    for _ in range(16):  # a later replicate never reads the canonical order when it can differ
+        rng.shuffle(order)
+        if order != list(items) or len(items) < 2:
+            break
     vorder = list(vocab)
     rng.shuffle(vorder)
     return {"seed": seed[:16], "items": order, "vocabulary": vorder}

@@ -114,15 +114,23 @@ def render_inherited_echo(
     hashes: Mapping[str, str],
     inherited: Mapping[str, Any],
     pipeline: str,
+    plugin: Any = None,
+    design: Any = None,
 ) -> str:
-    """The echo-back of a chained project whose confirmation is inherited (design 2.7, added
-    2026-09-23): only what is new is shown, since the design and every input's provenance were
-    accepted upstream by the same owner."""
+    """The echo-back of a project whose confirmation is inherited (design 2.7, added
+    2026-09-23; the rules of confirm once, 2026-10-21): the rule and the acceptance it rests
+    on, then what is new. Under the `derived` and `inputs matched` rules every input's
+    provenance was accepted upstream and only the new facts are shown; under `re-declared` and
+    `study` the inputs are listed in full, raw ones named as such, since the acceptance covers
+    the design and not these files (an input the owner has never seen is a fact the echo
+    states, not a reason to re-ask about the design)."""
     ups = list(inherited.get("upstreams", []))
+    rule = str(inherited.get("rule", "derived"))
+    matched = dict(inherited.get("matched") or {})
     lines: list[str] = []
     for u in ups:
         lines.append(
-            f"Design and inputs inherited from {u['project']}: echo-back accepted by "
+            f"Design accepted by rule `{rule}` from {u['project']}: echo-back accepted by "
             f"{u['reviewer']} on {str(u['ts'])[:10]} (hold {u['hold_id']}, review {u['review_id']})."
         )
     lines.append(f"Pipeline: {pipeline}.")
@@ -131,26 +139,50 @@ def render_inherited_echo(
         lines.append(f"Deliverables: {', '.join(objective.deliverables)}.")
     for i in inputs.items:
         d = i.derived_from
-        if d is None:
-            continue
-        where = f" (step {d.step_id}, output {d.output})" if d.step_id else ""
-        lines.append(f"Input {i.name} ({i.type}) is run {d.run_id}{where} of {d.project}.")
+        if d is not None:
+            where = f" (step {d.step_id}, output {d.output})" if d.step_id else ""
+            lines.append(f"Input {i.name} ({i.type}) is run {d.run_id}{where} of {d.project}.")
+        elif rule in ("inputs matched",):
+            lines.append(f"Input {i.name} ({i.type}) is raw, {matched.get(i.name, 'unmatched')}.")
+        elif rule in ("re-declared", "study"):
+            role = "a reference" if i.role == "reference" else "raw"
+            lines.append(
+                f"Input {i.name} ({i.type}) is {role}: {i.path}, blake3 {i.blake3[:12]}; the "
+                "accepted design does not cover this file."
+            )
     bound = "\n".join(f"  {k}: {v}" for k, v in sorted(hashes.items()))
     return (
         "# Echo-back (confirmation inherited)\n\n"
-        "Every input is a delivered artifact of a project this owner already confirmed, with the "
-        "same design and the same method major version, so no new acceptance is asked. This is "
-        "what is new here.\n\n" + wrap_text("\n".join(lines)) + f"\n\nBound to:\n{bound}\n"
-    ).replace(
-        "Every input is a delivered artifact of a project this owner already confirmed, with the "
-        "same design and the same method major version, so no new acceptance is asked. This is "
-        "what is new here.",
-        wrap_text(
-            "Every input is a delivered artifact of a project this owner already confirmed, with "
-            "the same design and the same method major version, so no new acceptance is asked. "
-            "This is what is new here."
-        ),
+        + wrap_text(_INHERITED_HEAD[rule if rule in _INHERITED_HEAD else "derived"])
+        + "\n\n"
+        + wrap_text("\n".join(lines))
+        + f"\n\nBound to:\n{bound}\n"
     )
+
+
+_INHERITED_HEAD = {
+    "derived": (
+        "Every input is a delivered artifact of a project this owner already confirmed, with "
+        "the same design and the same method major version, so no new acceptance is asked. "
+        "This is what is new here."
+    ),
+    "inputs matched": (
+        "Every input is a delivered artifact of a project this owner already confirmed, or a "
+        "file one of those projects bound under the same name, type and hash, or a reference, "
+        "with the same design and the same method major version, so no new acceptance is "
+        "asked. This is what is new here."
+    ),
+    "re-declared": (
+        "These declaration files are byte for byte the ones this owner already confirmed in a "
+        "sibling project, on the same method, so no new acceptance is asked. This is what the "
+        "project binds."
+    ),
+    "study": (
+        "This design is the one this owner already confirmed for this study, on the same "
+        "method, so no new acceptance is asked of the design. The inputs are listed in full: "
+        "the acceptance covers the design, not these files."
+    ),
+}
 
 
 def render_open_echo(

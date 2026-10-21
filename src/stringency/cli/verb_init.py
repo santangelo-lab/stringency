@@ -58,6 +58,12 @@ def init(
         "--brief",
         help="the person's own description, kept as brief.md beside the declarations",
     ),
+    study: str | None = typer.Option(
+        None,
+        "--study",
+        help="the study this project opts into: siblings naming the same study under the same "
+        "parent directory share one design acceptance and one parameter acceptance",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = init_project(
@@ -81,6 +87,7 @@ def init(
             brief=brief,
             from_delivery=from_delivery,
             upstream=upstream,
+            study=study,
         )
     )
     hold = project.confirm_hold()
@@ -92,6 +99,7 @@ def init(
         "path": str(project.root),
         "method_sha": project.config.method.sha,
         "confirm_hold": hold["hold_id"] if hold else None,
+        "inheritance": project.inheritance_report() if not project.open_ended else None,
         "echo": str(project.echo_path()),
         "egress_hold": ehold["hold_id"] if ehold else None,
         "egress": {
@@ -112,7 +120,9 @@ def init(
         f"echo-back written to {project.echo_path()}\n"
         f"{egress.summary_line()}; report {project.egress_report_path(egress)}"
     )
-    if hold is not None:
+    if payload["inheritance"]:
+        human += f"\n{payload['inheritance']}"
+    if hold is not None and hold["resolved_by_review"] is None:
         human += (
             f"\nheld: hold {hold['hold_id']} (confirm); waits on owner {project.config.roles.owner}; "
             f"run `stringency review --hold {hold['hold_id']}` in {project.root}"

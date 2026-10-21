@@ -107,7 +107,7 @@ def test_batch_refuses_non_confirm_missing_and_resolved(
     r = cli(b, "run", env=env)
     assert r.exit_code == 10, r.output
     item = b.store.one("SELECT hold_id FROM holds WHERE kind='run_disagreement'")["hold_id"]
-    with pytest.raises(ConfigError, match="confirm holds only"):
+    with pytest.raises(ConfigError, match="confirm holds, or parameter flag holds"):
         locate_holds([item], [b.root], None)
 
 

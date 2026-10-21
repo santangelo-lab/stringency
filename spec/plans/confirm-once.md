@@ -5,7 +5,7 @@ Lane A (engine) session. Proposes changes to design 2.7 (inherited confirmation)
 (hold kinds, review verdicts, binding and reuse of verdicts) and 14.1 (`review --holds`). Items
 marked *design* change design text and need the owner's approval; the rest are DECISIONS-level.
 
-**Status 2026-10-21.** Proposed, not started; built when the owner asks for it. The work is `PLAN.md` rows L5 (a), L68 (c), L6 (d, with the console's batch cards), L69 (e) and L67 (b, *design*); the four decisions of section 5 are in its waiting table. This note is the reasoning and the order, not a work list.
+**Status 2026-10-21, evening.** Built in engine 0.2.31: (a) to (e) with the owner's four decisions of section 5 (the tree is an explicit `study:` field; no expiry; accept-once within one module version). `PLAN.md` rows L5, L68, L6, L69 and L67 closed. This note is the reasoning, not a work list.
 
 ## 1. The problem, counted
 

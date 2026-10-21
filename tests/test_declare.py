@@ -422,8 +422,11 @@ def test_confirmation_is_not_inherited_when_design_or_owner_differs(
         inputs=f2["inputs.yml"],
     )
     assert p2.confirm_status() == "pending"
-    # an unconfirmed upstream: pending
-    up3_files = write_declarations(tmp_path / "up3", toy_data, objective=PROCESS_OBJECTIVE)
+    # an unconfirmed upstream: pending (its objective differs from up's, else the re-declared
+    # rule of confirm once would inherit up's acceptance for it)
+    up3_files = write_declarations(
+        tmp_path / "up3", toy_data, objective={**PROCESS_OBJECTIVE, "id": "toy_process_again"}
+    )
     up3 = make_project(
         pipeline="toy-process",
         execution="engine",

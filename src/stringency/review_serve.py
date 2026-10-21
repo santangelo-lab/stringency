@@ -48,6 +48,7 @@ from markupsafe import Markup
 
 from stringency import present
 from stringency.board import COLUMNS, project_entry, refresh_if_present, row, sentence
+from stringency.clock import now_iso
 from stringency.console import (
     ASK_HEADINGS,
     Registry,
@@ -194,6 +195,17 @@ LANDING_HTML = _ENV.from_string(
 <p class="note">Nothing waits on a person in {{ n_projects }} project{{ "s" if n_projects != 1 }}.</p>
 {% endif %}
 </section>
+{% if inherited %}
+<section data-live="inherited">
+<h2>Inherited today <span class="tag">{{ inherited | length }} hold{{ "s" if inherited | length != 1 }} resolved by an earlier acceptance</span></h2>
+{% for c in inherited %}
+<div class="card">
+<strong>{{ c.kind }}</strong>{% if c.step %} on {{ c.step }}{% endif %} in <strong><a href="{{ c.project_href }}">{{ c.project }}</a></strong>
+<div class="meta">{{ c.when }} · {{ c.reason }}</div>
+</div>
+{% endfor %}
+</section>
+{% endif %}
 <section data-live="board">
 <h2>Board <span class="tag">{{ active | length }} active, {{ idle | length }} delivered and idle</span></h2>
 {% if active %}
@@ -719,6 +731,34 @@ class ReviewHandler(BaseHTTPRequestHandler):
         pid = self.state.registry.id_of(root)
         return f"/project/{pid}" if pid else ""
 
+    def _inherited_today(self, root: Path, site: Site) -> list[dict[str, Any]]:
+        """Holds of one project resolved today by an earlier acceptance (`via: inherited`,
+        confirm once L6 and L67): shown under their own heading, not as work. Reads: holds,
+        reviews."""
+        today = now_iso()[:10]
+        out: list[dict[str, Any]] = []
+        for h in site.store.all(
+            "SELECT h.hold_id, h.kind, h.step_id, r.ts, r.reason FROM holds h JOIN reviews r ON "
+            "r.review_id = h.resolved_by_review WHERE h.resolved_via = 'inherited' AND "
+            "substr(r.ts, 1, 10) = ? ORDER BY r.ts DESC",
+            (today,),
+        ):
+            step = h["step_id"]
+            out.append(
+                {
+                    "hold_id": h["hold_id"],
+                    "kind": h["kind"],
+                    "step": site.pipeline.title(step)
+                    if step and site.pipeline.has_step(step)
+                    else (step or ""),
+                    "project": site.root.name,
+                    "project_href": self._project_href(root),
+                    "when": str(h["ts"])[11:16],
+                    "reason": h["reason"],
+                }
+            )
+        return out
+
     def _cards(self, root: Path, site: Site) -> list[dict[str, Any]]:
         """The open holds of one project as inbox cards: the engine's group (which question the
         hold asks) and the method's title when its delivery skill gives one."""
@@ -1045,6 +1085,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
 
     def _render_landing(self) -> str:
         cards: list[dict[str, Any]] = []
+        inherited: list[dict[str, Any]] = []
         board: list[dict[str, Any]] = []
         roots = self.state.roots
         refs = references(roots)
@@ -1055,6 +1096,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 site = Site.load(root)
                 try:
                     cards += self._cards(root, site)
+                    inherited += self._inherited_today(root, site)
                     drv = self._driver(site, entry, refs)
                 finally:
                     site.store.close()
@@ -1077,6 +1119,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         )
         return LANDING_HTML.render(
             title="stringency console",
+            inherited=sorted(inherited, key=lambda c: c["when"], reverse=True),
             groups=group_cards(cards),
             n_holds=len(cards),
             n_hold_projects=len({c["project"] for c in cards}),

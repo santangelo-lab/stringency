@@ -13,6 +13,7 @@ and each store's holds. Writes: through `record_review` only.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -79,15 +80,55 @@ def locate_holds(
     if missing:
         raise ConfigError(f"hold(s) not found under the projects given: {', '.join(missing)}")
     members = [found[h] for h in wanted]
+    kinds = {m.hold["kind"] for m in members}
+    if kinds == {"confirm"}:
+        for m in members:
+            if m.hold["run_id"] is not None:
+                raise ConfigError(
+                    f"hold {m.hold['hold_id']} is a step confirm hold; --holds batches project "
+                    "confirm holds and identical parameter flags"
+                )
+    elif kinds == {"flag"}:
+        _check_flag_batch(members)
+    else:
+        raise ConfigError(
+            "--holds batches project confirm holds, or parameter flag holds of one kind; not "
+            + ", ".join(sorted(kinds))
+        )
     for m in members:
-        if m.hold["kind"] != "confirm" or m.hold["run_id"] is not None:
-            raise ConfigError(
-                f"hold {m.hold['hold_id']} is a {m.hold['kind']} hold; --holds batches project "
-                "confirm holds only"
-            )
         if m.hold["resolved_by_review"] is not None:
             raise ConfigError(f"hold {m.hold['hold_id']} is already resolved")
     return members
+
+
+def _flag_key(m: BatchMember) -> tuple[str, str, str, str]:
+    ctx = json.loads(m.hold["context_json"] or "{}")
+    return (
+        str(ctx.get("predicate", "")).split("@")[0],
+        str(m.hold["step_id"]),
+        str(m.hold["bound_module_version"]),
+        json.dumps((ctx.get("evidence") or {}).get("proposed"), sort_keys=True, default=str),
+    )
+
+
+def _check_flag_batch(members: list[BatchMember]) -> None:
+    """Flag holds batch when they are `param.agent_proposed` on the same step and module
+    version with identical proposed values (backlog L6); a packet that differs is reviewed
+    alone."""
+    keys = {_flag_key(m) for m in members}
+    preds = {k[0] for k in keys}
+    if preds != {"param.agent_proposed"}:
+        raise ConfigError(
+            "--holds batches parameter flags (param.agent_proposed) only; got "
+            + ", ".join(sorted(preds))
+        )
+    if len(keys) > 1:
+        detail = "; ".join(
+            f"{m.project.root.name}: step {k[1]}, {k[2]}, proposed {k[3]}"
+            for m in members
+            for k in [_flag_key(m)]
+        )
+        raise ConfigError(f"the flag packets differ; review them alone: {detail}")
 
 
 def _flatten(prefix: str, value: Any, out: dict[str, Any]) -> None:
@@ -148,6 +189,8 @@ def _short(v: Any) -> str:
 
 
 def batch_view(members: list[BatchMember]) -> BatchView:
+    if members and members[0].hold["kind"] == "flag":
+        return _flag_batch_view(members)
     shared, differing = compare_declarations(members)
     n = len(members)
     lines = [
@@ -203,6 +246,70 @@ def batch_view(members: list[BatchMember]) -> BatchView:
             "verdict": "reject",
             "effect": "every reading is wrong; no project runs until its declarations change and a new echo-back is accepted",
             "command": f'stringency review --holds {",".join(m.hold["hold_id"] for m in members)} --projects <dir> --verdict reject --reason "<why>"',
+        },
+    ]
+    lines += [
+        "",
+        "verdicts (one for the whole batch; a project that needs a different answer is reviewed alone):",
+    ]
+    for v in verdicts:
+        lines.append(f"  {v['verdict']}: {v['effect']}")
+    return BatchView(members, shared, differing, "\n".join(lines), verdicts)
+
+
+def _flag_batch_view(members: list[BatchMember]) -> BatchView:
+    """One packet for identical parameter flags across siblings: the proposal once, then the
+    projects and what differs between their declarations (as the confirm batch shows it)."""
+    shared, differing = compare_declarations(members)
+    n = len(members)
+    pred, step, module, _ = _flag_key(members[0])
+    ctx = json.loads(members[0].hold["context_json"] or "{}")
+    proposed = (ctx.get("evidence") or {}).get("proposed") or {}
+    lines = [
+        f"batch review: {n} parameter flag hold(s) on {n} project(s), same verdict for all",
+        "",
+        "question: is the same proposed choice acceptable in every project listed",
+        "",
+        f"predicate {pred}  step {step}  module {module}",
+        f"reason: {members[0].hold['reason']}",
+        "",
+        "the decision (identical in every project):",
+    ]
+    for name, p in proposed.items():
+        d = p.get("default") if isinstance(p, dict) else None
+        v = p.get("proposed") if isinstance(p, dict) else p
+        ev = f"; evidence {p['evidence']}" if isinstance(p, dict) and p.get("evidence") else ""
+        lines.append(f"  {name}: default {d}, proposed {v}{ev}")
+    if differing:
+        lines += ["", "the projects differ in:"]
+        header = ["project"] + list(differing)
+        rows = [
+            [m.project.root.name]
+            + [_short(differing[f][m.project.root.name]["value"]) for f in differing]
+            for m in members
+        ]
+        widths = [max(len(str(r[i])) for r in [header, *rows]) for i in range(len(header))]
+        lines.append("  " + "  ".join(str(h).ljust(w) for h, w in zip(header, widths, strict=True)))
+        for r in rows:
+            lines.append("  " + "  ".join(str(c).ljust(w) for c, w in zip(r, widths, strict=True)))
+    else:
+        lines += ["", "the projects' declarations are identical in every field"]
+    for m in members:
+        lines.append("")
+        lines.append(
+            f"  hold {m.hold['hold_id']}  project {m.project.root}  created {m.hold['created']}"
+        )
+    ids = ",".join(m.hold["hold_id"] for m in members)
+    verdicts = [
+        {
+            "verdict": "accept",
+            "effect": f"the choice stands in every one of the {n} projects; each step proceeds",
+            "command": f'stringency review --holds {ids} --projects <dir> --verdict accept --reason "<why>"',
+        },
+        {
+            "verdict": "reject",
+            "effect": "the choice is refused everywhere; each attempt closes and the operator proposes again",
+            "command": f'stringency review --holds {ids} --projects <dir> --verdict reject --reason "<why>"',
         },
     ]
     lines += [

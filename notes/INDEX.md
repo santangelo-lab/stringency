@@ -3,8 +3,13 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-21)
+## Current state (2026-10-22)
 
+- Engine 0.2.31, confirm once (`notes/2026-10-22-0100-confirm-once.md`): `study:` in
+  `stringency.yml`, the inheritance rules (derived, inputs matched, re-declared, study), the
+  advance sentence from `init` and `declare --check`, batch review of identical parameter
+  flags with accept-once, the console's "Inherited today" (L67, L6, L5, L68, L69). Pass 5 is
+  Codex as a harness (L34 H1).
 - Engine 0.2.30, judgment replicates (`notes/2026-10-21-2300-judgment-replicates.md`): each
   replicate reads its own seeded ordering of items, rows and vocabulary, with its own prompt
   hash (L83); `sign_off: {when: sample, fraction}` holds a seeded sample of agreed items (L84,
@@ -301,6 +306,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-22-0100-confirm-once.md` — engine 0.2.31: the study field, the four inheritance rules, the advance sentence, flag batches and accept-once, the console's inherited list (L67, L6, L5, L68, L69).
 - `2026-10-21-2300-judgment-replicates.md` — engine 0.2.30: per-replicate prompt orderings (L83) and sampled sign-off (L84).
 - `2026-10-21-2100-decision-points-first-cut.md` — engine 0.2.29: the `decision:` block, lint, `propose --cite`/`--considered`, the three `param.*` predicates, the default hold view, the `presented` event (L61, L55, L62, L9).
 - `2026-10-21-1800-triage-pass-5.md` — engine 0.2.28: L72 operator self-answer recorded, L46 module egress declaration and lint, L3 judge on controls, L70 judge per replicate, L59 fork sweep line, L60 answer --cannot; L86 filed.

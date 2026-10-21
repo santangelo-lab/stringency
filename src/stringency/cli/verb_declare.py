@@ -49,6 +49,9 @@ def declare(
         "--operator-model",
         help="hosted | local | none: the model of the agent that operates the project",
     ),
+    study: str | None = typer.Option(
+        None, "--study", help="the study the project would opt into (confirm once)"
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     if not check:
@@ -83,12 +86,15 @@ def declare(
             operator_model=operator_model,
             from_delivery=from_delivery,
             upstream=upstream,
+            study=study,
+            siblings_root=directory.resolve().parent,
         )
     )
     n = len(result.predicates)
     human = (
         result.echo.rstrip()
         + "\n\n"
+        + (f"{result.inheritance}\n\n" if result.inheritance else "")
         + (result.egress_report or "").rstrip()
         + f"\n\ndeclarations check out: {n} init predicate(s) evaluated, none fired; "
         f"method {result.method_sha[:12]}. Nothing was created; `stringency init` binds the project."
