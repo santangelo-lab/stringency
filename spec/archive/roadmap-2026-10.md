@@ -130,7 +130,7 @@ row names the item.
    against `$STRINGENCY_IMAGES`, then `images_root` in the user's `~/.config/stringency/config.yml`,
    then the method's `envs/` directory; an absolute path is used as given."
 5. **10.1 and 10.2 Harnesses (J, W7).** Drafted after the H1 survey; waits.
-6. **DEVIATIONS, `judgment.sign_off`** (engine 0.2.14): still "Awaiting acknowledgement by Jim".
+6. **DEVIATIONS, `judgment.sign_off`** (engine 0.2.14): acknowledged 2026-10-21. Items 1 to 4 read and left as applied by the owner the same day.
 
 The owner's recurring jobs, with the commands, are `docs/maintainer.md` (its "Pending now" block is
 the current list). Also the owner's: Codex CLI logged in on PROTSEQ for H1; installing each engine release and

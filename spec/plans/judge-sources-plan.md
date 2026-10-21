@@ -205,11 +205,15 @@ S4's panel already covers the case where the whole project wants enforced isolat
 1. Approve S1 as DECISIONS-level under the existing design 17 row, or ask for design text first.
 2. S2 (b): run the Lyons re-judgment under both harnesses in sibling projects, or under the
    local judge only and compare to the first run's Claude panel (cheaper, weaker: different
-   module version).
-3. The definition of "competent" in S2, or a different one.
-4. Whether S4's `role: check` should open a hold under `strict` or only add a note.
-5. S5: remove the fallback, or keep it marked as proposed.
+   module version). The owner, 2026-10-21: sibling projects.
+3. The definition of "competent" in S2, or a different one. The owner, 2026-10-21: decided after
+   the Codex survey, not before.
+4. Whether S4's `role: check` should open a hold under `strict` or only add a note. The owner,
+   2026-10-21: a note only.
+5. S5: remove the fallback, or keep it marked as proposed. The owner, 2026-10-21: keep it and
+   record in the trace when it happens (the recommendation).
 6. The `/data/protect` routing rule in section 5: as written, or a warning rather than a refusal.
+   The owner, 2026-10-21: not yet; open until a PROTECT project is near.
 7. Where this work lives: a new Lane G (engine, serial, after Lane F phase 0 gives S2 its
    run), or folded into Lane F. Recommendation: Lane G, because S1, S3 and S5 touch the engine
    and Lane F is method work.

@@ -14,7 +14,7 @@ was a plugin predicate whose accept/reject verdicts read as "accept the correcti
 2026-10-08: rejecting to decline a correction would have closed the attempt). The hold kind
 `sign_off` and the `--choose` mapping need no frozen change: the `holds.kind` and
 `reviews.verdict` columns carry no constraint and the verdicts stay accept, override, reject,
-defer. Awaiting acknowledgement by Jim.
+defer. Acknowledged by Jim, 2026-10-21.
 
 
 ## Module contract 3.2: `egress` (2026-10-16, backlog L1)
@@ -28,4 +28,5 @@ otherwise counts a module whose scripts reach the network as class 4 ("scanned, 
 a module that only downloads public reference data (class 1) cannot run under a ceiling below 4.
 Once acknowledged: the assessment uses the declared class; `lint` fails a module whose scripts
 match the network scan and declare no egress or class 0, and warns on a class above 0 with no
-match. Awaiting acknowledgement by Jim.
+match. Acknowledged by Jim, 2026-10-21: build the field, `assess` reading it and the lint rule
+(`PLAN.md` L46).

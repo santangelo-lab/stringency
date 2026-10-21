@@ -168,7 +168,7 @@ def judgments(rc: RunContext, cov: dict[str, Any]) -> list[str]:
         title = rc.pipeline.title(j["step"])
         lines.append(
             f"- {title} (step {j['step']}): {_plural(j['items'], 'item')} judged by "
-            f"{_plural(j['replicates'], 'independent replicate')}; {_count(j['agreed'])} agreed, "
+            f"{_plural(j['replicates'], 'replicate')} in separate contexts; {_count(j['agreed'])} agreed, "
             f"{_count(j['self_uncertain'])} self-uncertain, {_count(j['run_disagreement'])} in disagreement"
             + (f", {_count(j['sign_off'])} held for sign-off" if j.get("sign_off") else "")
             + "; "

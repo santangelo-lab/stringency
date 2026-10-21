@@ -86,7 +86,7 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
             )
             if j:
                 text += (
-                    f" (model as recorded: {models}; {j['replicates']} independent replicates per item); "
+                    f" (model as recorded: {models}; {j['replicates']} replicates per item, each in a separate context); "
                     f"{j['agreed']} of {j['items']} items were labelled unanimously"
                 )
                 resolved = j["accepted"] + j["override"]

@@ -221,6 +221,8 @@ beyond L6 is built.
 
 ## 9. Choices taken here (say if otherwise)
 
+The owner, 2026-10-21: both accepted as written.
+
 - Lint grandfathers a method until its `requires.engine` names the engine that knows `decision:`
   (warning before, error after). Reason: the Xenium method has six decision points and must keep
   passing while it declares them.

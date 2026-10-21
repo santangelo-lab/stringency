@@ -103,7 +103,10 @@ the review page need no new column, only (d)'s "inherited today" list and (e)'s 
 
 1. Approve (b), the study-level design acceptance, as a design change to 2.7 and 7.2, or keep
    confirmation per project and take only (a), (c), (d), (e). Recommendation: approve (b); the
-   other four are still worth building first because they need no design text.
-2. Scope of "the same tree" for (b) and (d): the directory the board walks (today `/lab/projects/<study>`), or an explicit `study:` field in `stringency.yml` that projects opt into. Recommendation: the directory, with the field as a later refinement.
-3. Whether an inherited acceptance expires: never (the design hash is the identity), or after a declared number of days, or when the method major version changes (already a rule). Recommendation: never, since the hash is the identity and a changed design is a new hash.
-4. Whether `param.agent_proposed` accept-once (d) applies across module versions when the schema of the parameters is unchanged, or only within one module version. Recommendation: one module version only; a version bump is the method author's statement that something changed.
+   other four are still worth building first because they need no design text. The owner,
+   2026-10-21: approved.
+2. Scope of "the same tree" for (b) and (d): the directory the board walks (today `/lab/projects/<study>`), or an explicit `study:` field in `stringency.yml` that projects opt into. Recommendation: the directory, with the field as a later refinement. The owner, 2026-10-21: the
+   explicit `study:` field; a project is in a study only by saying so.
+3. Whether an inherited acceptance expires: never (the design hash is the identity), or after a declared number of days, or when the method major version changes (already a rule). Recommendation: never, since the hash is the identity and a changed design is a new hash. The
+   owner, 2026-10-21: never.
+4. Whether `param.agent_proposed` accept-once (d) applies across module versions when the schema of the parameters is unchanged, or only within one module version. Recommendation: one module version only; a version bump is the method author's statement that something changed. The owner, 2026-10-21: one module version only.
