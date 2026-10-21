@@ -83,6 +83,23 @@ def admissible_answers(rc: RunContext) -> list[dict[str, Any]]:
     return out
 
 
+def unanswerable_questions(rc: RunContext) -> dict[str, str]:
+    """Question id to reason for every question whose latest answer on the run is
+    `unanswerable` and which has no admissible answer (backlog L60). Reads: answers, messages."""
+    store = rc.store
+    out: dict[str, str] = {}
+    for r in store.all(
+        "SELECT question_id, status, text_ref FROM answers WHERE run_id = ? ORDER BY rowid",
+        (rc.run_id,),
+    ):
+        qid = str(r["question_id"])
+        if r["status"] == "unanswerable":
+            out[qid] = store.message(r["text_ref"]) or ""
+        elif r["status"] == "admissible":
+            out.pop(qid, None)
+    return out
+
+
 def _questions(rc: RunContext) -> list[dict[str, Any]]:
     store = rc.store
     return [
@@ -268,6 +285,16 @@ def write_open_delivery(rc: RunContext) -> Delivery:
                 (rc.run_id,),
             )
             or 0,
+            # outcomes (backlog L60): a question is answered when an admissible answer exists,
+            # unanswerable when its latest answer says so
+            "asked": store.scalar("SELECT COUNT(*) FROM questions WHERE run_id=?", (rc.run_id,))
+            or 0,
+            "answered": store.scalar(
+                "SELECT COUNT(DISTINCT question_id) FROM answers WHERE run_id=? AND status='admissible'",
+                (rc.run_id,),
+            )
+            or 0,
+            "unanswerable": len(unanswerable_questions(rc)),
         },
         "answers": entries,
     }
@@ -485,6 +512,7 @@ def render_report(
         lines.append(f"Full record: `{e['file']}`.")
         lines.append("")
     lines += ["## Other questions", ""]
+    cannot = unanswerable_questions(rc)
     latest_by_q: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
     earlier_by_q: dict[str, list[str]] = {}
     for ans, e in zip(answers, entries, strict=True):
@@ -500,7 +528,13 @@ def render_report(
         others += 1
         head = f"**{q['seq']}. {q['text']}**"
         if qid not in latest_by_q:
-            lines += [f"{head}: no admissible answer was filed.", ""]
+            if qid in cannot:
+                lines += [
+                    f"{head}: could not be answered from the delivery. {cannot[qid].strip()}",
+                    "",
+                ]
+            else:
+                lines += [f"{head}: no admissible answer was filed.", ""]
             continue
         ans, e = latest_by_q[qid]
         lines.append(f"{head} ({_route(ans['provenance'])}; {e['label']}). {ans['text'].strip()}")
@@ -523,7 +557,13 @@ def render_report(
         "## The record",
         "",
         f"- Questions: {number_word(int(qs.get('person', 0)))} in the person's own words, "
-        f"{number_word(int(qs.get('suggested', 0)))} a path the assistant proposed.",
+        f"{number_word(int(qs.get('suggested', 0)))} a path the assistant proposed; "
+        f"{number_word(int(qs.get('answered', 0)))} answered"
+        + (
+            f", {number_word(int(qs.get('unanswerable', 0)))} could not be answered from the delivery."
+            if qs.get("unanswerable")
+            else "."
+        ),
         *_counts_words(cov),
         "- Scripts written in the session: "
         + (", ".join(op.get("exec_steps") or []) or "none")

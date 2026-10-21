@@ -458,9 +458,25 @@ def file_responses(rc: RunContext, doc: Any) -> Path:
     """`run --responses`: write one JSON document's responses to `resp_N.json` in the dispatching
     step's directory, in order, so the loop collects them (design 10.2; the file contract and the
     nonce check are unchanged). Refuses (exit 16) when no step is dispatching, when the document
-    names another step, when the count differs from `manifest.json`, or when response files
-    already exist. Writes: `runs/<run>/<step>/dispatch/resp_N.json` only; nothing in the trace."""
+    names another step, when the count differs from `manifest.json`, when response files
+    already exist, or, under profile strict, when a response's `reported.agent` is the operator
+    itself (backlog L72). Writes: `runs/<run>/<step>/dispatch/resp_N.json` only; nothing in the trace."""
     ddir, paths = dispatch_target(rc, doc)
+    if rc.project.config.profile == "strict":
+        from stringency.harness.subagent import operator_answered
+
+        own = [
+            str(i + 1)
+            for i, response in enumerate(doc["responses"])
+            if isinstance(response, dict)
+            and operator_answered(response.get("reported"), rc.operator.get("harness"))
+        ]
+        if own:
+            raise RefusedError(
+                f"--responses: request(s) {', '.join(own)} answered by the operator itself "
+                f"(reported.agent names {rc.operator.get('harness')}); refused under profile strict; "
+                "give each to a delegate"
+            )
     existing = [p.name for p in paths if p.exists()]
     if existing:
         raise RefusedError(

@@ -29,7 +29,7 @@ Data egress: the highest class reached was 3 derived; no ceiling was declared (r
 
 ## Judgments
 
-- Label the groups (step 03_label): three items judged by three replicates in separate contexts; three agreed, none self-uncertain, none in disagreement; reviews: none accepted, none corrected, none unresolved.
+- Label the groups (step 03_label): three items judged by three replicates in separate contexts (mock-model-1 via direct, isolation enforced); three agreed, none self-uncertain, none in disagreement; reviews: none accepted, none corrected, none unresolved.
 
 ## What you received
 

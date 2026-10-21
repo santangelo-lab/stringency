@@ -226,12 +226,23 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             )
             or 0
         )
+        judges = store.all(
+            "SELECT DISTINCT model_resolved, via, isolation FROM invocations WHERE run_id=? AND step_id=? "
+            "ORDER BY model_resolved, via, isolation",
+            (rc.run_id, step.id),
+        )
         judgment.append(
             {
                 "module": m.ref,
                 "step": step.id,
                 "items": n_items,
                 "replicates": n_rep,
+                # who judged (backlog L70): each distinct (model, via, isolation) of the step's
+                # invocations, so a reader knows whether the replicates came from one model
+                "judges": [
+                    {"model": j["model_resolved"], "via": j["via"], "isolation": j["isolation"]}
+                    for j in judges
+                ],
                 "agreed": sources.get("agreed", 0),
                 "self_uncertain": kinds.get("self_uncertain", 0),
                 "run_disagreement": kinds.get("run_disagreement", 0),
@@ -352,6 +363,7 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "engine_run": len(execs) - len(operator),
             "plan_drift": drift,
         },
+        "forks": fork_sweeps(store, project.config.project_id, rc.run_id),
         "reproducibility": {
             "stochastic_steps": len(stochastic),
             "seeded": seeded,
@@ -365,6 +377,54 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             len(invs),
         ),
     }
+
+
+def fork_sweeps(store: Any, project_id: str, run_id: str) -> list[dict[str, Any]]:
+    """The parameters this project's forks vary (backlog L59): for each `<step>.<param>` any
+    fork of the project set, every distinct value across the runs (the root's own admitted value
+    included when known), this run's value, and whether this run was delivered. Reads: runs
+    (`delta_json`), actions (the value this run admitted), deliveries. Empty when no fork."""
+    runs = store.all(
+        "SELECT run_id, parent_run_id, fork_at_step, delta_json FROM runs WHERE project_id=? "
+        "AND kind='run' ORDER BY started, rowid",
+        (project_id,),
+    )
+    keys: list[tuple[str, str]] = []
+    for r in runs:
+        delta = json.loads(r["delta_json"] or "{}") if r["parent_run_id"] else {}
+        for step, params in (delta.get("params") or {}).items():
+            for name in params:
+                if (step, name) not in keys:
+                    keys.append((step, name))
+    if not keys:
+        return []
+
+    def admitted(rid: str, step: str, name: str) -> Any:
+        a = store.one(
+            "SELECT params_json FROM actions WHERE run_id=? AND step_id=? ORDER BY attempt DESC, rowid DESC LIMIT 1",
+            (rid, step),
+        )
+        if a is None:
+            return None
+        return json.loads(a["params_json"] or "{}").get(name)
+
+    delivered = {d["run_id"] for d in store.all("SELECT DISTINCT run_id FROM deliveries", ())}
+    out = []
+    for step, name in keys:
+        values: list[Any] = []
+        for r in runs:
+            v = admitted(r["run_id"], step, name)
+            if v is not None and v not in values:
+                values.append(v)
+        out.append(
+            {
+                "param": f"{step}.{name}",
+                "values": values,
+                "this_run": admitted(run_id, step, name),
+                "delivered": run_id in delivered,
+            }
+        )
+    return out
 
 
 def render_coverage(d: dict[str, Any]) -> str:
@@ -417,11 +477,32 @@ def render_coverage(d: dict[str, Any]) -> str:
     else:
         lines.append("  none")
     lines.append("")
+    for f in d.get("forks") or []:
+        values = ", ".join(str(v) for v in f["values"])
+        lines.append(
+            f"forks of this project at {f['param']}: {len(f['values'])} ({values}); this run "
+            f"{f['this_run'] if f['this_run'] is not None else "at its parent's value"}"
+            + (", delivered" if f["delivered"] else "")
+        )
+    if d.get("forks"):
+        lines.append("")
     lines.append("controls (last passing run per module version):")
+    run_models = set((r["invocations"] or {}).get("models") or [])
     if d["controls"]:
         for c in d["controls"]:
-            metrics = ", ".join(f"{k} {v}" for k, v in sorted(c["metrics"].items()))
-            lines.append(f"  {c['module']}  {c['date']}  {c['control']}: {metrics}")
+            metrics = ", ".join(
+                f"{k} {v}"
+                for k, v in sorted(c["metrics"].items())
+                if k not in ("harness_kind", "model_resolved")
+            )
+            line = f"  {c['module']}  {c['date']}  {c['control']}: {metrics}"
+            # the judge that answered the control (backlog L3), and whether it is this run's
+            model, kind = c["metrics"].get("model_resolved"), c["metrics"].get("harness_kind")
+            if model is not None:
+                line += f"; judge {model} ({kind})"
+                if run_models and set(str(model).split(",")) != run_models:
+                    line += f", not this run's judge ({', '.join(sorted(run_models))})"
+            lines.append(line)
     else:
         lines.append("  none recorded")
     lines.append("")
@@ -495,6 +576,11 @@ def render_coverage(d: dict[str, Any]) -> str:
         q = ex.get("questions") or {}
         lines.append(
             f"  questions: {q.get('person', 0)} in the person's own words, {q.get('suggested', 0)} suggested by the operator"
+            + (
+                f"; {q.get('asked', 0)} asked, {q.get('answered', 0)} answered, {q.get('unanswerable', 0)} unanswerable"
+                if "asked" in q
+                else ""
+            )
         )
         lines.append("  upstream lineage:")
         for u in op["upstream_lineage"] or []:

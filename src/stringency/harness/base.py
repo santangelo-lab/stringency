@@ -46,8 +46,8 @@ class Invocation:
     tokens_in: int | None = None
     tokens_out: int | None = None
     duration_ms: int | None = None
-    via: str = "direct"  # direct | subagent
-    isolation: str = "enforced"  # enforced | as_reported
+    via: str = "direct"  # direct | subagent | operator
+    isolation: str = "enforced"  # enforced | as_reported | none
     nonce_ok: bool | None = None
     tool_calls: list[Any] = field(default_factory=list)
     reported: dict[str, Any] | None = None

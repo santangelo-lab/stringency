@@ -257,6 +257,7 @@ judgment:
   abstain: required
   confidence: ordinal
   considered_set: false           # true for salience-type modules: the engine writes the items table's name, row count and digest into the consensus output as `considered_set`
+  # egress: {class: 1, hosts: [ftp.ebi.ac.uk], sends: "a reference table is downloaded"}   # optional, top level beside `model:` (module contract 3.2 via DEVIATIONS, acknowledged 2026-10-21, L46): what the module's scripts send off the machine; absent means nothing, and lint fails scripts that reach the network under no declaration or class 0
   # sign_off: {when: always, labels: [proceed_uncorrected, correct_batch]}   # optional (added 2026-10-08, L10): a person signs off every item's label, agreed or not; `labels` narrows what a person may choose at every item hold of the module
 
 prompt:
@@ -901,7 +902,7 @@ What the principle "the model sees the table, never the matrix" protects, and ho
 | The judge does not carry the session's expectations | A context that knows what you hope to find tends to find it | Enforced | Enforced by fresh subagent context; the nonce check detects a rewritten prompt but not an appended one, so this is reported, not proven |
 | Replicates are separate samples | Three calls sharing context are one sample asked three times | Enforced | One subagent per replicate; isolation as reported. The replicates are not independent: they read one prompt and share the model's consistent errors (the literature check of 2026-10-21, backlog L82 to L84) |
 
-Under dispatch, the invocation row carries `via: subagent` and `isolation: as_reported`, and the coverage report says so. The compensating control is the eval layer: negative controls (shuffled marker tables, permuted coordinates) test whether the module confabulates, and they work identically whichever family invoked the model. Dispatch shifts weight from a structural guarantee in the gate to an empirical one in the controls, and the trace records that this is what happened.
+Under dispatch, the invocation row carries `via: subagent` and `isolation: as_reported`, and the coverage report says so. A response whose `reported.agent` is the operator harness itself (an operator with no delegate tool answering in its own session) is recorded `via: operator`, `isolation: none`; under profile `strict` the engine refuses to file it (added 2026-10-21, L72). The hold packet, `present --hold`, the review page and `summary.md` name each replicate's judge (model, via, isolation; 2026-10-21, L70). The compensating control is the eval layer: negative controls (shuffled marker tables, permuted coordinates) test whether the module confabulates, and they work identically whichever family invoked the model. Dispatch shifts weight from a structural guarantee in the gate to an empirical one in the controls, and the trace records that this is what happened.
 
 ### 10.2 Judgment harness adapters
 
@@ -913,7 +914,7 @@ Invocation:
   structured: dict | None      raw_text: str        schema_valid: bool
   model_requested: str         model_resolved: str  harness_kind: str    harness_version: str
   tokens_in: int | None        tokens_out: int | None                    duration_ms: int | None
-  via: direct | subagent       isolation: enforced | as_reported          nonce_ok: bool | None
+  via: direct | subagent | operator   isolation: enforced | as_reported | none   nonce_ok: bool | None
   tool_calls: list
 ```
 
@@ -1035,7 +1036,7 @@ expect:
 
 Fixtures are identified by hash; the path is a hint. The engine resolves fixtures from the project's fixtures directory and the method repo's `controls/fixtures/`. Every generator refuses to touch any hash listed under `design.holdout`, and `lint` warns if a control fixture matches one. Negative controls require no annotation and are the first control to write for every judgment module.
 
-A deterministic tool is scored by `expect.equals: {output, columns, tolerance}` (the output table against `fixture.truth` keyed by `truth.key`; fewer matching rows than the last passing run is a regression), `expect.count: {output, where: {column, below | above}, max | min}` (a negative control) or `expect.completed: true` (a figure tool); `params` are the values the control runs with, admitted as defaults; a module that lists `open` is controlled alone, as a one-step synthetic run on its fixture under a mode it admits, so a tool's truth table describes the tool's output, not the fixture after an upstream step; the control's metrics record the environment digest it ran under, and `lint` warns on an open tool without a positive control (2026-10-16).
+A deterministic tool is scored by `expect.equals: {output, columns, tolerance}` (the output table against `fixture.truth` keyed by `truth.key`; fewer matching rows than the last passing run is a regression), `expect.count: {output, where: {column, below | above}, max | min}` (a negative control) or `expect.completed: true` (a figure tool); `params` are the values the control runs with, admitted as defaults; a module that lists `open` is controlled alone, as a one-step synthetic run on its fixture under a mode it admits, so a tool's truth table describes the tool's output, not the fixture after an upstream step; the control's metrics record the environment digest it ran under and the judge that answered (harness kind and resolved model; 2026-10-21, L3), and `lint` warns on an open tool without a positive control (2026-10-16).
 
 ## 12. Deliver
 
@@ -1072,8 +1073,10 @@ judgment:
   annotate-cluster@0.3.1: 14 items x 3 replicates; 11 agreed, 2 self_uncertain, 1 run_disagreement
     reviews: 2 accepted, 1 override; override rate this run 1/14; cumulative for this module version 4/61
 
+forks of this project at 05_cluster.resolution: 3 (0.4, 0.6, 0.8); this run 0.6, delivered
+
 controls (last passing run per module version):
-  annotate-cluster@0.3.1  2026-09-12  negative-permuted-coordinates: null  positive-geo-annotated: agreement 0.83, abstain 0.07
+  annotate-cluster@0.3.1  2026-09-12  negative-permuted-coordinates: null  positive-geo-annotated: agreement 0.83, abstain 0.07; judge claude-… (subagent)
 
 execution:
   9 steps operator-run (env verified 7, as reported 2: 03_hvg, 06_markers), 2 engine-run; 0 plan drift
@@ -1086,6 +1089,8 @@ not checked: anything not listed above
 ```
 
 The last line is deliberate. A tool that checks nineteen things will otherwise be read as having validated the analysis, and manufactured confidence is worse than no tool.
+
+Added 2026-10-21: the forks line (L59) names every value a forked parameter took across the project's runs, this run's value and whether this run was delivered, so a sweep is visible from any one delivery; the control line names the judge that answered the control and says when it is not this run's (L3); an open run's questions line counts asked, answered and unanswerable (L60).
 
 ### 12.3 Methods paragraph
 
@@ -1124,7 +1129,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `ask "<text>"` | `[--suggested] [--json]` | the confirm hold enforced | files the person's words as a question of the open run (`origin` person or suggested) | none |
 | `call <tool>` | `[--question <id>] [--in k=ref]… [--set k=v]… [--asked-by agent\|person] [--reason] [--json]` | the ordinary pre- and post-gate on an on-demand step | adds the step, proposes, executes on the engine, records | none |
 | `exec <script\|->` | `[--lang] [--question <id>] [--in k=ref]… [--out name=type[/format]]… [--env] [--seed N] [--reason] [--allow-local] [--json]` | the ordinary gate; nothing new blocks | the script in the trace, the synthetic manifest, inputs read-only, the network outcome; outputs untested when cited | none |
-| `answer` | `--question <id> --cite <artifact id[:row[:column]]>… (--text <file> \| -) [--json]` | `ans.*`: every numeral a cited cell, every citation resolving, the label unwritten | the answer with its derived label and qualifier; blocked answers kept (exit 12) | none |
+| `answer` | `--question <id> --cite <artifact id[:row[:column]]>… (--text <file> \| -) [--json]`; or `--question <id> --cannot --reason "…"` (2026-10-21, L60) | `ans.*`: every numeral a cited cell, every citation resolving, the label unwritten; none for `--cannot` | the answer with its derived label and qualifier; blocked answers kept (exit 12); `--cannot` records an `unanswerable` answer with no label, named in the report's short list | none |
 | `fork` | `--from <run> --at <step> [--set <step>.<param>=<value>]… --reason "<txt>" [--check] [--json]` | none | opens a child run with delta and lists what each re-run step will run with and the source of each value (inherited, fork, default); `--check` lists and opens nothing | none |
 | `abandon` | `--run <id> --reason "<txt>"` | none | closes | none |
 | `wait` | `[--hold <id> \| --run <id>] [--timeout <s>] [--json]` | none | reads only, every five seconds: returns (exit 0) when the hold is resolved or withdrawn, printing the review's verdict, reason, reviewer and via, or when the run's status, a step's status or its open holds change, or at once on a closed run; exit 10 when the timeout passes, 15 on an unknown id; with neither option, the latest run. The operator's way to sleep until a person has answered (added 2026-10-07) | none |

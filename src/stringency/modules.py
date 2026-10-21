@@ -78,6 +78,25 @@ class Resources(Frozen):
     timeout: str | None = None
 
 
+class EgressDecl(Frozen):
+    """What the module's scripts send off the machine (module contract 3.2 via DEVIATIONS,
+    2026-10-16, acknowledged 2026-10-21; backlog L46): the egress class (0 nothing, 1 public
+    reference data downloaded, 2 identifiers sent, 3 computed values sent, 4 data whole), the
+    hosts reached, and one sentence saying what is sent."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    cls: int = Field(alias="class", ge=0, le=4)
+    hosts: list[str] = Field(default_factory=list)
+    sends: str = ""
+
+    @model_validator(mode="after")
+    def _shape(self) -> EgressDecl:
+        if self.cls > 0 and not self.sends.strip():
+            raise ValueError("egress with a class above 0 needs a `sends` sentence")
+        return self
+
+
 class ModuleManifest(Frozen):
     contract: int
     name: str
@@ -104,6 +123,7 @@ class ModuleManifest(Frozen):
     evidence: list[EvidenceSpec] = Field(default_factory=list)
     confirm: bool = False
     model: str | None = None
+    egress: EgressDecl | None = None
     params_schema: dict[str, Any] = Field(default_factory=dict)  # loaded from params.schema.json
 
     @property

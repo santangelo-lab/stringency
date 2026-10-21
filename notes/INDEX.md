@@ -5,6 +5,12 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-21)
 
+- Engine 0.2.28, triage pass 5 (`notes/2026-10-21-1800-triage-pass-5.md`): the operator
+  answering its own dispatch is recorded and refused under strict (L72), `module.yml` `egress`
+  with the lint rule (L46), the judge on control results (L3) and beside each replicate (L70),
+  the fork sweep line (L59), `answer --cannot` (L60). L86 filed: the Xenium method's
+  `resegment-nextflow` must declare its egress. Pass 2 is decision points. The owner installs
+  0.2.28 and republishes the operator, declare and Xenium skills.
 - The owner answered the whole waiting table (`notes/2026-10-21-1500-owner-answers.md`): both
   DEVIATIONS entries acknowledged, Codex logged in and the go given (L34), confirm once approved
   with an opt-in `study:` field (L67, L6), L83 and L84 picked from the literature check, L85
@@ -285,6 +291,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-21-1800-triage-pass-5.md` — engine 0.2.28: L72 operator self-answer recorded, L46 module egress declaration and lint, L3 judge on controls, L70 judge per replicate, L59 fork sweep line, L60 answer --cannot; L86 filed.
 - `2026-10-21-1500-owner-answers.md` — the owner's answers to every waiting row: DEVIATIONS acknowledged, Codex go, confirm once approved, L83/L84 picked, L85 applied; Next rewritten as seven passes.
 - `2026-10-21-1315-plans-consolidated.md` — one work list: `spec/plans/PLAN.md` replaces the roadmap and the backlog, every open item of nine plan documents a row (L54 to L85), the waiting-on-the-owner table; `decision-points.md` (the `decision:` block, the slots on `propose`, the menu); OmicsBench assessed; four plans archived, the UX rules moved to `spec/`.
 - `2026-10-21-1300-judgment-replicates-evidence.md` — literature check on the judgment premise: disagreement is a sound hold signal; unanimity of one model's replicates misses consistent errors; five proposals (unanimous-but-wrong rate in controls, per-replicate prompt perturbation, mixed panel, sampled sign-off, "independent" in the methods text). No engine change.

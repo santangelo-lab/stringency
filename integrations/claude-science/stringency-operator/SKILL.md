@@ -74,7 +74,7 @@ any other way and do not reimplement any of its behavior in Python.
 The container runtime is `apptainer` or `singularity`; the engine finds either, and `probe`
 reports which and whether every image the project's method names is present and readable.
 
-**Which text of this skill to follow.** This text is for engine 0.2.23. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.28. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -167,7 +167,10 @@ produce JSON matching its `schema`, copy its `nonce` verbatim into `nonce`, put 
 `structured`, fill `reported` with the model it is, the agent running it, its tools, and
 `saw_conversation: false`, and return that JSON. Do not read the prompt text yourself when a
 delegate is available. If you have no delegate tool, answer each request in its own fresh cell
-that reads only that one file, and say so in your report. Then assemble one document,
+that reads only that one file, set that reply's `reported.agent` to your own operator name (the
+value `STRINGENCY_OPERATOR` carries, such as `claude-code`, with no other word), and say so in
+your report: the engine records such a replicate with `via: operator` and `isolation: none`
+(0.2.28), and under profile `strict` it refuses the document (exit 16) until a delegate answers. Then assemble one document,
 `{"step_id": "<the dispatching step>", "responses": [<reply 1>, ..., <reply N>]}` in request
 order. When your delegate tool reports a delegate's usage (tokens, duration), add it to that
 reply's `reported` as `usage` (`total_tokens`, `duration_ms`, and `tokens_in` and `tokens_out`
@@ -398,7 +401,10 @@ else, and then carry on whatever the person says.
   the text. A reading, never a verdict ("significant", "good enough to report"). Cite every
   artifact a number comes from, by row and column where you can; every numeral in the text
   must be a cited cell. Exit 0 prints the label sentence and the qualifier line; exit 12 is a
-  block (10.6).
+  block (10.6). When the delivery cannot answer the question (the column it needs is not
+  there, the tool that would answer it does not exist), file that instead of approximating:
+  `stringency answer --question <id> --cannot --reason "<one sentence>" --json` (engine
+  0.2.28) records it as unanswerable, with no label, and the report's short list says so.
 - Then reply to the person yourself; do not relay engine output. `stringency present --answer
   <id>` gives you the parts (the tables and figures the method's answer view names, with their
   row names, and the label sentence); `--details` adds the qualifier line, the cells checked

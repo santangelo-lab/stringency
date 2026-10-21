@@ -66,9 +66,9 @@ from stringency.tables import load_table
 def harness_for(rc: RunContext, model: str | None = None) -> Harness:
     kind = rc.project.config.judgment_harness
     if kind == "mock":
-        return MockHarness(fixture_path(rc.project.root))
+        return MockHarness(fixture_path(rc.project.root), operator=rc.operator.get("harness"))
     if kind == "subagent":
-        return SubagentHarness()
+        return SubagentHarness(operator=rc.operator.get("harness"))
     if kind == "api":
         return ApiHarness(model)
     raise ConfigError(f"judgment harness {kind} is deferred (design 17)")
@@ -279,6 +279,7 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
                 f"step {action.step_id} is dispatching but {dispatch_dir} has no request files"
             )
         replicates = collect_dispatch(harness, requests, schema, dispatch_dir)
+        refuse_operator_replicates(rc, replicates)
         duration_ms = dispatch_wall_ms(store, rc.run_id, action.step_id)
         transition(store, rc.run_id, action.step_id, StepStatus.RUNNING)
 
@@ -385,6 +386,27 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
     )
 
 
+def refuse_operator_replicates(rc: RunContext, replicates: list[Replicate]) -> None:
+    """Under profile `strict`, a replicate the operator answered itself (`via: operator`, backlog
+    L72) is invalid: its invocation keeps `via` and `isolation` as read and gains the error, so
+    the trace says who answered and the agreement rule's `any_invalid` does the rest. Under the
+    other profiles it stands and the trace alone singles it out. Mutates the replicates; writes
+    nothing (the caller records them in `invocations`)."""
+    if rc.project.config.profile != "strict":
+        return
+    for r in replicates:
+        for inv in r.invocations:
+            if inv.via == "operator":
+                agent = (inv.reported or {}).get("agent")
+                inv.schema_valid = False
+                inv.error = (
+                    f"answered by the operator (reported.agent {agent!r}); refused under profile strict: "
+                    "give the request to a delegate"
+                )
+                r.valid = False
+                r.structured = None
+
+
 def dispatch_wall_ms(store: Store, run_id: str, step_id: str) -> int | None:
     """Wall time from the step's latest move to `dispatching` until now (the collection): the
     reviewers' time plus the operator's, the judgment step's duration when it is dispatched
@@ -441,6 +463,7 @@ def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
         for req, response in zip(requests, doc["responses"], strict=True):
             response_path(Path(td), req.replicate).write_text(json.dumps(response))
         replicates = collect_dispatch(harness, requests, schema, Path(td))
+    refuse_operator_replicates(rc, replicates)
     rule = rc.project.policy.agreement_rule(rc.project.config.profile)
     invalid = [r.index for r in replicates if not r.valid]
     invalid_held = bool(invalid) and "any_invalid" in set(rule.hold_on)

@@ -338,3 +338,59 @@ def test_pinned_sentences_are_the_engines() -> None:
             "Everything else in this answer is the assistant's reading."
         )
     assert provenance.QUALIFIER_LINE.count(" | ") == 5
+
+
+def test_answer_cannot_records_an_unanswerable_question(questions: Project, tmp_path: Path) -> None:
+    """L60: `answer --cannot --question <id> --reason` files an `answers` row with status
+    unanswerable and no label, runs no predicate, names the question in the report's short list
+    and counts it in the record; `--cannot` with `--text` or `--cite`, or without a reason, is
+    a config error."""
+    q = questions
+    qid, aid, run_id = _ask_and_compare(q)
+    r = cli(
+        q,
+        "answer",
+        "--question",
+        qid,
+        "--cannot",
+        "--reason",
+        "the delivery holds no unit column",
+        "--json",
+    )
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    out = json.loads(r.output)
+    assert out["status"] == "unanswerable" and out["label"] is None and out["run_id"] == run_id
+    row = q.store.one("SELECT * FROM answers WHERE answer_id=?", (out["answer_id"],))
+    assert row["status"] == "unanswerable" and row["label"] is None
+    assert row["cited_json"] == "[]"
+    assert q.store.message(row["text_ref"]) == "the delivery holds no unit column"
+    assert (
+        q.store.scalar(
+            "SELECT COUNT(*) FROM predicate_results WHERE action_id=?", (out["answer_id"],)
+        )
+        == 0
+    )
+    ev = q.store.one(
+        "SELECT payload_json FROM run_events WHERE run_id=? AND event='answer_recorded' ORDER BY rowid DESC LIMIT 1",
+        (run_id,),
+    )
+    assert json.loads(ev["payload_json"])["status"] == "unanswerable"
+    report = (q.root / "deliver" / run_id / "report.md").read_text()
+    assert "could not be answered from the delivery. the delivery holds no unit column" in report
+    assert "one could not be answered from the delivery." in report
+    listing = json.loads(cli(q, "present", "--answers", "--json").output)
+    mine = next(a for a in listing["answers"] if a["answer_id"] == out["answer_id"])
+    assert mine["status"] == "unanswerable" and mine["label"] is None
+    # an admissible answer filed later takes the question out of the unanswerable list
+    text = tmp_path / "a.md"
+    r = _answer(q, qid, "A is higher than B: the difference is 59.22.", f"{aid}:A_vs_B", path=text)
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    report = (q.root / "deliver" / run_id / "report.md").read_text()
+    assert "could not be answered" not in report
+    # refusals
+    r = cli(q, "answer", "--question", qid, "--cannot", "--reason", "x", "--text", "-", input="t")
+    assert r.exit_code == 15
+    r = cli(q, "answer", "--question", qid, "--cannot")
+    assert r.exit_code == 15
+    r = cli(q, "answer", "--question", "nope", "--cannot", "--reason", "x")
+    assert r.exit_code == 16, r.output + str(r.stderr)

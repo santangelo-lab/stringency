@@ -25,7 +25,7 @@ from typing import Any
 from stringency import hashing
 from stringency.actions import Action
 from stringency.clock import now_iso
-from stringency.exit_codes import ConfigError
+from stringency.exit_codes import ConfigError, RefusedError
 from stringency.gate import GateResult, evaluate
 from stringency.ids import new_id
 from stringency.predicates import registry
@@ -272,6 +272,56 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
         total=total,
         provenance=provenance,
     )
+
+
+def file_unanswerable(rc: RunContext, question_id: str, reason: str) -> dict[str, Any]:
+    """`answer --cannot` (backlog L60): the operator cannot answer the question from the
+    delivery. Writes one `answers` row with `status: unanswerable`, no label, no citation, the
+    reason as its text (stored in `messages`), and an `answer_recorded` run event; no predicate
+    runs. Refused when the question is not this run's or the reason is empty."""
+    store = rc.store
+    if not reason.strip():
+        raise ConfigError("--cannot needs --reason with a sentence")
+    q = store.one(
+        "SELECT question_id FROM questions WHERE run_id = ? AND question_id = ?",
+        (rc.run_id, question_id),
+    )
+    if q is None:
+        raise RefusedError(f"question {question_id} is not on run {rc.run_id}")
+    answer_id = new_id()
+    ref = hashing.hash_text(reason)
+    store.store_message(ref, reason)
+    store.insert(
+        "answers",
+        {
+            "answer_id": answer_id,
+            "run_id": rc.run_id,
+            "question_id": question_id,
+            "text_ref": ref,
+            "cited_json": [],
+            "label": None,
+            "provenance_json": {"route": "none", "reason": reason},
+            "status": "unanswerable",
+            "ts": now_iso(),
+        },
+    )
+    store.run_event(
+        rc.run_id,
+        "answer_recorded",
+        {
+            "answer_id": answer_id,
+            "question_id": question_id,
+            "status": "unanswerable",
+            "label": None,
+        },
+    )
+    return {
+        "answer_id": answer_id,
+        "question_id": question_id,
+        "status": "unanswerable",
+        "label": None,
+        "reason": reason,
+    }
 
 
 def answer_row(rc: RunContext, answer_id: str) -> dict[str, Any]:

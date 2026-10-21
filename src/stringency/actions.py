@@ -55,6 +55,8 @@ def coerce_value(text: str, schema: Mapping[str, Any] | None = None) -> Any:
         return [coerce_value(p, item_schema) for p in inner.split(",") if p.strip()]
     if kind == "string":
         return raw
+    if schema and isinstance(schema.get("enum"), list) and raw in schema["enum"]:
+        return raw  # an enum member as spelled, whatever the schema's type (`none`, `null`)
     if schema is None and raw.startswith("[") and raw.endswith("]"):
         return [coerce_value(p) for p in raw[1:-1].split(",") if p.strip()]
     low = raw.lower()

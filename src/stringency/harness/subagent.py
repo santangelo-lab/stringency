@@ -85,8 +85,22 @@ def _count(v: Any) -> int | None:
     return int(v)
 
 
-def read_response(req: Request, dispatch_dir: Path) -> Invocation:
-    """Parse one response file. Missing, unparseable, or nonce-mismatched responses are invalid."""
+def operator_answered(reported: Any, operator: str | None) -> bool:
+    """True when the `reported.agent` of a response names the operator harness itself (the value
+    `STRINGENCY_OPERATOR` carries, such as `claude-code`), which is how an operator with no
+    delegate tool says it answered the request in its own session (backlog L72). A delegate names
+    itself otherwise (`claude-code subagent`). Case and surrounding space do not matter; with no
+    operator known, nothing is the operator."""
+    if not operator or not isinstance(reported, dict):
+        return False
+    agent = reported.get("agent")
+    return isinstance(agent, str) and agent.strip().lower() == operator.strip().lower()
+
+
+def read_response(req: Request, dispatch_dir: Path, operator: str | None = None) -> Invocation:
+    """Parse one response file. Missing, unparseable, or nonce-mismatched responses are invalid.
+    A response whose `reported.agent` is the operator itself (`operator_answered`) is recorded
+    with `via: operator` and `isolation: none`; the caller decides what the profile makes of it."""
     rp = response_path(dispatch_dir, req.replicate)
     base: dict[str, Any] = {
         "model_requested": None,
@@ -141,6 +155,9 @@ def read_response(req: Request, dispatch_dir: Path) -> Invocation:
         # suffix named the envelope). Accept that shape: the answer is everything else.
         rest = {k: v for k, v in data.items() if k not in ("nonce", "reported")}
         structured = rest or None
+    if operator_answered(reported, operator):
+        base["via"] = "operator"
+        base["isolation"] = "none"
     inv = Invocation(
         structured if nonce_ok else None,
         text,
@@ -162,6 +179,9 @@ class SubagentHarness:
     version = __version__
     family: Family = "dispatch"
 
+    def __init__(self, operator: str | None = None) -> None:
+        self.operator = operator  # the operator harness, to recognise a self-answered response
+
     def invoke(
         self, prompt: str, schema: dict[str, Any], *, sampling: Sampling, request: Request
     ) -> Invocation:
@@ -175,4 +195,4 @@ class SubagentHarness:
         raise NotImplementedError("use write_requests")
 
     def collect(self, requests: list[Request], dispatch_dir: Path) -> list[Invocation]:
-        return [read_response(r, dispatch_dir) for r in requests]
+        return [read_response(r, dispatch_dir, self.operator) for r in requests]

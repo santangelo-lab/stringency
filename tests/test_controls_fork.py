@@ -408,3 +408,106 @@ def test_propose_in_a_fork_starts_from_the_inherited_values(
     # and a proposal at the fork's own step takes the fork's value as given
     a = _action(cproject, child.run_id, "04_compare")
     assert a["params"]["correction"] == "bonferroni" and a["source"]["correction"] == "fork"
+
+
+def test_control_results_name_the_judge(cproject: Project) -> None:
+    """L3: a judgment module's passing control records the harness kind and the resolved model
+    in its metrics; `current_for` returns them; the coverage report's control line names the
+    judge and says when it is not this run's."""
+    from stringency.controls import current_for
+    from stringency.coverage import coverage_data, render_coverage
+
+    results = run_controls(cproject, "label-groups", allow_mock=True)
+    pos = next(r for r in results if r.control == "positive-known-labels")
+    assert pos.metrics["harness_kind"] == "mock" and pos.metrics["model_resolved"] == "mock-model-1"
+    row = cproject.store.one(
+        "SELECT metrics_json FROM controls_runs WHERE control_name='positive-known-labels'"
+    )
+    assert json.loads(row["metrics_json"])["model_resolved"] == "mock-model-1"
+    mod = cproject.modules.require("label-groups@0.1.1")
+    cur = current_for(cproject.store, mod, None)
+    assert cur["last_passing"]["model_resolved"] == "mock-model-1"
+    assert cur["last_passing"]["harness_kind"] == "mock"
+
+    r = cli(cproject, "run", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    rc = load_run(cproject, json.loads(r.output)["run_id"])
+    text = render_coverage(coverage_data(rc))
+    line = next(ln for ln in text.splitlines() if "positive-known-labels" in ln)
+    assert line.endswith("; judge mock-model-1 (mock)"), line
+    assert "harness_kind" not in line
+    # a control answered by another judge is said to differ from this run's
+    cproject.store.conn.execute(
+        "UPDATE controls_runs SET metrics_json = json_set(metrics_json, '$.model_resolved', 'other-model') "
+        "WHERE control_name='positive-known-labels'"
+    ) if False else None
+    d = coverage_data(rc)
+    for c in d["controls"]:
+        if c["control"] == "positive-known-labels":
+            c["metrics"]["model_resolved"] = "other-model"
+    text = render_coverage(d)
+    line = next(ln for ln in text.splitlines() if "positive-known-labels" in ln)
+    assert line.endswith("; judge other-model (mock), not this run's judge (mock-model-1)"), line
+
+
+def test_coverage_and_summary_name_the_fork_sweep(cproject: Project) -> None:
+    """L59: a project forked at one parameter shows every value tried, this run's value and
+    whether this run was delivered, in coverage.md and summary.md; a project with no fork shows
+    nothing."""
+    from stringency.coverage import coverage_data, render_coverage
+    from stringency.deliver import deliver
+    from stringency.summary import render_summary
+
+    r = cli(cproject, "run", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    parent = json.loads(r.output)["run_id"]
+    assert coverage_data(load_run(cproject, parent))["forks"] == []
+    children = []
+    for corr in ("bonferroni",):
+        r = cli(
+            cproject,
+            "fork",
+            "--from",
+            parent,
+            "--at",
+            "04_compare",
+            "--set",
+            f"04_compare.correction={corr}",
+            "--reason",
+            "sweep",
+            "--json",
+            env=MOCK,
+        )
+        assert r.exit_code == 0, r.output
+        child = json.loads(r.output)["run_id"]
+        r = cli(cproject, "run", "--json", env=MOCK)
+        assert r.exit_code == 0, r.output
+        children.append(child)
+    rc = load_run(cproject, children[0])
+    d = coverage_data(rc)
+    assert d["forks"] == [
+        {
+            "param": "04_compare.correction",
+            "values": ["bh", "bonferroni"],
+            "this_run": "bonferroni",
+            "delivered": False,
+        }
+    ]
+    text = render_coverage(d)
+    assert (
+        "forks of this project at 04_compare.correction: 2 (bh, bonferroni); this run bonferroni"
+        in text
+    )
+    assert "delivered" not in text.split("forks of this project")[1].splitlines()[0]
+    deliver(rc)
+    d = coverage_data(rc)
+    assert d["forks"][0]["delivered"] is True
+    summary = render_summary(rc, d, [])
+    assert "## Forks" in summary
+    assert (
+        "- Forks of this project at 04_compare.correction: two (bh, bonferroni); "
+        "this run bonferroni, delivered." in summary
+    )
+    # the parent sees the same sweep, at its own value and undelivered
+    pd = coverage_data(load_run(cproject, parent))
+    assert pd["forks"][0]["this_run"] == "bh" and pd["forks"][0]["delivered"] is False

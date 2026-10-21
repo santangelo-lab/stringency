@@ -10,6 +10,7 @@ evidence row in summary:
 
 replicates:
   replicate 1: abundant (high)
+    judge: mock-model-1 via direct, isolation enforced
     supporting:
       summary[A].mean_value = 74.82
       summary[A].n_units = 3
@@ -18,12 +19,14 @@ replicates:
       none
     rationale: "mean 74.82"
   replicate 2: abstain
+    judge: mock-model-1 via direct, isolation enforced
     supporting:
       none
     contradicting:
       none
     rationale: "not sure"
   replicate 3: abundant (high)
+    judge: mock-model-1 via direct, isolation enforced
     supporting:
       summary[A].mean_value = 74.82
       summary[A].n_units = 3

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import typer
 
-from stringency.answers import file_answer, parse_cite
+from stringency.answers import file_answer, file_unanswerable, parse_cite
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError, Exit
@@ -26,9 +26,31 @@ def answer(
         "--cite",
         help="<artifact id>[:<row>[:<column>]]; repeatable; the cells the numbers come from",
     ),
-    text: str = typer.Option(..., "--text", help="a file holding the reply text, or - for stdin"),
+    text: str | None = typer.Option(
+        None, "--text", help="a file holding the reply text, or - for stdin"
+    ),
+    cannot: bool = typer.Option(
+        False, "--cannot", help="the question cannot be answered from the delivery (with --reason)"
+    ),
+    reason: str | None = typer.Option(None, "--reason", help="with --cannot: why, one sentence"),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    if cannot:
+        if text is not None or cites:
+            raise ConfigError("--cannot takes --reason only, no --text and no --cite")
+        project = Project.find()
+        rc = open_for_questions(project)
+        out = file_unanswerable(rc, question_id, reason or "")
+        write_open_delivery(rc)
+        refresh_if_present(project.root)
+        emit(
+            {**out, "run_id": rc.run_id},
+            as_json,
+            f"answer {out['answer_id']} recorded (unanswerable): {out['reason']}",
+        )
+        return
+    if text is None:
+        raise ConfigError("answer needs --text <file|-> (or --cannot --reason)")
     if text == "-":
         body = sys.stdin.read()
     else:

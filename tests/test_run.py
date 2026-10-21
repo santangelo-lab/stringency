@@ -699,3 +699,59 @@ def test_submit_deliver_delivers_when_the_last_ticket_completes_the_run(
     assert sj["status"] == "completed" and sj["next"]["kind"] == "completed"
     assert sj["delivery"]["path"].endswith(sj["run_id"]) and sj["delivery"]["files"]
     assert (Path(sj["delivery"]["path"]) / "summary.md").exists()
+
+
+def test_run_responses_answered_by_the_operator_are_recorded_as_such(
+    make_project: InitFn, tmp_path: Path
+) -> None:
+    """L72: a response whose `reported.agent` is the operator harness itself is filed under
+    `standard` and the invocation row says `via: operator`, `isolation: none`."""
+    answers = harvested_responses(make_project)
+    p, nx = dispatching_project(make_project)
+    doc = responses_doc(nx, answers)
+    doc["responses"][1]["reported"] = {**doc["responses"][1]["reported"], "agent": "Claude-Code "}
+    f = tmp_path / "responses.json"
+    f.write_text(json.dumps(doc))
+    env = {**MOCK_DISPATCH, "STRINGENCY_OPERATOR": "claude-code"}
+    r = cli(p, "run", "--responses", str(f), "--json", env=env)
+    assert r.exit_code == 0, r.output
+    rows = p.store.all(
+        "SELECT replicate, via, isolation, nonce_ok FROM invocations ORDER BY replicate"
+    )
+    assert [(x["replicate"], x["via"], x["isolation"]) for x in rows] == [
+        (1, "subagent", "as_reported"),
+        (2, "operator", "none"),
+        (3, "subagent", "as_reported"),
+    ]
+    assert all(x["nonce_ok"] for x in rows)
+    assert p.store.scalar("SELECT status FROM steps WHERE step_id='03_label'") == "completed"
+
+
+def test_run_responses_answered_by_the_operator_are_refused_under_strict(
+    make_project: InitFn, tmp_path: Path
+) -> None:
+    """L72: under `strict` the document is refused (exit 16) and no response file is written;
+    `--check` names the replicate as invalid for the same reason."""
+    answers = harvested_responses(make_project)
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine", profile="strict")
+    r = cli(p, "run", "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 20, r.output
+    nx = json.loads(r.output)
+    doc = responses_doc(nx, answers)
+    doc["responses"][0]["reported"] = {**doc["responses"][0]["reported"], "agent": "claude-code"}
+    f = tmp_path / "responses.json"
+    f.write_text(json.dumps(doc))
+    env = {**MOCK_DISPATCH, "STRINGENCY_OPERATOR": "claude-code"}
+    chk = cli(p, "run", "--responses", str(f), "--check", "--json", env=env)
+    assert chk.exit_code == 0, chk.output
+    res = json.loads(chk.output)
+    assert res["ok"] is False
+    assert "answered by the operator" in (res["replicates"][0]["error"] or "")
+    r = cli(p, "run", "--responses", str(f), env=env)
+    assert r.exit_code == 16, r.output
+    assert "answered by the operator itself" in (r.output + str(r.stderr))
+    assert not list(Path(nx["dispatch_dir"]).glob("resp_*.json"))
+    assert p.store.scalar("SELECT COUNT(*) FROM invocations") == 0
+    # without STRINGENCY_OPERATOR nothing is the operator: the same document files
+    r = cli(p, "run", "--responses", str(f), "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 0, r.output

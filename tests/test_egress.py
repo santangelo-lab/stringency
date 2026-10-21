@@ -86,6 +86,65 @@ def test_undeclared_network_module_counts_as_four(project: Project, tmp_path: Pa
     assert a.assessed_class == 4
 
 
+def _with_egress(project: Project, ref: str, **egress: object) -> Project:
+    """Rewrite one module's module.yml with an `egress` block and reload the project."""
+    import yaml
+
+    from stringency.project import Project as P
+
+    mod = project.modules.require(ref)
+    doc = yaml.safe_load((mod.path / "module.yml").read_text())
+    doc["egress"] = egress
+    (mod.path / "module.yml").write_text(yaml.safe_dump(doc))
+    return P(project.root)
+
+
+def test_declared_egress_class_stands(project: Project) -> None:
+    """L46: a module that declares class 1 and whose scripts reach the network is class 1,
+    basis declared, with the scan hits as evidence and the hosts as the destination."""
+    ref = "summarize-groups@0.1.1"
+    p = _with_egress(
+        project,
+        ref,
+        **{"class": 1, "hosts": ["ftp.ebi.ac.uk"], "sends": "a reference table is downloaded"},
+    )
+    hits = scan_text("import requests\n", ".py", "pre.py")
+    a = _assess(p, harness="mock", operator="none", scans={ref: hits})
+    row = next(c for c in a.components if c.key == f"module:{ref}")
+    assert (row.cls, row.basis, row.to, row.sends) == (
+        1,
+        "declared",
+        "ftp.ebi.ac.uk",
+        "a reference table is downloaded",
+    )
+    assert row.evidence == ("pre.py:1 requests",)
+    assert a.assessed_class == 1
+
+
+def test_declared_class_zero_with_a_network_reach_counts_as_four(project: Project) -> None:
+    ref = "summarize-groups@0.1.1"
+    p = _with_egress(project, ref, **{"class": 0})
+    hits = scan_text("import requests\n", ".py", "pre.py")
+    a = _assess(p, harness="mock", operator="none", scans={ref: hits})
+    row = next(c for c in a.components if c.key == f"module:{ref}")
+    assert row.cls == 4 and row.basis == "scanned, declared 0"
+    # and class 0 with no reach is no component at all
+    a = _assess(p, harness="mock", operator="none", scans={ref: []})
+    assert not [c for c in a.components if c.key == f"module:{ref}"]
+
+
+def test_declared_class_above_zero_needs_a_sends_sentence(project: Project) -> None:
+    from pydantic import ValidationError
+
+    from stringency.exit_codes import ConfigError
+    from stringency.modules import EgressDecl
+
+    with pytest.raises(ValidationError):
+        EgressDecl.model_validate({"class": 2})
+    with pytest.raises((ConfigError, ValidationError)):
+        _with_egress(project, "summarize-groups@0.1.1", **{"class": 5, "sends": "x"})
+
+
 # -- scan ------------------------------------------------------------------------------
 
 
@@ -191,12 +250,32 @@ def test_egress_predicates_must_fire_and_pass(project: Project, pid: str, phase:
     assert not spec.fn(_ctx_with(project, phase, None)).fired  # no assessment
 
 
-def test_lint_warns_on_a_module_that_reaches_the_network(project: Project) -> None:
+def test_lint_fails_a_module_that_reaches_the_network_undeclared(project: Project) -> None:
+    """L46: no `egress` block, or class 0, with a network reach is an error; a class above 0
+    with no reach is a warning; a matching declaration is clean."""
     from stringency.lint import LintReport, lint_module
 
-    mod = project.modules.require("summarize-groups@0.1.1")
+    ref = "summarize-groups@0.1.1"
+    mod = project.modules.require(ref)
     (mod.path / "fetch.py").write_text("import requests\n")
     report = LintReport()
     lint_module(mod, report, plugin=project.plugin, policy=project.policy)
+    assert not report.ok
+    assert any("reach the network but the module declares no egress" in e for e in report.errors)
+
+    p = _with_egress(project, ref, **{"class": 0})
+    report = LintReport()
+    lint_module(p.modules.require(ref), report, plugin=p.plugin, policy=p.policy)
+    assert any("declares egress class 0" in e for e in report.errors)
+
+    p = _with_egress(project, ref, **{"class": 1, "sends": "a table is downloaded"})
+    report = LintReport()
+    lint_module(p.modules.require(ref), report, plugin=p.plugin, policy=p.policy)
+    assert report.ok and not any("egress" in w for w in report.warnings)
+
+    (p.modules.require(ref).path / "fetch.py").unlink()
+    p = _with_egress(project, ref, **{"class": 1, "sends": "a table is downloaded"})
+    report = LintReport()
+    lint_module(p.modules.require(ref), report, plugin=p.plugin, policy=p.policy)
     assert report.ok
-    assert any("reach the network but the module declares no egress" in w for w in report.warnings)
+    assert any("no script matches the network scan" in w for w in report.warnings)

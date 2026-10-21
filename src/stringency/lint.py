@@ -113,14 +113,29 @@ def lint_module(
     for label, script in (("entry", module.entry_script), ("post", module.post_script)):
         if script is not None and not script.exists():
             report.error(where, f"{label} script {script.name} is missing")
-    # data egress (backlog L1): a warning until module.yml can declare egress
+    # data egress (backlog L1, L46): the scan against the declaration. Scripts that reach the
+    # network with no `egress` block, or under a declared class 0, fail; a class above 0 with
+    # nothing found is a warning (a library may connect on its own; the scan cannot see that).
     hits = scan_module(module.path)
+    decl = m.egress
     if hits:
         found = ", ".join(h.describe() for h in hits[:3]) + (" ..." if len(hits) > 3 else "")
+        if decl is None:
+            report.error(
+                where,
+                f"scripts reach the network but the module declares no egress ({found}); "
+                "declare `egress: {class, hosts, sends}` in module.yml",
+            )
+        elif decl.cls == 0:
+            report.error(
+                where,
+                f"scripts reach the network but module.yml declares egress class 0 ({found})",
+            )
+    elif decl is not None and decl.cls > 0:
         report.warn(
             where,
-            f"scripts reach the network but the module declares no egress ({found}); "
-            "the egress report counts it as class 4",
+            f"module.yml declares egress class {decl.cls} but no script matches the network scan; "
+            "the declaration stands",
         )
 
     # judgment modules

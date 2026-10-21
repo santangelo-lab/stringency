@@ -166,9 +166,14 @@ def judgments(rc: RunContext, cov: dict[str, Any]) -> list[str]:
     lines = []
     for j in cov["judgment"]:
         title = rc.pipeline.title(j["step"])
+        judges = ", ".join(
+            f"{x['model']} via {x['via']}, isolation {x['isolation']}" for x in j.get("judges", [])
+        )
         lines.append(
             f"- {title} (step {j['step']}): {_plural(j['items'], 'item')} judged by "
-            f"{_plural(j['replicates'], 'replicate')} in separate contexts; {_count(j['agreed'])} agreed, "
+            f"{_plural(j['replicates'], 'replicate')} in separate contexts"
+            + (f" ({judges})" if judges else "")
+            + f"; {_count(j['agreed'])} agreed, "
             f"{_count(j['self_uncertain'])} self-uncertain, {_count(j['run_disagreement'])} in disagreement"
             + (f", {_count(j['sign_off'])} held for sign-off" if j.get("sign_off") else "")
             + "; "
@@ -176,6 +181,25 @@ def judgments(rc: RunContext, cov: dict[str, Any]) -> list[str]:
             f"{_count(j['unresolved'])} unresolved."
         )
     return lines
+
+
+def forks(cov: dict[str, Any]) -> list[str]:
+    """The sweep this run belongs to (backlog L59): one line per forked parameter, from
+    `coverage_data`'s `forks`."""
+    out = []
+    for f in cov.get("forks") or []:
+        values = ", ".join(str(v) for v in f["values"])
+        mine = (
+            f"this run {f['this_run']}"
+            if f["this_run"] is not None
+            else "this run at its parent's value"
+        )
+        out.append(
+            f"- Forks of this project at {f['param']}: {_n(len(f['values']))} ({values}); {mine}"
+            + (", delivered" if f["delivered"] else "")
+            + "."
+        )
+    return out
 
 
 def what_you_received(rc: RunContext, files: list[dict[str, Any]]) -> list[str]:
@@ -219,6 +243,7 @@ def render_summary(rc: RunContext, cov: dict[str, Any], files: list[dict[str, An
         "",
         *judgments(rc, cov),
         "",
+        *(["## Forks", "", *forks(cov), ""] if cov.get("forks") else []),
         "## What you received",
         "",
         *what_you_received(rc, files),

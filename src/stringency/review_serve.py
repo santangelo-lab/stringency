@@ -332,6 +332,7 @@ HOLD_HTML = _ENV.from_string(
 <h2>The reviewers</h2>
 {% for r in reviewers %}
 <h3>Replicate {{ r.replicate }}{% if r.item is not none and not item_id %}, item {{ r.item }}{% endif %}: {{ r.call }}</h3>
+{% if r.judge %}<p class="note">judge: {{ r.judge }}</p>{% endif %}
 <div class="reason">{{ r.rationale or "no rationale recorded" }}</div>
 {% if r.supporting or r.contradicting %}
 <details><summary>cells cited ({{ r.supporting|length }} supporting, {{ r.contradicting|length }} contradicting)</summary>

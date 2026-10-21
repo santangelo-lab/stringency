@@ -82,6 +82,18 @@ class ReplicateView:
     contradicting: list[CitedCell]
     rationale: str
     item: str | None = None
+    # who answered (backlog L70): from the replicate's latest invocation; None when none is stored
+    model: str | None = None
+    via: str | None = None
+    isolation: str | None = None
+    harness_kind: str | None = None
+
+    @property
+    def judge(self) -> str | None:
+        """One line naming the judge: `<model> via <via>, isolation <isolation>`."""
+        if self.model is None:
+            return None
+        return f"{self.model} via {self.via}, isolation {self.isolation}"
 
     @property
     def call(self) -> str:
@@ -98,6 +110,11 @@ class ReplicateView:
             "contradicting": [c.to_json() for c in self.contradicting],
             "rationale": self.rationale,
             "item": self.item,
+            "model": self.model,
+            "via": self.via,
+            "isolation": self.isolation,
+            "harness_kind": self.harness_kind,
+            "judge": self.judge,
         }
 
 
@@ -212,6 +229,13 @@ def _item_judgments(project: Project, h: Any, attempt: int | None) -> dict[tuple
 
 
 def _replicate_view(project: Project, r: Any, tables: dict[str, EvidenceTable]) -> ReplicateView:
+    """Reads: messages (the rationale) and invocations (the replicate's latest call on the
+    step, for who answered; backlog L70)."""
+    inv = project.store.one(
+        "SELECT model_resolved, via, isolation, harness_kind FROM invocations WHERE run_id=? AND "
+        "step_id=? AND replicate=? ORDER BY rowid DESC LIMIT 1",
+        (r["run_id"], r["step_id"], r["replicate"]),
+    )
     return ReplicateView(
         replicate=r["replicate"],
         label=r["label"],
@@ -222,11 +246,16 @@ def _replicate_view(project: Project, r: Any, tables: dict[str, EvidenceTable]) 
         contradicting=[resolve_ref(tables, x) for x in json.loads(r["contradicting_json"])],
         rationale=(project.store.message(r["rationale_ref"]) or "") if r["rationale_ref"] else "",
         item=str(r["item_id"]) if r["item_id"] is not None else None,
+        model=inv["model_resolved"] if inv else None,
+        via=inv["via"] if inv else None,
+        isolation=inv["isolation"] if inv else None,
+        harness_kind=inv["harness_kind"] if inv else None,
     )
 
 
 def _replicate_lines(r: ReplicateView, indent: str) -> list[str]:
-    lines = [f"{indent}supporting:"]
+    lines = [f"{indent}judge: {r.judge}"] if r.judge else []
+    lines.append(f"{indent}supporting:")
     lines += [f"{indent}{INDENT}{c.line()}" for c in r.supporting] or [f"{indent}{INDENT}none"]
     lines.append(f"{indent}contradicting:")
     lines += [f"{indent}{INDENT}{c.line()}" for c in r.contradicting] or [f"{indent}{INDENT}none"]

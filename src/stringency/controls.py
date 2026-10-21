@@ -534,6 +534,21 @@ def _expect_count(
     return ok, {"count": n, "rows": len(rows)}
 
 
+def judge_of(store: Any, run_id: str) -> dict[str, str] | None:
+    """The harness kind and resolved model of a run's judgment invocations, each as the sorted
+    distinct values joined by `,` (one value in the usual case). None when the run has no
+    invocation. Reads: invocations."""
+    rows = store.all(
+        "SELECT DISTINCT harness_kind, model_resolved FROM invocations WHERE run_id=?", (run_id,)
+    )
+    if not rows:
+        return None
+    return {
+        "harness_kind": ",".join(sorted({str(r["harness_kind"]) for r in rows})),
+        "model_resolved": ",".join(sorted({str(r["model_resolved"]) for r in rows})),
+    }
+
+
 def current_for(store: Any, module: Module, env_digest: str | None) -> dict[str, Any]:
     """Whether a tool's last passing control still speaks for it (open_mode_plan.md 2.5):
     `{status: current | stale | failed | none, last_passing}`. `current` when a passing `controls_runs`
@@ -562,6 +577,8 @@ def current_for(store: Any, module: Module, env_digest: str | None) -> dict[str,
             "kind": row["kind"],
             "ts": row["ts"],
             "env_digest": ran_under,
+            "harness_kind": metrics.get("harness_kind"),
+            "model_resolved": metrics.get("model_resolved"),
         },
     }
 
@@ -684,6 +701,12 @@ def run_control(
     # the environment the control ran under, so `current_for` can tell a stale pass from a
     # current one (open_mode_plan.md 2.5); additive in the metrics, no schema change
     metrics["env_digest"] = rc.env_digests.get(module.manifest.env)
+    # the judge that answered (backlog L3): a passing control speaks for one harness and model;
+    # additive in the metrics, no schema change. Absent for a deterministic tool's control.
+    judge = judge_of(project.store, rc.run_id)
+    if judge is not None:
+        metrics["harness_kind"] = judge["harness_kind"]
+        metrics["model_resolved"] = judge["model_resolved"]
     prev = project.store.one(
         "SELECT metrics_json FROM controls_runs WHERE module=? AND module_version=? AND control_name=? AND passed=1 ORDER BY ts DESC, rowid DESC LIMIT 1",
         (module.manifest.name, module.manifest.version, spec.name),

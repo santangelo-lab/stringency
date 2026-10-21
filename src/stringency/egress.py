@@ -107,7 +107,7 @@ class Component:
     key: str
     label: str
     cls: int
-    basis: str  # by construction | as reported | declared | scanned, undeclared
+    basis: str  # by construction | by enforcement | as reported | declared | scanned, undeclared | scanned, declared 0
     set_by: str  # project setting | method
     to: str
     sends: str
@@ -354,6 +354,30 @@ def assess(
     for ref, ss in by_module.items():
         mod = modules[ss[0].module]
         hits = list(scans[ref]) if scans is not None and ref in scans else scan_module(mod.path)
+        decl = mod.manifest.egress
+        if decl is not None and (decl.cls > 0 or hits):
+            # module.yml declares its egress (backlog L46): the declared class stands, except
+            # that scripts reaching the network under a declared class 0 are counted as 4,
+            # since the declaration and the scan disagree (lint fails that module)
+            disagree = decl.cls == 0 and bool(hits)
+            comps.append(
+                Component(
+                    key=f"module:{ref}",
+                    label=f"module {ref}",
+                    cls=4 if disagree else decl.cls,
+                    basis="scanned, declared 0" if disagree else "declared",
+                    set_by="method",
+                    to=", ".join(decl.hosts) if decl.hosts else "not named",
+                    sends="the module's scripts reach the network and module.yml declares class 0, "
+                    "so it is counted as class 4"
+                    if disagree
+                    else decl.sends,
+                    steps=tuple(_label(s) for s in ss),
+                    conditional=_cond(ss),
+                    evidence=tuple(h.describe() for h in hits),
+                )
+            )
+            continue
         if not hits:
             continue
         comps.append(

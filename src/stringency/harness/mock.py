@@ -111,7 +111,9 @@ class MockHarness:
     kind = "mock"
     version = __version__
 
-    def __init__(self, fixture: Path, family: str | None = None) -> None:
+    def __init__(
+        self, fixture: Path, family: str | None = None, operator: str | None = None
+    ) -> None:
         data = yaml.safe_load(fixture.read_text()) or {}
         if data.get("mock") != 1:
             raise ConfigError(f"{fixture}: mock fixture must declare `mock: 1`")
@@ -120,6 +122,7 @@ class MockHarness:
         fam = family or os.environ.get(FAMILY_ENV, "direct")
         self.family: Family = "dispatch" if fam == "dispatch" else "direct"
         self.calls = 0
+        self.operator = operator  # as the subagent adapter: a self-answered response is seen
 
     # -- answering ----------------------------------------------------------------------
 
@@ -238,7 +241,7 @@ class MockHarness:
                             indent=2,
                         )
                     )
-            inv = read_response(r, dispatch_dir)
+            inv = read_response(r, dispatch_dir, self.operator)
             inv.harness_kind = self.kind
             out.append(inv)
         return out

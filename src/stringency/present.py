@@ -753,7 +753,29 @@ def _judgments_section(
         rows.append(d)
     if not rows:
         return None
-    preferred = ["item_id", "item", "replicate", "label", "confidence", "abstain", "rationale"]
+    # who answered each replicate (backlog L70), from its latest invocation on the step
+    judges = {
+        int(i["replicate"]): i
+        for i in project.store.all(
+            "SELECT replicate, model_resolved, via, isolation FROM invocations WHERE run_id=? AND "
+            "step_id=? ORDER BY rowid",
+            (run_id, step_id),
+        )
+    }
+    for r in rows:
+        j = judges.get(int(r["replicate"])) if str(r.get("replicate", "")).isdigit() else None
+        if j is not None:
+            r["judge"] = f"{j['model_resolved']} via {j['via']}, isolation {j['isolation']}"
+    preferred = [
+        "item_id",
+        "item",
+        "replicate",
+        "judge",
+        "label",
+        "confidence",
+        "abstain",
+        "rationale",
+    ]
     cols = [c for c in preferred if any(c in r for r in rows)]
     title = "The replicates' judgments" + (f" for {item_id}" if item_id is not None else "")
     return {"title": title, "kind": "table", **_table(rows, cols, {})}

@@ -33,7 +33,7 @@ Untested means the engine ran code I wrote in this session and recorded it, but 
 
 ## The record
 
-- Questions: one in the person's own words, one a path the assistant proposed.
+- Questions: one in the person's own words, one a path the assistant proposed; two answered.
 - compare-groups ran one time on one set of inputs with one distinct parameter set; one of them is cited by a finding (steps 01_compare-groups).
 - exec ran one time on one set of inputs with one distinct parameter set; none of them is cited by a finding (steps 02_exec).
 - Scripts written in the session: 02_exec.

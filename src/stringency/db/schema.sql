@@ -215,8 +215,8 @@ CREATE TABLE IF NOT EXISTS invocations (                -- append-only
     model_resolved    TEXT,
     harness_kind      TEXT NOT NULL,
     harness_version   TEXT,
-    via               TEXT NOT NULL,                     -- direct | subagent
-    isolation         TEXT NOT NULL,                     -- enforced | as_reported
+    via               TEXT NOT NULL,                     -- direct | subagent | operator (the operator answered its own request, L72)
+    isolation         TEXT NOT NULL,                     -- enforced | as_reported | none (via operator)
     nonce             TEXT,
     nonce_ok          INTEGER,
     request_path      TEXT,
