@@ -1,4 +1,4 @@
-"""Open mode S1, binding (spec/plans/open_mode_plan.md 2.1, 2.3): `mode: open` in the config,
+"""Open mode S1, binding (spec/archive/open_mode_plan.md 2.1, 2.3): `mode: open` in the config,
 `init --mode open --from-delivery` deriving the declarations from a delivery, the confirm hold
 whose echo is the switch paragraph, `tools list --context` on a delivered pipeline project and
 on an open project, and the verbs open mode refuses."""

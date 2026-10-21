@@ -17,9 +17,9 @@ DECISIONS-level or below. Section 7 lists the decisions the owner takes before t
 
 **Status 2026-10-14.** Released and running. `v0.2.8` (C1, C2, C3 and the C5 first cut), `v0.2.9` (the restyle), `v0.2.10` (figures and the elbow chart at the hold), then the fixes the first console runs asked for, `v0.2.11` to `v0.2.16` (backlog L14 to L23: an operator always waits at a hold, the stale mark asks whether the engine is alive, every reviewer at a hold, the sign-off hold, the running step's progress line, a hold page hashes no input). The shared install `0.2.16-sc0.5.0` runs `stringency-console.service` on loopback 8765 with a drop-in adding `v2_rosc_controls` as a second root; lung, gut and spleen (Lyons v2) were driven through it, 2026-10-08 to 2026-10-12. What remains is the block "What is open" below; sections 1 to 7 are the design as decided on 2026-10-07, section 8 the pick-up guide. The build's history is in `notes/2026-10-07-2300-console-build.md` and `notes/2026-10-08-1311-lung-gut-and-v0215.md`.
 
-## What is open (2026-10-14)
+## What is open (2026-10-14; rows filed 2026-10-21)
 
-Second cut, unscheduled until the owner asks for it (roadmap-2026-10 Lane H), in the order decided:
+Second cut, unscheduled until the owner asks for it, in the order decided. The four items are `PLAN.md` rows L6, L74, L75 and L76; the open project's questions page is L81. This file is the reasoning, not a work list.
 
 1. Batch cards (backlog L6, section 3.7): identical parameter holds across sibling projects as
    one card, recorded through `review_batch` with `reason_code: batch`; `review --holds` extended

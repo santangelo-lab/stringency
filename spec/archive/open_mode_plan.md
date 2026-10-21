@@ -1,3 +1,5 @@
+Archived 2026-10-21: built (engine 0.2.22 to 0.2.27: S1 to S7, O1, O2 as the owner's drives, O4 as the Xenium method's tools). O3, O5 and O6 are `spec/plans/PLAN.md` rows L81, L77 and L78. The code and its tests cite this file's sections by number. Not an instruction to a session.
+
 # Open mode: interactive downstream analysis on a delivered dataset
 
 **Status 2026-10-16, evening.** Approved by the owner 2026-10-16 (plan mode, this engine

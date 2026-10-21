@@ -6,9 +6,9 @@ session by writing a note there (convention in `notes/README.md`) and updating t
 Read `spec/stringency-design.md` first; it is the spec. `spec/README.md` says what every file under
 `spec/` is. The frozen contracts are `spec/module-contract.md`, `spec/predicate-contract.md`, and
 `spec/trace-schema.md`; `spec/commandments.md` is the source of the constraints; `spec/DECISIONS.md`
-and `spec/DEVIATIONS.md` are the ledgers. Current plans live in `spec/plans/` (start with
-`roadmap-2026-10.md`; `backlog.md` holds the open items); finished or superseded plans are in
-`spec/archive/` and are history, not instructions. `integrations/claude-science/README.md` is a
+and `spec/DEVIATIONS.md` are the ledgers. The one work list is `spec/plans/PLAN.md`; the
+other files under `spec/plans/` are the reasoning behind its rows; finished or superseded plans
+are in `spec/archive/` and are history, not instructions. `integrations/claude-science/README.md` is a
 working note.
 
 ## Rules

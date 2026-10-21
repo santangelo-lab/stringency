@@ -1,4 +1,4 @@
-"""Open mode S3, `exec` (spec/plans/open_mode_plan.md 2.4): a session script runs as an
+"""Open mode S3, `exec` (spec/archive/open_mode_plan.md 2.4): a session script runs as an
 on-demand step under the executor with its inputs read-only, its text in the trace, a seed
 recorded, a timeout from the policy, and the network outcome recorded; the local executor is
 refused without --allow-local; `exec.script_drift` and `param.agent_proposed` never fire."""

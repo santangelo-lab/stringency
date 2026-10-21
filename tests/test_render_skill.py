@@ -1,5 +1,5 @@
 """The analysis-skill renderer (Track 1d): the example renders; the nine body rules of
-`spec/plans/ux-two-audiences.md` section 4 and the hold protocol of the operator skill's section 6
+`spec/ux-two-audiences.md` section 4 and the hold protocol of the operator skill's section 6
 appear in the rendered skill verbatim; `--check` catches the drift it is meant to catch."""
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 CS = ROOT / "integrations" / "claude-science"
 EXAMPLE = ROOT / "templates" / "method-repo" / "skills" / "example.analyze.yml"
-UX_NOTE = ROOT / "spec" / "plans" / "ux-two-audiences.md"
+UX_NOTE = ROOT / "spec" / "ux-two-audiences.md"
 OPERATOR = CS / "stringency-operator" / "SKILL.md"
 TOY_METHOD = ROOT / "plugins" / "stringency-toy" / "method"
 

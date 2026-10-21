@@ -43,7 +43,7 @@ A human sets the scientific goal and directs an AI operator, which runs the anal
 
 Results are delivered with an auditable history: what ran, what was checked, what the agents judged, and what a person decided. Versioned methods, hashed inputs, recorded environments, and explicit review decisions support reproducibility and make limitations visible.
 
-The architecture is specified in `spec/stringency-design.md`; `spec/README.md` guides readers through the supporting documents. The motivation and twelve design constraints are in `spec/commandments.md`, implementation decisions in `spec/DECISIONS.md`, and contract deviations in `spec/DEVIATIONS.md`. Current plans live in `spec/plans/`.
+The architecture is specified in `spec/stringency-design.md`; `spec/README.md` guides readers through the supporting documents. The motivation and twelve design constraints are in `spec/commandments.md`, implementation decisions in `spec/DECISIONS.md`, and contract deviations in `spec/DEVIATIONS.md`. The one work list is `spec/plans/PLAN.md`; the other files under `spec/plans/` are the reasoning behind its rows.
 
 ### More Climbing Analogies
 

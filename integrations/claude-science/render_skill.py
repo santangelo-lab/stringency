@@ -5,7 +5,7 @@
                                     [--pipeline <name>] [--check] [--write] [--out <path>]
 
 The analysis skill is the person-facing entry point for one pipeline (design 10.4, roadmap Track
-1d, `spec/plans/ux-two-audiences.md` section 4). Its source is the method's
+1d, `spec/ux-two-audiences.md` section 4). Its source is the method's
 `skills/<pipeline>.analyze.yml`; the template is `templates/analyze-skill.md.j2` beside this
 script; the output is `skills/stringency-analyze-<name>/SKILL.md` in the method repository,
 committed there and versioned with the method.

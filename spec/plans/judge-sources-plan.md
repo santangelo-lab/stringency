@@ -6,7 +6,7 @@ specification), and one evaluation. Items marked *design* change design text and
 owner's approval; the rest are DECISIONS-level. Section 6 lists the decisions the owner is asked
 to make; section 7 the order.
 
-**Status 2026-10-14.** Proposed (Lane G), not started. S1 (the `openai-compatible` adapter) and S2 (the Ollama evaluation) move to Lane J, harness flexibility (`roadmap-2026-10.md`, W7, waiting on the owner's go), where a `command` adapter (the engine runs a configured command per replicate: `codex exec`, headless Claude Code) joins them; the panel specification and the seven decisions of section 6 stay here. S2(b)'s answer key exists: `qc2_outliers_all` run `01M492CYVV7JBT69W85MXZY8AF` (2026-10-06), the owner's verdicts on the same six punches as September.
+**Status 2026-10-21.** Proposed, not started. The work is `PLAN.md` rows L34 (S1, S2 and the `command` adapter, with the Codex harness; waiting on the owner's go), L70 (S3), L71 (S4), L72 (S5) and L73 (S6); the decisions of section 6 are in its waiting table (decision 7 answered: the engine side). This note is the reasoning, not a work list. S2(b)'s answer key exists: `qc2_outliers_all` run `01M492CYVV7JBT69W85MXZY8AF` (2026-10-06), the owner's verdicts on the same six punches as September.
 
 ## 1. The question
 

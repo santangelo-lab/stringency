@@ -8,7 +8,7 @@ This document specifies every component of the `stringency` engine to the level 
 
 It defers: open and staged modes (schema reservations only), application 2, the openai-compatible harness, the re-audit path, and a Nextflow executor. Section 17 lists each with the trigger that would pull it forward.
 
-Reading order for Claude Code: this document, then the current plan in `plans/roadmap-2026-10.md` (the Phase A build plan is in `archive/`). The implementation plan is background. The Commandments and the git note are the source of the constraints and should be read once.
+Reading order for Claude Code: this document, then the current plan in `plans/PLAN.md` (the Phase A build plan is in `archive/`). The implementation plan is background. The Commandments and the git note are the source of the constraints and should be read once.
 
 ## 1. Objects
 
@@ -81,7 +81,7 @@ policy: method/policy.yml          # 6.4; digest recorded on every run
 splits: null                       # reserved for open mode (17)
 ```
 
-Bound means `run` reads these and takes no arguments that could change them. Changing any of them requires a new project, or a `fork` for the parameters forking is allowed to change (2.6). `init` refuses `mode: open` with `profile: strict`. `mode: open` is accepted (open mode, `spec/plans/open_mode_plan.md`, 2026-10-16): `pipeline` is null and `domain` names the plugin; the project's tools are the method's modules whose `modes` list `open`; `splits` stays reserved.
+Bound means `run` reads these and takes no arguments that could change them. Changing any of them requires a new project, or a `fork` for the parameters forking is allowed to change (2.6). `init` refuses `mode: open` with `profile: strict`. `mode: open` is accepted (open mode, `spec/archive/open_mode_plan.md`, 2026-10-16): `pipeline` is null and `domain` names the plugin; the project's tools are the method's modules whose `modes` list `open`; `splits` stays reserved.
 
 ### 2.3 Inputs manifest
 
@@ -685,7 +685,7 @@ The reviewer is the OS user running `review`, checked against `roles.reviewer` (
 
 `via: tty` when `review` runs attached to a terminal. `via: relayed` when it runs non-interactively with `--attest`, which is the path a harness skill uses after presenting the hold to the person in chat and receiving an explicit yes. Relayed rows record the operator harness and session reference.
 
-A third value, `web`, means the verdict was entered through a form served by `stringency review --serve`, a process the reviewer started under their own account, protected by a per-start token and reachable on loopback or through a tunnel. It proves which account's process recorded the verdict, as `tty` does, and nothing more: an agent with shell access as that user could start the server, read the token, and post. That is the boundary `tty` rests on as well, which is why profiles treat `web` like `tty`, strict included, and why the trace records `via` at all. The speed bump is the account, not the form. Relayed reviews must carry the operator's session reference; `--attest` without one is refused. (Amendment approved 2026-09-15; `spec/plans/ux-two-audiences.md` section 8.)
+A third value, `web`, means the verdict was entered through a form served by `stringency review --serve`, a process the reviewer started under their own account, protected by a per-start token and reachable on loopback or through a tunnel. It proves which account's process recorded the verdict, as `tty` does, and nothing more: an agent with shell access as that user could start the server, read the token, and post. That is the boundary `tty` rests on as well, which is why profiles treat `web` like `tty`, strict included, and why the trace records `via` at all. The speed bump is the account, not the form. Relayed reviews must carry the operator's session reference; `--attest` without one is refused. (Amendment approved 2026-09-15; `spec/ux-two-audiences.md` section 8.)
 
 Profiles with `relayed_review: false` (strict by default) refuse `--attest`; manuscript-bound sign-offs happen at a terminal. Standard and exploratory allow relayed verdicts and mark them visibly, which is the honest rendering of "a person said yes in the chat." This is a speed bump, not a cryptographic guarantee: an agent with shell access as the reviewer's user could fabricate an attestation. The trace makes every relayed verdict findable, and the skill instructions forbid running `review` without a confirmation in the conversation. The design says this plainly rather than implying a stronger property.
 
@@ -1261,7 +1261,7 @@ Everything in the eval column is either a control, a rate computed from the trac
 
 | Item | Reserved now | Trigger to build |
 |---|---|---|
-| open mode | built 2026-10-16 (`spec/plans/open_mode_plan.md`, phase 1: tools, `exec`, answers with labels, deliver); `budgets` and `splits` stay reserved | phase 2 (judgment tools on demand, budgets, structured claims, the console's questions page, the promotion loop) when the first real open project has run |
+| open mode | built 2026-10-16 (`spec/archive/open_mode_plan.md`, phase 1: tools, `exec`, answers with labels, deliver); `budgets` and `splits` stay reserved | phase 2 (judgment tools on demand, budgets, structured claims, the console's questions page, the promotion loop) when the first real open project has run |
 | staged mode | `mode` field, `splits` | someone wants a confirmatory claim from an open project (backlog H5) |
 | free-text, ungated steps | nothing | open mode |
 | `openai-compatible` adapter | harness protocol | the Qwen3 evaluation |

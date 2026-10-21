@@ -1,3 +1,5 @@
+Archived 2026-10-21: superseded by `spec/plans/PLAN.md`, the one work list; the lanes A to T and their history to 2026-10-20 are inside, and the "Needs the owner" amendment texts are still the texts to read. Not an instruction to a session.
+
 # stringency: roadmap after the first full method (2026-10-14)
 
 Working note, not the spec. Successor to `spec/archive/roadmap-2026-09.md` (approved 2026-09-14,

@@ -1,4 +1,4 @@
-"""Open mode, the report (spec/plans/open_mode_plan.md 2.7 and section 10, 2026-10-19): every
+"""Open mode, the report (spec/archive/open_mode_plan.md 2.7 and section 10, 2026-10-19): every
 admissible answer lands in `deliver/<run>/` as it is filed, with `index.json` (`answers`, per-file
 `provenance`, `report`), the deliver gate's verdicts recorded, a `deliveries` row only when the
 content changed; `finding` marks and unmarks (append-only), and `report.md` (golden) leads with

@@ -1,4 +1,4 @@
-"""Open mode S7: the whole chain on the toy through the CLI (spec/plans/open_mode_plan.md 7):
+"""Open mode S7: the whole chain on the toy through the CLI (spec/archive/open_mode_plan.md 7):
 a pipeline delivers; tools are listed; the open project is bound from the delivery and the
 switch accepted; a question is asked and answered with a tool (its controls run before its first
 use), then with a script, then with a script on the upstream pipeline's own input; an answer is

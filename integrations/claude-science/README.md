@@ -44,7 +44,7 @@ message in `publish-skills.md` ("For a person") into a session with the workstat
 host; the session downloads the current texts from `<prefix>/current/skills/` on the host and
 publishes them. Republish after an engine release or a method tag.
 
-Session test 3.4 of `spec/plans/ux-two-audiences.md`, measured 2026-09-15: delegate
+Session test 3.4 of `spec/ux-two-audiences.md`, measured 2026-09-15: delegate
 downloads of request files and the operator's downloads of delivered files raise one card each
 even inside a configured data root (7 of 17 cards on the toy-engine drive). Answered
 2026-09-23 by the owner in the app: the

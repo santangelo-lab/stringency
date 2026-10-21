@@ -1,4 +1,4 @@
-"""Open mode S4, controls for deterministic tools (spec/plans/open_mode_plan.md 2.6): a positive
+"""Open mode S4, controls for deterministic tools (spec/archive/open_mode_plan.md 2.6): a positive
 control with `expect.equals` against a truth table, a negative control with `expect.count`, the
 explicit `expect.completed`, a tool's control run as a one-step synthetic pipeline from a
 pipeline project and from an open project, a perturbed truth failing and regressing,

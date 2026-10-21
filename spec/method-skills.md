@@ -116,7 +116,7 @@ are per step and show on the project page once the step has produced its outputs
 | `decisions` | optional; the decision points a person settles, each `{step, param, how, ask, evidence, after}`. `how: declared`: asked before the echo-back and written to `objective.yml` `params:` (engine 0.2.18), never proposed. `how: proposed`: the operator proposes it after the step `after` has run, from the `evidence` named (sources as in the delivery skill), and the person approves it at the hold; the rendered skill lists them and carries the operator skill's section 9 verbatim (2026-10-14, backlog L32). `--check` requires the parameter to be a decision point of the step's module or a parameter the pipeline declares |
 
 What the template supplies and the source must not: the two-audiences preamble, the nine body
-rules of `spec/plans/ux-two-audiences.md` section 4, the hold protocol (section 5.1 there, section
+rules of `spec/ux-two-audiences.md` section 4, the hold protocol (section 5.1 there, section
 6 of the operator skill) and the decision-point text (section 9 of the operator skill), the two
 kept identical by `tests/test_render_skill.py`, the walk-through
 (engine and identity; the asks; declare, echo-back, yes, `init`, confirm hold; run and `plain`;
@@ -184,7 +184,7 @@ lists of `{text, expect}` with `expect` one of `tool:<name>`, `exec`, `cannot`, 
 
 ## 6. What is measured
 
-Each run through an analysis skill gives one row in `spec/plans/backlog.md` (Measurements):
+Each run through an analysis skill gives one row in `spec/plans/measurements.md` (Measurements):
 approval cards by kind, the person's turns to result, wall-clock to the first delivered file,
 unrequested commands or ids shown (target zero), holds and how each was resolved (`via`), and
 misreports against the trace (target zero). The acceptance test for a skill is a run by someone
@@ -200,4 +200,4 @@ other than its author.
 | method-repo template | `templates/method-repo/skills/README.md`, `skills/example.analyze.yml` |
 | first instance | `stringency-toy-method` `v0.1.4`, `skills/toy-engine.yml`, `toy-engine.analyze.yml`, `stringency-analyze-toy-compare/SKILL.md`, `toy-engine.phrasings.yml` |
 | design | `stringency-design.md` 10.4 (two kinds of skill), 14.4 (delivery skill and the reading verbs) |
-| plan | `plans/ux-two-audiences.md` sections 4, 5.1, 9 |
+| plan | `ux-two-audiences.md` sections 4, 5.1, 9 |

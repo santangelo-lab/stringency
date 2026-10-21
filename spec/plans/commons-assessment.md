@@ -8,9 +8,9 @@ what is worth taking and where it lands, and record what is not. Items marked *d
 design text and need the owner; the rest are DECISIONS-level or skill-level. Backlog rows L35 to
 L38 point here.
 
-**Status 2026-10-16.** Assessed; no integration lane. Four borrowings recorded as backlog rows
-(L35 to L38), one proposal attached to the open G2 row, and a list of smaller practices with no
-row. Nothing built.
+**Status 2026-10-16.** Assessed; no integration lane. Four borrowings recorded as `PLAN.md`
+rows (L35 to L38), one proposal attached to the G2 row (since built as `exec`, 0.2.22), and a
+list of smaller practices with no row. Nothing of the four built.
 
 ## 1. What commons is
 

@@ -1,4 +1,4 @@
-"""Open mode S5, answers and labels (spec/plans/open_mode_plan.md 2.5): `answer` files the
+"""Open mode S5, answers and labels (spec/archive/open_mode_plan.md 2.5): `answer` files the
 reply against cited cells; a wrong numeral is blocked (exit 12) and kept; a correct one is
 admissible and `trusted` when its tool's control is current and the environment verified;
 an answer citing an exec table is `untested`; a missing id and an authored label block; the

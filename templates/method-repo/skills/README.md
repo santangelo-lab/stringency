@@ -38,7 +38,7 @@ without titles: the skills speak in titles, so title every step.
 | `defaults_to_say` | plugin default key to the lay phrase for it; the skill reads the value from `plugins list --json` and says it aloud before the echo-back |
 
 `example.analyze.yml` beside this file has the shape. The rendered skill carries the nine body
-rules and the hold protocol of `spec/plans/ux-two-audiences.md` sections 4 and 5.1 verbatim;
+rules and the hold protocol of `spec/ux-two-audiences.md` sections 4 and 5.1 verbatim;
 the template supplies them, not this file.
 
 ## `<pipeline>.phrasings.yml`

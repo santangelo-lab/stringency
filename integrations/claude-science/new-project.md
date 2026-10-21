@@ -80,7 +80,7 @@ decision to you the same way.
 
 ### What to expect
 
-The measurement table in `spec/plans/backlog.md` has one row per measured run: the toy took 25
+The measurement table in `spec/plans/measurements.md` has one row per measured run: the toy took 25
 authorization points on 2026-09-08 and 7 turns in 15 minutes through its analysis skill on
 2026-09-23 under a project-scoped command grant; the pilot study's QC chain of 2026-10-06 ran
 eleven projects with 31 holds in under three hours.

@@ -1,3 +1,5 @@
+Archived 2026-10-21: dormant since 2026-09-23 by the owner's decision; reopen from here on the owner's word (`spec/plans/PLAN.md`, "Method and plugin"). Not an instruction to a session.
+
 # Bulk RNA-seq: plugin and method plan
 
 Working note, not the spec. Roadmap Track 2 (`spec/archive/roadmap-2026-09.md`; Lane B in `spec/plans/roadmap-2026-10.md`). Two new repositories:

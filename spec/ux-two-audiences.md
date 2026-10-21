@@ -1,10 +1,10 @@
 # Two audiences: the analyst and the operator
 
-Working note, not the spec. Roadmap Track 1 (`spec/archive/roadmap-2026-09.md`; Lane E in `spec/plans/roadmap-2026-10.md`). Proposes changes to design
+Working note, not the spec. Roadmap Track 1 (`spec/archive/roadmap-2026-09.md`; Lane E in `spec/archive/roadmap-2026-10.md`). Proposes changes to design
 7.5, 10.4, 12.1, 14.1, and 17; the amendment texts are in section 8 and need the owner's approval
 before build. Everything else here is DECISIONS-level or skill text.
 
-**Status 2026-10-14.** Track 1 built in full (1a to 1h). Lane E's remainder (the template fixes, the toy run by someone other than the owner, the measurement rows) is superseded by `roadmap-2026-10.md` W5 and W6: the first real analysis skill is `stringency-analyze-xenium-upstream`, and its acceptance run by a non-developer is the measurement this note asked for. Kept as the record of Track 1's reasoning; sections 4 and 5.1 remain the rules the skills follow.
+**Status 2026-10-21.** Moved from `plans/` to `spec/`: sections 4 and 5.1 are rules the skills follow (`tests/test_render_skill.py` reads them against the template), not a plan; the rest is the record of Track 1. Earlier status: Track 1 built in full (1a to 1h). Lane E's remainder (the template fixes, the toy run by someone other than the owner, the measurement rows) is superseded by `roadmap-2026-10.md` W5 and W6: the first real analysis skill is `stringency-analyze-xenium-upstream`, and its acceptance run by a non-developer is the measurement this note asked for. Kept as the record of Track 1's reasoning; sections 4 and 5.1 remain the rules the skills follow.
 
 ## 1. The problem
 
@@ -97,7 +97,7 @@ intent names the project by directory name and the step by title, never a verb, 
 2. Standing grants: does the card for `call_command` offer an "always allow" scope (provider,
    prefix, session); if so, grant `stringency` commands and re-count.
 
-Record both in `integrations/claude-science/README.md` and `spec/plans/backlog.md` (measurements).
+Record both in `integrations/claude-science/README.md` and `spec/plans/measurements.md`.
 
 ### 3.5 Card estimate, all-engine five-step pipeline with one dispatch
 
@@ -305,7 +305,7 @@ skill template and the toy instance; 5. `summary.md` and the review page after a
 parallel; 6. PROTSEQ shared deployment and onboarding; 7. the toy re-run through the analysis
 skill by someone other than the owner.
 
-Measure on the toy before and after each step, one row per run in `spec/plans/backlog.md` (measurements):
+Measure on the toy before and after each step, one row per run in `spec/plans/measurements.md`:
 approval cards; the person's turns from first message to delivered result; wall-clock to first
 delivered file; unrequested commands, JSON, exit codes, or ids shown (target zero); holds and how
 each was resolved; operator misreports against the trace (target zero). Baseline: 26 cards,

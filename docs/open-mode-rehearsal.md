@@ -1,13 +1,13 @@
 # Open mode: the toy test drive
 
 The owner's test drive of open mode with an agent operating and the owner as the person, on the
-toy, before `open-mode` merges (`spec/plans/open_mode_plan.md` O2). Everything the agent needs is
+toy, before `open-mode` merges (`spec/archive/open_mode_plan.md` O2). Everything the agent needs is
 in place on the workstation as of 2026-10-19; the owner's part is the four steps of section 2
 and then the session of section 3. The by-hand form, for seeing the mechanics without an agent,
 is the appendix.
 
 The first drive (2026-10-19, `/data/lab/projects/2026-10_open-mode-drive_jrrose5`) found six
-things, all changed since (`spec/plans/open_mode_plan.md` section 9): no answer could be trusted
+things, all changed since (`spec/archive/open_mode_plan.md` section 9): no answer could be trusted
 because no control ever ran; a tool's untested answer was described as code; the raw input was
 out of reach; the answer delivery shared file names with the pipeline's; the open project's
 directory was hard to read; and the delivery message was long. The second drive uses a new
@@ -129,7 +129,7 @@ findings ("You can name them by number, say all, or none"); it marks the ones yo
 
 ## 4. What to record
 
-One row in `spec/plans/backlog.md` (Measurements): questions asked by origin (suggested,
+One row in `spec/plans/measurements.md` (Measurements): questions asked by origin (suggested,
 person), answers by label (trusted, untested), blocks and how each was cleared, unrequested ids
 or paths shown (target zero), label words stated correctly in the reply (target all ten), turns and minutes
 to the first delivered answer, and anything the agent did outside the three routes. And a note

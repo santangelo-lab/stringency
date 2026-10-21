@@ -1,6 +1,6 @@
 # Backlog: done rows
 
-Rows moved out of `spec/plans/backlog.md` on 2026-10-14, text as it stood when each closed. Ids are never reused (notes and the trace cite them). History, not instructions; the open table is `spec/plans/backlog.md`.
+Rows moved out of `spec/plans/backlog.md` on 2026-10-14, text as it stood when each closed. Ids are never reused (notes and the trace cite them). History, not instructions; the open table is `spec/plans/PLAN.md`.
 
 | id | item | proof | level |
 |---|---|---|---|

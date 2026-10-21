@@ -1,4 +1,4 @@
-"""Open mode S2, on-demand steps (spec/plans/open_mode_plan.md 2.2, 2.3, 2.8): `ask` files a
+"""Open mode S2, on-demand steps (spec/archive/open_mode_plan.md 2.2, 2.3, 2.8): `ask` files a
 question; `call <tool>` adds a step to the open run and runs it through the ordinary gate;
 the `person` parameter source; `topo.input_type_mismatch` and `param.schema_invalid` at the
 pre-gate; `next` on an open run; the questions table is append-only."""

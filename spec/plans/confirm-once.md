@@ -5,7 +5,7 @@ Lane A (engine) session. Proposes changes to design 2.7 (inherited confirmation)
 (hold kinds, review verdicts, binding and reuse of verdicts) and 14.1 (`review --holds`). Items
 marked *design* change design text and need the owner's approval; the rest are DECISIONS-level.
 
-**Status 2026-10-14.** Proposed, not started; Lane A after W1, W2 and W4 of `roadmap-2026-10.md`. Backlog rows L5 and L6 are the two pieces already filed (L6 is also the console's batch cards); this note is the whole picture and the order. Decisions for the owner in section 5.
+**Status 2026-10-21.** Proposed, not started; built when the owner asks for it. The work is `PLAN.md` rows L5 (a), L68 (c), L6 (d, with the console's batch cards), L69 (e) and L67 (b, *design*); the four decisions of section 5 are in its waiting table. This note is the reasoning and the order, not a work list.
 
 ## 1. The problem, counted
 

@@ -1,6 +1,6 @@
 # Open mode: questions of a delivered dataset
 
-Engine 0.2.22, `spec/plans/open_mode_plan.md`. The pipeline half of an analysis takes raw data to
+Engine 0.2.22, `spec/archive/open_mode_plan.md`. The pipeline half of an analysis takes raw data to
 a delivered dataset through a declared topology, gates and holds. Open mode is the second half:
 once a pipeline has delivered, the assistant that operated it answers a person's questions of the
 delivered dataset, interactively, with the engine recording and labelling every answer.
@@ -109,6 +109,6 @@ the verbs are `tools list`, `init --mode open --from-delivery`, `ask`, `call`, `
 
 ## How it is measured
 
-One row per run in `spec/plans/backlog.md`: questions asked (person and suggested), answers by
+One row per run in `spec/plans/measurements.md`: questions asked (person and suggested), answers by
 label, blocks and how each was cleared, unrequested ids shown (target zero), label words stated
 correctly in the reply (target all), turns and minutes to the first delivered answer.

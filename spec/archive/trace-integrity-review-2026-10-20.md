@@ -1,3 +1,5 @@
+Archived 2026-10-21: the owner's review, kept as written; the plan that answers it is `spec/plans/trace-integrity-plan.md` (rows L52, L53 in `spec/plans/PLAN.md`). Not an instruction to a session.
+
 # Stringency trace integrity: mutable state can bypass its history
 
 **Code review and proposed fixes — 20 October 2026**
