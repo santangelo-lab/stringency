@@ -262,6 +262,7 @@ judgment:
   confidence: ordinal
   considered_set: false           # true for salience-type modules: the engine writes the items table's name, row count and digest into the consensus output as `considered_set`
   # egress: {class: 1, hosts: [ftp.ebi.ac.uk], sends: "a reference table is downloaded"}   # optional, top level beside `model:` (module contract 3.2 via DEVIATIONS, acknowledged 2026-10-21, L46): what the module's scripts send off the machine; absent means nothing, and lint fails scripts that reach the network under no declaration or class 0
+  # must_cite: [markers.top_genes]   # optional (module contract 3.2 via DEVIATIONS 2026-10-22, L56): cells every item's judgment cites, supporting or contradicting; the prompt names them, judg.required_evidence_uncited flags an item that leaves one out
   # sign_off: {when: always, labels: [proceed_uncorrected, correct_batch]}   # optional (added 2026-10-08, L10): a person signs off every item's label, agreed or not; `labels` narrows what a person may choose at every item hold of the module; `when: sample, fraction: 0.2` (added 2026-10-21, L84, module contract via DEVIATIONS) signs off a seeded sample of the agreed items instead, at least one
 
 prompt:
@@ -569,7 +570,8 @@ Domain-free, live in the engine, apply to every plugin.
 | `judg.evidence_exists` | post | judgment | a non-abstained item has zero supporting refs, or a ref does not resolve to a cell of the declared evidence | block |
 | `judg.vocabulary_resolves` | post | judgment | a label is not in the module's declared vocabulary | block |
 | `judg.confidence_consistent` | post | judgment | declared confidence exceeds what `confidence_criteria` allows for the evidence counts | flag |
-| `judg.numeric_claims_match` | post | judgment, report | a numeral in rationale or prose matches no `value` in the referenced evidence, after rounding to the written precision | block |
+| `judg.required_evidence_uncited` | post | judgment | the module's `judgment.must_cite` names `<table>.<column>` cells and a valid replicate's item cites its cell in neither list (a judge may otherwise leave a contradicting cell uncited and keep `high`); 2026-10-22, L56 | flag |
+| `judg.numeric_claims_match` | post | judgment, report | a numeral in rationale or prose matches no `value` in the referenced evidence, after rounding to the written precision; `@2` (2026-10-22, L57): report prose that cites cells (an output of type `cited`) is checked against those cells only, and a cited cell that does not exist is a problem | block |
 | `judg.replicates_below_min` | post | judgment | fewer valid replicates than the profile's `replicates_min` | block |
 | `judg.items_incomplete` | post | judgment | an item from `items_from` has no judgment in some replicate | block |
 | `judg.considered_set_missing` | post | judgment with `considered_set: true` | the output carries no denominator record | block |
@@ -704,7 +706,7 @@ Profiles with `relayed_review: false` (strict by default) refuse `--attest`; man
 
 ### 8.1 Base schema
 
-Every judgment module's `schema.json` must include the engine base; lint checks by structural inclusion.
+Every judgment module's `schema.json` must include the engine base; lint checks by structural inclusion. A report module may declare an output of type `cited` (format json, `[{table, row, column, value}]` as the evidence references below; added 2026-10-22, L57): the cells its prose rests on, which `judg.numeric_claims_match@2` uses as the denominator for the prose's numerals instead of every cell of every table. The Xenium method's `upstream-report` writes its prose by code, every numeral a table cell, so the type is for a report a harness writes.
 
 ```json
 {

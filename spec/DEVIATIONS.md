@@ -44,3 +44,18 @@ is the weak half of the replicate signal (the literature check of 2026-10-21): r
 model with one prompt agree on the errors the model makes consistently, and nothing put an
 agreed label before a person unless the module signed off every one. Approved in advance by
 Jim, 2026-10-21 (the owner's answer on the replicates proposals); built in engine 0.2.30.
+
+
+## Module contract 3.2: `judgment.must_cite` (2026-10-22, backlog L56)
+
+An optional list inside the frozen manifest's `judgment` block: `must_cite: [<table>.<column>,
+...]`, the cells every replicate must cite for every item, as supporting or contradicting,
+whatever they show. Additive: a manifest without it parses and behaves as before; a manifest
+with it is refused by engines before 0.2.33 (the model forbids unknown keys), the intended
+failure for a method that relies on the check. Needed because `judg.confidence_consistent`
+counts only the cells a judge cited, so a judge that leaves a contradicting cell uncited keeps
+`high` (`omicsbench-assessment.md` 4.3); with the list, the prompt names the cells and
+`judg.required_evidence_uncited@1` flags an item that leaves one out. Lint checks the form and
+that the table is one of `judgment.evidence`. First users: `assess-batch` and
+`annotate-clusters`, on the method's side. Awaiting acknowledgement by Jim; built in engine
+0.2.33 as the sign-off field was.

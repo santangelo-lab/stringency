@@ -1104,11 +1104,22 @@ def finish(
     transition(store, rc.run_id, step_id, StepStatus.PRODUCED)
 
     prose = None
+    cited: list[Any] | None = None
     for name, spec in m.outputs.items():
         if spec.type == "prose":
             prose = produced[name].read_text()
+        elif spec.type == "cited" and name in produced:
+            # a report's citations (backlog L57): `[{table, row, column, value}]`, the cells
+            # its numerals are checked against
+            try:
+                doc = json.loads(produced[name].read_text())
+            except (OSError, json.JSONDecodeError):
+                doc = None
+            cited = list(doc) if isinstance(doc, list) else []
     extra = dict(bundle_extra or {})
     observed = dict(info.observed)
+    if cited is not None:
+        observed["cited"] = cited
     if info.script_blob:
         observed["script"] = {"path": script_relpath(rc, plan.module), "blob": info.script_blob}
     bundle = OutputBundle(

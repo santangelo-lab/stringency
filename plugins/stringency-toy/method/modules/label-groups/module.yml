@@ -31,7 +31,8 @@ gates:
   - judg.evidence_exists@1
   - judg.vocabulary_resolves@1
   - judg.confidence_consistent@1
-  - judg.numeric_claims_match@1
+  - judg.numeric_claims_match@2
+  - judg.required_evidence_uncited@1
   - judg.replicates_below_min@1
   - judg.items_incomplete@1
 controls:

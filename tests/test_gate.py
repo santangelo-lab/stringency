@@ -298,6 +298,47 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         ),
     ),
     (
+        # L56: a required cell left uncited by every item; the same cell cited passes
+        "judg.required_evidence_uncited",
+        lambda p: _with_must_cite(
+            make_ctx(
+                p,
+                "03_label",
+                phase="post",
+                output=judgment_bundle([replicate([judgment("A", "abundant", supporting=[])])]),
+            ),
+            ["summary.sd_value"],
+        ),
+        lambda p: _with_must_cite(
+            make_ctx(
+                p,
+                "03_label",
+                phase="post",
+                output=judgment_bundle(
+                    [
+                        replicate(
+                            [
+                                judgment(
+                                    "A",
+                                    "abundant",
+                                    supporting=[
+                                        {
+                                            "table": "summary",
+                                            "row": "A",
+                                            "column": "sd_value",
+                                            "value": 8.9,
+                                        }
+                                    ],
+                                )
+                            ]
+                        )
+                    ]
+                ),
+            ),
+            ["summary.sd_value"],
+        ),
+    ),
+    (
         "judg.confidence_consistent",
         lambda p: make_ctx(
             p,
@@ -868,3 +909,139 @@ def test_intermediate_dropped_ignores_a_later_step_wired_to_an_earlier_producer(
         output=OutputBundle(outputs={"table": OutputInfo("table", "table", "x", "blake3:00")}),
     )
     assert not _run_one("repro.intermediate_dropped", ctx)
+
+
+def _with_must_cite(ctx: GateContext, cols: list[str]) -> GateContext:
+    """The context with the step's module declaring `judgment.must_cite` (L56)."""
+    import dataclasses
+
+    mods = dict(ctx.project.modules)
+    m = mods[ctx.action.module]
+    assert m.judgment is not None
+    mods[ctx.action.module] = m.model_copy(
+        update={"judgment": m.judgment.model_copy(update={"must_cite": cols})}
+    )
+    return dataclasses.replace(ctx, project=dataclasses.replace(ctx.project, modules=mods))
+
+
+def test_required_evidence_uncited_reads_must_cite(project: Project) -> None:
+    """L56: a replicate's item that cites neither list's cell for a required column flags; the
+    cell cited as contradicting passes; an abstaining item is left alone; a module naming
+    nothing is silent."""
+    from tests.helpers import judgment, judgment_bundle, replicate
+
+    cite = {"table": "summary", "row": "A", "column": "sd_value", "value": 8.9}
+    uncited = make_ctx(
+        project,
+        "03_label",
+        phase="post",
+        output=judgment_bundle(
+            [
+                replicate(
+                    [
+                        judgment("A", "abundant", supporting=[]),
+                        judgment("B", "sparse", supporting=[]),
+                        judgment("C", "variable", supporting=[]),
+                    ]
+                )
+            ]
+        ),
+    )
+    pid = "judg.required_evidence_uncited"
+    assert _run_one(pid, uncited) is False  # nothing required
+    ctx = _with_must_cite(uncited, ["summary.sd_value"])
+    v = registry.get(pid).fn(ctx)  # type: ignore[union-attr]
+    assert v.fired and v.evidence["uncited"][0] == {
+        "replicate": 1,
+        "item": "A",
+        "table": "summary",
+        "column": "sd_value",
+    }
+    assert len(v.evidence["uncited"]) == 3
+    cited = make_ctx(
+        project,
+        "03_label",
+        phase="post",
+        output=judgment_bundle(
+            [
+                replicate(
+                    [
+                        judgment("A", "abundant", contradicting=[cite]),
+                        judgment("B", "sparse", supporting=[{**cite, "row": "B"}]),
+                        judgment("C", None, "abstain", abstain=True),
+                    ]
+                )
+            ]
+        ),
+    )
+    assert _run_one(pid, _with_must_cite(cited, ["summary.sd_value"])) is False
+    # the prompt names the columns
+    from stringency.prompting import evidence_suffix
+
+    assert "cite its cell in each of these columns" in evidence_suffix({}, ["summary.sd_value"])
+    assert "cite its cell" not in evidence_suffix({}, [])
+
+
+def test_numeric_claims_match_v2_checks_prose_against_cited_cells(project: Project) -> None:
+    """L57: a report that cites cells is checked against those cells only; a numeral that is
+    elsewhere in the tables no longer passes; a cited cell that does not exist is a problem;
+    without citations every cell still counts."""
+    from stringency.predicates.context import OutputInfo
+    from tests.helpers import SUMMARY_TABLE
+
+    def bundle(prose: str, cited: list | None) -> OutputBundle:
+        return OutputBundle(
+            outputs={"report": OutputInfo("report", "prose", "x", "blake3:00")},
+            prose=prose,
+            evidence_tables={"summary": SUMMARY_TABLE},
+            observed={"cited": cited} if cited is not None else {},
+        )
+
+    pid = "judg.numeric_claims_match"
+    assert registry.get(pid).version == 2  # type: ignore[union-attr]
+    a_mean = SUMMARY_TABLE.rows["A"]["mean_value"]
+    a_sd = SUMMARY_TABLE.rows["A"]["sd_value"]
+    prose = f"Group A averaged {a_mean} with a spread of {a_sd}."
+    # no citations: every cell is the denominator
+    assert (
+        _run_one(pid, make_ctx(project, "05_report", phase="post", output=bundle(prose, None)))
+        is False
+    )
+    # cited: only the mean is cited, so the sd is an unmatched numeral
+    one = [{"table": "summary", "row": "A", "column": "mean_value", "value": a_mean}]
+    v = registry.get(pid).fn(
+        make_ctx(project, "05_report", phase="post", output=bundle(prose, one))
+    )  # type: ignore[union-attr]
+    assert v.fired and v.evidence["problems"] == [
+        {"prose": True, "against": "cited cells", "numeral": str(a_sd)}
+    ]
+    both = one + [{"table": "summary", "row": "A", "column": "sd_value", "value": a_sd}]
+    assert (
+        _run_one(pid, make_ctx(project, "05_report", phase="post", output=bundle(prose, both)))
+        is False
+    )
+    # a citation that resolves to nothing is itself a problem
+    ghost = one + [{"table": "summary", "row": "Z", "column": "sd_value", "value": 1}]
+    v = registry.get(pid).fn(
+        make_ctx(project, "05_report", phase="post", output=bundle(prose, ghost))
+    )  # type: ignore[union-attr]
+    assert v.fired and any("cited_missing" in p for p in v.evidence["problems"])
+
+
+def test_lint_must_cite_names_an_evidence_table(project: Project) -> None:
+    from stringency.lint import LintReport, lint_module
+
+    mod = project.modules.require("label-groups@0.1.1")
+    text = (mod.path / "module.yml").read_text()
+    (mod.path / "module.yml").write_text(
+        text.replace(
+            "  considered_set: false\n",
+            "  considered_set: false\n  must_cite: [summary.mean_value, nothing.x, bare]\n",
+        )
+    )
+    p = Project(project.root)
+    report = LintReport()
+    lint_module(p.modules.require("label-groups@0.1.1"), report, plugin=p.plugin, policy=p.policy)
+    assert any("names table nothing" in e for e in report.errors)
+    assert any("'bare' is not <table>.<column>" in e for e in report.errors)
+    assert not any("summary.mean_value" in e for e in report.errors)

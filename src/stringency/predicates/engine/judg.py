@@ -193,6 +193,48 @@ def confidence_consistent(ctx: GateContext) -> Verdict:
     return Verdict(False)
 
 
+@predicate(
+    id="judg.required_evidence_uncited",
+    version=1,
+    scope=["kind:judgment"],
+    phase="post",
+    default=Disposition.FLAG,
+)
+def required_evidence_uncited(ctx: GateContext) -> Verdict:
+    """The module names cells every judgment must cite (`judgment.must_cite`, `<table>.<column>`,
+    backlog L56) and a valid replicate's item cites its cell in neither evidence list: a judge
+    may otherwise leave a contradicting cell uncited and keep `high`, since
+    `judg.confidence_consistent` counts only what was cited. Evidence: each (replicate, item,
+    table, column) left uncited. Silent for a module that names nothing."""
+    m = ctx.project.module_for(ctx.action.module)
+    if m is None or m.judgment is None or not m.judgment.must_cite:
+        return Verdict(False)
+    wanted = [tuple(ref.partition(".")[::2]) for ref in m.judgment.must_cite]
+    missing: list[dict[str, Any]] = []
+    for rep_no, rep in _valid_replicates(ctx):
+        for item in _items(rep):
+            if item.get("abstain"):
+                continue
+            item_id = str(item.get("item_id"))
+            cited = {
+                (str(r.get("table")), str(r.get("row")), str(r.get("column")))
+                for r in list(item.get("supporting_evidence", []))
+                + list(item.get("contradicting_evidence", []))
+            }
+            for table, column in wanted:
+                if (table, item_id, column) not in cited:
+                    missing.append(
+                        {"replicate": rep_no, "item": item_id, "table": table, "column": column}
+                    )
+    if missing:
+        return Verdict(
+            True,
+            "a cell the module requires every judgment to cite was left uncited",
+            {"uncited": missing, "must_cite": list(m.judgment.must_cite)},
+        )
+    return Verdict(False)
+
+
 def _numeral_problems(text: str, allowed: list[Any], where: dict[str, Any]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for num in NUMERAL.findall(text):
@@ -203,14 +245,18 @@ def _numeral_problems(text: str, allowed: list[Any], where: dict[str, Any]) -> l
 
 @predicate(
     id="judg.numeric_claims_match",
-    version=1,
+    version=2,
     scope=["kind:judgment", "kind:report"],
     phase="post",
     default=Disposition.BLOCK,
 )
 def numeric_claims_match(ctx: GateContext) -> Verdict:
     """Every numeral in a rationale matches a cited evidence value; every numeral in report
-    prose matches some cell of the evidence tables. Rounding to the written precision."""
+    prose matches a cell. Version 2 (backlog L57): a report that cites cells (an output of type
+    `cited`, `[{table, row, column, value}]`, read into `observed.cited`) is checked against
+    those cells only, since a number that appears anywhere in a ten-thousand-cell table proves
+    nothing; a cited cell that does not exist is itself a problem. A report with no citations is
+    checked against every cell, as before. Rounding to the written precision."""
     assert ctx.output is not None
     problems: list[dict[str, Any]] = []
     for rep_no, rep in _valid_replicates(ctx):
@@ -226,13 +272,29 @@ def numeric_claims_match(ctx: GateContext) -> Verdict:
                 {"replicate": rep_no, "item": item.get("item_id")},
             )
     if ctx.output.prose:
-        cells = [
-            v
-            for t in ctx.output.evidence_tables.values()
-            for row in t.rows.values()
-            for v in row.values()
-        ]
-        problems += _numeral_problems(ctx.output.prose, cells, {"prose": True})
+        cited_refs = ctx.output.observed.get("cited")
+        if isinstance(cited_refs, list) and cited_refs:
+            cells = []
+            for ref in cited_refs:
+                if not isinstance(ref, dict):
+                    continue
+                table = ctx.output.evidence_tables.get(str(ref.get("table")))
+                row = table.rows.get(str(ref.get("row"))) if table is not None else None
+                if row is None or str(ref.get("column")) not in row:
+                    problems.append({"prose": True, "cited_missing": ref})
+                    continue
+                cells.append(row[str(ref.get("column"))])
+            problems += _numeral_problems(
+                ctx.output.prose, cells, {"prose": True, "against": "cited cells"}
+            )
+        else:
+            cells = [
+                v
+                for t in ctx.output.evidence_tables.values()
+                for row in t.rows.values()
+                for v in row.values()
+            ]
+            problems += _numeral_problems(ctx.output.prose, cells, {"prose": True})
     if problems:
         return Verdict(
             True, "a numeral matches no value in the referenced evidence", {"problems": problems}

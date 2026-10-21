@@ -38,7 +38,7 @@ Nothing in it is built beyond what the State section says.
 
 ## State (2026-10-21)
 
-Engine 0.2.32 on `main` (triage pass 5, decision points, judgment replicates, confirm once and Codex as a harness, 2026-10-21); plugin singlecell 0.6.2; the Xenium method
+Engine 0.2.33 on `main` (the seven passes of 2026-10-21 and 2026-10-22: triage pass 5, decision points, judgment replicates, confirm once, Codex as a harness, plugin 0.7.0, the citation checks); plugin singlecell 0.7.0 (the seven downstream predicates, 2026-10-22); the Xenium method
 `stringency-xenium-method` at `v0.6.0-rc19` (its six open tools pass on the Lyons liver
 delivery under 0.2.26 and plugin 0.6.2); the toy method at `v0.2.0`. `0.2.27-sc0.6.2` is installed in the
 shared prefix on the lab workstation (`/data/lab/env/stringency/current`, 2026-10-20 17:05) and
@@ -67,8 +67,21 @@ or two sessions and ends with its rows in `archive/backlog-done.md` and a releas
 5. Codex as a harness: H1 to H3 and L36 done 2026-10-21 (engine 0.2.32). What remains of L34 is
    the Qwen3 evaluation (a local model on the GPU, the Lyons re-judgment as sibling projects
    under both harnesses) after the owner defines "competent".
-6. L54, the seven downstream predicates the design names, as plugin singlecell 0.7.
-7. L56 and L57, the judgment and report citation checks; L58 and L38 wait on them.
+6. L54: done 2026-10-22 as plugin singlecell 0.7.0 (`v0.7.0`), all seven pre-phase over the
+   action, the design and the history. Method side, with the next tag: `requires.plugins`
+   to 0.7.0, the seven listed in `policy.yml` and in the three tools' `gates`, and
+   `test.min_samples_per_group` and `spatial.n_perms` ranges if the defaults (2, 100) are
+   not the method's.
+7. L56 and L57: done 2026-10-22 (engine 0.2.33; `judgment.must_cite` with its DEVIATIONS
+   entry awaiting the owner, `judg.required_evidence_uncited`, the `cited` output type and
+   `judg.numeric_claims_match@2`). L58 and L38 are open rows. Method side, with the next
+   Xenium tag: gates name `judg.numeric_claims_match@2`; `assess-batch` and
+   `annotate-clusters` declare `must_cite`.
+
+The seven passes are done. What the owner does next: install 0.2.33 and plugin 0.7.0 on the
+shared prefix, restart the console, republish the three skills; the method-side rows above
+(L86, the `decision:` blocks, `requires`, `study:` on the Lyons projects, the gates); the
+Qwen3 evaluation; the tester; F7.
 
 Not scheduled: what the owner deferred on 2026-10-21 (L52, L53, L42, L82, H5, L48, L4, the
 console rows until asked) and what waits on a person (the skill republish, the tester, F7).
@@ -93,9 +106,7 @@ console rows until asked) and what waits on a person (the skill republish, the t
 
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
-| L56 | a judge may leave a contradicting cell uncited and keep `high`; `judg.confidence_consistent` counts only the cells it cited | `judgment.must_cite: [<table>.<column>]` in the manifest (module contract via DEVIATIONS); `judg.required_evidence_uncited@1` (post, judgment, flag) per replicate and item: a named column's cell for the item appears in neither evidence list; the prompt suffix names the columns; first users `assess-batch` and `annotate-clusters` | engine, DECISIONS-level; module contract 3.2 via `DEVIATIONS.md`; `omicsbench-assessment.md` 4.3 |
-| L57 | report prose is checked against every cell of every evidence table, so a number that appears anywhere passes whether or not it is the number the sentence is about | the report schema gains `cited` refs as answers have; `judg.numeric_claims_match@2` uses the cited cells as the denominator when present, every cell otherwise; `upstream-report` the first user. Check first whether its prose is produced by a harness call or by code; if by code the row is moot for it | engine, DECISIONS-level; 8.1 additive; `omicsbench-assessment.md` 4.4 |
-| L58 | direction and comparison claims ("higher in CLP", "above the threshold") are unchecked; only numerals are | an optional `claims` list in a judgment or report output, `{kind: compare \| threshold, table, row(s), column, relation, value}`; `judg.claim_unsupported@1` (post, block) evaluates each against the cells; coverage counts structured against free claims; after L57 | *design* (8.1 additive, 6.5 row); `omicsbench-assessment.md` 4.5 |
+| L58 | direction and comparison claims ("higher in CLP", "above the threshold") are unchecked; only numerals are | an optional `claims` list in a judgment or report output, `{kind: compare \| threshold, table, row(s), column, relation, value}`; `judg.claim_unsupported@1` (post, block) evaluates each against the cells; coverage counts structured against free claims; after L57 | *design* (8.1 additive, 6.5 row); after L57 (done 2026-10-22); `omicsbench-assessment.md` 4.5 |
 | L38 | textual claims in a rationale about the vocabulary, objective or design are unchecked; only cells and numerals are | `commons-assessment.md` 4.5: optional `cited_text: [{source, quote}]` in a module's schema; `judg.quote_exists` finds the quote by normalised substring match (ten-character floor) in the named section of the rendered prompt, default `log` | engine, additive to 8.1; low |
 | L4 | no control kind for ill-formed evidence (dropped column, blanked items, negated objective, contradicting reference), so over-answering on damaged input is measured only in engine tests | `archive/egress-and-remeasurement.md` part 2 item 1: control kind `ill_formed` with seeded generator tools per plugin and `over_answer_max` / `abstain_min` expectations; singlecell's `drop_column` and `blank_items` first, for the annotation judgment; the owner, 2026-10-21: deferred | *design* (11); plugin tools per method; deferred |
 | L71 | one judgment harness per project; a panel of judges from several sources has no specification | `panel:` of judge slots in `stringency.yml` (harness, model, count, `role: vote \| check`), `judgment.replicates` as the module's minimum, mixed families in one step; `judgment_harness:` kept as the one-slot shorthand. After the Qwen3 evaluation (in L34); the owner, 2026-10-21 (decision 4 of `judge-sources-plan.md` section 6): a disagreeing `role: check` replicate adds a consensus note only, under strict as under any profile, no hold; weighed against the literature check of 2026-10-21 (`notes/2026-10-21-1300-judgment-replicates-evidence.md` proposal 3): under a unanimity rule a weaker second family cannot lower the quality of agreed labels, only raise the hold rate | *design* (10.1, 10.2, 17); `judge-sources-plan.md` S4 |
@@ -130,7 +141,6 @@ here as they arise. The bulk RNA-seq plan is dormant since 2026-09-23 and kept i
 
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
-| L54 | the predicates the design names for the downstream tools (`de.replication_unit`, `de.covariate_omission`, `de.selection_bias`, `test.multiple_comparison`, `test.assumptions_unchecked`, `spatial.neighborhood_undeclared`, `spatial.no_permutation_null`) are unbuilt while the tools now ship (`pseudobulk-de`, `compose-cells`, `neighborhood-enrichment`) | plugin singlecell 0.7 with must-fire and must-pass fixtures over the tools' state envelopes; `de.replication_unit` blocks a unit finer than the design's, `de.covariate_omission` flags a declared batch absent from the formula; the four whose facts the tools already emit first | plugin, DECISIONS-level; `omicsbench-assessment.md` 4.1 |
 | L86 | the Xenium method's `resegment-nextflow` reaches the network (`pre.sh`: `nextflow run`) and declares no egress; under engine 0.2.28 `lint` fails it (L46) | the module declares `egress: {class, hosts, sends}` in `module.yml` when the method moves to `requires.engine >= 0.2.28` (an older engine refuses the key, the intended failure) | method; with the next method tag |
 
 ### Skills, documents and onboarding
@@ -167,7 +177,7 @@ nobody reads. The row id says where the work is filed; "where" says where the te
 
 | what | row | where | since |
 |---|---|---|---|
-| when the passes are done (the owner, 2026-10-21: not before): install the engine, restart the console, republish the operator skill (changed for 0.2.28 and 0.2.29), the declare skill and the Xenium analysis skill | State | `docs/release.md`, `integrations/claude-science/publish-skills.md` | 2026-10-21 |
+| when the passes are done (the owner, 2026-10-21: not before): install the engine, restart the console, republish the operator skill (changed for 0.2.28 and 0.2.29), the declare skill and the Xenium analysis skill; plugin singlecell 0.7.0 beside the engine | State | `docs/release.md`, `integrations/claude-science/publish-skills.md` | 2026-10-21 |
 | trace integrity: a DEVIATIONS entry for 9.4 and 9.5 (T3), or stay at T2; a service identity for `prov/` (T4). The owner, 2026-10-21: stay at T2, not convinced either is wanted yet; nothing moves until asked | L52, L53 | `trace-integrity-plan.md` | 2026-10-20 |
 | the definition of "competent" for the Qwen3 evaluation (decision 3), after the Codex survey (H1); the go-ahead, the login and the sibling-projects shape (decision 2) were given 2026-10-21 | L34 | `judge-sources-plan.md` 6 (3) | 2026-10-21 |
 | the tester for the acceptance runs (the owner, 2026-10-21: not yet) | L79, L77 | this file | 2026-10-14 |

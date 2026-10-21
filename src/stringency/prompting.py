@@ -27,16 +27,25 @@ EVIDENCE_SUFFIX = (
 )
 
 
-def evidence_suffix(criteria: Mapping[str, Any]) -> str:
+def evidence_suffix(criteria: Mapping[str, Any], must_cite: list[str] | None = None) -> str:
     """The slot definition and the policy's confidence criteria, appended to every judgment
-    prompt whatever the harness family (improvement D1)."""
+    prompt whatever the harness family (improvement D1); with `must_cite` (L56), the cells every
+    item's judgment must cite, supporting or contradicting."""
     parts = []
     for level, c in criteria.items():
         text = f"{level} needs at least {c.min_supporting} supporting"
         if c.max_contradicting is not None:
             text += f" and at most {c.max_contradicting} contradicting"
         parts.append(text)
-    return EVIDENCE_SUFFIX.format(criteria="; ".join(parts) or "none declared")
+    text = EVIDENCE_SUFFIX.format(criteria="; ".join(parts) or "none declared")
+    if must_cite:
+        cols = ", ".join(must_cite)
+        text += (
+            f"For every item, cite its cell in each of these columns, as supporting or "
+            f"contradicting, whatever it shows: {cols}. An item that leaves one uncited is held "
+            "for a person.\n"
+        )
+    return text
 
 
 DISPATCH_SUFFIX = (

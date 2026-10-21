@@ -18,4 +18,4 @@ evidence:
   - {kind: job_log, path: run.log}
   - {kind: apptainer_inspect, path: inspect.json}
 gates:
-  - judg.numeric_claims_match@1
+  - judg.numeric_claims_match@2

@@ -242,7 +242,7 @@ def assemble_requests(
     template_text = plan.module.prompt_template or ""
     base = prompt_values(rc, plan, ev)
     vocab = list(base.get("vocabulary") or [])
-    suffix = evidence_suffix(rc.project.policy.confidence_criteria)
+    suffix = evidence_suffix(rc.project.policy.confidence_criteria, m.judgment.must_cite)
     schema = wrap_schema(plan.module.output_schema or {}, m.judgment.batching)
     evidence = {n: {r: dict(v) for r, v in t.rows.items()} for n, t in ev.tables.items()}
     for text in ev.texts.values():

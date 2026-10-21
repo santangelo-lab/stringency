@@ -161,6 +161,15 @@ def lint_module(
                 # step 2); without a pre-script every evidence name must be an input
                 if ev not in m.inputs and module.entry_script is None:
                     report.error(where, f"judgment.evidence {ev} is not an input")
+            for ref in m.judgment.must_cite:
+                table, dot, column = ref.partition(".")
+                if not dot or not table or not column:
+                    report.error(where, f"judgment.must_cite {ref!r} is not <table>.<column>")
+                elif table not in m.judgment.evidence:
+                    report.error(
+                        where,
+                        f"judgment.must_cite {ref} names table {table}, not one of judgment.evidence",
+                    )
             if policy is not None:
                 minimum = policy.profile("standard").replicates_min
                 if m.judgment.replicates < minimum:

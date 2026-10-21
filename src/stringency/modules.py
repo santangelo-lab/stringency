@@ -67,6 +67,10 @@ class JudgmentSpec(Frozen):
     confidence: Literal["ordinal"] = "ordinal"
     considered_set: bool = False
     sign_off: SignOffSpec | None = None
+    # `<table>.<column>` cells every replicate must cite for every item, supporting or
+    # contradicting (module contract 3.2 via DEVIATIONS 2026-10-22; backlog L56): the prompt
+    # names them and `judg.required_evidence_uncited` flags an item that leaves one uncited
+    must_cite: list[str] = Field(default_factory=list)
 
 
 class PromptSpec(Frozen):
