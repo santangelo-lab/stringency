@@ -113,3 +113,13 @@ says the person confirmed in the conversation, and the owner has not confirmed t
 the run waits for them: two `stringency review --hold <id>` commands in the project, or their word
 that an attest is theirs. After that the operator flow is `run --until 01_qc_metrics`, propose
 the floors from `01_qc_metrics/qc_distribution`, and so on through `run`.
+
+The clean baseline finished at about 04:00: 9/18, the same by-eval pattern as the contaminated
+attempt, now with replicates that vary (PCA depth correlation 0.387, 0.385, 0.372; Tapestri
+9.43, 12.34, 12.34), 41.49 USD API-equivalent, 4 to 25 minutes a run. Isolation verified on
+the real runs: no MCP servers, three built-in skills, memory files only inside each run's own
+home (five runs wrote some; the host's memory dir unchanged since 00:33). Recorded in
+`stringency-benchmarks/measurements.md`, the benchmark plan's status, and L87. Against the
+published Opus 4.7 pattern: QC, normalisation and PCA agree; DE and cell typing swap. The
+Phase 0 exit as written ("reproduces the published per-eval pattern") is met on four of six
+evals and on the total within one; the owner decides whether that passes.
