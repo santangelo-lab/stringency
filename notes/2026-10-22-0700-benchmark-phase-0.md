@@ -63,7 +63,10 @@ Nothing in the engine. The runner lives in `stringency-benchmarks`, not here.
   pipelines, a planted fixture whose structure every module recovers exactly; lints clean under
   engine 0.2.33 with plugin 0.8.1. The engine releases 0.2.28 to 0.2.33 are tagged; the plugins
   workspace pins v0.2.33.
-- On the real evals' data, `qc-metrics` says what the gate will: BD Rhapsody's 386-gene panel
-  has a 99th percentile of 150 genes per cell, so a `min_genes` of 200 is blocked by
-  `sc.qc_floor_above_data`; CS Genetics' median of 1,655 UMIs is below the 2,000 floor, so
-  `log_total` is flagged by `sc.normalization_depth`.
+- On the real evals' data, `qc-metrics` (run inside the image) says what the gate will. BD
+  Rhapsody, 16,136 cells x 386 genes, counts in `layers:DBEC_Adjusted_Molecules` beside an
+  empty X: median 265.5 UMIs, median 68 genes per cell, 99th percentile 135, maximum 180, so a
+  `min_genes` of 200 is blocked by `sc.qc_floor_above_data` before a cell is dropped. CS
+  Genetics, 11,693 cells x 27,946 genes: median 1,655 UMIs, 73.9% of counts are 1, below the
+  2,000 floor, so `log_total` is flagged by `sc.normalization_depth`. Both agree with the
+  evals' author notes (first written here from the notes, corrected the same night from the run).
