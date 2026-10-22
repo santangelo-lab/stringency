@@ -280,3 +280,25 @@ def test_packet_for_post_flag_and_none_for_confirm(make_project: InitFn) -> None
     c = p2.confirm_hold()
     assert show(p2, c).packet is None
     assert not list(p2.root.rglob("review/*.md"))  # the echo-back is the confirm hold's packet
+
+
+def test_cited_key_of_a_json_summary(tmp_path: Path) -> None:
+    """A citation into a JSON object of facts (a method's `analysis_summary`) resolves to the
+    key's value, `src:key` or `src::key`, dotted for nesting; a list of objects is read as rows
+    (2026-10-22, the scrnaseq method's first engine run: `01_qc_metrics/qc_summary` cited
+    without a resolvable cell left every depth fact an unmatched numeral)."""
+    from stringency.citations import _json_cell
+
+    f = tmp_path / "qc_summary.json"
+    f.write_text(json.dumps({"median_umis_per_cell": 1371.5, "nested": {"a": 1}, "n": 320}))
+    assert _json_cell(f, "median_umis_per_cell", None) == {"value": 1371.5}
+    assert _json_cell(f, None, "median_umis_per_cell") == {"value": 1371.5}
+    assert _json_cell(f, "nested.a", None) == {"value": 1}
+    assert _json_cell(f, "nested", "a") == {"value": 1}
+    assert _json_cell(f, "absent", None) == {"missing": "no key absent"}
+    assert _json_cell(f, "n", "x") == {"missing": "no key n.x"}
+    g = tmp_path / "rows.json"
+    g.write_text(json.dumps([{"key": "A", "v": 1}, {"key": "B", "v": 2}]))
+    assert _json_cell(g, "B", "v") == {"value": 2}
+    assert _json_cell(g, None, "v") == {"missing": "a list of rows; a row is needed"}
+    assert _json_cell(g, "Z", None) == {"missing": "no row Z"}

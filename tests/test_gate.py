@@ -640,11 +640,10 @@ def test_predicate_must_fire_and_must_pass(
 
 def test_every_registered_predicate_has_a_case() -> None:
     covered = {c[0] for c in CASES}
-    missing = (
-        {s.id for s in registry.all()}
-        - covered
-        - {s.id for s in registry.all() if s.id.startswith("init.")}
-    )
+    # the engine's own predicates; a plugin installed in the venv registers its own with its
+    # name as the source, and those have their cases in the plugin's tests
+    own = {s.id for s in registry.all() if s.source == "engine"}
+    missing = own - covered - {i for i in own if i.startswith("init.")}
     # repro.seed_unset and judg.considered_set_missing are covered below with a synthetic module;
     # prov.egress_exceeds_ceiling in tests/test_egress.py
     # prov.trace_inconsistent in tests/test_audit.py

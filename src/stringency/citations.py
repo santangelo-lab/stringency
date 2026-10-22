@@ -47,6 +47,14 @@ def resolve_cites(rc: Any, cites: list[dict[str, Any]]) -> list[dict[str, Any]]:
             out.append(entry)
             continue
         entry["path"] = str(path)
+        if path.suffix.lower() == ".json" and (
+            c.get("row") is not None or c.get("column") is not None
+        ):
+            # a JSON object of named facts (a method's `analysis_summary`, 2026-10-22): the row
+            # is the key, dotted for nesting; `src::key` (no row) reads the column as the key
+            entry.update(_json_cell(path, c.get("row"), c.get("column")))
+            out.append(entry)
+            continue
         if c.get("row") is None:
             entry["value"] = "file present"
             out.append(entry)
@@ -74,6 +82,40 @@ def resolve_cites(rc: Any, cites: list[dict[str, Any]]) -> list[dict[str, Any]]:
             entry["missing"] = f"no column {c['column']}"
         out.append(entry)
     return out
+
+
+def _json_cell(path: Any, row: Any, column: Any) -> dict[str, Any]:
+    """`{"value": ...}` or `{"missing": ...}` for a key of a JSON file. An object: the key
+    (`row`, else `column`) walks dotted parts; a column under an object-valued key reads that
+    field. A list of objects: the row is found as in a table."""
+    import json as _json
+
+    try:
+        node: Any = _json.loads(path.read_text())
+    except (OSError, ValueError) as e:
+        return {"missing": f"unreadable: {e}"}
+    if isinstance(node, list):
+        rows = [r for r in node if isinstance(r, dict)]
+        if row is None:
+            return {"missing": "a list of rows; a row is needed"}
+        found = _find_row(rows, str(row))
+        if found is None:
+            return {"missing": f"no row {row}"}
+        if column is None:
+            return {"value": dict(found)}
+        return {"value": found[column]} if column in found else {"missing": f"no column {column}"}
+    if not isinstance(node, dict):
+        return {"missing": "not an object"}
+    key = str(row) if row is not None else str(column)
+    for part in key.split("."):
+        if not isinstance(node, dict) or part not in node:
+            return {"missing": f"no key {key}"}
+        node = node[part]
+    if row is not None and column is not None:
+        if isinstance(node, dict) and column in node:
+            return {"value": node[column]}
+        return {"missing": f"no key {key}.{column}"}
+    return {"value": node}
 
 
 def _find_row(rows: list[dict[str, Any]], key: str) -> dict[str, Any] | None:

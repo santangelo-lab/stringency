@@ -119,7 +119,11 @@ def test_plugins_are_recorded_at_init_at_run_open_and_in_the_delivery(make_proje
     index = json.loads((d.path / "index.json").read_text())
     assert index["plugins"]["stringency-toy"] == "0.1.3"
     coverage = (d.path / "coverage.md").read_text()
-    assert f"stringency {__version__} with stringency-toy 0.1.3 | method" in coverage
+    # every loaded plugin is recorded, so another plugin installed in the venv joins the list;
+    # this test owns the toy plugin's entry and the engine's version
+    line = next(ln for ln in coverage.splitlines() if ln.startswith("policy "))
+    assert f"| stringency {__version__} with " in line and "stringency-toy 0.1.3" in line
+    assert " | method " in line
     assert "(plugin stringency-toy 0.1.3)" in (d.path / "methods.md").read_text()
 
 
