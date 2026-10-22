@@ -150,3 +150,16 @@ this afternoon: citations resolve a key of a JSON facts file (engine), `sc.norma
 silent on a targeted panel (plugin 0.8.2, tagged), two engine tests made robust to a plugin
 installed in the venv. The method still names `@1` and plugin `>=0.8.1`; its next tag takes
 `@2`, `>=0.8.2` and the formats on the hold-view columns.
+
+The run went on through 03_normalize (the owner accepted the normalisation holds on the console)
+and stopped at 04_select_hvg, twice. First `param.out_of_range` blocked the proposal: the
+pipeline's floor on `n_top_genes` was 500, above a 320-gene panel. Then, at the range's floor
+(scanpy keeps every gene when asked for more than there are), three flags: the proposal, the
+numeral check on the proposed value alone (the JSON citations now resolve: 320, 1371.5, True;
+L93 is what remains), and `sc.normalization_depth@2` despite the panel flag, because qc-cells'
+summary is also named `qc_summary` and replaced qc-metrics' facts in the state. Method v0.1.2:
+`qc_cells_summary`, floor 50, the module clips the count. Two engine observations: the gate runs
+every registered predicate in scope, so a module's `gates:` pin (`@1`) is a declaration lint
+checks, not what runs (the packet said `@2` under a method pinned to `@1`); and the engine's
+own proposal checks want default hold views (L95). The running project stays on v0.1.0; the
+owner decides the three HVG holds.
