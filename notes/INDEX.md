@@ -5,12 +5,18 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-22)
 
-- The benchmark plan is in (`notes/2026-10-22-0700-benchmark-phase-0.md`;
-  `spec/plans/benchmark-plan.md`; rows L87 to L92): Phase 0 started, the local Claude Code
-  runner works on Opus 5, the public evals and Latch's image are on the workstation; the
-  owner logged in and the baseline is running; Phase 1 is mostly done the same night: plugin
-  singlecell 0.8.1 widened beyond Xenium and the method `stringency-scrnaseq-scanpy-method`
-  0.1.0, both pushed.
+- Benchmark Phase 0 measured and Phase 1 built (`notes/2026-10-22-0700-benchmark-phase-0.md`;
+  `spec/plans/benchmark-plan.md`; rows L87 to L99): the Opus 5 baseline is 9/18 on the six
+  scBench evals (`stringency-benchmarks/measurements.md`; a first attempt was contaminated by the
+  host's Claude Code environment and the runner now isolates each run); plugin singlecell 0.8.4
+  (droplet operations, `analysis_summary`, `marker_panels`, four droplet predicates); the method
+  `stringency-scrnaseq-scanpy-method` v0.1.8 delivered under the engine on its planted fixture
+  with the lineages recovered exactly and all eight controls passing; its `BACKLOG.md` lists the
+  assignment step's improvements. Engine 0.2.34 (untagged until the owner says) carries what the
+  run found: JSON-key citations, `param.reason_unmatched@2`, flags logged on control runs, and
+  the console's plain block, predicate summaries, ask-group colours, rendered echo-back and
+  egress, folded packet (DECISIONS 2026-10-22). Open for the owner: the Phase 0 exit reading,
+  SpatialBench, the Latch conversation, Phase 2's adapter (L89); engine rows L94 to L97.
 - Engine 0.2.33 and plugin singlecell 0.7.0 (`notes/2026-10-22-0500-citation-checks-and-plugin-0.7.md`):
   the seven downstream predicates (L54); `judgment.must_cite` with
   `judg.required_evidence_uncited` (L56, DEVIATIONS awaiting the owner); the `cited` report
