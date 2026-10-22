@@ -123,3 +123,14 @@ home (five runs wrote some; the host's memory dir unchanged since 00:33). Record
 published Opus 4.7 pattern: QC, normalisation and PCA agree; DE and cell typing swap. The
 Phase 0 exit as written ("reproduces the published per-eval pattern") is met on four of six
 evals and on the total within one; the owner decides whether that passes.
+
+The owner accepted the confirm and egress holds ("Set up is correct", relayed with --attest).
+The first engine run of the method: 01_qc_metrics ran in the image under the engine; the
+proposal of the floors (min_genes 200, min_counts 500, max_pct_mt 5, five citations) opened
+two flag holds on 02_qc_cells: `param.agent_proposed@2` as designed, and
+`param.reason_unmatched@1` on eight numerals, four data facts I quoted without citing (320,
+291, 836, 2019) and the proposed values themselves (200, 500, 5). A held step cannot be
+re-proposed, so the corrected proposal (every fact cited) waits on the verdicts. `present
+--hold` rendered the skill's hold view: the distribution table and the facts, floats unrounded.
+Plan rows L93 (exempt the proposed values in `param.reason_unmatched@2`) and L94 (a withdraw
+path for a flagged proposal); the float formats are a method follow-up.

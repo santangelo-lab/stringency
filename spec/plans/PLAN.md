@@ -106,6 +106,8 @@ console rows until asked) and what waits on a person (the skill republish, the t
 
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
+| L93 | `param.reason_unmatched@1` counts the proposal's own parameter values as unmatched numerals: a reason that says "floors of 200 genes, 500 counts and 5 percent" is flagged for 200, 500 and 5, which no evidence cell can carry (first engine run of the scrnaseq method, 2026-10-22) | `param.reason_unmatched@2`: the action's proposed values (and their plain roundings) are not claims about evidence and are exempt; everything else as @1; the method pins @2 | predicate version | `benchmark-plan.md` (first engine run) |
+| L94 | a held step cannot be re-proposed, so an operator whose reason was flagged (a fact quoted without a citation) has no light path to fix it: the reviewer must decide the flag first, and a reject closes the attempt "for a change to the method or a fork" | `propose --withdraw <step>` (or `propose` on a step whose only open holds are the proposal's own flags): closes the attempt's proposal holds as withdrawn by the operator, records the withdrawal in the trace, and admits a new proposal; the reviewer sees both | engine behaviour below the contract | `benchmark-plan.md` (first engine run) |
 
 ### Engine: judgments and evidence
 
