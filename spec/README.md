@@ -17,7 +17,7 @@ reasoning behind rows that cite them and hold no list of their own. Each opens w
 
 | file | state (2026-10-21) | what |
 |---|---|---|
-| `PLAN.md` | **current** | the state, what is next in order, every open row by area (engine: decision points, holds and confirmation, judgments and evidence, delivery and trace, harnesses; method and plugin; skills and documents; console; operations), the table of everything that waits on the owner, and how the file is kept; replaced `roadmap-2026-10.md` and `backlog.md` on 2026-10-21; rows to L85 |
+| `PLAN.md` | **current** | the state, what is next in order, every open row by area (engine: decision points, holds and confirmation, judgments and evidence, delivery and trace, the gate and the step lifecycle, harnesses; method and plugin; skills and documents; console; operations), the table of everything that waits on the owner, and how the file is kept; replaced `roadmap-2026-10.md` and `backlog.md` on 2026-10-21; rows to L85 |
 | `measurements.md` | current | the measurement tables the UX work reports into: one row per measured run, and the open-mode table (no row yet); moved out of `backlog.md` |
 | `decision-points.md` | designed 2026-10-21; rows L55, L61 to L66 | the controls a method puts on an agent's parameter choice: the `decision:` block beside a parameter's range (evidence required, `hold: always`), the lint rule, the citation and considered-set slots on `propose`, the `presented` event, and the menu of sweep, rule, judged and sensitivity an author chooses per step; what is not pursued and why |
 - `plans/benchmark-plan.md`: the owner's benchmark plan (2026-10-21) adapted to the engine and this machine; rows L87 to L92.
@@ -28,6 +28,7 @@ reasoning behind rows that cite them and hold no list of their own. Each opens w
 | `spatial-method-plan.md` | the record of phase 0 and the owner's decisions 1 to 25 | the spatial method with Lyons CLP as the pilot; the method's own work list is its repository's `PLAN.md`, which cites section 8 here |
 | `commons-assessment.md` | assessed 2026-10-16; rows L35 to L38 | `posit-dev/commons` read against the design: a side-by-side, the shared instincts, four borrowings, what commons lacks that the engine has |
 | `omicsbench-assessment.md` | assessed 2026-10-21; rows L54 to L60 | LatchBio's OmicsBench failure taxonomy read against the engine: the seventeen modes counted and classified, a side-by-side, seven borrowings, the biological modes, candidate README words; its 4.2 grew into `decision-points.md` |
+| `gate-soundness.md` | filed 2026-10-22; rows L100 to L109 | the owner's walkthrough of the gate checked against the code: defaults escape the decision-point checks (`hold: always` silent under `run`), a rebind ignores the predicate and phase, a raising predicate takes its finding's disposition, the budget does not stop a predicate, the Action's dicts are mutable, a step stranded in `proposed`, the lifecycle audit does not replay edges, predicate purity is unenforced; the order, the contract impact |
 
 ## Archive (`archive/`)
 
