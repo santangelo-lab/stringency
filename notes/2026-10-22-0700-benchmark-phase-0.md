@@ -163,3 +163,15 @@ every registered predicate in scope, so a module's `gates:` pin (`@1`) is a decl
 checks, not what runs (the packet said `@2` under a method pinned to `@1`); and the engine's
 own proposal checks want default hold views (L95). The running project stays on v0.1.0; the
 owner decides the three HVG holds.
+
+Later: L93 built (`param.reason_unmatched@2`, the proposal's own values match); the console
+got predicate summaries, a sentence for the proposal hold's finding, colours and a tag per ask
+group on every card and heading. The run reached 07_score_panels, where `param.out_of_range`
+blocked the panels: the pipeline at v0.1.0 declared `range: [0, 0]` on a JSON string, which no
+value satisfies and which lint had not caught (L96); and no parameter form admits an open-form
+declaration (L97). `fork` refuses a dirty clone and `run --allow-dirty` cannot re-run a blocked
+step's attempt, so the run stops there; steps 01 to 06 ran clean and the clusters match the
+planted lineages exactly (T 343, Mono 208, B 89). Method v0.1.3 makes the panels a declared
+input (`panels.csv`, columns lineage and gene; the module reads it when wired, the parameter in
+open mode). A second project on v0.1.3 (`proj2`) re-runs the pipeline with the panels declared
+in `inputs.yml`; the owner's holds again, fewer now.
