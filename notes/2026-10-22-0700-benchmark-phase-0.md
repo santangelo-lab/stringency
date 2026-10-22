@@ -134,3 +134,10 @@ re-proposed, so the corrected proposal (every fact cited) waits on the verdicts.
 --hold` rendered the skill's hold view: the distribution table and the facts, floats unrounded.
 Plan rows L93 (exempt the proposed values in `param.reason_unmatched@2`) and L94 (a withdraw
 path for a flagged proposal); the float formats are a method follow-up.
+
+Console for the test project: the standing console on 8765 is the shared engine 0.2.27 over
+`/data/lab/projects` (the owner's token in `~/.config/stringency/console-token`); the test
+project lives on scratch and needs the dev engine, so a second `review --serve` runs from the
+engine checkout on 127.0.0.1:8766 (token in the project's `prov/review-serve/token`, log beside
+it). Small bug seen: when the port is taken, `review --serve` dies with "AttributeError:
+'ReviewHTTPServer' object has no attribute 'watcher'" instead of saying the port is busy.
