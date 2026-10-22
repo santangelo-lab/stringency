@@ -124,6 +124,7 @@ def read_token_file(path: Path) -> str:
 
 
 _ENV = Environment(undefined=StrictUndefined, autoescape=True)
+_ENV.globals["ask_labels"] = ASK_LABELS
 
 _STYLE = """
 :root { --ink: #222; --muted: #666; --line: #ddd; --bg: #fff; --panel: #f6f6f6; --mark: #2f5d9e; --warn: #8a5a00; --err: #8a1f11; --errbg: #fbe9e7; }
@@ -206,7 +207,7 @@ LANDING_HTML = _ENV.from_string(
 <h3 class="ask-{{ g.key }}">{{ g.heading }}</h3>
 {% for c in g.cards %}
 <div class="card ask-{{ g.key }}" data-card="{{ c.hold_id }}">
-<a href="{{ c.href }}" data-open><strong>{{ c.title }}</strong></a> in <strong><a href="{{ c.project_href }}">{{ c.project }}</a></strong>{% if c.item %} <span class="tag">item {{ c.item }}</span>{% endif %}
+<span class="asktag">{{ ask_labels[g.key] }}</span><a href="{{ c.href }}" data-open><strong>{{ c.title }}</strong></a> in <strong><a href="{{ c.project_href }}">{{ c.project }}</a></strong>{% if c.item %} <span class="tag">item {{ c.item }}</span>{% endif %}
 <div class="meta">open {{ c.age }} · {{ c.step }} · {{ c.kind }} · waits on {{ c.waits_on }}</div>
 </div>
 {% endfor %}
@@ -293,8 +294,8 @@ PROJECT_HTML = _ENV.from_string(
 <h2>Needs you</h2>
 {% if holds %}
 {% for c in holds %}
-<div class="card" data-card="{{ c.hold_id }}">
-<a href="{{ c.href }}" data-open><strong>{{ c.title }}</strong></a>{% if c.item %} <span class="tag">item {{ c.item }}</span>{% endif %}
+<div class="card ask-{{ c.group }}" data-card="{{ c.hold_id }}">
+<span class="asktag">{{ ask_labels[c.group] }}</span><a href="{{ c.href }}" data-open><strong>{{ c.title }}</strong></a>{% if c.item %} <span class="tag">item {{ c.item }}</span>{% endif %}
 <div class="meta">open {{ c.age }} · {{ c.step }} · {{ c.kind }} · waits on {{ c.waits_on }}</div>
 </div>
 {% endfor %}

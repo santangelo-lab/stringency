@@ -326,6 +326,7 @@ def test_landing_has_needs_you_then_the_board_with_sentences(server: tuple[str, 
     assert "Settle a disagreement" in body
     h = queue(p)[0]
     assert f'<div class="card ask-disagreement" data-card="{h["hold_id"]}">' in body
+    assert '<span class="asktag">disagreement</span>' in body
     assert (
         f'<a href="/hold/{h["hold_id"]}" data-open><strong>Label the groups, item A</strong>'
         in body
