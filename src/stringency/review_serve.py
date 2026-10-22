@@ -86,6 +86,7 @@ __all__ = ["discover", "make_server", "read_token_file", "serve"]
 # and parameter approvals told apart at a glance)
 ASK_LABELS = {
     "confirm": "confirm",
+    "egress": "egress",
     "parameters": "parameter",
     "consensus": "consensus",
     "sign_off": "sign-off",
@@ -148,8 +149,8 @@ p.crumbs { font-size: 0.9em; }
 .card { border: 1px solid var(--line); border-left: 5px solid var(--line); padding: 0.7em 1em; margin: 0.5em 0; }
 details.packet { margin-top: 2em; } details.packet summary { font-weight: 600; color: var(--ink); }
 table.defs th { width: 12em; font-weight: 500; }
-.ask-confirm { --ask: #2e7d32; } .ask-parameters { --ask: #2f5d9e; } .ask-flag { --ask: #b26a00; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #6a3fa0; } .ask-invalid { --ask: #8a1f11; }
-@media (prefers-color-scheme: dark) { .ask-confirm { --ask: #7fc784; } .ask-parameters { --ask: #7fa6e0; } .ask-flag { --ask: #e0b45a; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #b89ae0; } .ask-invalid { --ask: #f0a090; } }
+.ask-confirm { --ask: #2e7d32; } .ask-egress { --ask: #00796b; } .ask-parameters { --ask: #2f5d9e; } .ask-flag { --ask: #b26a00; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #6a3fa0; } .ask-invalid { --ask: #8a1f11; }
+@media (prefers-color-scheme: dark) { .ask-confirm { --ask: #7fc784; } .ask-egress { --ask: #80cbc4; } .ask-parameters { --ask: #7fa6e0; } .ask-flag { --ask: #e0b45a; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #b89ae0; } .ask-invalid { --ask: #f0a090; } }
 .card[class*="ask-"] { border-left-color: var(--ask); }
 h1[class*="ask-"] { border-left: 5px solid var(--ask); padding-left: 0.5em; }
 h3[class*="ask-"] { color: var(--ask); }
@@ -348,7 +349,7 @@ RUN_HTML = _ENV.from_string(
 HOLD_HTML = _ENV.from_string(
     _HEAD
     + """<p class="crumbs"><a href="{{ list_href }}">All projects</a> / <a href="{{ project_href }}">{{ project }}</a> / hold</p>
-<h1 class="ask-{{ ask_group }}"><span class="asktag">{{ ask_label }}</span>{{ ask_heading }}: {{ card_title }}</h1>
+<h1 class="ask-{{ ask_group }}"><span class="asktag">{{ ask_label }}</span>{{ ask_heading }}{% if card_title and card_title != "the plan" %}: {{ card_title }}{% endif %}</h1>
 <p class="note">{{ project }}{% if step_title %} · {{ step_title }}{% endif %}{% if item_id %} · item {{ item_id }}{% endif %} · {{ kind }} hold · open {{ age }}{% if predicate %} · {{ predicate }}{% endif %}. The form records the same verdicts by the same rules as the terminal. <kbd>a</kbd> accept, <kbd>r</kbd> reject, <kbd>d</kbd> defer{% if replicates %}, <kbd>o</kbd> override{% endif %}, <kbd>Ctrl-Enter</kbd> record.</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 {% if found %}
@@ -1468,10 +1469,12 @@ class ReviewHandler(BaseHTTPRequestHandler):
         site = Site.load(project.root)
         try:
             skill, _note = load_skill(site)
-            if h["run_id"] is not None:  # a project hold's packet is its echo-back or report
-                hp = present_hold(site, h["hold_id"])
-                if hp["sections"] and h["run_id"]:
-                    view_sections = render_html(hp, self._url_for(site, h["run_id"]))
+            hp = present_hold(site, h["hold_id"])
+            if hp["sections"]:
+                # a project hold (confirm, egress) has no run: its sections are the echo-back
+                # and the report, rendered as a page; a run's hold maps figure paths to routes
+                url_for = self._url_for(site, h["run_id"]) if h["run_id"] else None
+                view_sections = render_html(hp, url_for)
         finally:
             site.store.close()
         ctx = hold_context(h)

@@ -182,6 +182,7 @@ class Registry:
 
 ASK_GROUPS: tuple[tuple[str, str], ...] = (
     ("confirm", "Confirm the plan"),
+    ("egress", "Acknowledge what leaves the machine"),
     ("parameters", "Approve the operator's parameters"),
     ("consensus", "Decide on the reviewers' consensus"),
     ("sign_off", "Sign off the route the reviewers chose"),
@@ -208,6 +209,8 @@ def ask_of(h: Any, ctx: dict[str, Any]) -> str:
     kind = str(h["kind"])
     if kind == "confirm":
         return "confirm"
+    if kind == "egress":
+        return "egress"
     if h["item_id"] is not None:
         return {"self_uncertain": "uncertain", "sign_off": "sign_off"}.get(kind, "disagreement")
     if kind == "run_disagreement":
@@ -441,6 +444,8 @@ def card_title(h: Any, ctx: dict[str, Any], group: str, step_title: str, skill: 
     ev = evidence if isinstance(evidence, dict) else {}
     if group == "confirm":
         return "the plan"
+    if group == "egress":
+        return "what leaves the machine"
     if group == "parameters":
         names = _param_names(ev)
         return f"{step_title}: {', '.join(names)}" if names else step_title

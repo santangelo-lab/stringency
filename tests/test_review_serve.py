@@ -643,7 +643,7 @@ def test_inbox_groups_holds_by_ask_and_the_method_names_the_card(make_project: I
             {"group": "flag", "created": "2026-01-01T00:00:01Z", "hold_id": "A"},
         ]
     )
-    assert [g["key"] for g in groups][:2] == ["confirm", "parameters"]
+    assert [g["key"] for g in groups][:2] == ["confirm", "egress"]
     assert [c["hold_id"] for g in groups for c in g["cards"]] == ["C", "A", "B"]
     # on the page: the parameter hold under its heading, with the method's phrase
     _skill(p, [], hold_view=[{"predicate": "param.agent_proposed", "ask": "Approve the floor"}])
@@ -652,6 +652,7 @@ def test_inbox_groups_holds_by_ask_and_the_method_names_the_card(make_project: I
         assert status == 200
         assert "Approve the operator&#39;s parameters" in body and "Approve the floor" in body
         assert "Confirm the plan" not in body  # an empty group is not shown
+        assert "Acknowledge what leaves the machine" not in body
 
 
 def test_driver_block_and_timeline(server: tuple[str, Project]) -> None:
