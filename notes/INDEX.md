@@ -5,6 +5,11 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-22)
 
+- The gate review filed (`notes/2026-10-22-1150-gate-review-filed.md`; `spec/plans/gate-soundness.md`;
+  rows L100 to L109, Next item 9): the owner's eight limitations checked against `491f1aa`, all
+  hold. First: L103 (a pre-gate accept rebinds a post-gate flag on the same attempt) and L100
+  (`hold: always` is silent under `run`). Nothing built; on branch `gate-review-backlog`, to merge
+  after the workstation session pushes `main`.
 - The benchmark plan is in (`notes/2026-10-22-0700-benchmark-phase-0.md`;
   `spec/plans/benchmark-plan.md`; rows L87 to L92): Phase 0 started, the local Claude Code
   runner works on Opus 5, the public evals and Latch's image are on the workstation; the
@@ -324,6 +329,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-22-1150-gate-review-filed.md` — the owner's walkthrough of the gate checked against the code and filed as L100 to L109 with `gate-soundness.md`; three findings sharper than the walkthrough; ids from L100 to avoid the workstation session's.
 - `2026-10-22-0700-benchmark-phase-0.md` — the owner's benchmark plan adapted (L87 to L92); the Docker-free Claude Code runner on Opus 5; the published reference on the six public evals; Phase 0 waits on `latch login`.
 - `2026-10-22-0500-citation-checks-and-plugin-0.7.md` — plugin singlecell 0.7.0 (the seven downstream predicates, L54); engine 0.2.33: must_cite and judg.required_evidence_uncited (L56), the cited output type and judg.numeric_claims_match@2 (L57).
 - `2026-10-22-0300-codex-harness.md` — engine 0.2.32: the Codex survey and appendix, Codex recognised, the renderer's harness switch, the command and openai-compatible adapters, conformance fixtures (L34 H1 to H3, L36).
