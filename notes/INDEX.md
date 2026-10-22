@@ -5,6 +5,10 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-22)
 
+- The benchmark plan is in (`notes/2026-10-22-0700-benchmark-phase-0.md`;
+  `spec/plans/benchmark-plan.md`; rows L87 to L92): Phase 0 started, the local Claude Code
+  runner works on Opus 5, the public evals and Latch's image are on the workstation; the
+  baseline runs wait on the owner's `latch login`.
 - Engine 0.2.33 and plugin singlecell 0.7.0 (`notes/2026-10-22-0500-citation-checks-and-plugin-0.7.md`):
   the seven downstream predicates (L54); `judgment.must_cite` with
   `judg.required_evidence_uncited` (L56, DEVIATIONS awaiting the owner); the `cited` report
@@ -318,6 +322,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-22-0700-benchmark-phase-0.md` — the owner's benchmark plan adapted (L87 to L92); the Docker-free Claude Code runner on Opus 5; the published reference on the six public evals; Phase 0 waits on `latch login`.
 - `2026-10-22-0500-citation-checks-and-plugin-0.7.md` — plugin singlecell 0.7.0 (the seven downstream predicates, L54); engine 0.2.33: must_cite and judg.required_evidence_uncited (L56), the cited output type and judg.numeric_claims_match@2 (L57).
 - `2026-10-22-0300-codex-harness.md` — engine 0.2.32: the Codex survey and appendix, Codex recognised, the renderer's harness switch, the command and openai-compatible adapters, conformance fixtures (L34 H1 to H3, L36).
 - `2026-10-22-0100-confirm-once.md` — engine 0.2.31: the study field, the four inheritance rules, the advance sentence, flag batches and accept-once, the console's inherited list (L67, L6, L5, L68, L69).

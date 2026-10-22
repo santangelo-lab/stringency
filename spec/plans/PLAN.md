@@ -83,6 +83,10 @@ shared prefix, restart the console, republish the three skills; the method-side 
 (L86, the `decision:` blocks, `requires`, `study:` on the Lyons projects, the gates); the
 Qwen3 evaluation; the tester; F7.
 
+8. The benchmark (`benchmark-plan.md`, added 2026-10-22): Phase 0 (L87) is in progress and
+   waits on the owner's `latch login`; then L88 to L92 in order, after the method-side rows
+   the adapter needs.
+
 Not scheduled: what the owner deferred on 2026-10-21 (L52, L53, L42, L82, H5, L48, L4, the
 console rows until asked) and what waits on a person (the skill republish, the tester, F7).
 
@@ -162,6 +166,21 @@ here as they arise. The bulk RNA-seq plan is dormant since 2026-09-23 and kept i
 | L81 | an open project's questions and answers are on the CLI (`present --answer`) and in `report.md` but not on the console or the board | `archive/open_mode_plan.md` O3: `/questions/<project>`, `/answer/<id>`, `/api/questions`, the `answer_recorded` event; board cells and a sentence for an open project; no form; when the owner asks | engine (console), DECISIONS-level |
 | L76 | the console plan's section 10 measurement (hold-to-verdict per ask, relayed holds, session switches) on the lung, gut and spleen traces was never written up | the numbers from the three traces as a note and a row in `measurements.md` | note; low; `console-and-fleet-plan.md` 10 |
 
+### Benchmark
+
+The owner's plan (`benchmark-plan.md`, 2026-10-21, adapted 2026-10-22): show on Latch's
+public evals that the gate catches the failures that cost agents the most points and that
+holds land where a reviewer's attention is needed. Claude Code with Opus 5 is the harness.
+
+| id | item | what closes it | level | reasoning |
+|---|---|---|---|---|
+| L87 | no baseline of our own exists on a public benchmark; Latch's Claude Code rows are opus-4-7 and opus-4-8 | Phase 0: `latch login` (the owner), the public evals pulled, `benchmarks/latch/run_eval.py` baseline arm three replicates on the six scBench evals then the seventeen SpatialBench evals, tokens and cost and wall-clock per run; a note with the numbers beside the published pattern (10 of 18 on the six) | benchmark; the owner for the login | `benchmark-plan.md` |
+| L88 | the six public evals are mapped to engine mechanisms on paper only; no scRNA-seq method exists as a committed pipeline | Phase 1: the mapping table marked built, row, or not addressable; the scRNA-seq method (the Xenium upstream steps generalised to droplet and combinatorial kits) with `decision:` blocks; the Latch conversation opened | method and plan | `benchmark-plan.md` |
+| L89 | nothing runs a benchmark task through the engine | Phase 2: the adapter (declare, init with a fixed confirm policy, pipeline mode with a fixed hold policy, `answer --cite`, open mode, `answer --cannot`), the method-as-prompt and sham-gate arms, tags frozen; all five arms on the DE and cell-typing evals | engine integration and method | `benchmark-plan.md` |
+| L90 | no Claim A or Claim B number | Phase 3: the public-set runs, paired deltas, accuracy among submitted, abstention, hold precision and recall, the failure-mode shift, cost; a note and a `measurements.md` row before any private data | measurement | `benchmark-plan.md` |
+| L91 | no Claim C number | Phase 4: the reviewer arm, the owner at `stringency review` with the answer key unseen | the owner | `benchmark-plan.md` |
+| L92 | the private sets and Latch's judge are a conversation not had | Phase 5: the Latch ask with the Phase 3 note, the arXiv authors' email, one run on the frozen tags | outreach; the owner | `benchmark-plan.md` |
+
 ### Operations, integration and site
 
 | id | item | what closes it | level | reasoning |
@@ -181,6 +200,7 @@ nobody reads. The row id says where the work is filed; "where" says where the te
 | trace integrity: a DEVIATIONS entry for 9.4 and 9.5 (T3), or stay at T2; a service identity for `prov/` (T4). The owner, 2026-10-21: stay at T2, not convinced either is wanted yet; nothing moves until asked | L52, L53 | `trace-integrity-plan.md` | 2026-10-20 |
 | the definition of "competent" for the Qwen3 evaluation (decision 3), after the Codex survey (H1); the go-ahead, the login and the sibling-projects shape (decision 2) were given 2026-10-21 | L34 | `judge-sources-plan.md` 6 (3) | 2026-10-21 |
 | the tester for the acceptance runs (the owner, 2026-10-21: not yet) | L79, L77 | this file | 2026-10-14 |
+| `latch login` once in the benchmark project's venv (a browser flow), so the eval data can be pulled; and which account tier that is | L87 | `benchmark-plan.md` | 2026-10-22 |
 | F7: read `cell_types_mouse@2` and the organ guides (decision 17); the owner, 2026-10-21: answered when the Xenium method is the work again | method `PLAN.md` | `spatial-method-plan.md` 8 | 2026-10-07 |
 | the console unit: `loginctl enable-linger` once (linger is off, so the console stops at logout); `notify.yml` `page_url` if hold emails should link to the inbox. The owner, 2026-10-21: later | | `console-and-fleet-plan.md` 8.4 | 2026-10-14 |
 | the toy method's GitHub remote (`santangelo-lab/stringency-toy-method`, remote `github`): keep it, and is it pushed | | `stringency-toy-method` | 2026-09-18 |

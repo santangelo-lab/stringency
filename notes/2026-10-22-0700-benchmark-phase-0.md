@@ -1,0 +1,52 @@
+# 2026-10-22 07:00: the benchmark plan adapted; Phase 0 started
+
+## Goal
+
+Take the owner's benchmark plan (2026-10-21) into the repository, adapted to engine 0.2.33 and
+this machine, and begin Phase 0 (the baseline on Latch's public evals) with Claude Code and
+Opus 5.
+
+## Done
+
+- `spec/plans/benchmark-plan.md`: what changed on contact (L55, L54, L56, L57 built; Opus 5 is a
+  new row beside Latch's opus-4-7 and opus-4-8; no Docker here; the subscription instead of an
+  API key; the Latch login), where things live, the runner and the arms, the phases as rows
+  L87 to L92, the open questions with what is known. `PLAN.md` has the Benchmark section,
+  the Next item 8, and the login in the waiting table. DECISIONS one entry. `spec/README.md`.
+- `/lab/projects/2026-10_stringency-benchmark_jrrose5/`: the three Latch repositories cloned,
+  a venv with latch-eval-tools 0.4.54 and the `latch` SDK, Latch's agent image pulled with
+  apptainer (`images/benchmark_agent.sif`, from `public.ecr.aws/p5z7v3z8/benchmark_agent`).
+- `benchmarks/latch/run_eval.py`: the baseline arm as Latch's Claude Code harness builds it
+  (the flags, the prompt with the data instructions and the background-process note, the
+  `agent_workspace/data` layout, stream-json to `trajectory.json`, the `result` event's cost,
+  turns and usage), the agent inside the image under apptainer or on the host, grading
+  through `EvalRunner`, `result.json` per replicate, and `--summary` with Latch's t-interval
+  over per-eval means. A synthetic eval passed end to end on Opus 5 (7 turns, 43 s, $0.32).
+- The published reference on the six scBench public evals, Claude Code with opus-4-7, three
+  trials each: QC, normalisation and cell typing 3/3; DE 0/3; PCA 0/3; the Tapestri clone 1/3;
+  10 of 18. Mean cost per trial about $1.06, the Tapestri eval $4.53.
+
+## Learned
+
+- Latch's eval JSON carries the task under `task`, the data as `latch://<id>.node`, the grader
+  and the authors' notes (what the trap is, what the grader rejects): the notes are the
+  Phase 1 mapping's raw material and must not reach the agent.
+- `claude -p --model claude-opus-5-5` works on this machine's subscription and reports
+  `total_cost_usd`; the stock harness needs `ANTHROPIC_API_KEY` and Docker, neither here.
+- `latch login` is a browser flow writing `~/.latch/token`; it cannot be done from this
+  session.
+
+## Altered
+
+Nothing in the engine. `benchmarks/` is a new top-level directory of the repository.
+
+## Open
+
+- The owner: `latch login` in the project venv; then the baseline runs start (the six
+  scBench evals, three replicates, about 18 Opus 5 sessions).
+- Phase 0 after the data: run, summarise, write the numbers beside the published pattern.
+
+## Verify
+
+`.venv/bin/python benchmarks/latch/run_eval.py --eval <synthetic> --no-image --max-turns 8`
+passes; the engine suite is unchanged.
