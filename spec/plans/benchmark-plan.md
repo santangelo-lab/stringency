@@ -72,6 +72,33 @@ and the per-eval and overall numbers.
 | 4 | L91 | the reviewer arm, the owner at `stringency review`, answer key unseen | a Claim C number, a per-predicate override table |
 | 5 | L92 | Latch: the withheld evals, OmicsBench v1, their judge; the arXiv authors, one email; one run on the frozen tags | private-set numbers, or why not |
 
+## Phase 1, first cut (2026-10-22): the six public evals against the engine at 0.2.33
+
+From the evals' author notes (which name the trap and what the grader rejects; they never
+reach the agent) and the graders. "Built" means the engine or plugin mechanism exists today;
+"method" means the scRNA-seq method must produce the evidence or the step; "row" means a new
+predicate to file; "not addressable" means the gate has nothing to say and the arm abstains.
+
+| eval | the trap (authors) | what the gate does today | status |
+|---|---|---|---|
+| QC, BD Rhapsody targeted panel (`n_pbmcs_retained`, `median_genes_per_pbmc`, `n_monocytes_pbmc`) | whole-transcriptome thresholds on a 386-gene panel retain zero cells, or 15% at a "safer" floor | the QC thresholds are a `decision:` whose evidence is the step's own distribution table (n_genes, total_counts per cell); `param.uncited` flags a proposal that cites nothing in it, `param.reason_unmatched` a reason with numbers the table does not hold; `sc.low_cell_count` flags too few cells retained (plugin) | built; method: a QC step that writes the distribution table and takes panel-aware floors |
+| Normalisation, CS Genetics (`median_umis_per_cell`, `pct_counts_one`, `median_hvg_prevalence`) | log-normalisation at 1,655 median UMIs picks low-prevalence noise genes as HVGs | normalisation method and HVG flavour as decision points with `evidence: <qc>/depth_summary` (median UMI, singleton fraction); the hold shows the depth before the number | decision built; row: a plugin flag when the method is log-normalisation and the median UMI is below a floor (`sc.normalization_depth`); method: `pearson_residuals` and `seurat_v3` as options |
+| PCA, Chromium 4T1 (`pc1_top_abs_load`, `max_top5_depth_corr`) | skipping per-gene scaling and depth regression; both sentinels must pass | `scale` and `regress_out` as decision points with `hold: always`; the step writes the two sentinels as a table; `exec.plan_drift` keeps the declared method's output | decision built; row: two post-phase plugin flags over the sentinel table (`sc.pc1_single_gene`, `sc.pca_depth_confounded`); method: the sentinel table |
+| DE, Parse Bio, 12 donors (`n_degs`) | `rank_genes_groups` at cell level: 3,194 DEGs (t-test) or 625 (Wilcoxon); pass is pseudobulk by donor with donor in the model, 800 to 1,500 | `pseudobulk-de` with `replicate_unit` a decision point; `de.replication_unit` blocks a unit finer than the design's donor; `de.covariate_omission` flags donor absent from the model; `obj.feasibility` the cells-per-donor floor | built (plugin 0.7.0); method: the Xenium tool's `replicate_unit` enum (`animal`, `punch`) generalised to the design's units, donor as the replication unit in `design.yml` |
+| Cell typing, Illumina snRNA DRG (`mural_nuclei`, `interpretation`) | overriding panel scoring with a per-gene look (211, rejected); picking a sophisticated wrong explanation without checking the cells | the panel-scoring step is the declared method and `exec.plan_drift` keeps its output (0); the "why" is a judgment over the per-gene detection table with `must_cite: [detection.pct_detected]`, so the replicates cite Rgs5 against the other three panel genes; `judg.required_evidence_uncited`, `judg.numeric_claims_match@2` | built (0.2.33); method: a panel-scoring step with a per-gene detection table as judgment evidence; pipeline then open |
+| Clustering, Tapestri scDNA + protein (`largest_clone_pct`, `interpretation`) | protein clustering instead of genotype; the double mutant instead of the largest clone | outside the single-cell plugin (DNA genotype calls, a 181-variant panel): no method step, no extractor | not addressable: `answer --cannot`, counted as abstention |
+
+Two rows to file for Phase 1 beside L88 (the method): the depth-aware normalisation flag and
+the two PCA sentinel flags, each a plugin predicate with must-fire and must-pass fixtures over
+a table the method writes. Both read a computed diagnostic, as the owner's plan says: a
+sentinel on a computed diagnostic is a gate.
+
+What the baseline cannot show and the gate can: in every one of the five addressable evals the
+failing choice is made and not tested (a threshold, a normalisation, a preprocessing step, a
+replicate unit, an override of the declared method), and in every one the engine's answer is
+the same shape: the choice is a decision point with its evidence beside it, and the hold or
+the block lands before the number is written.
+
 ## Open questions, with what is known now
 
 - Latch account tier for the public data: unknown until the owner logs in.
