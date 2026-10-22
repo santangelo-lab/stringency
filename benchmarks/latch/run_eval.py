@@ -85,8 +85,10 @@ def stage_data(eval_json: dict, agent_dir: Path) -> list[Path]:
     return out
 
 
-def claude_command(model: str, system_prompt: str | None, max_turns: int) -> list[str]:
-    cmd = ["claude", *CLAUDE_FLAGS]
+def claude_command(
+    model: str, system_prompt: str | None, max_turns: int, claude: str = "claude"
+) -> list[str]:
+    cmd = [claude, *CLAUDE_FLAGS]
     if max_turns > 0:
         cmd += ["--max-turns", str(max_turns)]
     if system_prompt:
@@ -106,20 +108,17 @@ def run_agent(
 ) -> dict:
     """One Claude Code session over the workspace; the stream-json events to trajectory.json;
     the final `result` event's usage and cost returned."""
-    cmd = claude_command(model, system_prompt, max_turns)
+    # the host's Claude Code binary by its resolved path: the image's own copy (2.1.174) is
+    # too old for Opus 5, and the home directory with the login is mounted in the container
+    host_claude = os.path.realpath(shutil.which("claude") or "claude")
+    cmd = claude_command(model, system_prompt, max_turns, host_claude if image else "claude")
     if image is not None:
         cmd = [
             "apptainer",
             "exec",
             "--cleanenv",
-            "--env",
-            "HOME=/root",
             "--bind",
             f"{agent_dir}:/workspace",
-            "--bind",
-            f"{Path.home() / '.claude'}:/root/.claude",
-            "--bind",
-            f"{Path.home() / '.claude.json'}:/root/.claude.json",
             "--env",
             "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1",
             "--pwd",
