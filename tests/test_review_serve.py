@@ -214,6 +214,9 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
             "The check: The operator chose a value for a parameter the method leaves open" in body
         )
         assert body.index("What the engine found") < body.index("The decision")
+        assert '<details class="packet">' in body and body.index("The decision") < body.index(
+            '<details class="packet">'
+        )
         assert "The operator proposed a value for min_value, citing nothing." in body
         status, body = post(
             f"{base}/hold/{h['hold_id']}", t=TOKEN, verdict="accept", reason="agreed, 12"

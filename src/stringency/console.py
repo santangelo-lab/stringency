@@ -232,6 +232,9 @@ def plain_block(h: Any, ctx: dict[str, Any]) -> dict[str, Any]:
     `reason` and `context_json`; writes nothing."""
     predicate = str(ctx.get("predicate") or "")
     pred_id = predicate.split("@")[0]
+    kind = str(h["kind"]) if "kind" in h.keys() else ""
+    if not pred_id and kind in ("confirm", "egress"):
+        return _opening_block(kind, ctx)
     check: str | None = None
     if pred_id:
         from stringency.predicates.registry import registry
@@ -263,6 +266,79 @@ def plain_block(h: Any, ctx: dict[str, Any]) -> dict[str, Any]:
             elif _scalar(v):
                 compared.append({"name": k, "value": _plain(v)})
     return {"check": check, "found": found, "compared": compared}
+
+
+def _opening_block(kind: str, ctx: dict[str, Any]) -> dict[str, Any]:
+    """The plain block of a project's opening holds. Confirm: the engine's reading of the
+    declarations, with the echo-back's summary paragraph as what it found. Egress: what leaves
+    the machine, with the assessed class and the ceiling. Reads the echo-back or the report on
+    disk when the hold's context names it; writes nothing."""
+    if kind == "confirm":
+        found = ""
+        path = ctx.get("echo_path")
+        if path and Path(str(path)).exists():
+            paras = [
+                " ".join(x.strip() for x in blk.splitlines())
+                for blk in Path(str(path)).read_text().split("\n\n")
+                if blk.strip() and not blk.lstrip().startswith("#")
+            ]
+            # the intro sentence first, the summary of the declarations second
+            found = paras[1] if len(paras) > 1 else (paras[0] if paras else "")
+        return {
+            "check": (
+                "The engine read the three declaration files (inputs, design, objective) "
+                "and bound the method and pipeline; accepting says this reading matches the "
+                "experiment, and every later hold refers back to it."
+            ),
+            "found": found or "The echo-back below is the engine's reading of the declarations.",
+            "compared": [],
+            "guidance": [
+                "The inputs are the files you meant, by name and type, and nothing is missing.",
+                "The units (what one observation, one sample, one replicate is) and the "
+                "factor levels are your design, with the right column behind each.",
+                "The biological replicate is the unit the test should treat as independent.",
+                "The question and the deliverables are what you want back.",
+                "Reject if any of these is wrong: edit the declaration files and initialise "
+                "again; nothing runs on a rejected plan.",
+            ],
+        }
+    compared: list[dict[str, str]] = []
+    found = ""
+    leaves: list[str] = []
+    path = ctx.get("report_path")
+    if path and Path(str(path)).exists():
+        section = None
+        for line in Path(str(path)).read_text().splitlines():
+            if line.startswith("ceiling: "):
+                compared.append({"name": "ceiling", "value": line[len("ceiling: ") :]})
+            elif line.startswith("assessed: "):
+                found = line[len("assessed: ") :]
+                compared.append({"name": "assessed", "value": found})
+            elif line.startswith("## "):
+                section = line[3:].strip()
+            elif section == "What leaves the machine" and line.startswith("- "):
+                leaves.append(line[2:].strip())
+            elif section == "What leaves the machine" and line.startswith("  ") and leaves:
+                leaves[-1] = leaves[-1] + "; " + line.strip()
+    for i, item in enumerate(leaves, 1):
+        compared.append({"name": f"leaves {i}", "value": item})
+    return {
+        "check": (
+            "What leaves this machine when the project runs, by class from 0 (nothing) to 4 "
+            "(the data itself); accepting acknowledges the assessed class."
+        ),
+        "found": (
+            f"The project is assessed at {found}."
+            if found
+            else "The report says what leaves the machine."
+        ),
+        "compared": compared,
+        "guidance": [
+            "The assessed class is one you accept for this data; a PROTECT or otherwise "
+            "restricted dataset may need a lower ceiling, declared at init.",
+            "Each entry under leaves is a route out (who receives what); none should surprise you.",
+        ],
+    }
 
 
 def _first_sentence(doc: str) -> str:

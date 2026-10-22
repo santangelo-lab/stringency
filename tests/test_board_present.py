@@ -172,7 +172,11 @@ def test_present_hold_shows_review_commands_and_matching_view(make_project: Init
     assert payload["review"]["accept"].startswith(
         f"stringency review --verdict accept --hold {h['hold_id']}"
     )
-    assert any(s["title"] == "Echo-back" for s in payload["sections"])
+    assert any(s["title"] == "Echo-back" and s.get("markdown") for s in payload["sections"])
+    # the opening hold's plain block: what confirming means, and the echo-back's summary
+    assert payload["check"].startswith("The engine read the three declaration files")
+    assert payload["found"] and "input" in payload["found"]
+    assert len(payload["guidance"]) == 5 and "What to check:" in render_markdown(payload)
     # a flag hold with evidence and a matching hold_view table
     p2, run_id, _ = _delivered(make_project)
     site2 = Site.load(p2.root)
@@ -394,3 +398,21 @@ def test_present_hold_markdown_opens_with_the_plain_block(make_project: InitFn) 
     text = render_markdown(payload)
     assert "What was checked: The operator chose a value for a parameter" in text
     assert "What the engine found: " in text and "The engine recorded" not in text
+
+
+def test_md_html_renders_the_engines_markdown() -> None:
+    from stringency.present import md_html
+
+    text = (
+        "# Echo-back\n\nThis is the reading.\n\n640 cells (input object);\nmore.\n\n"
+        "## What leaves\n\n- operator session: class 3\n  to: the model\n- another\n\n"
+        "Bound to:\n  design.yml: abc\n  inputs.yml: def\n\n```\nx < 1\n```\n"
+    )
+    html = md_html(text, "Echo-back")
+    assert html.startswith("<p>This is the reading.</p>")
+    assert "<p>640 cells (input object); more.</p>" in html
+    assert "<h4>What leaves</h4>" in html
+    assert "<ul><li>operator session: class 3 to: the model</li><li>another</li></ul>" in html
+    assert "<p>Bound to:</p>" in html and "<tr><th>design.yml</th><td>abc</td></tr>" in html
+    assert "<pre>x &lt; 1</pre>" in html
+    assert md_html("# Other\n\ntext", "Echo-back").startswith("<h3>Other</h3>")
