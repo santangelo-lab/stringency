@@ -70,3 +70,16 @@ Nothing in the engine. The runner lives in `stringency-benchmarks`, not here.
   Genetics, 11,693 cells x 27,946 genes: median 1,655 UMIs, 73.9% of counts are 1, below the
   2,000 floor, so `log_total` is flagged by `sc.normalization_depth`. Both agree with the
   evals' author notes (first written here from the notes, corrected the same night from the run).
+
+Later still, the method's skills (`stringency-scrnaseq-scanpy-method` 4652dd3, tag v0.1.0): the
+delivery skills `skills/scrnaseq-upstream.yml` and `skills/scrnaseq-de.yml` (hold views on the
+proposal holds cite `01_qc_metrics/qc_distribution.csv`, `qc_summary.json`, the elbow table with
+`mark_param: n_pcs`, `pca_sentinels.json`; after-delivery tables from every step), the analysis
+skills `.analyze.yml` (question `processed_object` and `differential_expression`; eight and five
+decisions; `pseudobulk-de` and `score-panels` as tools; open paths), and `open.yml`. The renderer's
+`--check` wanted every decision point of a tool settled in `asks` or `proposed`, so the DE
+thresholds are asked with their defaults in the question and `min_cells_per_sample` is proposed
+from `qc_report`; the skill description is capped at 1024 characters, so the phrasings were
+trimmed. Both SKILL.md files are rendered and committed; `stringency lint .` has the one benign
+warning (qc-metrics has no decision point). Nothing is published to Claude Science yet (the
+owner's instruction). Baseline at this point: QC 3/3 and NRM01 3/3 done, PCA r1 running.
