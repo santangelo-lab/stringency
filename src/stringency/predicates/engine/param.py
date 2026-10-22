@@ -199,19 +199,22 @@ def agent_proposed(ctx: GateContext) -> Verdict:
 
 @predicate(
     id="param.reason_unmatched",
-    version=1,
+    version=2,
     scope=["*"],
     phase="pre",
     default=Disposition.FLAG,
     summary=(
-        "Every number in the operator's reason must appear in a cell the proposal cites; this lists the numbers that do not."
+        "Every number in the operator's reason must appear in a cell the proposal cites or be "
+        "a value the proposal sets; this lists the numbers that do neither."
     ),
 )
 def reason_unmatched(ctx: GateContext) -> Verdict:
     """A numeral in the proposal's reason matches no cited cell, or the reason carries numerals
     and cites nothing (L55): the rationale is the object under test, never trusted (design 6.8),
     checked as `ans.numeral_unmatched` checks an answer. Only an agent's proposal with a reason
-    is read."""
+    is read. Version 2 (backlog L93, 2026-10-22): the proposal's own parameter values are not
+    claims about evidence and match without a citation, so "a floor of 200 genes" is not flagged
+    for 200 when 200 is the value proposed."""
     from stringency.citations import cited_values
     from stringency.predicates.engine.judg import _numeral_problems
 
@@ -220,7 +223,10 @@ def reason_unmatched(ctx: GateContext) -> Verdict:
     r = _rationale(ctx)
     if not r["text"].strip():
         return Verdict(False)
-    problems = _numeral_problems(r["text"], cited_values(r["cited"]), {"reason": True})
+    allowed = cited_values(r["cited"]) + [
+        v for v in ctx.action.parameters.values() if isinstance(v, (int, float, str))
+    ]
+    problems = _numeral_problems(r["text"], allowed, {"reason": True})
     if not problems:
         return Verdict(False)
     nums = ", ".join(p["numeral"] for p in problems)
