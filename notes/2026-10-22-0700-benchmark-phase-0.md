@@ -83,3 +83,22 @@ from `qc_report`; the skill description is capped at 1024 characters, so the phr
 trimmed. Both SKILL.md files are rendered and committed; `stringency lint .` has the one benign
 warning (qc-metrics has no decision point). Nothing is published to Claude Science yet (the
 owner's instruction). Baseline at this point: QC 3/3 and NRM01 3/3 done, PCA r1 running.
+
+The baseline finished at 00:33 (9/18: QC 3/3, NRM01 3/3, DE01 3/3, PCA 0/3, T04a 0/3,
+Tapestri 0/3) and is contaminated. The three PCA replicates gave the identical answer, and
+the Tapestri third replicate said "that is what I submitted in the two earlier runs". Cause:
+apptainer mounts the home directory, so the host's Claude Code configuration was the agent's:
+`~/.claude/CLAUDE.md` (the PROTSEQ context), 44 skills including the published stringency
+skills, thirteen claude.ai connectors (Gmail, Drive, PubMed, Consensus, ...), and auto-memory
+at `~/.claude/projects/-workspace/memory/`, written by replicate one and read by two and
+three (six memory files, copied into the run directory). The runs are moved to
+`runs/baseline-contaminated-2026-10-21` with a README; nothing deleted. Fix in
+`stringency-benchmarks` ae5561b: each run gets `<run>/home` mounted over the home path
+(`--home`, `--contain`), the Claude install bound read-only, the host's credentials file bound
+in, a `settings.json` with `syncClaudeAiPlugins`, `syncClaudeAiSkills` off and
+`disableBundledSkills` on (found by reading the binary; the account-synced plugins came back
+through the login even with a fresh config dir), `--setting-sources user`,
+`--strict-mcp-config` with an empty server list. Smoke eval under the fix: no MCP servers,
+three built-in skills, memory written under the run's own home. Latch's harness gives each
+run a fresh `.claude` with an API key, so this now matches it. The baseline relaunched at
+about 00:50 (task brtsz05hj, `logs/baseline.log`, unbuffered this time).
