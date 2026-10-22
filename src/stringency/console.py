@@ -232,7 +232,10 @@ def plain_block(h: Any, ctx: dict[str, Any]) -> dict[str, Any]:
     `reason` and `context_json`; writes nothing."""
     predicate = str(ctx.get("predicate") or "")
     pred_id = predicate.split("@")[0]
-    kind = str(h["kind"]) if "kind" in h.keys() else ""
+    try:
+        kind = str(h["kind"])  # a sqlite3.Row or a dict; a test's dict may lack it
+    except (IndexError, KeyError):
+        kind = ""
     if not pred_id and kind in ("confirm", "egress"):
         return _opening_block(kind, ctx)
     check: str | None = None
