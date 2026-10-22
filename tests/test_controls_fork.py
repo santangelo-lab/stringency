@@ -62,6 +62,30 @@ def test_negative_and_positive_controls_pass(cproject: Project) -> None:
     )
 
 
+def test_control_runs_log_flags_and_leave_no_open_hold(cproject: Project) -> None:
+    """A control tests the module, not a person's sign-off: every flag a control run raises is
+    recorded with effective disposition `log`, and a control run closed short of completion
+    withdraws its holds (the scrnaseq method's controls, 2026-10-22, left five holds on the
+    owner's console)."""
+    run_controls(cproject, "label-groups", allow_mock=True)
+    rows = cproject.store.all(
+        "SELECT p.effective_disposition AS e FROM predicate_results p JOIN runs r ON r.run_id = p.run_id "
+        "WHERE r.kind = 'control' AND p.fired = 1"
+    )
+    # the toy's controls raise no flag today; the invariant holds whatever fires
+    assert all(r["e"] in ("log", "block") for r in rows)
+    from stringency.gate import _is_control_run
+
+    run = cproject.store.one("SELECT run_id FROM runs WHERE kind = 'control' LIMIT 1")
+    assert run is not None and _is_control_run(cproject.store, run["run_id"])
+    assert not _is_control_run(cproject.store, "01NOSUCHRUN")
+    stale = cproject.store.all(
+        "SELECT h.hold_id FROM holds h JOIN runs r ON r.run_id = h.run_id WHERE r.kind = 'control' "
+        "AND r.status != 'running' AND h.resolved_by_review IS NULL AND h.resolved_via IS NULL"
+    )
+    assert stale == []
+
+
 def test_regression_diff_exits_nonzero(cproject: Project, monkeypatch: pytest.MonkeyPatch) -> None:
     r = cli(cproject, "controls", "run", "--module", "label-groups", "--allow-mock", env=MOCK)
     assert r.exit_code == 0, r.output

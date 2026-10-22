@@ -99,6 +99,14 @@ def run_predicate(spec: PredicateSpec, ctx: GateContext) -> Verdict:
     return v
 
 
+def _is_control_run(store: Store, run_id: str) -> bool:
+    """Reads runs.kind: a run the controls runner opened is `control`."""
+    try:
+        return bool(store.scalar("SELECT kind FROM runs WHERE run_id = ?", (run_id,)) == "control")
+    except Exception:  # noqa: BLE001 - a run id the table does not hold (tests, init-time)
+        return False
+
+
 def evaluate(
     ctx: GateContext,
     *,
@@ -122,9 +130,15 @@ def evaluate(
         )
     )
     records: list[GateRecord] = []
+    control = store is not None and _is_control_run(store, ctx.action.run_id)
     for spec in specs:
         verdict = run_predicate(spec, ctx)
         effective = ctx.policy.effective(spec, ctx.project.profile)
+        if control and effective == Disposition.FLAG:
+            # a control tests the module against planted truth; there is no person in it to
+            # sign off, so a flag is recorded as fired and logged, never held (DECISIONS
+            # 2026-10-22); a block still fails the control
+            effective = Disposition.LOG
         records.append(GateRecord(spec, verdict, spec.default, effective))
         if store is not None:
             store.insert(

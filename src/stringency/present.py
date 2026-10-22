@@ -351,7 +351,14 @@ def render_items(
                     {"title": title, "kind": "table", **_table(rows, ["fact", "value"], {})}
                 )
                 continue
-            sections.append({"title": title, "kind": "text", "text": path.read_text()})
+            sections.append(
+                {
+                    "title": title,
+                    "kind": "text",
+                    "markdown": path.suffix.lower() == ".md",
+                    "text": path.read_text(),
+                }
+            )
             continue
         if kind == "figure":
             beside_src = _fill(str(item.get("beside") or ""), hold)
@@ -836,7 +843,7 @@ def present_hold(
     skill, note = load_skill(project, skills_dir)
     from stringency.console import plain_block
 
-    plain = plain_block(h, ctx) if predicate else {"check": None, "found": "", "compared": []}
+    plain = plain_block(h, ctx)
     payload: dict[str, Any] = {
         "schema": "stringency.present/1",
         "kind": "hold",
@@ -846,6 +853,7 @@ def present_hold(
         "check": plain["check"],
         "found": plain["found"],
         "compared": plain["compared"],
+        "guidance": plain.get("guidance") or [],
         "waits_on": who,
         "step_id": h["step_id"],
         "run_id": h["run_id"],
@@ -864,13 +872,24 @@ def present_hold(
         report = ctx.get("report_path")
         if report and Path(report).exists():
             payload["sections"].append(
-                {"title": "Data egress", "kind": "text", "text": Path(report).read_text()}
+                {
+                    "title": "Data egress",
+                    "kind": "text",
+                    "markdown": True,
+                    "folded": "The full report",
+                    "text": Path(report).read_text(),
+                }
             )
     if h["kind"] == "confirm":
         echo = ctx.get("echo_path")
         if echo and Path(echo).exists():
             payload["sections"].append(
-                {"title": "Echo-back", "kind": "text", "text": Path(echo).read_text()}
+                {
+                    "title": "Echo-back",
+                    "kind": "text",
+                    "markdown": True,
+                    "text": Path(echo).read_text(),
+                }
             )
     if skill is not None and h["run_id"]:
         raw_views = skill.get("hold_view")
@@ -1291,7 +1310,7 @@ SECTIONS_HTML = _HTML_ENV.from_string(
 {% if s.get("note") %}<p class="note">({{ s.note }})</p>{% endif %}
 {% if s.get("error") %}<p class="note">(not shown: {{ s.error }})</p>
 {% elif s.kind == "file" %}<p>file to send: <code>{{ s.path }}</code></p>
-{% elif s.kind == "text" %}<pre>{{ s.text.rstrip() }}</pre>
+{% elif s.kind == "text" %}{% if s.get("folded") %}<details><summary>{{ s.folded }}</summary>{% endif %}{% if s.get("markdown") %}{{ md(s) }}{% else %}<pre>{{ s.text.rstrip() }}</pre>{% endif %}{% if s.get("folded") %}</details>{% endif %}
 {% elif s.kind == "figure" %}<div class="figs{% if s.beside %} pair{% endif %}">
 <figure><img class="fig" src="{{ url(s.path) }}" alt="{{ s.caption or s.title }}"><figcaption>{{ s.caption or s.path.rsplit("/", 1)[-1] }}</figcaption></figure>
 {% if s.beside %}<figure><img class="fig" src="{{ url(s.beside) }}" alt="{{ s.beside_caption or s.beside }}"><figcaption>{{ s.beside_caption or s.beside.rsplit("/", 1)[-1] }}</figcaption></figure>
@@ -1314,6 +1333,87 @@ SECTIONS_HTML = _HTML_ENV.from_string(
 )
 
 
+def _h(v: object) -> str:
+    import html
+
+    return html.escape(str(v), quote=False)
+
+
+def md_html(text: str, drop_title: str | None = None) -> str:
+    """The engine's own markdown (the echo-back, the egress report, a method's prose section)
+    as escaped HTML: `#`/`##` headings (h3/h4; a leading heading equal to `drop_title` is
+    dropped, the section already carries it), paragraphs, `- ` lists with indented
+    continuation lines, `key: value` lines indented under a paragraph as a definition table,
+    and fenced code. Nothing else is interpreted; no third-party markdown."""
+    out: list[str] = []
+    para: list[str] = []
+    items: list[str] = []
+    defs: list[tuple[str, str]] = []
+    code: list[str] | None = None
+
+    def flush() -> None:
+        nonlocal para, items, defs
+        if para:
+            out.append("<p>" + _h(" ".join(x.strip() for x in para)) + "</p>")
+            para = []
+        if items:
+            out.append("<ul>" + "".join(f"<li>{_h(i)}</li>" for i in items) + "</ul>")
+            items = []
+        if defs:
+            out.append(
+                '<table class="defs">'
+                + "".join(f"<tr><th>{_h(k)}</th><td>{_h(v)}</td></tr>" for k, v in defs)
+                + "</table>"
+            )
+            defs = []
+
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        if code is not None:
+            if line.strip().startswith("```"):
+                out.append("<pre>" + _h("\n".join(code)) + "</pre>")
+                code = None
+            else:
+                code.append(line)
+            continue
+        if line.strip().startswith("```"):
+            flush()
+            code = []
+            continue
+        if not line.strip():
+            flush()
+            continue
+        if line.startswith("#"):
+            flush()
+            level = len(line) - len(line.lstrip("#"))
+            title = line[level:].strip()
+            if drop_title and title == drop_title and not out:
+                continue
+            out.append(f"<h{min(level + 2, 6)}>{_h(title)}</h{min(level + 2, 6)}>")
+            continue
+        if line.startswith("- "):
+            if para:
+                flush()
+            items.append(line[2:].strip())
+            continue
+        if line.startswith("  ") and items:
+            items[-1] = items[-1] + " " + line.strip()
+            continue
+        if line.startswith("  ") and ": " in line.strip():
+            if para:
+                flush()
+            k, _, v = line.strip().partition(": ")
+            defs.append((k, v))
+            continue
+        if defs:
+            flush()
+        para.append(line)
+    flush()
+    if code is not None:
+        out.append("<pre>" + _h("\n".join(code)) + "</pre>")
+    return "\n".join(out)
+
+
 def render_html(payload: dict[str, Any], url_for: Callable[[str], str] | None = None) -> str:
     """The same sections as `render_markdown`, as an HTML fragment (escaped; no script). The
     page that embeds it adds the heading, the links and the form, and maps a figure's path on
@@ -1327,6 +1427,7 @@ def render_html(payload: dict[str, Any], url_for: Callable[[str], str] | None = 
         skill=payload["skill"],
         url=url_for or (lambda p: p),
         svg=lambda s: Markup(chart_svg(s)),  # noqa: S704 - built from numbers and escaped text
+        md=lambda s: Markup(md_html(s["text"], s.get("title"))),  # noqa: S704 - escaped by md_html
     )
 
 
@@ -1360,6 +1461,10 @@ def render_markdown(payload: dict[str, Any]) -> str:
             if payload.get("check"):
                 out.append(f"What was checked: {payload['check']}")
             out.append(f"What the engine found: {payload['found']}")
+            if payload.get("guidance"):
+                out.append("")
+                out.append("What to check:")
+                out.extend(f"- {g}" for g in payload["guidance"])
             if payload.get("compared"):
                 out.append("")
                 out.append("The numbers it compared:")

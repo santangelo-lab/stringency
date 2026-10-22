@@ -730,6 +730,19 @@ def run_control(
     if rc.run["status"] not in ("completed",):
         from stringency.runs import close_run
 
+        if st != "completed":
+            # the run's open holds are withdrawn with it, so none lingers in a person's queue
+            # (`abandon` would do this but walks the project's pipeline, not the control's)
+            open_ids = [
+                r["hold_id"]
+                for r in project.store.all(
+                    "SELECT hold_id FROM holds WHERE run_id = ? AND resolved_by_review IS NULL "
+                    "AND resolved_via IS NULL",
+                    (rc.run_id,),
+                )
+            ]
+            if open_ids:
+                project.store.withdraw_holds(open_ids, "control run closed")
         close_run(
             rc, "completed" if st == "completed" else "abandoned", reason="control run closed"
         )

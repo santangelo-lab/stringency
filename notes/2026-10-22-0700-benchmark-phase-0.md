@@ -163,3 +163,37 @@ every registered predicate in scope, so a module's `gates:` pin (`@1`) is a decl
 checks, not what runs (the packet said `@2` under a method pinned to `@1`); and the engine's
 own proposal checks want default hold views (L95). The running project stays on v0.1.0; the
 owner decides the three HVG holds.
+
+Later: L93 built (`param.reason_unmatched@2`, the proposal's own values match); the console
+got predicate summaries, a sentence for the proposal hold's finding, colours and a tag per ask
+group on every card and heading. The run reached 07_score_panels, where `param.out_of_range`
+blocked the panels: the pipeline at v0.1.0 declared `range: [0, 0]` on a JSON string, which no
+value satisfies and which lint had not caught (L96); and no parameter form admits an open-form
+declaration (L97). `fork` refuses a dirty clone and `run --allow-dirty` cannot re-run a blocked
+step's attempt, so the run stops there; steps 01 to 06 ran clean and the clusters match the
+planted lineages exactly (T 343, Mono 208, B 89). Method v0.1.3 makes the panels a declared
+input (`panels.csv`, columns lineage and gene; the module reads it when wired, the parameter in
+open mode). A second project on v0.1.3 (`proj2`) re-runs the pipeline with the panels declared
+in `inputs.yml`; the owner's holds again, fewer now.
+
+Evening: the third project (method v0.1.6, then v0.1.7 for the after-delivery figure form)
+delivered. Confirmation inherited from proj2 by the re-declared rule, so only egress asked;
+then one hold per decision, five in all, no companion flags: the fixes held. PCA sentinels
+0.23 and 0.28; four clusters; the declared panels assign them to T 343, Mono 208, B 89, the
+planted counts exactly. The delivery's summary names every accept with the owner's words and
+the coverage lists 28 evaluations over seven steps. The after-delivery figures resolve only in
+the `step/output/file` form (v0.1.7). The owner's console asks along the way, all built: the
+plain block, predicate summaries, the proposal sentence, colours and tags per ask group, the
+echo-back and egress rendered with guidance and the full report folded, the packet folded, an
+empty value shown as a choice, the QC figures (boxes of pct_mt per sample; genes against
+counts per cell) at the floors hold. `controls run` on the method under the engine started
+last (the coverage report said none recorded).
+
+`controls run` on proj3, first attempt: four of eight controls failed because flags on the
+control runs (`sc.normalization_depth`, no QC facts in a single-module run; `sc.decision_unreviewed`,
+no decision block in a control) opened holds the runner then abandoned, leaving five holds in
+the owner's queue; the fixture also had to be tracked (v0.1.8: the template's `*.h5ad` ignore).
+Engine ca33d6b: a flag on a run of kind control is logged, never held; a control run closed
+short withdraws its holds. Second attempt: all eight controls pass (qc-metrics, score-panels
+and pseudobulk-de against their truth tables with zero difference), eight flags logged, no hold.
+The method's own BACKLOG.md written (the assignment step first, M1 to M12; M13 to M17 elsewhere).

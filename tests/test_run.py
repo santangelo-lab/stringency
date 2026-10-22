@@ -881,7 +881,9 @@ def test_reason_naming_the_proposed_value_is_not_flagged(make_project: InitFn) -
     rc2 = open_or_resume(p2)
     propose(rc2, "01_filter", {"min_value": 12}, rationale="A floor of 12; 3 groups.")
     by = {h["reason"].split(":")[0]: h["reason"] for h in queue(p2)}
-    assert "param.reason_unmatched" in by and by["param.reason_unmatched"].endswith(": 3")
+    assert by["param.reason_unmatched"] == (
+        "param.reason_unmatched: the reason carries numerals (3) and cites nothing"
+    )
 
 
 def test_uncited_proposal_and_numeral_reason_open_their_own_holds(make_project: InitFn) -> None:

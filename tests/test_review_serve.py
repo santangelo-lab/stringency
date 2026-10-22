@@ -214,6 +214,9 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
             "The check: The operator chose a value for a parameter the method leaves open" in body
         )
         assert body.index("What the engine found") < body.index("The decision")
+        assert '<details class="packet">' in body and body.index("The decision") < body.index(
+            '<details class="packet">'
+        )
         assert "The operator proposed a value for min_value, citing nothing." in body
         status, body = post(
             f"{base}/hold/{h['hold_id']}", t=TOKEN, verdict="accept", reason="agreed, 12"
@@ -640,7 +643,7 @@ def test_inbox_groups_holds_by_ask_and_the_method_names_the_card(make_project: I
             {"group": "flag", "created": "2026-01-01T00:00:01Z", "hold_id": "A"},
         ]
     )
-    assert [g["key"] for g in groups][:2] == ["confirm", "parameters"]
+    assert [g["key"] for g in groups][:2] == ["confirm", "egress"]
     assert [c["hold_id"] for g in groups for c in g["cards"]] == ["C", "A", "B"]
     # on the page: the parameter hold under its heading, with the method's phrase
     _skill(p, [], hold_view=[{"predicate": "param.agent_proposed", "ask": "Approve the floor"}])
@@ -649,6 +652,7 @@ def test_inbox_groups_holds_by_ask_and_the_method_names_the_card(make_project: I
         assert status == 200
         assert "Approve the operator&#39;s parameters" in body and "Approve the floor" in body
         assert "Confirm the plan" not in body  # an empty group is not shown
+        assert "Acknowledge what leaves the machine" not in body
 
 
 def test_driver_block_and_timeline(server: tuple[str, Project]) -> None:
@@ -1127,3 +1131,26 @@ def test_hold_page_reads_no_input_file(
     assert "replicate 1: abundant (high)" in render(p, h).text
     r = cli(p, "review", "--hold", h["hold_id"])
     assert r.exit_code == 0, r.output
+
+
+def test_decision_rows_show_an_empty_choice() -> None:
+    """An empty string is a choice (no regression), not a missing cell (the owner, 2026-10-22)."""
+    from stringency.review_serve import _decision_rows
+
+    rows = _decision_rows(
+        {
+            "evidence": {
+                "proposed": {
+                    "regress_out": {"default": "", "proposed": ""},
+                    "n": {"default": 1, "proposed": None},
+                }
+            }
+        }
+    )
+    assert rows[0] == {
+        "name": "regress_out",
+        "default": "(empty: none)",
+        "value": "(empty: none)",
+        "source": "agent",
+    }
+    assert rows[1]["value"] == "(unset)" and rows[1]["default"] == "1"

@@ -146,7 +146,8 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         lambda p: make_ctx(
             p,
             "01_filter",
-            action=with_rationale(p, "01_filter", {"min_value": 20}, "20 is the knee"),
+            # version 2: the proposed value (20) matches on its own; 17 is neither cited nor set
+            action=with_rationale(p, "01_filter", {"min_value": 20}, "the knee is at 17"),
         ),
         lambda p: make_ctx(
             p,

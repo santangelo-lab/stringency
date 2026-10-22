@@ -345,6 +345,13 @@ def _verdict_lines(verdicts: list[dict[str, str]]) -> list[str]:
     return lines
 
 
+def _shown(v: object) -> object:
+    """An empty string is a choice (no regression), shown as such; None is unset."""
+    if v is None:
+        return "(unset)"
+    return "(empty: none)" if v == "" else v
+
+
 def verdicts_for(
     kind: str, hold_id: str, phase: str | None, *, item_level: bool = True
 ) -> list[dict[str, str]]:
@@ -681,7 +688,7 @@ def _decision_lines(
         decl = step.params.get(name)
         default = p.get("default") if isinstance(p, dict) else None
         value = p.get("proposed") if isinstance(p, dict) else p
-        line = f"{INDENT}{name}: default {default}, proposed {value}"
+        line = f"{INDENT}{name}: default {_shown(default)}, proposed {_shown(value)}"
         if decl is not None and decl.decision is not None:
             ev = decl.decision.evidence
             if ev.source:

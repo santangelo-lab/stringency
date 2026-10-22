@@ -86,6 +86,7 @@ __all__ = ["discover", "make_server", "read_token_file", "serve"]
 # and parameter approvals told apart at a glance)
 ASK_LABELS = {
     "confirm": "confirm",
+    "egress": "egress",
     "parameters": "parameter",
     "consensus": "consensus",
     "sign_off": "sign-off",
@@ -146,8 +147,10 @@ p.error { color: var(--err); background: var(--errbg); padding: 0.6em 1em; borde
 p.crumbs { font-size: 0.9em; }
 .tag { display: inline-block; border: 1px solid var(--line); border-radius: 3px; padding: 0 0.4em; font-size: 0.8em; color: var(--muted); margin-left: 0.4em; font-weight: normal; }
 .card { border: 1px solid var(--line); border-left: 5px solid var(--line); padding: 0.7em 1em; margin: 0.5em 0; }
-.ask-confirm { --ask: #2e7d32; } .ask-parameters { --ask: #2f5d9e; } .ask-flag { --ask: #b26a00; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #6a3fa0; } .ask-invalid { --ask: #8a1f11; }
-@media (prefers-color-scheme: dark) { .ask-confirm { --ask: #7fc784; } .ask-parameters { --ask: #7fa6e0; } .ask-flag { --ask: #e0b45a; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #b89ae0; } .ask-invalid { --ask: #f0a090; } }
+details.packet { margin-top: 2em; } details.packet summary { font-weight: 600; color: var(--ink); }
+table.defs th { width: 12em; font-weight: 500; }
+.ask-confirm { --ask: #2e7d32; } .ask-egress { --ask: #00796b; } .ask-parameters { --ask: #2f5d9e; } .ask-flag { --ask: #b26a00; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #6a3fa0; } .ask-invalid { --ask: #8a1f11; }
+@media (prefers-color-scheme: dark) { .ask-confirm { --ask: #7fc784; } .ask-egress { --ask: #80cbc4; } .ask-parameters { --ask: #7fa6e0; } .ask-flag { --ask: #e0b45a; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #b89ae0; } .ask-invalid { --ask: #f0a090; } }
 .card[class*="ask-"] { border-left-color: var(--ask); }
 h1[class*="ask-"] { border-left: 5px solid var(--ask); padding-left: 0.5em; }
 h3[class*="ask-"] { color: var(--ask); }
@@ -346,13 +349,17 @@ RUN_HTML = _ENV.from_string(
 HOLD_HTML = _ENV.from_string(
     _HEAD
     + """<p class="crumbs"><a href="{{ list_href }}">All projects</a> / <a href="{{ project_href }}">{{ project }}</a> / hold</p>
-<h1 class="ask-{{ ask_group }}"><span class="asktag">{{ ask_label }}</span>{{ ask_heading }}: {{ card_title }}</h1>
+<h1 class="ask-{{ ask_group }}"><span class="asktag">{{ ask_label }}</span>{{ ask_heading }}{% if card_title and card_title not in ("the plan", "what leaves the machine") %}: {{ card_title }}{% endif %}</h1>
 <p class="note">{{ project }}{% if step_title %} · {{ step_title }}{% endif %}{% if item_id %} · item {{ item_id }}{% endif %} · {{ kind }} hold · open {{ age }}{% if predicate %} · {{ predicate }}{% endif %}. The form records the same verdicts by the same rules as the terminal. <kbd>a</kbd> accept, <kbd>r</kbd> reject, <kbd>d</kbd> defer{% if replicates %}, <kbd>o</kbd> override{% endif %}, <kbd>Ctrl-Enter</kbd> record.</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 {% if found %}
 <h2>What the engine found</h2>
 {% if check %}<p class="note">The check: {{ check }}</p>{% endif %}
 <p class="found">{{ found }}</p>
+{% if guidance %}
+<p class="note">What to check:</p>
+<ul class="guidance">{% for g in guidance %}<li>{{ g }}</li>{% endfor %}</ul>
+{% endif %}
 {% if compared %}
 <table class="compared">
 <tr><th>what</th><th>value</th></tr>
@@ -398,8 +405,10 @@ HOLD_HTML = _ENV.from_string(
 {% endfor %}
 {% endif %}
 {{ view_sections }}
-<h2>The packet, as the terminal prints it</h2>
+<details class="packet">
+<summary>The packet, as the terminal prints it</summary>
 <pre>{{ text }}</pre>
+</details>
 {% if resolved %}
 {% if resolution and resolution.verdict %}
 <p>Resolved: <strong>{{ resolution.verdict }}</strong> by {{ resolution.reviewer }} via {{ resolution.via }} on {{ resolution.ts }}{% if resolution.label %}; the item's label is <strong>{{ resolution.label }}</strong>{% endif %}{% if resolution.replicate %} (replicate {{ resolution.replicate }}){% endif %}.</p>
@@ -477,6 +486,16 @@ ERROR_HTML = _ENV.from_string(
 )
 
 
+def _shown(v: Any) -> str:
+    """A value in the decision table: an empty string reads as `(empty: none)`, None as
+    `(unset)`, so a parameter whose choice is "nothing" (no regression) still shows a value."""
+    if v is None:
+        return "(unset)"
+    if isinstance(v, str) and v == "":
+        return "(empty: none)"
+    return str(v)
+
+
 def _decision_rows(ctx: dict[str, Any]) -> list[dict[str, str]]:
     """The parameters a parameter hold asks about, from its evidence: `decision_points`
     (default, value, source) or `proposed` (default, proposed)."""
@@ -490,8 +509,8 @@ def _decision_rows(ctx: dict[str, Any]) -> list[dict[str, str]]:
                 rows.append(
                     {
                         "name": str(name),
-                        "default": str(d.get("default", "")),
-                        "value": str(d.get("value", "")),
+                        "default": _shown(d.get("default")),
+                        "value": _shown(d.get("value")),
                         "source": str(d.get("source", "")),
                     }
                 )
@@ -502,8 +521,8 @@ def _decision_rows(ctx: dict[str, Any]) -> list[dict[str, str]]:
                 rows.append(
                     {
                         "name": str(name),
-                        "default": str(d.get("default", "")),
-                        "value": str(d.get("proposed", "")),
+                        "default": _shown(d.get("default")),
+                        "value": _shown(d.get("proposed")),
                         "source": "agent",
                     }
                 )
@@ -1460,20 +1479,18 @@ class ReviewHandler(BaseHTTPRequestHandler):
         site = Site.load(project.root)
         try:
             skill, _note = load_skill(site)
-            if h["run_id"] is not None:  # a project hold's packet is its echo-back or report
-                hp = present_hold(site, h["hold_id"])
-                if hp["sections"] and h["run_id"]:
-                    view_sections = render_html(hp, self._url_for(site, h["run_id"]))
+            hp = present_hold(site, h["hold_id"])
+            if hp["sections"]:
+                # a project hold (confirm, egress) has no run: its sections are the echo-back
+                # and the report, rendered as a page; a run's hold maps figure paths to routes
+                url_for = self._url_for(site, h["run_id"]) if h["run_id"] else None
+                view_sections = render_html(hp, url_for)
         finally:
             site.store.close()
         ctx = hold_context(h)
         group = ask_of(h, ctx)
         title = card_title(h, ctx, group, step_title or "the plan", skill)
-        plain = (
-            plain_block(h, ctx)
-            if ctx.get("predicate")
-            else {"check": None, "found": "", "compared": []}
-        )
+        plain = plain_block(h, ctx)
         return HOLD_HTML.render(
             title=f"stringency console: {title}",
             ask_group=group,
@@ -1481,6 +1498,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             check=plain["check"],
             found=plain["found"],
             compared=plain["compared"],
+            guidance=plain.get("guidance") or [],
             ask_heading=ASK_HEADINGS[group],
             card_title=title,
             decision=_decision_rows(ctx),
