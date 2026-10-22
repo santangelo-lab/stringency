@@ -238,11 +238,11 @@ def plain_block(h: Any, ctx: dict[str, Any]) -> dict[str, Any]:
         spec = registry.get(pred_id)
         doc = (spec.fn.__doc__ or "") if spec is not None else ""
         first = " ".join(doc.split())
-        for end in (". ", ": ", "; "):
-            cut = first.find(end)
-            if cut > 0:
-                first = first[: cut + (1 if end == ". " else 0)]
-                break
+        cuts = [(first.find(end), end) for end in (". ", ": ", "; ")]
+        cuts = [(i, end) for i, end in cuts if i > 0]
+        if cuts:
+            i, end = min(cuts)
+            first = first[: i + (1 if end == ". " else 0)]
         check = first or None
     found = str(h["reason"] or "")
     if pred_id and found.startswith(f"{pred_id}: "):

@@ -329,7 +329,11 @@ def test_plain_block_says_what_was_checked_and_found() -> None:
         },
     }
     b = plain_block(h, ctx)
-    assert b["check"].startswith("A numeral in the proposal's reason matches no cited cell")
+    # the first sentence ends at the earliest full stop, colon or semicolon
+    assert b["check"] == (
+        "A numeral in the proposal's reason matches no cited cell, or the reason carries "
+        "numerals and cites nothing (L55)"
+    )
     assert b["found"] == "a numeral in the reason matches no cited cell: 5"
     assert b["compared"] == [
         {"name": "numerals", "value": "5"},
