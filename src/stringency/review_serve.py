@@ -349,7 +349,7 @@ RUN_HTML = _ENV.from_string(
 HOLD_HTML = _ENV.from_string(
     _HEAD
     + """<p class="crumbs"><a href="{{ list_href }}">All projects</a> / <a href="{{ project_href }}">{{ project }}</a> / hold</p>
-<h1 class="ask-{{ ask_group }}"><span class="asktag">{{ ask_label }}</span>{{ ask_heading }}{% if card_title and card_title != "the plan" %}: {{ card_title }}{% endif %}</h1>
+<h1 class="ask-{{ ask_group }}"><span class="asktag">{{ ask_label }}</span>{{ ask_heading }}{% if card_title and card_title not in ("the plan", "what leaves the machine") %}: {{ card_title }}{% endif %}</h1>
 <p class="note">{{ project }}{% if step_title %} · {{ step_title }}{% endif %}{% if item_id %} · item {{ item_id }}{% endif %} · {{ kind }} hold · open {{ age }}{% if predicate %} · {{ predicate }}{% endif %}. The form records the same verdicts by the same rules as the terminal. <kbd>a</kbd> accept, <kbd>r</kbd> reject, <kbd>d</kbd> defer{% if replicates %}, <kbd>o</kbd> override{% endif %}, <kbd>Ctrl-Enter</kbd> record.</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 {% if found %}
