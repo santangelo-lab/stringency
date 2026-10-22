@@ -6,7 +6,7 @@ three claims, the arms, the metrics, the abstention risk and the "convincing res
 are the owner's and are not restated; this file holds what changed on contact with the code
 and the benchmarks, and the work rows. Not the spec.
 
-**Status 2026-10-22.** Phase 0 started: the tooling is installed, the local runner works (`stringency-benchmarks`)
+**Status 2026-10-22, night.** Phase 0 running: the owner logged in to Latch (a free account serves the public data), the six scBench and seventeen SpatialBench datasets are cached, and the baseline arm (Opus 5, three replicates on the six) is running. Phase 1 mostly done: the mapping below, plugin singlecell 0.8.1 (widened beyond Xenium: any observation unit, droplet operation schemas, an `analysis_summary` object type, four droplet predicates, three Xenium predicates narrowed), and the method `santangelo-lab/stringency-scrnaseq-scanpy-method` 0.1.0 (eight scanpy modules inside Latch's image, two pipelines with `decision:` blocks on every known trap, a planted fixture and controls; lints clean; recovers the planted structure exactly). Its skills and a synthetic engine run remain. Earlier the same day: the tooling installed, the local runner working (`stringency-benchmarks`)
 (a synthetic eval passed on Opus 5), the public evals and published trajectories are cloned.
 The baseline runs wait on one thing a person must do: `latch login` (a browser flow) so the
 SDK can fetch the eval data. Rows L87 to L92 in `PLAN.md`.

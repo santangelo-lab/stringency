@@ -8,7 +8,9 @@ it is the first thing a new session reads.
 - The benchmark plan is in (`notes/2026-10-22-0700-benchmark-phase-0.md`;
   `spec/plans/benchmark-plan.md`; rows L87 to L92): Phase 0 started, the local Claude Code
   runner works on Opus 5, the public evals and Latch's image are on the workstation; the
-  baseline runs wait on the owner's `latch login`.
+  owner logged in and the baseline is running; Phase 1 is mostly done the same night: plugin
+  singlecell 0.8.1 widened beyond Xenium and the method `stringency-scrnaseq-scanpy-method`
+  0.1.0, both pushed.
 - Engine 0.2.33 and plugin singlecell 0.7.0 (`notes/2026-10-22-0500-citation-checks-and-plugin-0.7.md`):
   the seven downstream predicates (L54); `judgment.must_cite` with
   `judg.required_evidence_uncited` (L56, DEVIATIONS awaiting the owner); the `cited` report

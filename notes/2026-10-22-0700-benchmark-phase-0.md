@@ -50,3 +50,20 @@ Nothing in the engine. The runner lives in `stringency-benchmarks`, not here.
 
 `.venv/bin/python <stringency-benchmarks>/latch/run_eval.py --eval evals/smoke/smoke_mean.json
 --no-image --max-turns 8` passes, and inside the image with the host's Claude Code; the engine suite is unchanged.
+
+## Later the same day (Phase 1)
+
+- The owner logged in to Latch; a free account serves the public data. All six scBench and
+  seventeen SpatialBench datasets cached (about 32 GB). The baseline arm started at 20:57: the
+  first QC replicate passed in 67 turns, 24.5 min, $5.19 (Latch's Opus 4.7 run: 19 turns,
+  $0.81); eighteen sessions take the night.
+- Phase 1: the mapping table in `benchmark-plan.md`; plugin singlecell 0.8.0 (widened beyond
+  Xenium) and 0.8.1 (three Xenium predicates narrowed); the method
+  `santangelo-lab/stringency-scrnaseq-scanpy-method` 0.1.0, private, eight modules, two
+  pipelines, a planted fixture whose structure every module recovers exactly; lints clean under
+  engine 0.2.33 with plugin 0.8.1. The engine releases 0.2.28 to 0.2.33 are tagged; the plugins
+  workspace pins v0.2.33.
+- On the real evals' data, `qc-metrics` says what the gate will: BD Rhapsody's 386-gene panel
+  has a 99th percentile of 150 genes per cell, so a `min_genes` of 200 is blocked by
+  `sc.qc_floor_above_data`; CS Genetics' median of 1,655 UMIs is below the 2,000 floor, so
+  `log_total` is flagged by `sc.normalization_depth`.

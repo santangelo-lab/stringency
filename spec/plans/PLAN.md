@@ -38,7 +38,7 @@ Nothing in it is built beyond what the State section says.
 
 ## State (2026-10-21)
 
-Engine 0.2.33 on `main` (the seven passes of 2026-10-21 and 2026-10-22: triage pass 5, decision points, judgment replicates, confirm once, Codex as a harness, plugin 0.7.0, the citation checks); plugin singlecell 0.7.0 (the seven downstream predicates, 2026-10-22); the Xenium method
+Engine 0.2.33 on `main` (the seven passes of 2026-10-21 and 2026-10-22: triage pass 5, decision points, judgment replicates, confirm once, Codex as a harness, plugin 0.7.0, the citation checks); plugin singlecell 0.8.1 (the seven downstream predicates and the droplet widening, 2026-10-22); the scRNA-seq method `stringency-scrnaseq-scanpy-method` 0.1.0; the Xenium method
 `stringency-xenium-method` at `v0.6.0-rc19` (its six open tools pass on the Lyons liver
 delivery under 0.2.26 and plugin 0.6.2); the toy method at `v0.2.0`. `0.2.27-sc0.6.2` is installed in the
 shared prefix on the lab workstation (`/data/lab/env/stringency/current`, 2026-10-20 17:05) and
@@ -83,9 +83,10 @@ shared prefix, restart the console, republish the three skills; the method-side 
 (L86, the `decision:` blocks, `requires`, `study:` on the Lyons projects, the gates); the
 Qwen3 evaluation; the tester; F7.
 
-8. The benchmark (`benchmark-plan.md`, added 2026-10-22): Phase 0 (L87) is in progress and
-   waits on the owner's `latch login`; then L88 to L92 in order, after the method-side rows
-   the adapter needs.
+8. The benchmark (`benchmark-plan.md`, added 2026-10-22): Phase 0 (L87) is running (the
+   baseline, eighteen Opus 5 sessions, started 2026-10-21 evening); Phase 1 (L88) is mostly
+   done the same night (the mapping, plugin 0.8.1, the method 0.1.0); the method's skills and
+   a synthetic engine run, then L89 (the adapter) in order.
 
 Not scheduled: what the owner deferred on 2026-10-21 (L52, L53, L42, L82, H5, L48, L4, the
 console rows until asked) and what waits on a person (the skill republish, the tester, F7).
@@ -145,7 +146,7 @@ here as they arise. The bulk RNA-seq plan is dormant since 2026-09-23 and kept i
 
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
-| L86 | the Xenium method's `resegment-nextflow` reaches the network (`pre.sh`: `nextflow run`) and declares no egress; under engine 0.2.28 `lint` fails it (L46) | the module declares `egress: {class, hosts, sends}` in `module.yml` when the method moves to `requires.engine >= 0.2.28` (an older engine refuses the key, the intended failure) | method; with the next method tag |
+| L86 | the Xenium method's `resegment-nextflow` reaches the network (`pre.sh`: `nextflow run`) and declares no egress; under engine 0.2.28 `lint` fails it (L46) | the module declares `egress: {class, hosts, sends}` in `module.yml` when the method moves to `requires.engine >= 0.2.28` (an older engine refuses the key, the intended failure); with the same tag the gates name `judg.numeric_claims_match@2`, `sc.area_join_unverified@2`, `sc.low_cell_count@2` and `sc.decision_unreviewed@2` (plugin 0.8.1) and `requires.plugins` moves to 0.8.1 | method; with the next method tag |
 
 ### Skills, documents and onboarding
 
@@ -175,7 +176,7 @@ holds land where a reviewer's attention is needed. Claude Code with Opus 5 is th
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
 | L87 | no baseline of our own exists on a public benchmark; Latch's Claude Code rows are opus-4-7 and opus-4-8 | Phase 0: `latch login` (the owner), the public evals pulled, `stringency-benchmarks` `latch/run_eval.py` baseline arm three replicates on the six scBench evals then the seventeen SpatialBench evals, tokens and cost and wall-clock per run; a note with the numbers beside the published pattern (10 of 18 on the six) | benchmark; the owner for the login | `benchmark-plan.md` |
-| L88 | the six public evals are mapped to engine mechanisms on paper only; no scRNA-seq method exists as a committed pipeline | Phase 1: the mapping table marked built, row, or not addressable; the scRNA-seq method (the Xenium upstream steps generalised to droplet and combinatorial kits) with `decision:` blocks; the Latch conversation opened | method and plan | `benchmark-plan.md` |
+| L88 | the six public evals are mapped to engine mechanisms on paper only; no scRNA-seq method exists as a committed pipeline | Phase 1: the mapping table (done 2026-10-22, `benchmark-plan.md`); plugin singlecell 0.8.1 widened beyond Xenium (any observation unit, droplet operation schemas, `analysis_summary`, four droplet predicates, three Xenium predicates narrowed; done); `santangelo-lab/stringency-scrnaseq-scanpy-method` 0.1.0 (eight scanpy modules inside Latch's image, two pipelines with `decision:` blocks, a planted fixture and positive controls; lints clean; done). What remains: the method's skills (`skills/scrnaseq-upstream.yml`, `.analyze.yml`) and a synthetic engine run, the engine running its controls, the Latch conversation (the owner) | method and plan; the owner for Latch | `benchmark-plan.md` |
 | L89 | nothing runs a benchmark task through the engine | Phase 2: the adapter (declare, init with a fixed confirm policy, pipeline mode with a fixed hold policy, `answer --cite`, open mode, `answer --cannot`), the method-as-prompt and sham-gate arms, tags frozen; all five arms on the DE and cell-typing evals | engine integration and method | `benchmark-plan.md` |
 | L90 | no Claim A or Claim B number | Phase 3: the public-set runs, paired deltas, accuracy among submitted, abstention, hold precision and recall, the failure-mode shift, cost; a note and a `measurements.md` row before any private data | measurement | `benchmark-plan.md` |
 | L91 | no Claim C number | Phase 4: the reviewer arm, the owner at `stringency review` with the answer key unseen | the owner | `benchmark-plan.md` |
@@ -200,7 +201,6 @@ nobody reads. The row id says where the work is filed; "where" says where the te
 | trace integrity: a DEVIATIONS entry for 9.4 and 9.5 (T3), or stay at T2; a service identity for `prov/` (T4). The owner, 2026-10-21: stay at T2, not convinced either is wanted yet; nothing moves until asked | L52, L53 | `trace-integrity-plan.md` | 2026-10-20 |
 | the definition of "competent" for the Qwen3 evaluation (decision 3), after the Codex survey (H1); the go-ahead, the login and the sibling-projects shape (decision 2) were given 2026-10-21 | L34 | `judge-sources-plan.md` 6 (3) | 2026-10-21 |
 | the tester for the acceptance runs (the owner, 2026-10-21: not yet) | L79, L77 | this file | 2026-10-14 |
-| `latch login` once in the benchmark project's venv (a browser flow), so the eval data can be pulled; and which account tier that is | L87 | `benchmark-plan.md` | 2026-10-22 |
 | F7: read `cell_types_mouse@2` and the organ guides (decision 17); the owner, 2026-10-21: answered when the Xenium method is the work again | method `PLAN.md` | `spatial-method-plan.md` 8 | 2026-10-07 |
 | the console unit: `loginctl enable-linger` once (linger is off, so the console stops at logout); `notify.yml` `page_url` if hold emails should link to the inbox. The owner, 2026-10-21: later | | `console-and-fleet-plan.md` 8.4 | 2026-10-14 |
 | the toy method's GitHub remote (`santangelo-lab/stringency-toy-method`, remote `github`): keep it, and is it pushed | | `stringency-toy-method` | 2026-09-18 |
