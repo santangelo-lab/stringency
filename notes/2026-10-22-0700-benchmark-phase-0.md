@@ -102,3 +102,14 @@ through the login even with a fresh config dir), `--setting-sources user`,
 three built-in skills, memory written under the run's own home. Latch's harness gives each
 run a fresh `.claude` with an API key, so this now matches it. The baseline relaunched at
 about 00:50 (task brtsz05hj, `logs/baseline.log`, unbuffered this time).
+
+The synthetic engine run of the method is set up at
+`/lab/scratch/jrrose5/scrnaseq-engine-test/proj` (declarations in `../decl`: design with cell,
+sample and donor units and the condition factor; objective `processed_object` with the six
+deliverables; the fixture as input `object` of type anndata). `init` on
+`stringency-scrnaseq-scanpy-method@v0.1.0` bound the project and opened the confirm and egress
+holds for the owner. `review --verdict accept` without a terminal is refused unless `--attest`
+says the person confirmed in the conversation, and the owner has not confirmed this project, so
+the run waits for them: two `stringency review --hold <id>` commands in the project, or their word
+that an attest is theirs. After that the operator flow is `run --until 01_qc_metrics`, propose
+the floors from `01_qc_metrics/qc_distribution`, and so on through `run`.
