@@ -143,6 +143,8 @@ console rows until asked) and what waits on a person (the skill republish, the t
 
 ### Method and plugin
 
+The scrnaseq method's own work list is its repository's `BACKLOG.md` (2026-10-22; the lineage assignment step first: a thin-margin flag, an interpretation judgment for an absent lineage, scoring options, purity, unassigned, panel validation, a reference route, doublets, figures, controls). The plugin rows it needs are L98 (`sc.assignment_margin_low`) and L99 (the interpretation vocabulary), filed below.
+
 The Xenium method's own work list is its repository's `PLAN.md` (phases F7 and F9 to F12 of
 `spatial-method-plan.md` section 6: the owner's reading of `cell_types_mouse@2`, niches,
 descriptives and DE, reports and skills, the retrospective); engine rows it waits on are filed
@@ -152,6 +154,8 @@ here as they arise. The bulk RNA-seq plan is dormant since 2026-09-23 and kept i
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
 | L86 | the Xenium method's `resegment-nextflow` reaches the network (`pre.sh`: `nextflow run`) and declares no egress; under engine 0.2.28 `lint` fails it (L46) | the module declares `egress: {class, hosts, sends}` in `module.yml` when the method moves to `requires.engine >= 0.2.28` (an older engine refuses the key, the intended failure); with the same tag the gates name `judg.numeric_claims_match@2`, `sc.area_join_unverified@2`, `sc.low_cell_count@2` and `sc.decision_unreviewed@2` (plugin 0.8.1) and `requires.plugins` moves to 0.8.1 | method; with the next method tag |
+| L98 | the scrnaseq method assigns each cluster the panel with the highest mean and says nothing when the margin is thin (the owner's question of 2026-10-22: a judgment step? no, the scoring is arithmetic on the person's declaration; the thin case is what wants a person) | plugin: `sc.assignment_margin_low@1` (post, flag) over `score_panels`, reading the module's per-cluster top score, second score, margin and background from `lineage_facts` against policy `ranges.sc.min_assignment_margin` and `sc.min_top_score_over_background` (method BACKLOG M1) | plugin predicate | method `BACKLOG.md` |
+| L99 | a declared lineage that takes no cluster is a zero and never a question; the interpretation is the pipeline's one subjective step (the DRG eval's question) | plugin: the vocabulary for the method's `interpret-assignments` judgment (panel genes not detected in this assay; absorbed into a neighbour; below the resolution; absent), `judgment.must_cite` on the detection table (method BACKLOG M2); the benchmark's cell-typing eval answers from it (Phase 2) | plugin vocabulary | method `BACKLOG.md` |
 
 ### Skills, documents and onboarding
 
