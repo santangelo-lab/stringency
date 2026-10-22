@@ -16,7 +16,7 @@ Opus 5.
 - `/lab/projects/2026-10_stringency-benchmark_jrrose5/`: the three Latch repositories cloned,
   a venv with latch-eval-tools 0.4.54 and the `latch` SDK, Latch's agent image pulled with
   apptainer (`images/benchmark_agent.sif`, from `public.ecr.aws/p5z7v3z8/benchmark_agent`).
-- `benchmarks/latch/run_eval.py`: the baseline arm as Latch's Claude Code harness builds it
+- `latch/run_eval.py` (moved the same day to the separate repository `santangelo-lab/stringency-benchmarks`, private, at the owner's ask): the baseline arm as Latch's Claude Code harness builds it
   (the flags, the prompt with the data instructions and the background-process note, the
   `agent_workspace/data` layout, stream-json to `trajectory.json`, the `result` event's cost,
   turns and usage), the agent inside the image under apptainer or on the host, grading
@@ -38,7 +38,7 @@ Opus 5.
 
 ## Altered
 
-Nothing in the engine. `benchmarks/` is a new top-level directory of the repository.
+Nothing in the engine. The runner lives in `stringency-benchmarks`, not here.
 
 ## Open
 
@@ -48,5 +48,5 @@ Nothing in the engine. `benchmarks/` is a new top-level directory of the reposit
 
 ## Verify
 
-`.venv/bin/python benchmarks/latch/run_eval.py --eval <synthetic> --no-image --max-turns 8`
-passes; the engine suite is unchanged.
+`.venv/bin/python <stringency-benchmarks>/latch/run_eval.py --eval evals/smoke/smoke_mean.json
+--no-image --max-turns 8` passes, and inside the image with the host's Claude Code; the engine suite is unchanged.

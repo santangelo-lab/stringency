@@ -6,7 +6,7 @@ three claims, the arms, the metrics, the abstention risk and the "convincing res
 are the owner's and are not restated; this file holds what changed on contact with the code
 and the benchmarks, and the work rows. Not the spec.
 
-**Status 2026-10-22.** Phase 0 started: the tooling is installed, the local runner works
+**Status 2026-10-22.** Phase 0 started: the tooling is installed, the local runner works (`stringency-benchmarks`)
 (a synthetic eval passed on Opus 5), the public evals and published trajectories are cloned.
 The baseline runs wait on one thing a person must do: `latch login` (a browser flow) so the
 SDK can fetch the eval data. Rows L87 to L92 in `PLAN.md`.
@@ -25,8 +25,8 @@ SDK can fetch the eval data. Rows L87 to L92 in `PLAN.md`.
   (51.6 to 64.3 on the full set) or, on the six public evals, reproduces the published per-eval
   pattern (opus-4-7, three trials each: DE 0/3, PCA 0/3, Tapestri 1/3, QC, normalisation and
   cell typing 3/3; 10 of 18).
-- No Docker on the workstation. Latch's CLI harnesses require it, so `benchmarks/latch/
-  run_eval.py` in the engine repository runs the same Claude Code command, prompt and layout
+- No Docker on the workstation. Latch's CLI harnesses require it, so `latch/run_eval.py` in
+  the `stringency-benchmarks` repository runs the same Claude Code command, prompt and layout
   on the host, with the agent inside Latch's own image pulled by apptainer
   (`public.ecr.aws/p5z7v3z8/benchmark_agent:latest`), and grades with `EvalRunner`. The one
   thing it cannot reproduce is the container memory cap; the host has 500 GB.
@@ -47,8 +47,10 @@ SDK can fetch the eval data. Rows L87 to L92 in `PLAN.md`.
   (`images/benchmark_agent.sif`), the data cache, and every run under `runs/<arm>/<eval>/rN/`
   in Latch's layout (`agent_workspace/`, `prompt.md`, `trajectory.json`, `eval_answer.json`,
   `result.json`).
-- `benchmarks/latch/` in the engine repository: `run_eval.py` (the runner and the summary with
-  Latch's t-interval over per-eval means) and the arms as they are built.
+- `santangelo-lab/stringency-benchmarks` (private; the owner's ask of 2026-10-22, a separate
+  repository): `latch/run_eval.py` (the runner and the summary with Latch's t-interval over
+  per-eval means), the smoke eval, and the arms as they are built. The engine repository holds
+  the plan and the rows, never the runner.
 
 ## The runner and the arms
 
