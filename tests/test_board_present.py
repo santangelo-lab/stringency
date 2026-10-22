@@ -331,8 +331,8 @@ def test_plain_block_says_what_was_checked_and_found() -> None:
     b = plain_block(h, ctx)
     # the predicate's own summary when it has one
     assert b["check"] == (
-        "Every number in the operator's reason must appear in a cell the proposal cites; "
-        "this lists the numbers that do not."
+        "Every number in the operator's reason must appear in a cell the proposal cites or be "
+        "a value the proposal sets; this lists the numbers that do neither."
     )
     assert b["found"] == "a numeral in the reason matches no cited cell: 5"
     assert b["compared"] == [

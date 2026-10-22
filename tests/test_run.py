@@ -866,6 +866,24 @@ def test_propose_cites_and_the_hold_shows_them(make_project: InitFn, tmp_path: P
     assert ev["hold_id"] == h["hold_id"] and "02_summarize/table" in ev["sources"]
 
 
+def test_reason_naming_the_proposed_value_is_not_flagged(make_project: InitFn) -> None:
+    """L93 (`param.reason_unmatched@2`): the proposal's own values match without a citation;
+    a number that is neither a proposed value nor a cited cell still is flagged."""
+    from stringency.review import queue
+    from stringency.steps import propose
+
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    rc = open_or_resume(p)
+    propose(rc, "01_filter", {"min_value": 12}, rationale="A floor of 12 keeps the real rows.")
+    kinds = sorted(h["reason"].split(":")[0] for h in queue(p))
+    assert kinds == ["param.agent_proposed"]
+    p2 = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    rc2 = open_or_resume(p2)
+    propose(rc2, "01_filter", {"min_value": 12}, rationale="A floor of 12; 3 groups.")
+    by = {h["reason"].split(":")[0]: h["reason"] for h in queue(p2)}
+    assert "param.reason_unmatched" in by and by["param.reason_unmatched"].endswith(": 3")
+
+
 def test_uncited_proposal_and_numeral_reason_open_their_own_holds(make_project: InitFn) -> None:
     """L55: a numeral in the reason with nothing cited opens `param.reason_unmatched`; a decision
     point with a source proposed without citing it opens `param.uncited`."""
