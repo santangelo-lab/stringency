@@ -188,3 +188,12 @@ echo-back and egress rendered with guidance and the full report folded, the pack
 empty value shown as a choice, the QC figures (boxes of pct_mt per sample; genes against
 counts per cell) at the floors hold. `controls run` on the method under the engine started
 last (the coverage report said none recorded).
+
+`controls run` on proj3, first attempt: four of eight controls failed because flags on the
+control runs (`sc.normalization_depth`, no QC facts in a single-module run; `sc.decision_unreviewed`,
+no decision block in a control) opened holds the runner then abandoned, leaving five holds in
+the owner's queue; the fixture also had to be tracked (v0.1.8: the template's `*.h5ad` ignore).
+Engine ca33d6b: a flag on a run of kind control is logged, never held; a control run closed
+short withdraws its holds. Second attempt: all eight controls pass (qc-metrics, score-panels
+and pseudobulk-de against their truth tables with zero difference), eight flags logged, no hold.
+The method's own BACKLOG.md written (the assignment step first, M1 to M12; M13 to M17 elsewhere).
