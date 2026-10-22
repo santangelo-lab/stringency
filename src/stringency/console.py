@@ -220,6 +220,63 @@ def ask_of(h: Any, ctx: dict[str, Any]) -> str:
     return "flag"
 
 
+def plain_block(h: Any, ctx: dict[str, Any]) -> dict[str, Any]:
+    """What a flag hold says in plain words, for the top of the console's hold page and of
+    `present --hold` (the owner, 2026-10-22: the packet had to be read to learn what a hold was
+    flagging). `check`: what the predicate tests, the first sentence of its docstring (None for
+    a hold with no predicate or one the engine cannot find); `found`: the predicate's reason,
+    its id prefix dropped; `compared`: the verdict's evidence as name and value rows, scalars
+    and lists of scalars, a nested object one level flattened as `a.b`, the proposal's own
+    tables (`proposed`, `cited`, `considered`) left to the decision table. Reads the hold's
+    `reason` and `context_json`; writes nothing."""
+    predicate = str(ctx.get("predicate") or "")
+    pred_id = predicate.split("@")[0]
+    check: str | None = None
+    if pred_id:
+        from stringency.predicates.registry import registry
+
+        spec = registry.get(pred_id)
+        doc = (spec.fn.__doc__ or "") if spec is not None else ""
+        first = " ".join(doc.split())
+        for end in (". ", ": ", "; "):
+            cut = first.find(end)
+            if cut > 0:
+                first = first[: cut + (1 if end == ". " else 0)]
+                break
+        check = first or None
+    found = str(h["reason"] or "")
+    if pred_id and found.startswith(f"{pred_id}: "):
+        found = found[len(pred_id) + 2 :]
+    compared: list[dict[str, str]] = []
+    evidence = ctx.get("evidence")
+    if isinstance(evidence, dict):
+        for k, v in evidence.items():
+            if k in ("proposed", "cited", "considered", "rationale_ref", "decision_points"):
+                continue
+            if isinstance(v, dict):
+                for k2, v2 in v.items():
+                    if _scalar(v2):
+                        compared.append({"name": f"{k}.{k2}", "value": _plain(v2)})
+            elif isinstance(v, list):
+                if all(_scalar(x) for x in v):
+                    compared.append({"name": k, "value": ", ".join(_plain(x) for x in v)})
+            elif _scalar(v):
+                compared.append({"name": k, "value": _plain(v)})
+    return {"check": check, "found": found, "compared": compared}
+
+
+def _scalar(v: Any) -> bool:
+    return v is None or isinstance(v, (str, int, float, bool))
+
+
+def _plain(v: Any) -> str:
+    if isinstance(v, bool) or v is None:
+        return {True: "yes", False: "no", None: ""}[v]
+    if isinstance(v, float):
+        return f"{v:g}" if abs(v) >= 1e-3 or v == 0 else f"{v:.3g}"
+    return str(v)
+
+
 def method_ask(skill: dict[str, Any] | None, predicate: str, step_id: str | None) -> str | None:
     """The `ask` phrase of the delivery skill's `hold_view` entry for this predicate (and step,
     when the entry names one); for a hold with no predicate (an item hold), the entry without a

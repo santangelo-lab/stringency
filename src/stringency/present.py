@@ -156,6 +156,22 @@ def _rows_from_table(path: Path) -> list[dict[str, Any]]:
     return [dict(r) for r in csv.DictReader(lines, delimiter=delim)]
 
 
+def _flat_json_object(path: Path) -> dict[str, Any] | None:
+    """The file's content when it is a JSON object whose values are all scalars (a method's
+    `analysis_summary`); None for anything else, read errors included."""
+    if path.suffix.lower() != ".json":
+        return None
+    try:
+        node = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(node, dict) or not node:
+        return None
+    if all(v is None or isinstance(v, (str, int, float, bool)) for v in node.values()):
+        return node
+    return None
+
+
 def _rows_from_json(path: Path, key: str | None) -> list[dict[str, Any]]:
     node: Any = json.loads(path.read_text())
     for part in (key or "").split("."):
@@ -327,6 +343,14 @@ def render_items(
             sections.append({"title": title, "kind": "file", "path": str(path)})
             continue
         if kind == "text":
+            facts = _flat_json_object(path)
+            if facts is not None:
+                # a JSON object of named facts reads as a two-column table, not as JSON
+                rows = [{"fact": k, "value": v} for k, v in facts.items()]
+                sections.append(
+                    {"title": title, "kind": "table", **_table(rows, ["fact", "value"], {})}
+                )
+                continue
             sections.append({"title": title, "kind": "text", "text": path.read_text()})
             continue
         if kind == "figure":
@@ -810,12 +834,18 @@ def present_hold(
         else project.config.roles.owner
     )
     skill, note = load_skill(project, skills_dir)
+    from stringency.console import plain_block
+
+    plain = plain_block(h, ctx) if predicate else {"check": None, "found": "", "compared": []}
     payload: dict[str, Any] = {
         "schema": "stringency.present/1",
         "kind": "hold",
         "hold_id": h["hold_id"],
         "hold_kind": h["kind"],
         "reason": h["reason"],
+        "check": plain["check"],
+        "found": plain["found"],
+        "compared": plain["compared"],
         "waits_on": who,
         "step_id": h["step_id"],
         "run_id": h["run_id"],
@@ -1326,10 +1356,24 @@ def render_markdown(payload: dict[str, Any]) -> str:
             f"## Hold {payload['hold_id']} ({payload['hold_kind']}) waits for {payload['waits_on']}"
         )
         out.append("")
-        out.append(f"The engine recorded: {payload['reason']}")
-        if payload.get("evidence"):
-            out.append("")
-            out.append(f"Evidence: {_fmt(payload['evidence'], None)}")
+        if payload.get("found"):
+            if payload.get("check"):
+                out.append(f"What was checked: {payload['check']}")
+            out.append(f"What the engine found: {payload['found']}")
+            if payload.get("compared"):
+                out.append("")
+                out.append("The numbers it compared:")
+                out.append("")
+                out.append(
+                    markdown_table(
+                        ["what", "value"], [[r["name"], r["value"]] for r in payload["compared"]]
+                    )
+                )
+        else:
+            out.append(f"The engine recorded: {payload['reason']}")
+            if payload.get("evidence"):
+                out.append("")
+                out.append(f"Evidence: {_fmt(payload['evidence'], None)}")
         out.append("")
         out.append("To resolve it, in the project directory, with your reason in your own words:")
         out.append("")

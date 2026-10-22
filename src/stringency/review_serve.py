@@ -59,6 +59,7 @@ from stringency.console import (
     driver,
     group_cards,
     hold_context,
+    plain_block,
     references,
     timeline,
 )
@@ -328,6 +329,18 @@ HOLD_HTML = _ENV.from_string(
 <h1>{{ ask_heading }}: {{ card_title }}</h1>
 <p class="note">{{ project }}{% if step_title %} · {{ step_title }}{% endif %}{% if item_id %} · item {{ item_id }}{% endif %} · {{ kind }} hold · open {{ age }}{% if predicate %} · {{ predicate }}{% endif %}. The form records the same verdicts by the same rules as the terminal. <kbd>a</kbd> accept, <kbd>r</kbd> reject, <kbd>d</kbd> defer{% if replicates %}, <kbd>o</kbd> override{% endif %}, <kbd>Ctrl-Enter</kbd> record.</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if found %}
+<h2>What the engine found</h2>
+{% if check %}<p class="note">The check: {{ check }}</p>{% endif %}
+<p class="found">{{ found }}</p>
+{% if compared %}
+<table class="compared">
+<tr><th>what</th><th>value</th></tr>
+{% for c in compared %}<tr><td>{{ c.name }}</td><td>{{ c.value }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+{% endif %}
 {% if decision %}
 <h2>The decision</h2>
 <table>
@@ -1436,8 +1449,16 @@ class ReviewHandler(BaseHTTPRequestHandler):
         ctx = hold_context(h)
         group = ask_of(h, ctx)
         title = card_title(h, ctx, group, step_title or "the plan", skill)
+        plain = (
+            plain_block(h, ctx)
+            if ctx.get("predicate")
+            else {"check": None, "found": "", "compared": []}
+        )
         return HOLD_HTML.render(
             title=f"stringency console: {title}",
+            check=plain["check"],
+            found=plain["found"],
+            compared=plain["compared"],
             ask_heading=ASK_HEADINGS[group],
             card_title=title,
             decision=_decision_rows(ctx),

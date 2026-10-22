@@ -205,6 +205,12 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
         status, body = get(f"{base}/hold/{h['hold_id']}?t={TOKEN}")
         assert status == 200 and "param.agent_proposed" in body and "min_value" in body
         assert "the operator&#39;s reason:" in body and "Rows below it are noise." in body
+        # the plain block (the owner, 2026-10-22): what was checked and what it found, above
+        # the decision table and before the packet
+        assert "<h2>What the engine found</h2>" in body
+        assert "The check: The agent proposes, the person approves" in body
+        assert body.index("What the engine found") < body.index("The decision")
+        assert "the agent chose min_value; a person approves the choice" in body
         status, body = post(
             f"{base}/hold/{h['hold_id']}", t=TOKEN, verdict="accept", reason="agreed, 12"
         )
@@ -412,8 +418,11 @@ def test_hold_page_shows_hold_view_tables_and_redirect(make_project: InitFn) -> 
     for base in _serve(p):
         status, body = get(f"{base}/hold/{hid}?t={TOKEN}")
         assert status == 200 and _only_console_script(body)
-        assert _tables(body)[0] == [["item", "verdict"], ["g1", "exclude"]]
-        assert body.index("<table") < body.index("<pre>")  # the method's table above the packet
+        tables = _tables(body)
+        # the plain block's comparison table first, then the method's table, both above the packet
+        assert tables[0] == [["what", "value"], ["n", "1"]]
+        assert tables[1] == [["item", "verdict"], ["g1", "exclude"]]
+        assert body.index("<table") < body.index("<pre>")
         assert "<form" in body
         status, loc = _no_follow(f"{base}/p/0/hold/{hid}?t={TOKEN}")
         assert (status, loc) == (302, f"/hold/{hid}?t={TOKEN}")

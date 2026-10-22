@@ -207,7 +207,7 @@ two that holds a `stringency.yml`.
 Implementation `src/stringency/review_serve.py`: stdlib `ThreadingHTTPServer`, jinja2 string
 templates beside `PACKET_HTML`, inline CSS, no JavaScript. Routes: `GET /?t=<token>` lists open
 holds across projects (project, step title, kind, item, waits on, age); `GET /p/<i>/hold/<id>`
-renders `review_render.render(project, hold).text` in the packet's block and a form: verdict
+renders, first, the plain block (what was checked, what the engine found, the numbers it compared; `console.plain_block`, 2026-10-22), then the decision table, the operator's reason, the method's hold view, and `review_render.render(project, hold).text` in the packet's block and a form: verdict
 radios from `verdicts_for`, reason (required where `record_review` requires it), replicate select
 for item holds, correction from the module's vocabulary when it has one; `POST` verifies the token
 and calls `record_review(..., via_override="web")`; `RefusedError` renders as 403 with the engine's

@@ -141,3 +141,12 @@ project lives on scratch and needs the dev engine, so a second `review --serve` 
 engine checkout on 127.0.0.1:8766 (token in the project's `prov/review-serve/token`, log beside
 it). Small bug seen: when the port is taken, `review --serve` dies with "AttributeError:
 'ReviewHTTPServer' object has no attribute 'watcher'" instead of saying the port is busy.
+
+The owner reviewed the normalisation holds on the console and asked for clarity: the page made
+them read the packet to learn what each hold flagged. Built: `console.plain_block` (what was
+checked, what the engine found, the numbers compared) at the top of the console's hold page and
+of `present --hold`; JSON facts in a hold view render as a table (DECISIONS 2026-10-22). Also
+this afternoon: citations resolve a key of a JSON facts file (engine), `sc.normalization_depth@2`
+silent on a targeted panel (plugin 0.8.2, tagged), two engine tests made robust to a plugin
+installed in the venv. The method still names `@1` and plugin `>=0.8.1`; its next tag takes
+`@2`, `>=0.8.2` and the formats on the hold-view columns.

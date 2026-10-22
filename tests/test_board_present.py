@@ -202,7 +202,8 @@ def test_present_hold_shows_review_commands_and_matching_view(make_project: Init
         "rows"
     ] == [["g1", "exclude"]]
     md = render_markdown(payload)
-    assert "waits for" in md and "Evidence: n=1" in md and "--verdict reject" in md
+    assert "waits for" in md and "--verdict reject" in md
+    assert "What the engine found: something looked off" in md and "| n | 1 |" in md
 
 
 def test_present_skips_a_tables_leading_comment_lines(make_project: InitFn) -> None:
@@ -306,3 +307,55 @@ def test_present_hold_shows_the_replicates_judgments_by_default(
     assert all(
         row[sec["columns"].index("item_id")] == item["item_id"] for row in sec["rows"]
     ) or all(row[sec["columns"].index("item")] == item["item_id"] for row in sec["rows"])
+
+
+def test_plain_block_says_what_was_checked_and_found() -> None:
+    """The console's and `present`'s plain block for a flag hold: the predicate's first
+    docstring sentence, the reason without its id prefix, the evidence as name and value rows
+    with the proposal's own tables left out (the owner, 2026-10-22)."""
+    from stringency.console import plain_block
+
+    h = {"reason": "param.reason_unmatched: a numeral in the reason matches no cited cell: 5"}
+    ctx = {
+        "predicate": "param.reason_unmatched@1",
+        "evidence": {
+            "numerals": "5",
+            "floor": 2000.0,
+            "flag": True,
+            "nested": {"a": 1.5, "b": [1, 2]},
+            "proposed": {"x": {"default": 1}},
+            "cited": [{"source": "s"}],
+            "list": [1, 2.5, "z"],
+        },
+    }
+    b = plain_block(h, ctx)
+    assert b["check"].startswith("A numeral in the proposal's reason matches no cited cell")
+    assert b["found"] == "a numeral in the reason matches no cited cell: 5"
+    assert b["compared"] == [
+        {"name": "numerals", "value": "5"},
+        {"name": "floor", "value": "2000"},
+        {"name": "flag", "value": "yes"},
+        {"name": "nested.a", "value": "1.5"},
+        {"name": "list", "value": "1, 2.5, z"},
+    ]
+    none = plain_block({"reason": "x"}, {"predicate": "no.such@1", "evidence": None})
+    assert none == {"check": None, "found": "x", "compared": []}
+
+
+def test_present_hold_markdown_opens_with_the_plain_block(make_project: InitFn) -> None:
+    from stringency.review import queue
+    from stringency.runs import open_or_resume
+    from stringency.steps import propose
+    from tests.conftest import accept_hold
+
+    p = make_project(pipeline="toy-engine", execution="engine")
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+    rc = open_or_resume(p)
+    propose(rc, "01_filter", {"min_value": 12}, rationale="Twelve is the floor here.")
+    h = queue(p)[0]
+    payload = present_hold(Site.load(p.root), h["hold_id"])
+    assert payload["found"].endswith("the agent chose min_value; a person approves the choice")
+    assert payload["check"] and payload["compared"] == []
+    text = render_markdown(payload)
+    assert "What was checked: The agent proposes, the person approves" in text
+    assert "What the engine found: " in text and "The engine recorded" not in text
