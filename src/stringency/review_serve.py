@@ -82,6 +82,19 @@ from stringency.when import skip_reason
 
 __all__ = ["discover", "make_server", "read_token_file", "serve"]
 
+# the word on the coloured tag of a hold page, one per ask group (the owner, 2026-10-22: flags
+# and parameter approvals told apart at a glance)
+ASK_LABELS = {
+    "confirm": "confirm",
+    "parameters": "parameter",
+    "consensus": "consensus",
+    "sign_off": "sign-off",
+    "disagreement": "disagreement",
+    "uncertain": "uncertain",
+    "invalid": "invalid",
+    "flag": "flag",
+}
+
 DEFAULT_PORT = 8765
 DEFAULT_BIND = "127.0.0.1"
 REFRESH_SECONDS = 60
@@ -131,7 +144,13 @@ p.note { color: var(--muted); font-size: 0.9em; }
 p.error { color: var(--err); background: var(--errbg); padding: 0.6em 1em; border: 1px solid var(--err); }
 p.crumbs { font-size: 0.9em; }
 .tag { display: inline-block; border: 1px solid var(--line); border-radius: 3px; padding: 0 0.4em; font-size: 0.8em; color: var(--muted); margin-left: 0.4em; font-weight: normal; }
-.card { border: 1px solid var(--line); padding: 0.7em 1em; margin: 0.5em 0; }
+.card { border: 1px solid var(--line); border-left: 5px solid var(--line); padding: 0.7em 1em; margin: 0.5em 0; }
+.ask-confirm { --ask: #2e7d32; } .ask-parameters { --ask: #2f5d9e; } .ask-flag { --ask: #b26a00; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #6a3fa0; } .ask-invalid { --ask: #8a1f11; }
+@media (prefers-color-scheme: dark) { .ask-confirm { --ask: #7fc784; } .ask-parameters { --ask: #7fa6e0; } .ask-flag { --ask: #e0b45a; } .ask-consensus, .ask-sign_off, .ask-disagreement, .ask-uncertain { --ask: #b89ae0; } .ask-invalid { --ask: #f0a090; } }
+.card[class*="ask-"] { border-left-color: var(--ask); }
+h1[class*="ask-"] { border-left: 5px solid var(--ask); padding-left: 0.5em; }
+h3[class*="ask-"] { color: var(--ask); }
+.asktag { display: inline-block; border-radius: 3px; padding: 0 0.5em; font-size: 0.8em; font-weight: 600; color: #fff; background: var(--ask); margin-right: 0.4em; }
 .card.focus { outline: 2px solid var(--mark); }
 .card .meta { color: var(--muted); font-size: 0.9em; margin-top: 0.2em; }
 .you { color: var(--warn); font-weight: 600; }
@@ -184,9 +203,9 @@ LANDING_HTML = _ENV.from_string(
 <h2>Needs you{% if n_holds %} <span class="tag">{{ n_holds }} hold{{ "s" if n_holds != 1 }} in {{ n_hold_projects }} project{{ "s" if n_hold_projects != 1 }}</span>{% endif %} <span class="tag"><kbd>j</kbd>/<kbd>k</kbd> move, <kbd>Enter</kbd> open</span></h2>
 {% if n_holds %}
 {% for g in groups if g.cards %}
-<h3>{{ g.heading }}</h3>
+<h3 class="ask-{{ g.key }}">{{ g.heading }}</h3>
 {% for c in g.cards %}
-<div class="card" data-card="{{ c.hold_id }}">
+<div class="card ask-{{ g.key }}" data-card="{{ c.hold_id }}">
 <a href="{{ c.href }}" data-open><strong>{{ c.title }}</strong></a> in <strong><a href="{{ c.project_href }}">{{ c.project }}</a></strong>{% if c.item %} <span class="tag">item {{ c.item }}</span>{% endif %}
 <div class="meta">open {{ c.age }} · {{ c.step }} · {{ c.kind }} · waits on {{ c.waits_on }}</div>
 </div>
@@ -326,7 +345,7 @@ RUN_HTML = _ENV.from_string(
 HOLD_HTML = _ENV.from_string(
     _HEAD
     + """<p class="crumbs"><a href="{{ list_href }}">All projects</a> / <a href="{{ project_href }}">{{ project }}</a> / hold</p>
-<h1>{{ ask_heading }}: {{ card_title }}</h1>
+<h1 class="ask-{{ ask_group }}"><span class="asktag">{{ ask_label }}</span>{{ ask_heading }}: {{ card_title }}</h1>
 <p class="note">{{ project }}{% if step_title %} · {{ step_title }}{% endif %}{% if item_id %} · item {{ item_id }}{% endif %} · {{ kind }} hold · open {{ age }}{% if predicate %} · {{ predicate }}{% endif %}. The form records the same verdicts by the same rules as the terminal. <kbd>a</kbd> accept, <kbd>r</kbd> reject, <kbd>d</kbd> defer{% if replicates %}, <kbd>o</kbd> override{% endif %}, <kbd>Ctrl-Enter</kbd> record.</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 {% if found %}
@@ -1456,6 +1475,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
         )
         return HOLD_HTML.render(
             title=f"stringency console: {title}",
+            ask_group=group,
+            ask_label=ASK_LABELS.get(group, group),
             check=plain["check"],
             found=plain["found"],
             compared=plain["compared"],

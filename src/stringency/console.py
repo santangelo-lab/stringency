@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import json
 import queue
+import re
 import sqlite3
 import statistics
 import threading
@@ -236,17 +237,16 @@ def plain_block(h: Any, ctx: dict[str, Any]) -> dict[str, Any]:
         from stringency.predicates.registry import registry
 
         spec = registry.get(pred_id)
-        doc = (spec.fn.__doc__ or "") if spec is not None else ""
-        first = " ".join(doc.split())
-        cuts = [(first.find(end), end) for end in (". ", ": ", "; ")]
-        cuts = [(i, end) for i, end in cuts if i > 0]
-        if cuts:
-            i, end = min(cuts)
-            first = first[: i + (1 if end == ". " else 0)]
-        check = first or None
+        if spec is not None and spec.summary:
+            check = spec.summary
+        else:
+            doc = (spec.fn.__doc__ or "") if spec is not None else ""
+            check = _first_sentence(doc) or None
     found = str(h["reason"] or "")
     if pred_id and found.startswith(f"{pred_id}: "):
         found = found[len(pred_id) + 2 :]
+    if pred_id == "param.agent_proposed":
+        found = _proposal_sentence(ctx) or found
     compared: list[dict[str, str]] = []
     evidence = ctx.get("evidence")
     if isinstance(evidence, dict):
@@ -263,6 +263,51 @@ def plain_block(h: Any, ctx: dict[str, Any]) -> dict[str, Any]:
             elif _scalar(v):
                 compared.append({"name": k, "value": _plain(v)})
     return {"check": check, "found": found, "compared": compared}
+
+
+def _first_sentence(doc: str) -> str:
+    """The docstring's first sentence for a reader: parenthesised asides (backlog ids, dates)
+    dropped, cut at the earliest full stop, colon or semicolon."""
+    text = " ".join(doc.split())
+    text = re.sub(r"\s*\([^()]*\)", "", text)
+    cuts = [(text.find(end), end) for end in (". ", ": ", "; ")]
+    cuts = [(i, end) for i, end in cuts if i > 0]
+    if cuts:
+        i, end = min(cuts)
+        text = text[: i + (1 if end == ". " else 0)]
+    return text.strip()
+
+
+def _proposal_sentence(ctx: dict[str, Any]) -> str:
+    """What a proposal hold found, as a sentence: the parameters the operator chose, what the
+    proposal cites and what it weighed; the values are in the decision table."""
+    ev = ctx.get("evidence")
+    ev = ev if isinstance(ev, dict) else {}
+    proposed = ev.get("proposed")
+    names = [str(k) for k in proposed] if isinstance(proposed, dict) else []
+    if not names:
+        return ""
+    cited = [c for c in (ev.get("cited") or []) if isinstance(c, dict)]
+    ok = [c for c in cited if "missing" not in c]
+    sources = sorted({str(c.get("source")) for c in ok})
+    considered = [str(v) for v in (ev.get("considered") or [])]
+    what = (
+        f"The operator proposed a value for {names[0]}"
+        if len(names) == 1
+        else "The operator proposed values for " + ", ".join(names[:-1]) + f" and {names[-1]}"
+    )
+    parts = [what]
+    if ok:
+        parts.append(f"citing {len(ok)} cell{'s' if len(ok) != 1 else ''} of " + ", ".join(sources))
+    elif cited:
+        parts.append(
+            f"with {len(cited)} citation{'s' if len(cited) != 1 else ''} that did not resolve"
+        )
+    else:
+        parts.append("citing nothing")
+    if considered:
+        parts.append("after weighing " + ", ".join(considered))
+    return ", ".join(parts) + ". The decision table shows each value beside its default."
 
 
 def _scalar(v: Any) -> bool:

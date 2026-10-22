@@ -208,9 +208,13 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
         # the plain block (the owner, 2026-10-22): what was checked and what it found, above
         # the decision table and before the packet
         assert "<h2>What the engine found</h2>" in body
-        assert "The check: The agent proposes, the person approves" in body
+        # the ask group colours the heading: a parameter approval, not a flag
+        assert '<h1 class="ask-parameters"><span class="asktag">parameter</span>' in body
+        assert (
+            "The check: The operator chose a value for a parameter the method leaves open" in body
+        )
         assert body.index("What the engine found") < body.index("The decision")
-        assert "the agent chose min_value; a person approves the choice" in body
+        assert "The operator proposed a value for min_value, citing nothing." in body
         status, body = post(
             f"{base}/hold/{h['hold_id']}", t=TOKEN, verdict="accept", reason="agreed, 12"
         )
@@ -321,7 +325,7 @@ def test_landing_has_needs_you_then_the_board_with_sentences(server: tuple[str, 
     # the inbox: one card under its ask heading, the title linking to the hold
     assert "Settle a disagreement" in body
     h = queue(p)[0]
-    assert f'<div class="card" data-card="{h["hold_id"]}">' in body
+    assert f'<div class="card ask-disagreement" data-card="{h["hold_id"]}">' in body
     assert (
         f'<a href="/hold/{h["hold_id"]}" data-open><strong>Label the groups, item A</strong>'
         in body

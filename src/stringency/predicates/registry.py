@@ -24,6 +24,7 @@ class PredicateSpec:
     invariant: bool
     fn: PredicateFn
     source: str  # "engine" or the plugin name
+    summary: str | None = None  # one plain sentence for a reader: what the check is
 
     @property
     def ref(self) -> str:
@@ -116,6 +117,7 @@ def predicate(
     covers: list[str] | None = None,
     invariant: bool = False,
     source: str = "engine",
+    summary: str | None = None,
 ) -> Callable[[PredicateFn], PredicateFn]:
     if not ID_RE.match(id):
         raise ValueError(f"predicate id must look like ns.name: {id}")
@@ -132,6 +134,7 @@ def predicate(
             invariant=invariant,
             fn=fn,
             source=source,
+            summary=summary,
         )
         registry.add(spec)
         fn.__stringency_spec__ = spec  # type: ignore[attr-defined]

@@ -329,10 +329,10 @@ def test_plain_block_says_what_was_checked_and_found() -> None:
         },
     }
     b = plain_block(h, ctx)
-    # the first sentence ends at the earliest full stop, colon or semicolon
+    # the predicate's own summary when it has one
     assert b["check"] == (
-        "A numeral in the proposal's reason matches no cited cell, or the reason carries "
-        "numerals and cites nothing (L55)"
+        "Every number in the operator's reason must appear in a cell the proposal cites; "
+        "this lists the numbers that do not."
     )
     assert b["found"] == "a numeral in the reason matches no cited cell: 5"
     assert b["compared"] == [
@@ -344,6 +344,35 @@ def test_plain_block_says_what_was_checked_and_found() -> None:
     ]
     none = plain_block({"reason": "x"}, {"predicate": "no.such@1", "evidence": None})
     assert none == {"check": None, "found": "x", "compared": []}
+    # a proposal hold's finding is a sentence built from the proposal
+    ctx = {
+        "predicate": "param.agent_proposed@2",
+        "evidence": {
+            "proposed": {"flavor": {"default": "seurat", "proposed": "seurat"}, "n_top_genes": {}},
+            "cited": [
+                {"source": "01_qc/qc_summary", "value": 320},
+                {"source": "x", "missing": "no"},
+            ],
+            "considered": ["seurat", "seurat_v3"],
+        },
+    }
+    b = plain_block({"reason": "param.agent_proposed: cites 1 cell(s)"}, ctx)
+    assert b["found"] == (
+        "The operator proposed values for flavor and n_top_genes, citing 1 cell of "
+        "01_qc/qc_summary, after weighing seurat, seurat_v3. The decision table shows each "
+        "value beside its default."
+    )
+    assert b["check"].startswith("The operator chose a value for a parameter")
+    # the docstring heuristic drops parenthesised asides and cuts at the earliest end
+    from stringency.console import _first_sentence
+
+    assert (
+        _first_sentence(
+            "The agent proposes, the person approves (owner decision 2026-09-18; roadmap Lane A 5a): an admitted parameter. More."
+        )
+        == "The agent proposes, the person approves"
+    )
+    assert _first_sentence("Plain sentence. Then more") == "Plain sentence."
 
 
 def test_present_hold_markdown_opens_with_the_plain_block(make_project: InitFn) -> None:
@@ -358,8 +387,10 @@ def test_present_hold_markdown_opens_with_the_plain_block(make_project: InitFn) 
     propose(rc, "01_filter", {"min_value": 12}, rationale="Twelve is the floor here.")
     h = queue(p)[0]
     payload = present_hold(Site.load(p.root), h["hold_id"])
-    assert payload["found"].endswith("the agent chose min_value; a person approves the choice")
+    assert payload["found"].startswith(
+        "The operator proposed a value for min_value, citing nothing."
+    )
     assert payload["check"] and payload["compared"] == []
     text = render_markdown(payload)
-    assert "What was checked: The agent proposes, the person approves" in text
+    assert "What was checked: The operator chose a value for a parameter" in text
     assert "What the engine found: " in text and "The engine recorded" not in text

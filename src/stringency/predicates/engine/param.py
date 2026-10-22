@@ -120,6 +120,9 @@ def locked_changed(ctx: GateContext) -> Verdict:
     phase="pre",
     default=Disposition.BLOCK,
     covers=[],
+    summary=(
+        "A proposed value is outside the range or options the pipeline declares for the parameter."
+    ),
 )
 def out_of_range(ctx: GateContext) -> Verdict:
     """Blocks by default; the policy maps it to flag under `params: free` (design 6.5)."""
@@ -149,6 +152,9 @@ def out_of_range(ctx: GateContext) -> Verdict:
     scope=["*"],
     phase="pre",
     default=Disposition.FLAG,
+    summary=(
+        "The operator chose a value for a parameter the method leaves open; a person approves or rejects the choice before the step runs."
+    ),
 )
 def agent_proposed(ctx: GateContext) -> Verdict:
     """The agent proposes, the person approves (owner decision 2026-09-18; roadmap Lane A 5a):
@@ -197,6 +203,9 @@ def agent_proposed(ctx: GateContext) -> Verdict:
     scope=["*"],
     phase="pre",
     default=Disposition.FLAG,
+    summary=(
+        "Every number in the operator's reason must appear in a cell the proposal cites; this lists the numbers that do not."
+    ),
 )
 def reason_unmatched(ctx: GateContext) -> Verdict:
     """A numeral in the proposal's reason matches no cited cell, or the reason carries numerals
@@ -230,6 +239,9 @@ def reason_unmatched(ctx: GateContext) -> Verdict:
     scope=["*"],
     phase="pre",
     default=Disposition.FLAG,
+    summary=(
+        "The method names the evidence a decision rests on; the proposal cites nothing from it."
+    ),
 )
 def uncited(ctx: GateContext) -> Verdict:
     """A decision point whose declared evidence is a source, proposed by the agent without one
