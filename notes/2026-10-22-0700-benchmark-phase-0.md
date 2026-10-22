@@ -175,3 +175,16 @@ planted lineages exactly (T 343, Mono 208, B 89). Method v0.1.3 makes the panels
 input (`panels.csv`, columns lineage and gene; the module reads it when wired, the parameter in
 open mode). A second project on v0.1.3 (`proj2`) re-runs the pipeline with the panels declared
 in `inputs.yml`; the owner's holds again, fewer now.
+
+Evening: the third project (method v0.1.6, then v0.1.7 for the after-delivery figure form)
+delivered. Confirmation inherited from proj2 by the re-declared rule, so only egress asked;
+then one hold per decision, five in all, no companion flags: the fixes held. PCA sentinels
+0.23 and 0.28; four clusters; the declared panels assign them to T 343, Mono 208, B 89, the
+planted counts exactly. The delivery's summary names every accept with the owner's words and
+the coverage lists 28 evaluations over seven steps. The after-delivery figures resolve only in
+the `step/output/file` form (v0.1.7). The owner's console asks along the way, all built: the
+plain block, predicate summaries, the proposal sentence, colours and tags per ask group, the
+echo-back and egress rendered with guidance and the full report folded, the packet folded, an
+empty value shown as a choice, the QC figures (boxes of pct_mt per sample; genes against
+counts per cell) at the floors hold. `controls run` on the method under the engine started
+last (the coverage report said none recorded).
