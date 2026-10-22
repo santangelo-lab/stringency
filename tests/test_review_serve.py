@@ -1131,3 +1131,26 @@ def test_hold_page_reads_no_input_file(
     assert "replicate 1: abundant (high)" in render(p, h).text
     r = cli(p, "review", "--hold", h["hold_id"])
     assert r.exit_code == 0, r.output
+
+
+def test_decision_rows_show_an_empty_choice() -> None:
+    """An empty string is a choice (no regression), not a missing cell (the owner, 2026-10-22)."""
+    from stringency.review_serve import _decision_rows
+
+    rows = _decision_rows(
+        {
+            "evidence": {
+                "proposed": {
+                    "regress_out": {"default": "", "proposed": ""},
+                    "n": {"default": 1, "proposed": None},
+                }
+            }
+        }
+    )
+    assert rows[0] == {
+        "name": "regress_out",
+        "default": "(empty: none)",
+        "value": "(empty: none)",
+        "source": "agent",
+    }
+    assert rows[1]["value"] == "(unset)" and rows[1]["default"] == "1"

@@ -486,6 +486,16 @@ ERROR_HTML = _ENV.from_string(
 )
 
 
+def _shown(v: Any) -> str:
+    """A value in the decision table: an empty string reads as `(empty: none)`, None as
+    `(unset)`, so a parameter whose choice is "nothing" (no regression) still shows a value."""
+    if v is None:
+        return "(unset)"
+    if isinstance(v, str) and v == "":
+        return "(empty: none)"
+    return str(v)
+
+
 def _decision_rows(ctx: dict[str, Any]) -> list[dict[str, str]]:
     """The parameters a parameter hold asks about, from its evidence: `decision_points`
     (default, value, source) or `proposed` (default, proposed)."""
@@ -499,8 +509,8 @@ def _decision_rows(ctx: dict[str, Any]) -> list[dict[str, str]]:
                 rows.append(
                     {
                         "name": str(name),
-                        "default": str(d.get("default", "")),
-                        "value": str(d.get("value", "")),
+                        "default": _shown(d.get("default")),
+                        "value": _shown(d.get("value")),
                         "source": str(d.get("source", "")),
                     }
                 )
@@ -511,8 +521,8 @@ def _decision_rows(ctx: dict[str, Any]) -> list[dict[str, str]]:
                 rows.append(
                     {
                         "name": str(name),
-                        "default": str(d.get("default", "")),
-                        "value": str(d.get("proposed", "")),
+                        "default": _shown(d.get("default")),
+                        "value": _shown(d.get("proposed")),
                         "source": "agent",
                     }
                 )
