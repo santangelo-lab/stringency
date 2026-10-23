@@ -3,13 +3,18 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-22)
+## Current state (2026-10-23)
 
+- Annotation controls (`notes/2026-10-23-1400-annotation-controls.md`;
+  `spec/plans/annotation-controls.md`; rows L110 to L112, Xenium method items 3.15 to 3.21): the
+  fine label stays one free-text string (the owner); `sc.fine_label_uncited@1` built in plugin
+  singlecell 0.8.5 (`../stringency-plugins`); twenty candidate state programmes as evidence; one
+  fine label of three by a reconcile step and a choosing judgment over the contested clusters
+  (the owner chose both). Nothing committed; all three repos on `main`.
 - The gate review filed (`notes/2026-10-22-1150-gate-review-filed.md`; `spec/plans/gate-soundness.md`;
   rows L100 to L109, Next item 9): the owner's eight limitations checked against `491f1aa`, all
   hold. First: L103 (a pre-gate accept rebinds a post-gate flag on the same attempt) and L100
-  (`hold: always` is silent under `run`). Nothing built; on branch `gate-review-backlog`, to merge
-  after the workstation session pushes `main`.
+  (`hold: always` is silent under `run`). Nothing built; merged to `main` as PR #16.
 - The benchmark plan is in (`notes/2026-10-22-0700-benchmark-phase-0.md`;
   `spec/plans/benchmark-plan.md`; rows L87 to L92): Phase 0 started, the local Claude Code
   runner works on Opus 5, the public evals and Latch's image are on the workstation; the
@@ -341,6 +346,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-23-1400-annotation-controls.md` — a tour of the Xenium method and the plugin; `fine_label` traced end to end; `pct_diff` measured on the ROSC liver fixture; the owner's annotation points filed as L110 to L112 and method items 3.15 to 3.21 with `annotation-controls.md`; `sc.fine_label_uncited@1` built (plugin 0.8.5); one fine label of three by a reconcile step and a choosing judgment.
 - `2026-10-22-1150-gate-review-filed.md` — the owner's walkthrough of the gate checked against the code and filed as L100 to L109 with `gate-soundness.md`; three findings sharper than the walkthrough; ids from L100 to avoid the workstation session's.
 - `2026-10-22-0700-benchmark-phase-0.md` — the owner's benchmark plan adapted (L87 to L92); the Docker-free Claude Code runner on Opus 5; the published reference on the six public evals; Phase 0 waits on `latch login`.
 - `2026-10-22-0500-citation-checks-and-plugin-0.7.md` — plugin singlecell 0.7.0 (the seven downstream predicates, L54); engine 0.2.33: must_cite and judg.required_evidence_uncited (L56), the cited output type and judg.numeric_claims_match@2 (L57).
