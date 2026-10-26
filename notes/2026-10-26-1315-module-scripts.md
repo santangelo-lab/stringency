@@ -125,6 +125,13 @@ in every method, Xenium first.
   Python csv's default `\r\n`.
 - L114 filed: in open mode an accepted hold leaves the tool's step `admissible` with no verb to
   run it, and calling again makes a new step.
+- The Louvain gate: plugin singlecell 0.8.6 tagged `sc.louvain_too_large@1`. It also flagged
+  the Xenium method's `select-resolution`, which shares the `cluster_umap` operation. 0.8.7
+  (tag `v0.8.7`, `8f9f4f6`) is `@2` and judges only a module that declares `cluster_method`.
+  The method's `cluster-umap` 0.4.4 gates `@2`, requires singlecell `>=0.8.7` and states
+  `sc.louvain_max_cells` at 600,000 (method `a8dc69a`). On PROTSEQ, with the band lowered to
+  1,000 cells, the synthetic study was flagged at 04 only. The shared install is still
+  0.2.34-sc0.8.4 and needs 0.8.7 (the owner).
 
 ## Open
 
@@ -133,8 +140,9 @@ in every method, Xenium first.
   level).
 - Phases 5 (scRNA-seq), 6 (Plasmidsaurus), 7 (the wrap skill). The public
   `stringency-toy-method` repository still has `pre.py`.
-- Nothing is pushed: the engine (`c62bcae`, `f232d62` and this), the method (`9bf12a7`,
-  `0a945ed`), the plugin branch.
+- Nothing of this session's is pushed: the engine (`c62bcae`, `f232d62`, `c8a4086` and this),
+  the method (`9bf12a7`, `0a945ed`, `a8dc69a`). The plugin's 0.8.6 and 0.8.7 were pushed and
+  tagged from the owner's plugin session.
 
 ## Verify
 
