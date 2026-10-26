@@ -16,9 +16,8 @@ it is the first thing a new session reads.
     install needs 0.8.7.
   - Phases 5 to 7 done: the scRNA-seq method (`f15590e`) verified identical; the Plasmidsaurus
     template (`2c93b04`); the wrap skill, tested by a fresh agent.
-  - Tagged and pushed: Xenium `v0.6.0-rc20`, scRNA-seq `v0.1.10`. Next: the known-good rows,
-    once the runs at the tags pass (`module-scripts/tag_runs.sh` on PROTSEQ), and republishing
-    the skills.
+  - Tagged and pushed: Xenium `v0.6.0-rc20` and scRNA-seq `v0.1.10`, both with known-good rows
+    for 0.2.34-sc0.8.7. Next: republishing the skills (the owner).
 - Annotation controls (`notes/2026-10-23-1400-annotation-controls.md`;
   `spec/plans/annotation-controls.md`; rows L110 to L112, Xenium method items 3.15 to 3.21): the
   fine label stays one free-text string (the owner); `sc.fine_label_uncited@1` built in plugin

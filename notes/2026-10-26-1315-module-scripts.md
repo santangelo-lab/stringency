@@ -172,19 +172,17 @@ in every method, Xenium first.
   template's changes since rc19: `--cite` and `--considered` on proposals, and the egress "not
   assessed" line.
 - `publish-skills.md` names the new tags.
-- Not done: the `compat/known-good.yml` rows for 0.2.34 with singlecell 0.8.7 and the two tags.
-  The evidence runs at the tags under the shared install were started on PROTSEQ over ssh and
-  were cut off when this machine shut down. To rerun them:
-  `bash /data/lab/scratch/jrrose5/module-scripts/tag_runs.sh` on PROTSEQ (the Xenium synthetic
-  study, then the scRNA-seq tests and controls). Add the rows when they pass.
+- `compat/known-good.yml` gains two rows for 0.2.34 with singlecell 0.8.7, one per tag. The
+  evidence runs (`module-scripts/tag_runs.sh` on PROTSEQ, the shared install) passed at the tags:
+  - the Xenium synthetic study, through to delivery;
+  - the scRNA-seq tests and its eight controls.
 
 ## Open
 
 - The method's next rc tag, on the owner's word. The Xenium method's `PLAN.md` 4.4: the open
   tools' batch term under `de.covariate_omission`, and the open-tools check (holds, reference
   level).
-- The known-good rows (above); republishing the skills at the new tags, the wrap skill among
-  them. The public `stringency-toy-method` repository still has `pre.py`.
+- Republishing the skills at the new tags, the wrap skill among them (the owner). The public `stringency-toy-method` repository still has `pre.py`.
 - Nothing of this session's is pushed: the engine (`c62bcae`, `f232d62`, `c8a4086`, `9dfb02b` and
   this), the Xenium method (`9bf12a7`, `0a945ed`, `a8dc69a`), the scRNA-seq method (`f15590e`),
   the Plasmidsaurus method (`2c93b04`). The plugin's 0.8.6 and 0.8.7 were pushed and

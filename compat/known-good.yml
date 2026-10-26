@@ -60,3 +60,19 @@ combinations:
     date: 2026-10-20
     host: the lab's Linux workstation (apptainer)
     evidence: "the method's open tools end to end on the Lyons CLP liver delivery (controls/open_tools_check.sh: an open project from the delivery, the seven tools with every positive and negative control passing, an answer labelled trusted, a finding, the delivery; six tools in 5 min 35 s, CellChat in 15 min); installed as 0.2.24-sc0.6.2 on the workstation from the GitHub tags; probe --method ready"
+  - engine: v0.2.34
+    plugins:
+      stringency-singlecell: v0.8.7
+    methods:
+      stringency-scrnaseq-scanpy-method: v0.1.10
+    date: 2026-10-26
+    host: the lab's Linux workstation (apptainer)
+    evidence: "installed as 0.2.34-sc0.8.7 on the workstation; the method cloned at the tag: tests/run.sh on the planted fixture passed (lineages T 343, Mono 208, B 89 recovered; the twenty interferon genes called up), and in a project from the fixture's declarations stringency controls run passed all eight controls; outputs identical to v0.1.9's"
+  - engine: v0.2.34
+    plugins:
+      stringency-singlecell: v0.8.7
+    methods:
+      stringency-xenium-method: v0.6.0-rc20
+    date: 2026-10-26
+    host: the lab's Linux workstation (apptainer)
+    evidence: "installed as 0.2.34-sc0.8.7 on the workstation; controls/synthetic_upstream.sh passed with the method cloned at the tag (xenium-qc-tma and xenium-upstream on the two-slide synthetic study, delivered, five clusters labelled); every module script's outputs identical to 9bf12a7's on the synthetic study and the open tools' controls"
