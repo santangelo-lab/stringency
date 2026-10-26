@@ -13,7 +13,7 @@ To start a module:
 3. Fill in `module.yml` (operation, domain, env, inputs, outputs, decision points) and
    `params.schema.json`. The script's header says the same things in plain words.
 4. Replace the numbered analysis sections with yours, keeping the order: header, shared code,
-   job, parameters, numbered steps, write outputs, record for stringency.
+   job, parameters, numbered steps, record for stringency, write outputs.
 5. `stringency lint .`
 
 The skeletons source `stringency_io.R` or import `stringency_io.py` from `modules/_rlib/` or

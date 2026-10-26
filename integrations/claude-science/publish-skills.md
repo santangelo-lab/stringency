@@ -19,12 +19,13 @@ your site's values filled in:
 > and the "for engine" line of each skill you published.
 
 The session does the rest. Repeat it after an engine release or a method tag; the reply names
-what was published. Six skills today:
+what was published. Seven skills today:
 
 | skill | source | who uses it |
 |---|---|---|
 | `stringency-operator` | `integrations/claude-science/stringency-operator/SKILL.md` (engine repo) | the session, to drive a project |
 | `stringency-declare` | `integrations/claude-science/stringency-declare/SKILL.md` (engine repo) | the session, to draft declarations from a brief |
+| `stringency-wrap` | `integrations/claude-science/stringency-wrap/SKILL.md` (engine repo) | the session, to bring a person's existing script, library or tool into a method as a module |
 | `stringency-analyze-<name>` | `skills/stringency-analyze-<name>/SKILL.md` in the method repo, rendered by `integrations/claude-science/render_skill.py` from `skills/<pipeline>.analyze.yml` (Track 1d, built 2026-09-23) | a lab member, as the entry point for one analysis |
 | `stringency-analyze-scrnaseq-upstream`, `stringency-analyze-scrnaseq-de` | `skills/stringency-analyze-*/SKILL.md` in `stringency-scrnaseq-scanpy-method` at `v0.1.9` (2026-10-22) | a lab member, for a droplet or combinatorial scRNA-seq object: QC to lineage assignment, or pseudobulk DE |
 | `stringency-analyze-toy-compare` | `skills/stringency-analyze-toy-compare/SKILL.md` in `stringency-toy-method` at `v0.2.0` | the first instance, on the toy `toy-engine` pipeline; the Track 1 acceptance test runs through it |

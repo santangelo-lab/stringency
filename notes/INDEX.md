@@ -14,8 +14,9 @@ it is the first thing a new session reads.
   - L114 filed: a held open-mode tool call cannot finish.
   - `cluster-umap` gates `sc.louvain_too_large@2` (plugin 0.8.7, method `a8dc69a`). The shared
     install needs 0.8.7.
-  - Next: the method tag on the owner's word; phases 5 to 7. The engine and method commits are
-    not pushed.
+  - Phases 5 to 7 done: the scRNA-seq method (`f15590e`) verified identical; the Plasmidsaurus
+    template (`2c93b04`); the wrap skill, tested by a fresh agent.
+  - Next: the methods' tags and the skill's publication (the owner). Nothing is pushed.
 - Annotation controls (`notes/2026-10-23-1400-annotation-controls.md`;
   `spec/plans/annotation-controls.md`; rows L110 to L112, Xenium method items 3.15 to 3.21): the
   fine label stays one free-text string (the owner); `sc.fine_label_uncited@1` built in plugin

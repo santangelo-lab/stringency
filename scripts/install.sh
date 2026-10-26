@@ -15,7 +15,7 @@
 # Layout:  <prefix>/versions/<label>/   a venv holding the engine and plugins
 #          <prefix>/current             symlink to the version in use
 #          <prefix>/envs/               container images referenced by method manifests
-#          <prefix>/versions/<label>/skills/<skill>/SKILL.md   the operator and declare skills
+#          <prefix>/versions/<label>/skills/<skill>/SKILL.md   the operator, declare and wrap skills
 #
 # Requires `uv` (https://docs.astral.sh/uv/) and a system python3 >= 3.12. No sudo is needed when
 # <prefix> is writable; otherwise run under sudo with uv on root's PATH, or pre-create <prefix>
@@ -97,7 +97,7 @@ uv pip install --quiet --no-sources --python "$venv/bin/python" "$source" "${plu
 # The operator and declare skills ride with the engine version (backlog L14): `run --json` names
 # the installed operator skill at a hold, so a session holding an older published copy can read
 # the current text. Copied from this checkout; check it is at the tag being installed.
-for s in stringency-operator stringency-declare; do
+for s in stringency-operator stringency-declare stringency-wrap; do
   if [ -f "$here/integrations/claude-science/$s/SKILL.md" ]; then
     mkdir -p "$venv/skills/$s"
     cp "$here/integrations/claude-science/$s/SKILL.md" "$venv/skills/$s/SKILL.md"

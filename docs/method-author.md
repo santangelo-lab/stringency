@@ -103,13 +103,18 @@ script, what it does, the main tools. A person new to the method starts there.
 
 ## Bringing existing code in
 
-Most modules start as someone's script. Three shapes, from the most common:
+Most modules start as someone's script. An agent can do the wrapping by the skill
+`integrations/claude-science/stringency-wrap/SKILL.md`, which follows this section and checks the
+module against the original's output. Three shapes, from the most common:
 
-- A script with hard-coded paths and constants. Copy it to `modules/<name>/<name>.R` (or `.py`).
+- A script with hard-coded paths and constants. Copy it to
+  `modules/<name>/<name_with_underscores>.R` (or `.py`).
   Replace the block that sets paths and constants with the job: inputs from `job$inputs`,
   constants that are analysis choices from `job$params`, output paths from `job$outputs`. Declare
   the same names in `module.yml` and `params.schema.json` (defaults from the old constants), add
-  the header, and reorder into the shape above as far as the code allows.
+  the header, and reorder into the shape above as far as the code allows. Keep the code's own
+  reading and writing of files, so its outputs stay byte for byte; `stringency_io` gives the job
+  and the log.
 - A library of functions. Copy the file unchanged into `_rlib/` or `_pylib/` with a provenance
   header (where it came from, the commit, the date) and mark each later edit `# stringency:`
   (the Xenium method's `_rlib/Xen_Seurat_functions.R`, from ROSC_MTA2, is the example). List it in

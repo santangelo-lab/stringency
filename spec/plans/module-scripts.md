@@ -1,10 +1,19 @@
 # Module scripts people can find, read, and bring their own code into
 
-**Status (2026-10-26):** the owner's comments and choices of 2026-10-26; row L113. Phases 0 to 4
-built: the engine's convention, template, skeletons and toy (`c62bcae`); every module of the
-Xenium method (`9bf12a7` the pilot, read by the owner; `0a945ed` the other twenty-two), verified
-identical to the method before them on PROTSEQ. Next: phase 5 (the scRNA-seq method), 6
-(Plasmidsaurus), 7 (the wrap skill).
+**Status (2026-10-26):** the owner's comments and choices of 2026-10-26; row L113. Phases 0 to 7
+built:
+- the engine's convention, template, skeletons and toy (`c62bcae`);
+- every module of the Xenium method (`9bf12a7` the pilot, read by the owner; `0a945ed` the other
+  twenty-two);
+- the scRNA-seq method's eight modules (`f15590e`, its 0.1.10);
+- the Plasmidsaurus template (`2c93b04`);
+- the wrap skill (`integrations/claude-science/stringency-wrap/SKILL.md`), followed once by a
+  fresh agent on a stand-in script with identical outputs and a clean lint, and corrected where
+  that run found it unclear.
+
+Each method was verified identical to its previous commit on PROTSEQ. Open: the methods' tags
+and the skill's publication (the owner); the public `stringency-toy-method` repository still has
+`pre.py`.
 
 ## 1. The owner's points
 

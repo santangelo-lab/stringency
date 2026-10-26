@@ -133,15 +133,47 @@ in every method, Xenium first.
   1,000 cells, the synthetic study was flagged at 04 only. The shared install is still
   0.2.34-sc0.8.4 and needs 0.8.7 (the owner).
 
+## Later still: phases 5 to 7
+
+- The owner installed 0.2.34-sc0.8.7 as the shared install, so `current` points at it.
+- **The scRNA-seq method** (`../stringency-scrnaseq-scanpy-method`, cloned this session),
+  committed as `f15590e` (its 0.1.10, untagged):
+  - The eight scripts are named after their modules.
+  - `_pylib/common.py` became `stringency_io.py` (the template) and `scrnaseq.py`.
+  - The committed `__pycache__` is gone; ruff, CI and `tools/check_index.py` added.
+  - Verified on PROTSEQ against `v0.1.9`. `tests/run.sh`'s outputs are byte-identical: tables,
+    JSON, the five h5ad files, the two figures. The lineages and the interferon genes are
+    recovered, and the eight controls pass with identical outputs.
+- **The Plasmidsaurus method** (cloned): the template's helpers, style files, hooks, CI and
+  README, plus the template's `requires`, which CI reads. Committed as `2c93b04`.
+- **The wrap skill**:
+  - Written as `integrations/claude-science/stringency-wrap/SKILL.md`, added to
+    `scripts/install.sh`'s copied skills and to `publish-skills.md`.
+  - A fresh agent followed it on a stand-in lab script into a scratch copy of the toy method.
+    The output was byte-identical and lint clean.
+  - Its findings went into the skill:
+    - keep the code's own reading and writing, since `stringency_io`'s writers may differ in
+      line endings;
+    - how to choose an operation, and code that spans two;
+    - a "module only" option;
+    - running in a lockfile environment, and the job's keys;
+    - finding the engine outside Claude Science;
+    - naming inputs and outputs.
+  - They also fixed two contradictions: `templates/module/README.md` had the old order, and
+    `docs/method-author.md` named the script `<name>.R`.
+- The shared install's skills were copied before the wrap skill existed. It arrives with the
+  next install, or by hand.
+
 ## Open
 
 - The method's next rc tag, on the owner's word. The Xenium method's `PLAN.md` 4.4: the open
   tools' batch term under `de.covariate_omission`, and the open-tools check (holds, reference
   level).
-- Phases 5 (scRNA-seq), 6 (Plasmidsaurus), 7 (the wrap skill). The public
-  `stringency-toy-method` repository still has `pre.py`.
-- Nothing of this session's is pushed: the engine (`c62bcae`, `f232d62`, `c8a4086` and this),
-  the method (`9bf12a7`, `0a945ed`, `a8dc69a`). The plugin's 0.8.6 and 0.8.7 were pushed and
+- The tags of the Xenium (next rc) and scRNA-seq (`v0.1.10`) methods; publishing the wrap
+  skill. The public `stringency-toy-method` repository still has `pre.py`.
+- Nothing of this session's is pushed: the engine (`c62bcae`, `f232d62`, `c8a4086`, `9dfb02b` and
+  this), the Xenium method (`9bf12a7`, `0a945ed`, `a8dc69a`), the scRNA-seq method (`f15590e`),
+  the Plasmidsaurus method (`2c93b04`). The plugin's 0.8.6 and 0.8.7 were pushed and
   tagged from the owner's plugin session.
 
 ## Verify
