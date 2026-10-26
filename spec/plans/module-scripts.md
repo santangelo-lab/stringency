@@ -1,8 +1,10 @@
 # Module scripts people can find, read, and bring their own code into
 
-**Status (2026-10-26):** the owner's comments and choices of 2026-10-26; row L113. Phase 0 (this
-repository) built; phase 1 (the Xenium pilot, `cluster-umap`) next, then the owner's review of
-the converted script before phases 2 to 7.
+**Status (2026-10-26):** the owner's comments and choices of 2026-10-26; row L113. Phases 0 to 4
+built: the engine's convention, template, skeletons and toy (`c62bcae`); every module of the
+Xenium method (`9bf12a7` the pilot, read by the owner; `0a945ed` the other twenty-two), verified
+identical to the method before them on PROTSEQ. Next: phase 5 (the scRNA-seq method), 6
+(Plasmidsaurus), 7 (the wrap skill).
 
 ## 1. The owner's points
 

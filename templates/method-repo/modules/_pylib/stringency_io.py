@@ -82,7 +82,7 @@ def write_table(
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     fields = columns or (list(rows[0].keys()) if rows else [])
     with open(path, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fields, delimiter=_delimiter(path))
+        w = csv.DictWriter(f, fieldnames=fields, delimiter=_delimiter(path), lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
 

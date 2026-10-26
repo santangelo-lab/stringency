@@ -1,4 +1,4 @@
-# 2026-10-26: module scripts (row L113; phase 0 built, the Xenium pilot `cluster-umap` 0.4.2)
+# 2026-10-26: module scripts (row L113; phases 0 to 4: the engine and every Xenium module)
 
 ## Goal
 
@@ -109,12 +109,32 @@ in every method, Xenium first.
 - The `stringency_upstream.R` split into `pca.R` and `batch.R` moved to phase 2 with its two
   callers (`reduce-pca`, `select-resolution`), so phase 1 changes no unconverted script.
 
+## Later the same day: every Xenium module
+
+- The owner read `cluster_umap.R`: "the code looks much better". They asked how the switch to
+  Leiden is decided: a person decides, with `cluster_method` proposed above about 600,000
+  cells. The module only warns. A session the owner started built `sc.louvain_too_large@1`
+  (singlecell 0.8.6, branch `singlecell-louvain-too-large` in `stringency-plugins`,
+  `9b6a779`, not pushed).
+- The pilot and the predicates were committed in the method as `9bf12a7`. The other 22
+  modules were committed as `0a945ed` (the method's `PLAN.md` 6.2 to 6.4 and its note). Three
+  subagents did the QC chain, the open tools and the judgment evidence scripts, with disjoint
+  files; the session did the upstream R modules and the shared files. Every module is
+  identical to `9bf12a7` on PROTSEQ under 0.2.34-sc0.8.4. The method's note has the detail.
+- The template's `_pylib/stringency_io.py` `write_table` now ends rows with `\n`; it had
+  Python csv's default `\r\n`.
+- L114 filed: in open mode an accepted hold leaves the tool's step `admissible` with no verb to
+  run it, and calling again makes a new step.
+
 ## Open
 
-- The owner reads `cluster_umap.R` cold. That reading gates phases 2 to 7.
-- Commit the Xenium pilot when the owner says so. The public `stringency-toy-method` repository
-  still has `pre.py`, and pushing it is the owner's call.
-- Phases 2 to 4 (the rest of Xenium), 5 (scRNA-seq), 6 (Plasmidsaurus), 7 (the wrap skill).
+- The method's next rc tag, on the owner's word. The Xenium method's `PLAN.md` 4.4: the open
+  tools' batch term under `de.covariate_omission`, and the open-tools check (holds, reference
+  level).
+- Phases 5 (scRNA-seq), 6 (Plasmidsaurus), 7 (the wrap skill). The public
+  `stringency-toy-method` repository still has `pre.py`.
+- Nothing is pushed: the engine (`c62bcae`, `f232d62` and this), the method (`9bf12a7`,
+  `0a945ed`), the plugin branch.
 
 ## Verify
 

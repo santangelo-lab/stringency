@@ -7,15 +7,12 @@ it is the first thing a new session reads.
 
 - Module scripts (`notes/2026-10-26-1315-module-scripts.md`; `spec/plans/module-scripts.md`; row
   L113):
-  - Phase 0 is committed as `c62bcae`: the convention in `docs/method-author.md`, the template's
-    `stringency_io` helpers and style checks, `templates/module/` skeletons, and the toy's scripts
-    renamed.
-  - In the Xenium method, uncommitted on `main`:
-    - the pilot `cluster-umap` 0.4.2 (`cluster_umap.R`), with identical outputs to rc19 on the
-      synthetic study and under Leiden;
-    - the move to the current predicates (L86, method item 4.3), which lints under
-      0.2.34-sc0.8.4 and runs the synthetic study end to end there.
-  - Next: the owner reads `cluster_umap.R`, and the Xenium commits wait for the owner's word.
+  - The convention, template and toy are committed as `c62bcae`.
+  - Every Xenium module is converted, in the method's `9bf12a7` and `0a945ed`, and verified
+    identical on PROTSEQ under 0.2.34-sc0.8.4. The method also moved to the current predicates
+    (L86).
+  - L114 filed: a held open-mode tool call cannot finish.
+  - Next: the method tag on the owner's word; phases 5 to 7. Nothing is pushed.
 - Annotation controls (`notes/2026-10-23-1400-annotation-controls.md`;
   `spec/plans/annotation-controls.md`; rows L110 to L112, Xenium method items 3.15 to 3.21): the
   fine label stays one free-text string (the owner); `sc.fine_label_uncited@1` built in plugin
@@ -357,7 +354,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
-- `2026-10-26-1315-module-scripts.md` — the owner's points on the methods' module scripts: the convention (named scripts with `entry:`, a short header and `CHANGELOG.md`, one shape, `stringency_io`, ruff and lintr, a README index, existing code); phase 0 built and the Xenium pilot `cluster-umap` 0.4.2 verified identical to rc19 on PROTSEQ; the Xenium method moved to the current predicates (L86) and run end to end under 0.2.34-sc0.8.4.
+- `2026-10-26-1315-module-scripts.md` — the owner's points on the methods' module scripts: the convention (named scripts with `entry:`, a short header and `CHANGELOG.md`, one shape, `stringency_io`, ruff and lintr, a README index, existing code); phase 0 built and the Xenium pilot `cluster-umap` 0.4.2 verified identical to rc19 on PROTSEQ; the Xenium method moved to the current predicates (L86) and run end to end under 0.2.34-sc0.8.4; then every Xenium module converted and verified identical; L114.
 - `2026-10-23-1400-annotation-controls.md` — a tour of the Xenium method and the plugin; `fine_label` traced end to end; `pct_diff` measured on the ROSC liver fixture; the owner's annotation points filed as L110 to L112 and method items 3.15 to 3.21 with `annotation-controls.md`; `sc.fine_label_uncited@1` built (plugin 0.8.5); one fine label of three by a reconcile step and a choosing judgment.
 - `2026-10-22-1150-gate-review-filed.md` — the owner's walkthrough of the gate checked against the code and filed as L100 to L109 with `gate-soundness.md`; three findings sharper than the walkthrough; ids from L100 to avoid the workstation session's.
 - `2026-10-22-0700-benchmark-phase-0.md` — the owner's benchmark plan adapted (L87 to L92); the Docker-free Claude Code runner on Opus 5; the published reference on the six public evals; Phase 0 waits on `latch login`.
