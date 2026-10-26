@@ -1,0 +1,126 @@
+# 2026-10-26: module scripts (row L113; phase 0 built, the Xenium pilot `cluster-umap` 0.4.2)
+
+## Goal
+
+The owner's comments on the methods' module scripts: the `pre.*` scripts drive the analysis and
+neither their name nor their place says so; they must be legible to a person looking for what a
+method does and which tools it uses; bringing existing code into stringency should be easy. Plan
+in every method, Xenium first.
+
+## Done
+
+- Surveyed the four methods and the engine's handling of scripts:
+  - Xenium: 23 scripts, 12 headers behind `module.yml`, R one-liners up to 576 characters.
+  - scRNA-seq: 8 Python scripts; tuple-packed parameters, a committed `__pycache__`.
+  - Plasmidsaurus: still the empty template.
+  - Toy: already readable.
+  - `entry:` exists, the interpreter goes by suffix, the script blob is content only. So no
+    contract change is needed.
+- The owner chose:
+  - scripts named after the module, set by `entry:`;
+  - `<name>_evidence.py` for judgment modules;
+  - scripts stay in `modules/<name>/`, with a README index;
+  - a recipe, skeletons and a wrap skill for existing code;
+  - this restructure only, with the annotation items parked.
+- `spec/plans/module-scripts.md` (the reasoning, phases 0 to 7), row L113, the DECISIONS entry, the
+  `spec/README.md` row.
+- Phase 0, committed as `c62bcae` on `main`, not pushed:
+  - `docs/method-author.md`: "Module scripts" and "Bringing existing code in".
+  - `templates/method-repo`: `_rlib/stringency_io.R` and `_pylib/stringency_io.py`, with the same
+    names in both; `ruff.toml`; `.lintr`; the hooks; CI.
+  - `templates/module/`: R and Python skeletons. Both ran on a three-row table, the R one in the
+    `xenium-r` image.
+  - The toy method's scripts renamed with `entry:` and a `CHANGELOG.md`, versions kept. The
+    engine tests that name them follow; lint's missing-script case is tested both ways.
+- Phase 1 in `../stringency-xenium-method`, uncommitted on `main`:
+  - `cluster-umap` 0.4.2 as `cluster_umap.R`: a fourteen-line header, `CHANGELOG.md` holding the
+    old header verbatim, one statement per line.
+  - `_rlib/clustering.R`: the Leiden grid, the small-cluster folding, the resolution tables and
+    splits, as named functions.
+  - `_rlib/stringency_io.R` from the template, plus a marked transitional block that loads
+    Seurat for the unconverted scripts. The figure helpers moved there out of
+    `stringency_upstream.R`.
+  - `.lintr` and `ruff.toml`, with the unconverted scripts excluded.
+  - CI and pre-commit run ruff, lintr and `tools/check_index.py`.
+  - The README section "Where the analysis happens": every pipeline step and tool with its
+    script, what it does, and its tools.
+  - `tests/compare_deliveries.py` and `tests/compare_rds.R`.
+  - `tests/run_upstream.sh` and `run_select_resolution.sh` read `entry:`.
+  - `xenium-upstream` 0.6.2; `PLAN.md` section 6.
+
+- Phase 1 verified on PROTSEQ, with both sides under `versions/0.2.27-sc0.6.2`. The setup was a
+  scratch clone with the pilot committed there only. The synthetic `xenium-upstream` study ran at
+  `v0.6.0-rc19` and at the pilot, and `tests/compare_deliveries.py` compared the two step by
+  step:
+  - Every CSV, TSV and JSON output is byte-equal, every RDS object compares equal in R, and every
+    `cluster-umap` figure is byte-equal.
+  - What differs is the engine's bookkeeping: action ids in the `.stringency.json` sidecars, hold
+    ids in `review/` and `consensus.json`.
+  - Two `apply-labels` UMAPs drawn with `repel = TRUE` also differ, and the report embeds them.
+    The unchanged rc19 `apply-labels`, run twice on the same inputs, gives different bytes for
+    the same two: ggrepel is unseeded there.
+  - Old and new `cluster-umap` run directly with `cluster_method=igraph_leiden` (the synthetic
+    study uses Louvain) gave identical tables, object and all fifteen figures.
+- The Xenium method moved to the current predicates (the owner's ask; engine row L86, method
+  item 4.3), on `main`, uncommitted:
+  - Gates: `sc.area_join_unverified@2`, `sc.low_cell_count@2`, `sc.decision_unreviewed@2`. The
+    plugin's 0.8.1 diff shows each is unchanged for this method.
+  - `judg.numeric_claims_match` is gated by bare id in the three judgments, and left
+    `exclusion-proposal` (a deterministic module, out of its scope).
+  - `resegment-nextflow` declares `egress` class 1 (github.com, registry.nextflow.io; nothing
+    from the project is sent).
+  - `requires` is engine `>=0.2.28` and singlecell `>=0.8.1`.
+  - Ten modules and six pipelines bump a patch version, each with a `CHANGELOG.md` entry.
+  - Lint is clean under 0.2.34-sc0.8.4, and under 0.2.28 with plugin 0.8.1 (what CI installs).
+    The skill check passes at both engines.
+
+## Learned
+
+- `requires.engine` at 0.2.29 or above opts a method into lint's decision-point error (every
+  decision point needs a `decision:` block). For the Xenium method, a block with `hold: always`
+  would not open under `run` (L100) and would retire `sc.decision_unreviewed@2` for that point,
+  so the sign-off at the default would be lost. That is why `requires.engine` stays at
+  `>=0.2.28`, and why `judg.numeric_claims_match` is gated by bare id: 0.2.28 to 0.2.32 register
+  @1 only, and CI installs the lower bound.
+
+- `exec.plan_drift` (operator-run steps only) reads `params: k=v` lines from the job log and
+  compares each value with the admitted one. A list logged as `a,b`, or text with spaces, would
+  read as drift. So `log_params` writes only values the reader can compare, and puts the rest on
+  an `other params:` line it does not parse.
+- The toy method's versions are pinned throughout the engine's tests and goldens. Its rename
+  keeps the versions (same bytes, same blobs) and says so in DECISIONS.
+- SeuratObject's `Misc<-` warns on every overwrite ("Overwriting miscellanous data"), which the
+  test scripts filter out. The template's `set_flag` assigns the slot directly.
+- lintr 3.4 prefers `|>` by default (`pipe_consistency_linter`). It is off in both configs, since
+  `%>%` is what Seurat and tidyverse code reads like.
+- The local engine environment has no singlecell plugin, so `stringency lint` of the Xenium
+  method gives 52 errors here, the same before and after the change. The real lint runs on
+  PROTSEQ.
+- The Xenium method at `v0.6.0-rc19` does not init under the shared install, 0.2.34-sc0.8.4. Lint
+  fails on gates the plugin no longer registers at those versions:
+  - `judg.numeric_claims_match@1`;
+  - `sc.decision_unreviewed@1`;
+  - `sc.area_join_unverified@1`;
+  - `sc.low_cell_count@1`.
+
+  It also fails on `resegment-nextflow`'s undeclared egress (L86). This predates today: the
+  method's next tag must move those gates. The pilot was verified with both sides under
+  `versions/0.2.27-sc0.6.2`, where rc19 and the pilot lint clean with the same twelve warnings.
+- The `stringency_upstream.R` split into `pca.R` and `batch.R` moved to phase 2 with its two
+  callers (`reduce-pca`, `select-resolution`), so phase 1 changes no unconverted script.
+
+## Open
+
+- The owner reads `cluster_umap.R` cold. That reading gates phases 2 to 7.
+- Commit the Xenium pilot when the owner says so. The public `stringency-toy-method` repository
+  still has `pre.py`, and pushing it is the owner's call.
+- Phases 2 to 4 (the rest of Xenium), 5 (scRNA-seq), 6 (Plasmidsaurus), 7 (the wrap skill).
+
+## Verify
+
+```
+uv run pytest -q && uv run ruff check . && uv run ruff format --check . && uv run mypy && scripts/check_no_biology.sh
+# on PROTSEQ, a scratch clone of the Xenium method with the change committed there:
+controls/synthetic_upstream.sh v0.6.0-rc19 <scr_old>; controls/synthetic_upstream.sh <commit> <scr_new>
+tests/compare_deliveries.py <scr_old>/upstream_project/runs/<run> <scr_new>/upstream_project/runs/<run>
+```
