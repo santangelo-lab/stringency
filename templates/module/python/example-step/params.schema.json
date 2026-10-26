@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "min_value": {
+      "type": "number",
+      "default": 0,
+      "description": "rows whose value is below this are dropped"
+    }
+  },
+  "required": ["min_value"],
+  "additionalProperties": false
+}

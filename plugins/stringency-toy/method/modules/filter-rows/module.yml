@@ -6,6 +6,7 @@ operation: filter_rows
 domain: stringency-toy
 modes: [pipeline]
 env: toy-py
+entry: filter_rows.py
 inputs:
   object: {type: frame, format: csv, hash: true}
 outputs:

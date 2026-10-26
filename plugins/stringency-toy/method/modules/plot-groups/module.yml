@@ -6,6 +6,7 @@ operation: plot_groups
 domain: stringency-toy
 modes: [open]
 env: toy-py
+entry: plot_groups.py
 runner: engine
 inputs:
   comparison: {type: table, format: tsv, hash: true}

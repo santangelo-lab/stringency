@@ -109,7 +109,12 @@ def prompt_unused_var(m: Path) -> None:
 
 
 def script_missing(m: Path) -> None:
-    (m / "modules/filter-rows/pre.py").unlink()
+    (m / "modules/filter-rows/filter_rows.py").unlink()
+
+
+def script_none(m: Path) -> None:
+    (m / "modules/filter-rows/filter_rows.py").unlink()
+    _edit_yaml(m / "modules/filter-rows/module.yml", lambda d: d.pop("entry"))
 
 
 def pipeline_bad_module_version(m: Path) -> None:
@@ -210,7 +215,8 @@ ERROR_CASES: list[tuple[str, Breaker, str]] = [
         prompt_unused_var,
         "declares variable context that the template never uses",
     ),
-    ("script_missing", script_missing, "no pre.* script"),
+    ("script_missing", script_missing, "entry script filter_rows.py is missing"),
+    ("script_none", script_none, "no pre.* script"),
     ("pipeline_bad_module_version", pipeline_bad_module_version, "the repo has filter-rows@0.1.1"),
     ("pipeline_missing_module", pipeline_missing_module, "not in the repo"),
     ("pipeline_dangling_output", pipeline_dangling_output, "which does not exist"),

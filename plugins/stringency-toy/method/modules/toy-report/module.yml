@@ -6,6 +6,7 @@ operation: report
 domain: stringency-toy
 modes: [pipeline]
 env: toy-py
+entry: toy_report.py
 inputs:
   comparison: {type: table, format: tsv, hash: true}
   labels: {type: consensus, format: json, hash: true}

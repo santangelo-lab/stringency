@@ -1,0 +1,18 @@
+contract: 1
+name: example-step
+version: 0.1.0
+kind: deterministic
+operation: <an operation id from the plugin's vocabulary>
+domain: <the plugin name; equals the pipeline's domain>
+modes: [pipeline]
+env: <an environment named in envs/manifest.yml, e.g. r-base>
+runner: engine
+entry: example_step.R
+inputs:
+  table: {type: frame, format: csv, hash: true}
+outputs:
+  kept: {type: frame, format: csv}
+  summary: {type: table, format: csv}
+decision_points: [min_value]
+stochastic: false
+resources: {cpus: 1, memory: 1GB, timeout: 5min}

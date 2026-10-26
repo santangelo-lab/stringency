@@ -1,0 +1,8 @@
+# Python style for module scripts (docs/method-author.md, "Module scripts"): ruff format, lines of
+# 100 characters at most. Vendored code copied unchanged from elsewhere goes in extend-exclude.
+line-length = 100
+target-version = "py39"
+extend-exclude = []
+
+[lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "W"]

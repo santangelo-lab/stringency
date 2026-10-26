@@ -4,6 +4,12 @@ repos:
     hooks:
       - id: check-added-large-files
         args: [--maxkb=10240]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff
+      - id: ruff-format
+        args: [--check]
   - repo: local
     hooks:
       - id: stringency-lint
@@ -15,4 +21,10 @@ repos:
         name: refuse data files and run.db
         entry: bash -c 'if git diff --cached --name-only | grep -E "(\.h5ad|\.bam|\.fastq(\.gz)?|\.fq\.gz|(^|/)run\.db)$"; then echo "data files and run.db do not belong in the method repo" >&2; exit 1; fi'
         language: system
+        pass_filenames: false
+      - id: lintr
+        name: lintr (R style; skipped when R or lintr is not installed, CI runs it)
+        entry: bash -c 'command -v Rscript >/dev/null && Rscript -e "quit(status = !requireNamespace(\"lintr\", quietly = TRUE))" 2>/dev/null || { echo "lintr not installed here; CI checks R style"; exit 0; }; Rscript -e "l <- lintr::lint_dir(\"modules\"); print(l); quit(status = as.integer(length(l) > 0))"'
+        language: system
+        files: \.R$
         pass_filenames: false

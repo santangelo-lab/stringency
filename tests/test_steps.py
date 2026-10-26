@@ -581,7 +581,7 @@ def test_operator_step_with_edited_script_is_rejected(rc: RunContext) -> None:
     assert "exec.script_drift" in fired
     ev = fired["exec.script_drift"].verdict.evidence
     assert ev["at_open"] == at_open and ev["at_execution"] == hashing.hash_file(script)
-    assert ev["path"] == "modules/filter-rows/pre.py"
+    assert ev["path"] == "modules/filter-rows/filter_rows.py"
     ex = rc.store.one("SELECT * FROM executions WHERE action_id=?", (prop.action.action_id,))
     assert ex["script_blob"] == hashing.hash_file(script)
 
@@ -668,7 +668,7 @@ def test_engine_step_sees_shared_code_beside_the_modules(
     (src / "modules" / "_shared" / "toy_shared.py").write_text(
         "THRESHOLD_NOTE = 'shared code reached'\n"
     )
-    pre = src / "modules" / "filter-rows" / "pre.py"
+    pre = src / "modules" / "filter-rows" / "filter_rows.py"
     pre.write_text(
         pre.read_text().replace(
             "job = json.load(sys.stdin)\n",

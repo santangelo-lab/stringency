@@ -212,7 +212,9 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
             "01_filter",
             phase="post",
             output=_deterministic_bundle(
-                observed={"script": {"path": "modules/filter-rows/pre.py", "blob": "b" * 64}}
+                observed={
+                    "script": {"path": "modules/filter-rows/filter_rows.py", "blob": "b" * 64}
+                }
             ),
             script_blobs={"filter-rows@0.1.1": "a" * 64},
         ),
@@ -221,7 +223,9 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
             "01_filter",
             phase="post",
             output=_deterministic_bundle(
-                observed={"script": {"path": "modules/filter-rows/pre.py", "blob": "a" * 64}}
+                observed={
+                    "script": {"path": "modules/filter-rows/filter_rows.py", "blob": "a" * 64}
+                }
             ),
             script_blobs={"filter-rows@0.1.1": "a" * 64},
         ),

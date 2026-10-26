@@ -29,9 +29,9 @@ and so on); a release candidate sorts below its release.
 
 ## Modules, pipelines, versions
 
-One directory per module with `module.yml` (contract 1), the script the engine runs
-(`pre.*`), the parameter schema, and for a judgment the prompt, the response schema and the
-controls. A pipeline pins each module by `name@version`. When a module's script or manifest
+One directory per module with `module.yml` (contract 1), the script the engine runs (named
+after the module and set by `entry:`; "Module scripts" below), the parameter schema, a
+`CHANGELOG.md`, and for a judgment the prompt, the response schema and the controls. A pipeline pins each module by `name@version`. When a module's script or manifest
 changes, bump its version and the pin, and bump the pipeline's version too: a project records
 the pipeline and module versions it ran, so a change without a bump is invisible in provenance.
 
@@ -44,6 +44,84 @@ Environments: `envs/manifest.yml` names each environment's lockfile (local execu
 and sha256 (apptainer). Name images by file name and let the site say where they are
 (`docs/install.md`); build them from the repository (the Xenium method's `envs/README.md` and
 `.github/workflows/image.yml` are the pattern).
+
+## Module scripts
+
+The module's script is the analysis: it is what a person opens to see what the method does and
+which tools it uses, and what they read when a result looks wrong. Write it for that reader.
+The skeletons are `templates/module/r/` and `templates/module/python/`; the shared plumbing is
+`templates/method-repo/modules/_rlib/stringency_io.R` and `_pylib/stringency_io.py`, which a
+method copies.
+
+Names. The script is the module's name with underscores (`cluster-umap/cluster_umap.R`), set
+with `entry:` in `module.yml`. A judgment module's script builds the evidence the reviewers read,
+not the labels, and is `<name>_evidence.py`. A file that serves one module only stays beside its
+script under a descriptive name. The engine still falls back to `pre.*` when `entry:` is absent;
+new modules do not rely on it.
+
+Header. At most fifteen lines, in plain words: what the step does, its inputs and outputs, the
+parameters that are analysis choices, the tools by package and function. No version history:
+that goes in the module's `CHANGELOG.md`, newest first, and a version bump adds an entry there.
+
+Shape. Every script reads in the same order, so a person who has read one can find their way in
+any other:
+
+    header
+    shared code (stringency_io and any topic files)
+    job <- read_job()
+    ---- Parameters ----          each read once, with a comment; log_params(...)
+    ---- 1. Load ----
+    ---- 2. ... ----              numbered steps named for what they do
+    ---- Record for stringency ---- flags, figure list, summary facts
+    ---- Write outputs ----
+
+Python puts the same order inside `main()` under an `if __name__ == "__main__":` guard.
+
+Rules. One statement per line; lines of 100 characters at most; no anonymous function longer
+than a line. Calls a reader recognises (`FindClusters`, `sc.pp.neighbors`) stay in the script.
+A long custom algorithm moves into a named function with a comment saying what it does, in a
+topic file under `_rlib/` or `_pylib/` (`clustering.R`, not `utils.R`), loaded with
+`source_lib()` or imported. Stringency's bookkeeping (flags the plugin reads, the figure list,
+summary JSON) comes after the analysis, so the analysis reads without it, and just before the
+outputs are written, since a flag lives on the object that is written.
+
+Plumbing. `stringency_io` gives the same names in both languages: `read_job`, `log_params` (the
+`params: name=value` line the engine reads back from an operator-run step's log and compares
+with the admitted values; lists and text with spaces go on an `other params:` line it does not
+read), `say`,
+`read_table`, `write_table`, `fig_start`, `fig_save`, `fig_finish`, `stringency_flags`,
+`set_flag`, and in R `source_lib`. It loads no analysis package; a script loads its own
+(`library(Seurat)`, `import scanpy as sc`), so the tools are visible at its top.
+
+Style is checked, not hoped for. The template carries `ruff.toml` and `.lintr`; its pre-commit
+hooks and CI run `ruff check`, `ruff format --check` and `lintr` over `modules/`. Code copied
+unchanged from elsewhere is listed in `extend-exclude` and the `.lintr` exclusions rather than
+reformatted.
+
+The README of the method has, per pipeline, a table of its steps: the step, a link to the
+script, what it does, the main tools. A person new to the method starts there.
+
+## Bringing existing code in
+
+Most modules start as someone's script. Three shapes, from the most common:
+
+- A script with hard-coded paths and constants. Copy it to `modules/<name>/<name>.R` (or `.py`).
+  Replace the block that sets paths and constants with the job: inputs from `job$inputs`,
+  constants that are analysis choices from `job$params`, output paths from `job$outputs`. Declare
+  the same names in `module.yml` and `params.schema.json` (defaults from the old constants), add
+  the header, and reorder into the shape above as far as the code allows.
+- A library of functions. Copy the file unchanged into `_rlib/` or `_pylib/` with a provenance
+  header (where it came from, the commit, the date) and mark each later edit `# stringency:`
+  (the Xenium method's `_rlib/Xen_Seurat_functions.R`, from ROSC_MTA2, is the example). List it in
+  the style exclusions. A short module script calls it.
+- A command-line tool or a workflow (Nextflow, Snakemake). The module script builds the command
+  line from the job and runs it, writes the declared outputs from what it produced, and the module
+  declares `egress` if the tool fetches anything (the Xenium method's `resegment-nextflow`).
+
+Then, whichever shape: `decision_points` for the parameters that are analysis choices; for a
+tool, a fixture and a positive control; a version, the pipeline's pin; `stringency lint .`; one
+run of the script on a small input with a hand-written job (`Rscript <name>.R < job.json`) before
+the first engine run.
 
 ## Skills
 
@@ -62,7 +140,7 @@ A module whose `modes` list `open` is a tool: after a pipeline delivers, the ope
 on demand on the delivered files or on what earlier tools produced, and an answer that rests on
 it is labelled trusted when the tool has a current control (open mode, engine 0.2.22,
 `docs/open-mode.md`). A tool is an ordinary module (`module.yml`, `params.schema.json`,
-`pre.*`, `decision_points`); what makes it trustable is `controls/`: a positive control with
+its script, `decision_points`); what makes it trustable is `controls/`: a positive control with
 `params` (the values it runs with) and `expect.equals` against a truth table keyed by a column
 (`columns`, `tolerance`), and a negative control with a generator and `expect.count`. A figure
 tool has `expect.completed: true`. `lint` warns on a tool with no positive control, in the words

@@ -35,7 +35,7 @@ def conditional(p: Project, when: str = "{step: 01_filter, param: min_value, equ
             "labels: {type: consensus, format: json, hash: true, optional: true}",
         )
     )
-    script = root / "modules" / "toy-report" / "pre.py"
+    script = root / "modules" / "toy-report" / "toy_report.py"
     script.write_text(
         script.read_text().replace(
             'with open(job["inputs"]["labels"]) as f:\n    consensus = json.load(f)\n',

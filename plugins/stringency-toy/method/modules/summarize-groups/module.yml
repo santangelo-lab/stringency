@@ -6,6 +6,7 @@ operation: summarize_groups
 domain: stringency-toy
 modes: [pipeline]
 env: toy-py
+entry: summarize_groups.py
 inputs:
   object: {type: frame, format: csv, hash: true}
 outputs:
