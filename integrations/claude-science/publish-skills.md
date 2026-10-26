@@ -12,8 +12,8 @@ your site's values filled in:
 > texts are the directories under `<prefix>/current/skills/` (one `SKILL.md` each)
 > and, for each method, `skills/stringency-analyze-*/SKILL.md` in the method repository at its
 > tag (the Xenium method is `https://github.com/santangelo-lab/stringency-xenium-method`, tag
-> `v0.6.0-rc19`; the scRNA-seq method is
-> `https://github.com/santangelo-lab/stringency-scrnaseq-scanpy-method`, tag `v0.1.9`, two
+> `v0.6.0-rc20`; the scRNA-seq method is
+> `https://github.com/santangelo-lab/stringency-scrnaseq-scanpy-method`, tag `v0.1.10`, two
 > skills). Download each file, publish it under its directory name with
 > `host.skills.edit` and `host.skills.publish`, overwriting an older copy, and tell me the name
 > and the "for engine" line of each skill you published.
@@ -27,7 +27,7 @@ what was published. Seven skills today:
 | `stringency-declare` | `integrations/claude-science/stringency-declare/SKILL.md` (engine repo) | the session, to draft declarations from a brief |
 | `stringency-wrap` | `integrations/claude-science/stringency-wrap/SKILL.md` (engine repo) | the session, to bring a person's existing script, library or tool into a method as a module |
 | `stringency-analyze-<name>` | `skills/stringency-analyze-<name>/SKILL.md` in the method repo, rendered by `integrations/claude-science/render_skill.py` from `skills/<pipeline>.analyze.yml` (Track 1d, built 2026-09-23) | a lab member, as the entry point for one analysis |
-| `stringency-analyze-scrnaseq-upstream`, `stringency-analyze-scrnaseq-de` | `skills/stringency-analyze-*/SKILL.md` in `stringency-scrnaseq-scanpy-method` at `v0.1.9` (2026-10-22) | a lab member, for a droplet or combinatorial scRNA-seq object: QC to lineage assignment, or pseudobulk DE |
+| `stringency-analyze-scrnaseq-upstream`, `stringency-analyze-scrnaseq-de` | `skills/stringency-analyze-*/SKILL.md` in `stringency-scrnaseq-scanpy-method` at `v0.1.10` (2026-10-26) | a lab member, for a droplet or combinatorial scRNA-seq object: QC to lineage assignment, or pseudobulk DE |
 | `stringency-analyze-toy-compare` | `skills/stringency-analyze-toy-compare/SKILL.md` in `stringency-toy-method` at `v0.2.0` | the first instance, on the toy `toy-engine` pipeline; the Track 1 acceptance test runs through it |
 
 ## What the session runs

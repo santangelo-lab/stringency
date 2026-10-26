@@ -164,13 +164,27 @@ in every method, Xenium first.
 - The shared install's skills were copied before the wrap skill existed. It arrives with the
   next install, or by hand.
 
+## Tags
+
+- Tagged after CI passed on the release commits: the Xenium method `v0.6.0-rc20` (`0994bd2`) and
+  the scRNA-seq method `v0.1.10` (`74b6739`). Both are annotated and pushed.
+- The analysis skills were rerendered at the new tags. The Xenium skill also picked up the
+  template's changes since rc19: `--cite` and `--considered` on proposals, and the egress "not
+  assessed" line.
+- `publish-skills.md` names the new tags.
+- Not done: the `compat/known-good.yml` rows for 0.2.34 with singlecell 0.8.7 and the two tags.
+  The evidence runs at the tags under the shared install were started on PROTSEQ over ssh and
+  were cut off when this machine shut down. To rerun them:
+  `bash /data/lab/scratch/jrrose5/module-scripts/tag_runs.sh` on PROTSEQ (the Xenium synthetic
+  study, then the scRNA-seq tests and controls). Add the rows when they pass.
+
 ## Open
 
 - The method's next rc tag, on the owner's word. The Xenium method's `PLAN.md` 4.4: the open
   tools' batch term under `de.covariate_omission`, and the open-tools check (holds, reference
   level).
-- The tags of the Xenium (next rc) and scRNA-seq (`v0.1.10`) methods; publishing the wrap
-  skill. The public `stringency-toy-method` repository still has `pre.py`.
+- The known-good rows (above); republishing the skills at the new tags, the wrap skill among
+  them. The public `stringency-toy-method` repository still has `pre.py`.
 - Nothing of this session's is pushed: the engine (`c62bcae`, `f232d62`, `c8a4086`, `9dfb02b` and
   this), the Xenium method (`9bf12a7`, `0a945ed`, `a8dc69a`), the scRNA-seq method (`f15590e`),
   the Plasmidsaurus method (`2c93b04`). The plugin's 0.8.6 and 0.8.7 were pushed and
