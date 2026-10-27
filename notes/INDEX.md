@@ -5,6 +5,13 @@ it is the first thing a new session reads.
 
 ## Current state (2026-10-26)
 
+- QC failure modes (`notes/2026-10-26-2130-qc-failure-modes.md`;
+  `spec/plans/qc-failure-modes.md`; rows L115 to L127, Next item 10):
+  - Literature on droplet and imaging-spatial failure modes, through Consensus.
+  - Thirteen new predicates proposed, plus `sc.qc_floor_above_data@2`. The mitochondrial rows
+    (L115 to L118) come first.
+  - Three decisions on the mitochondrial bound wait on the owner (D1 to D3).
+  - Nothing built, nothing committed.
 - Module scripts (`notes/2026-10-26-1315-module-scripts.md`; `spec/plans/module-scripts.md`; row
   L113):
   - The convention, template and toy are committed as `c62bcae`.
@@ -359,6 +366,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-26-2130-qc-failure-modes.md` — plugin singlecell's 24 predicates checked against its spec (all listed; the engine design lists none); literature on droplet and imaging-spatial failure modes through Consensus; `qc-failure-modes.md` with L115 to L127, mitochondrial fraction first, and the owner's D1 to D3.
 - `2026-10-26-1315-module-scripts.md` — the owner's points on the methods' module scripts: the convention (named scripts with `entry:`, a short header and `CHANGELOG.md`, one shape, `stringency_io`, ruff and lintr, a README index, existing code); phase 0 built and the Xenium pilot `cluster-umap` 0.4.2 verified identical to rc19 on PROTSEQ; the Xenium method moved to the current predicates (L86) and run end to end under 0.2.34-sc0.8.4; then every Xenium module converted and verified identical; L114.
 - `2026-10-23-1400-annotation-controls.md` — a tour of the Xenium method and the plugin; `fine_label` traced end to end; `pct_diff` measured on the ROSC liver fixture; the owner's annotation points filed as L110 to L112 and method items 3.15 to 3.21 with `annotation-controls.md`; `sc.fine_label_uncited@1` built (plugin 0.8.5); one fine label of three by a reconcile step and a choosing judgment.
 - `2026-10-22-1150-gate-review-filed.md` — the owner's walkthrough of the gate checked against the code and filed as L100 to L109 with `gate-soundness.md`; three findings sharper than the walkthrough; ids from L100 to avoid the workstation session's.
