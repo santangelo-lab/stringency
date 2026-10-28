@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -344,3 +345,49 @@ def test_table_keys_and_id_like_cells_stay_as_read(tmp_path: Path) -> None:
         "p": 2500.0,
         "flag": "inf",
     }
+
+
+def test_no_items_completes_without_dispatch(
+    engine_rc: RunContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """L112: a judgment whose items table has no rows completes with empty outputs and no
+    harness call; `judg.replicates_below_min` reads no items as nothing to judge."""
+    from stringency import judgment as J
+
+    run_to_label(engine_rc)
+    real = J.prepare_evidence
+
+    def empty(rc: RunContext, plan: Any, **kw: Any) -> J.Evidence:
+        ev = real(rc, plan, **kw)
+        return J.Evidence(ev.tables, ev.texts, [], ev.context, ev.digests)
+
+    monkeypatch.setattr(J, "prepare_evidence", empty)
+    monkeypatch.setenv("STRINGENCY_MOCK_FIXTURE", str(HARNESS / "unanimous.yml"))
+    monkeypatch.setenv("STRINGENCY_MOCK_FAMILY", "direct")
+    prop = propose(engine_rc, "03_label")
+    assert prop.status == StepStatus.ADMISSIBLE, [r.line() for r in prop.gate.blocked]
+    out = J.execute_judgment(engine_rc, prop)
+    assert out.status == StepStatus.COMPLETED, out.message
+    store = engine_rc.store
+    assert (
+        store.scalar(
+            "SELECT COUNT(*) FROM invocations WHERE run_id=? AND step_id='03_label'",
+            (engine_rc.run_id,),
+        )
+        == 0
+    )
+    assert (
+        store.scalar(
+            "SELECT COUNT(*) FROM consensus WHERE run_id=? AND step_id='03_label'",
+            (engine_rc.run_id,),
+        )
+        == 0
+    )
+    step_dir = engine_rc.project.step_dir(engine_rc.run_id, "03_label")
+    assert json.loads((step_dir / "consensus.json").read_text())["items"] == []
+    assert (step_dir / "judgments.jsonl").read_text() == ""
+    events = store.all(
+        "SELECT * FROM step_events WHERE run_id=? AND step_id='03_label' ORDER BY rowid",
+        (engine_rc.run_id,),
+    )
+    assert any("no_items" in str(dict(e)) for e in events), [dict(e) for e in events]

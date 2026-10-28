@@ -286,3 +286,24 @@ def test_singlecell_plugin_listed_when_installed() -> None:
 
     r = CliRunner().invoke(app, ["plugins", "list"])
     assert "stringency-singlecell" in r.output and "stringency-toy" in r.output
+
+
+def test_job_stdin_keeps_the_declared_key_order(tmp_path: Path) -> None:
+    """L128: the module reads the job's mappings in the order the engine composed them and the
+    declarations declare them (a design's factors as design.yml lists them), not sorted."""
+    from stringency.executor.local import LocalExecutor, interpreter_for
+
+    script = tmp_path / "order.py"
+    script.write_text(
+        "import json, sys; d = json.load(sys.stdin); print(list(d), list(d['design']['factors']))\n"
+    )
+    res = LocalExecutor(tmp_path / "envs").run(
+        Job(
+            command=interpreter_for(script),
+            env_name="e1",
+            cwd=tmp_path / "w",
+            stdin_json={"params": {}, "design": {"factors": {"timepoint_h": {}, "condition": {}}}},
+        )
+    )
+    assert res.exit_code == 0
+    assert res.stdout().strip() == "['params', 'design'] ['timepoint_h', 'condition']"

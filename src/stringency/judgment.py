@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from stringency import git, hashing
+from stringency.actions import Action
 from stringency.artifacts import record_output, step_outputs
 from stringency.db.store import Store
 from stringency.executor.base import Job
@@ -314,6 +315,8 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
     plan.step_dir.mkdir(parents=True, exist_ok=True)
 
     ev = prepare_evidence(rc, plan)
+    if not ev.items and status == StepStatus.ADMISSIBLE:
+        return finish_without_items(rc, plan, action, ev)
     template_rel = str((plan.module.path / m.prompt.template).relative_to(rc.project.method_root))
     template_blob = git.blob_hash(rc.project.method_root, template_rel)
     requests, prompt_hash, schema = assemble_requests(rc, plan, ev, action.action_id, template_rel)
@@ -455,6 +458,57 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
     return finish(
         rc, action, plan, produced, info, bundle_extra=bundle_extra, extra_holds=item_holds
     )
+
+
+def finish_without_items(
+    rc: RunContext, plan: StepPlan, action: Action, ev: Evidence
+) -> StepOutcome:
+    """A judgment step with nothing to judge (backlog L112, 2026-10-27): the items table has no
+    rows, so no request is rendered and no harness is called; the step moves admissible ->
+    running -> completed with an empty `judgments` output, a `consensus` of no items (the
+    considered set, when declared, records zero rows) and a `no_items` payload on the running
+    transition; the post-gate runs as usual (`judg.replicates_below_min` reads no items as
+    nothing to judge). Writes: steps and step_events here, and through finish() artifacts,
+    executions, predicate_results and state_snapshots."""
+    from stringency.consensus import consensus_json
+
+    m = plan.module.manifest
+    assert m.judgment is not None
+    transition(
+        rc.store,
+        rc.run_id,
+        action.step_id,
+        StepStatus.RUNNING,
+        payload={"no_items": True, "items_from": m.judgment.items_from},
+    )
+    considered = considered_set_record(m.judgment, [], ev.digests)
+    produced: dict[str, Path] = {}
+    for name, spec in m.outputs.items():
+        p = plan.output_paths[name]
+        if spec.type == "judgments":
+            p.write_text("")
+        elif spec.type == "consensus":
+            p.write_text(consensus_json([], considered))
+        else:
+            continue
+        produced[name] = p
+    info = ExecInfo(
+        runner="engine",
+        env_status="verified" if rc.env_digests.get(m.env) else "as_reported",
+        command="harness:none",
+        exit_code=0,
+        duration_ms=0,
+        observed={"replicates": 0, "valid": 0, "via": "none", "no_items": True},
+    )
+    bundle_extra: dict[str, Any] = {
+        "replicates": (),
+        "replicate_valid": (),
+        "items": (),
+        "consensus": (),
+        "evidence_tables": ev.tables,
+        "considered_set": considered,
+    }
+    return finish(rc, action, plan, produced, info, bundle_extra=bundle_extra)
 
 
 def refuse_operator_replicates(rc: RunContext, replicates: list[Replicate]) -> None:

@@ -311,6 +311,8 @@ def numeric_claims_match(ctx: GateContext) -> Verdict:
 )
 def replicates_below_min(ctx: GateContext) -> Verdict:
     assert ctx.output is not None
+    if not ctx.output.items:
+        return Verdict(False)  # nothing to judge, no replicate asked (L112)
     n_valid = sum(1 for ok in ctx.output.replicate_valid if ok)
     minimum = ctx.policy.profile(ctx.project.profile).replicates_min
     if n_valid < minimum:

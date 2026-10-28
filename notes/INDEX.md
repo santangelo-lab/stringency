@@ -3,8 +3,12 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-26)
+## Current state (2026-10-27)
 
+- Engine backlog without the owner (`notes/2026-10-27-2200-engine-backlog-l112-l96-l128.md`):
+  L112 (a judgment with no items completes without a dispatch), L96 (lint on a default outside
+  its range) and L128 (the job's key order keeps the declarations' order) done on `main`,
+  unreleased; L129 filed (the unset decision point reached without a proposal).
 - QC failure modes (`notes/2026-10-26-2130-qc-failure-modes.md`;
   `spec/plans/qc-failure-modes.md`; rows L115 to L127, Next item 10):
   - Literature on droplet and imaging-spatial failure modes, through Consensus.
@@ -366,6 +370,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-10-27-2200-engine-backlog-l112-l96-l128.md` — L112, L96 and L128 closed on `main` (no release); L129 filed.
 - `2026-10-26-2130-qc-failure-modes.md` — plugin singlecell's 24 predicates checked against its spec (all listed; the engine design lists none); literature on droplet and imaging-spatial failure modes through Consensus; `qc-failure-modes.md` with L115 to L127, mitochondrial fraction first, and the owner's D1 to D3.
 - `2026-10-26-1315-module-scripts.md` — the owner's points on the methods' module scripts: the convention (named scripts with `entry:`, a short header and `CHANGELOG.md`, one shape, `stringency_io`, ruff and lintr, a README index, existing code); phase 0 built and the Xenium pilot `cluster-umap` 0.4.2 verified identical to rc19 on PROTSEQ; the Xenium method moved to the current predicates (L86) and run end to end under 0.2.34-sc0.8.4; then every Xenium module converted and verified identical; L114.
 - `2026-10-23-1400-annotation-controls.md` — a tour of the Xenium method and the plugin; `fine_label` traced end to end; `pct_diff` measured on the ROSC liver fixture; the owner's annotation points filed as L110 to L112 and method items 3.15 to 3.21 with `annotation-controls.md`; `sc.fine_label_uncited@1` built (plugin 0.8.5); one fine label of three by a reconcile step and a choosing judgment.

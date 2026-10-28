@@ -56,7 +56,9 @@ class LocalExecutor:
         out = job.stdout_path or job.cwd / "stdout.txt"
         err = job.stderr_path or job.cwd / "stderr.txt"
         stdin = (
-            json.dumps(dict(job.stdin_json), sort_keys=True) if job.stdin_json is not None else None
+            json.dumps(dict(job.stdin_json))
+            if job.stdin_json is not None
+            else None  # declared order (L128)
         )
         command = [str(c) for c in job.command]
         if command and command[0] == "python3":

@@ -885,7 +885,10 @@ def write_job_file(action: Action, plan: StepPlan) -> Path | None:
     # operator running the printed line does not (K8, 2026-09-23)
     (plan.step_dir / "tmp").mkdir(exist_ok=True)
     path = plan.step_dir / JOB_FILE
-    path.write_text(json.dumps(dict(job.stdin_json or {}), indent=2, sort_keys=True) + "\n")
+    # keys in the order the engine composed them and the declarations declare them (L128,
+    # 2026-10-27): a module reading "the design's first factor" must see design.yml's order,
+    # which sorted keys replaced with the alphabetical one
+    path.write_text(json.dumps(dict(job.stdin_json or {}), indent=2) + "\n")
     return path
 
 

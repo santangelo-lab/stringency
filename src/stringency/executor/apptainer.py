@@ -291,7 +291,9 @@ class ApptainerExecutor:
         image = self.image_for(job.env_name)
         cmd = self.command_line(job)
         stdin = (
-            json.dumps(dict(job.stdin_json), sort_keys=True) if job.stdin_json is not None else None
+            json.dumps(dict(job.stdin_json))
+            if job.stdin_json is not None
+            else None  # declared order (L128)
         )
         t0 = time.monotonic()
         timed_out = False

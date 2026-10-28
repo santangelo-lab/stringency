@@ -475,3 +475,28 @@ def test_lint_decision_block(method_copy: Path) -> None:
     )
     report = lint_path(method_copy)
     assert any("needs `because`" in e for e in report.errors)
+
+
+def test_default_outside_its_range_is_an_error(method_copy: Path) -> None:
+    """L96: a declared default that fails its own range or options is an error, since every
+    proposal at that step would be out of range."""
+    _edit_yaml(
+        method_copy / "pipelines/toy-engine.yml",
+        lambda d: d["steps"][0]["params"].update(min_value={"default": 50, "range": [0, 40]}),
+    )
+    report = lint_path(method_copy)
+    assert any("default 50 is outside its range" in e for e in report.errors), report.errors
+    _edit_yaml(
+        method_copy / "pipelines/toy-engine.yml",
+        lambda d: d["steps"][0]["params"].update(min_value={"default": "{}", "range": [0, 40]}),
+    )
+    report = lint_path(method_copy)
+    assert any("default '{}' is outside its range" in e for e in report.errors), report.errors
+    _edit_yaml(
+        method_copy / "pipelines/toy-engine.yml",
+        lambda d: d["steps"][3]["params"].update(
+            correction={"default": "fdr", "options": ["bh", "bonferroni", "none"]}
+        ),
+    )
+    report = lint_path(method_copy)
+    assert any("default 'fdr' is outside its options" in e for e in report.errors), report.errors

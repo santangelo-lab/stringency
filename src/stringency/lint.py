@@ -408,6 +408,16 @@ def lint_pipeline(
         for k in step.params:
             if k not in mod.declared_params:
                 report.error(where, f"step {step.id} declares parameter {k}, unknown to {mod.ref}")
+        # a default outside its own range or options (L96): the step could admit no value
+        for k, decl in step.params.items():
+            if decl.fixed or decl.in_range(decl.default):
+                continue
+            bound = f"range {decl.range}" if decl.range is not None else f"options {decl.options}"
+            report.error(
+                where,
+                f"step {step.id} parameter {k}: the declared default {decl.default!r} is outside "
+                f"its {bound}; every proposal would be out of range",
+            )
         if mod.manifest.kind == "report":
             for other in pipeline.steps:
                 for ref in (r for rs in other.refs().values() for r in rs):
