@@ -24,7 +24,10 @@ def answer(
     cites: list[str] = typer.Option(
         [],
         "--cite",
-        help="<artifact id>[:<row>[:<column>]]; repeatable; the cells the numbers come from",
+        help=(
+            "<artifact id>[:<row>[:<column>]], the row by its key (<k1>|<k2> as present "
+            "prints it); repeatable; the cells the numbers come from"
+        ),
     ),
     text: str | None = typer.Option(
         None, "--text", help="a file holding the reply text, or - for stdin"

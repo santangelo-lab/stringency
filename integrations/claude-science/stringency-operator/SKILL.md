@@ -419,8 +419,10 @@ else, and then carry on whatever the person says.
   out), then the few numbers that carry it, then any caveat the data itself shows (few units,
   a unit left with one row, a skewed group). Do not recite every cell: the table goes beside
   the text. A reading, never a verdict ("significant", "good enough to report"). Cite every
-  artifact a number comes from, by row and column where you can; every numeral in the text
-  must be a cited cell. Exit 0 prints the label sentence and the qualifier line; exit 12 is a
+  artifact a number comes from, by row and column where you can; the row is the row's key, its
+  key columns' values joined with `|` as `present` prints it (`1|domain_2` where a table has a
+  row per cluster and stratum; the first column alone where that is unique; engine 0.2.35); every
+  numeral in the text must be a cited cell. Exit 0 prints the label sentence and the qualifier line; exit 12 is a
   block (10.6). When the delivery cannot answer the question (the column it needs is not
   there, the tool that would answer it does not exist), file that instead of approximating:
   `stringency answer --question <id> --cannot --reason "<one sentence>" --json` (engine
@@ -473,8 +475,10 @@ parameter nobody asked about.
 
 ### 10.6 When `answer` blocks, and what never
 
-Exit 12 names the predicate: `ans.numeral_unmatched` (a number in your text is no cited cell),
-`ans.cited_missing` (an id, row or column resolves to nothing), `ans.label_authored` (you wrote
+Exit 12 names the predicate: `ans.numeral_unmatched` (a number in your text is no cited cell
+and is not one the check leaves aside; the reason names the nearest kind it was compared with),
+`ans.cited_missing` (an id, row or column resolves to nothing; `cite_help` in the JSON gives the
+key form the table expects and its keys nearest the miss), `ans.label_authored` (you wrote
 trusted or untested). Fix the text: never a number, never a table, never re-run the tool to make
 a number match. After two blocks on one question, relay the cited table through `present` and
 say which number you could not source. Never: run analysis code outside `exec`; write a label of
@@ -487,8 +491,11 @@ The label sentences and the qualifier line are the engine's record: printed by `
 answer`, written into every delivered answer file, and the source of the trust sentence of your
 reply (10.3), which says them in plain words. The rest are said as written. The engine fills `{tools}` with the tools on the
 answer's path, `{data}` with what the path rests on, `{why}` with the condition of trusted a
-tool missed, `{matched}` and `{total}` with the numeral counts, and the qualifier's six fields,
-each `none` when empty. The rest are yours. The engine's `provenance.py` and `echo.py` hold the
+tool missed, `{matched}` and `{total}` with the numeral counts, and the qualifier's seven fields,
+each `none` when empty; `{numerals}` lists the numerals the engine did not check because they
+are not measurements (a design level, a row's key, a parameter value of the cited step, a number
+from the question, a year, a count of animals, punches or replicates), and `{total}` counts only
+the numerals checked (engine 0.2.35). The rest are yours. The engine's `provenance.py` and `echo.py` hold the
 same text; a test keeps the copies identical.
 
 - paths forward, the opening: "Your project asked {the objective's question in the method's words}, and the delivery holds {the deliverables}. Paths I can take from here:"
@@ -501,7 +508,7 @@ same text; a test keeps the copies identical.
 - label, trusted: "Label: trusted. Produced by {tools}, a tool shipped with the method, run by the engine on {data}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, untested: "Label: untested. Produced by code written in this session, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, untested tool: "Label: untested. Produced by {tools}, a tool shipped with the method, run by the engine on {data}; {why}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
-- qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested}"
+- qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested} | numerals not checked: {numerals}"
 - what trusted means, when first relevant or asked: "Trusted means the engine ran a tool the method ships, in a verified environment, with a passing control on record, on the delivered data; the words around the numbers are still mine."
 - what untested means, when first relevant or asked: "Untested means the engine ran code I wrote in this session and recorded it, but nothing has checked that the code computes what it claims; or it ran a tool the method ships that missed a condition of trusted, which the label names."
 - who labels, when asked: "The engine labels from what ran; I cannot change a label, and I am not allowed to write one."

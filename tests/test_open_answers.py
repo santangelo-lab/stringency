@@ -63,10 +63,9 @@ def test_answer_blocked_on_a_wrong_numeral_then_trusted_when_the_tool_is_control
     assert r.exit_code == 12, r.output + str(r.stderr)
     out = json.loads(r.output)
     assert out["status"] == "blocked" and any("ans.numeral_unmatched" in b for b in out["blocked"])
-    assert out["cells"][aid]["A_vs_B"]["diff"] == 59.22 and out["numerals"] == {
-        "matched": 1,
-        "total": 2,
-    }
+    assert out["cells"][aid]["A_vs_B"]["diff"] == 59.22
+    assert {k: out["numerals"][k] for k in ("matched", "total")} == {"matched": 1, "total": 2}
+    assert [p["numeral"] for p in out["numerals"]["failed"]] == ["59.3"]
     row = q.store.one("SELECT * FROM answers WHERE answer_id=?", (out["answer_id"],))
     assert row["status"] == "blocked" and row["label"] is None
     preds = {
@@ -88,7 +87,8 @@ def test_answer_blocked_on_a_wrong_numeral_then_trusted_when_the_tool_is_control
     )
     assert r.exit_code == 0, r.output + str(r.stderr)
     out = json.loads(r.output)
-    assert out["label"] == "trusted" and out["numerals"] == {"matched": 2, "total": 2}
+    assert out["label"] == "trusted"
+    assert out["numerals"] == {"matched": 2, "total": 2, "not_checked": [], "failed": []}
     assert out["label_sentence"] == (
         "Label: trusted. Produced by compare-groups (compare-groups@0.1.1), a tool shipped with "
         "the method, run by the engine on the delivered data. Numbers checked against the cited "
@@ -96,7 +96,8 @@ def test_answer_blocked_on_a_wrong_numeral_then_trusted_when_the_tool_is_control
     )
     assert out["qualifier"] == (
         "flags accepted on the path: none | parameters outside range: none | person-set "
-        "parameters: none | upstream: verified | controls: current | untested inputs: none"
+        "parameters: none | upstream: verified | controls: current | untested inputs: none | "
+        "numerals not checked: none"
     )
     assert [f["kind"] for f in out["provenance"]["lineage"]] == ["tool", "input"]
     assert out["provenance"]["lineage"][1]["derived_from"]["step_id"] == "01_filter"
@@ -203,7 +204,9 @@ def test_answer_on_exec_output_is_untested_and_missing_or_authored_block(
     assert out["label"] == "untested" and out["label_sentence"].startswith(
         "Label: untested. Produced by code written in this session"
     )
-    assert out["qualifier"].endswith("controls: none | untested inputs: 01_exec")
+    assert out["qualifier"].endswith(
+        "controls: none | untested inputs: 01_exec | numerals not checked: none"
+    )
     # a tool fed by the exec output is untested too, and the qualifier names the untested input
     # (a frame output from a script, then the tool on it)
     frame_script = tmp_path / "f.py"
@@ -337,7 +340,7 @@ def test_pinned_sentences_are_the_engines() -> None:
         assert "{matched} of {total}" in s and s.endswith(
             "Everything else in this answer is the assistant's reading."
         )
-    assert provenance.QUALIFIER_LINE.count(" | ") == 5
+    assert provenance.QUALIFIER_LINE.count(" | ") == 6
 
 
 def test_answer_cannot_records_an_unanswerable_question(questions: Project, tmp_path: Path) -> None:

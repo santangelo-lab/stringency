@@ -1110,8 +1110,12 @@ def answer_sections(
         shown.add(aid)
         cells = (prov.get("cells") or {}).get(aid)
         if is_tabular(str(art["kind"]), str(art["path"])) and cells:
-            # the row names lead the table: without them a column of counts says nothing
-            key = _key_column(Path(str(art["path"])), str(art["name"]))
+            # the row names lead the table: without them a column of counts says nothing; the
+            # key the answer was filed under (L138), the first column for an answer filed
+            # before keys were recorded
+            key = str((prov.get("keys") or {}).get(aid) or "") or _key_column(
+                Path(str(art["path"]))
+            )
             rows = [{key: k, **dict(r)} for k, r in cells.items()]
             cols = list(rows[0].keys()) if rows else []
             sections.append(
@@ -1186,14 +1190,16 @@ def _finding_words(entry: dict[str, Any]) -> str:
     return f"a finding, marked by {by} on {ts}" if ts else f"a finding, marked by {by}"
 
 
-def _key_column(path: Path, name: str) -> str:
-    """The name of a table's row-key column, for the cited rows; `row` when it cannot be read."""
-    from stringency.tables import load_table
-
+def _key_column(path: Path) -> str:
+    """The first column's name, the row key of an answer filed before the answer recorded its
+    keys (0.2.35, L138); `row` when it cannot be read."""
     try:
-        return load_table(path, name).key_column or "row"
+        lines = _data_lines(path.read_text())
+        delim = "\t" if path.suffix.lower() in (".tsv", ".tab") or "\t" in lines[0] else ","
+        header = next(csv.reader(lines[:1], delimiter=delim))
     except Exception:  # noqa: BLE001  (a reading view never fails on one table)
         return "row"
+    return header[0] if header and header[0] else "row"
 
 
 def _settled_lines(decisions: list[dict[str, Any]]) -> list[str]:

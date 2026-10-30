@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from jinja2 import Environment, StrictUndefined, TemplateSyntaxError, UndefinedError, meta
@@ -27,10 +27,17 @@ EVIDENCE_SUFFIX = (
 )
 
 
-def evidence_suffix(criteria: Mapping[str, Any], must_cite: list[str] | None = None) -> str:
+def evidence_suffix(
+    criteria: Mapping[str, Any],
+    must_cite: list[str] | None = None,
+    keys: Mapping[str, Sequence[str]] | None = None,
+) -> str:
     """The slot definition and the policy's confidence criteria, appended to every judgment
     prompt whatever the harness family (improvement D1); with `must_cite` (L56), the cells every
-    item's judgment must cite, supporting or contradicting."""
+    item's judgment must cite, supporting or contradicting; with `keys` (L138), how a row is
+    named in each evidence table whose row key is more than one column: the values of those
+    columns joined with `|`, the key `judg.evidence_exists` resolves a reference by. A table
+    keyed by one column adds nothing, so its prompts are unchanged."""
     parts = []
     for level, c in criteria.items():
         text = f"{level} needs at least {c.min_supporting} supporting"
@@ -44,6 +51,16 @@ def evidence_suffix(criteria: Mapping[str, Any], must_cite: list[str] | None = N
             f"For every item, cite its cell in each of these columns, as supporting or "
             f"contradicting, whatever it shows: {cols}. An item that leaves one uncited is held "
             "for a person.\n"
+        )
+    composite = {t: list(c) for t, c in (keys or {}).items() if len(c) > 1}
+    if composite:
+        text += (
+            "A row of a table is named in `row` by its key. "
+            + " ".join(
+                f"In {t}, the key is the values of {', '.join(c)} joined with `|`, in that order."
+                for t, c in composite.items()
+            )
+            + "\n"
         )
     return text
 

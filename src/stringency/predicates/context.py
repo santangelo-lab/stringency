@@ -105,12 +105,17 @@ class OutputInfo:
 
 @dataclass(frozen=True)
 class EvidenceTable:
-    """A table the judge was shown: rows keyed by the item key, columns by name."""
+    """A table the judge was shown: rows keyed by the row key, columns by name. The row key
+    (L138, 2026-10-29) is the values of `key_columns` joined with `|`; `key_column` is their
+    names joined the same way (`cluster|stratum`), the first column alone for a table whose
+    first column is unique. `note` says when a repeated key had to be numbered `#<n>`."""
 
     name: str
     key_column: str
     columns: tuple[str, ...]
     rows: Mapping[str, Mapping[str, Any]]  # row key -> {column: value}
+    key_columns: tuple[str, ...] = ()
+    note: str | None = None
 
     def cell(self, row: str, column: str) -> tuple[bool, Any]:
         r = self.rows.get(row)

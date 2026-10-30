@@ -3,7 +3,9 @@ artifacts and cells it cites, gated before it is recorded.
 
 `file_answer` resolves every `--cite` against this run's produced artifacts of completed
 steps, loads the cited tables, takes the cited rows and columns (else every cell) as the
-numerals the text may use, builds a synthetic `answer` action and an `OutputBundle` whose prose
+numerals the text may use (a row by its key, the key columns' values joined with `|` as
+`present` prints it, L138; a numeral that is not a measurement is left unchecked and named in
+the qualifier, L142), builds a synthetic `answer` action and an `OutputBundle` whose prose
 is the text, evaluates the `ans.*` predicates (invariant: a cited id that does not exist, a
 numeral matching no cited cell, the label written by the operator), derives the label from the
 cited artifacts' lineage, and writes the `answers` row, admissible or blocked. A blocked answer
@@ -30,7 +32,7 @@ from stringency.gate import GateResult, evaluate
 from stringency.ids import new_id
 from stringency.predicates import registry
 from stringency.predicates.context import EvidenceTable, OutputBundle
-from stringency.predicates.engine.judg import NUMERAL, numeral_matches
+from stringency.predicates.engine.ans import classify_numerals, numeral_sources
 from stringency.provenance import (
     label_for,
     label_sentence,
@@ -40,9 +42,12 @@ from stringency.provenance import (
 )
 from stringency.questions import question
 from stringency.runs import RunContext
-from stringency.tables import is_tabular, load_table
+from stringency.tables import KEY_SEP, is_tabular, key_form, load_table, nearest_keys
 
+# `<artifact id>[:<row key>[:<column>]]`; a row key is its key columns' values joined with `|`
+# (`1|domain_4`), so `|` is part of the row and only `:` separates (L138)
 CITE = re.compile(r"^(?P<id>[0-9A-HJKMNP-TV-Z]{26})(?::(?P<row>[^:]*))?(?::(?P<col>.*))?$")
+CITE_FORM = "<artifact id>[:<k1>|<k2>[:<column>]]"
 
 
 @dataclass
@@ -75,6 +80,9 @@ class AnswerResult:
     matched: int
     total: int
     provenance: dict[str, Any]
+    cite_help: list[dict[str, Any]]
+    not_checked: list[dict[str, str]]
+    failed: list[dict[str, str]]
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -88,8 +96,14 @@ class AnswerResult:
             "cited": self.cited,
             "cells": self.cells,
             "missing": self.missing,
-            "numerals": {"matched": self.matched, "total": self.total},
+            "numerals": {
+                "matched": self.matched,
+                "total": self.total,
+                "not_checked": self.not_checked,
+                "failed": self.failed,
+            },
             "blocked": [r.line() for r in self.gate.blocked],
+            **({"cite_help": self.cite_help} if self.cite_help else {}),
             "provenance": self.provenance,
         }
 
@@ -97,7 +111,10 @@ class AnswerResult:
 def parse_cite(text: str) -> Cite:
     m = CITE.match(text.strip())
     if not m:
-        raise ConfigError(f"--cite expects <artifact id>[:<row>[:<column>]], got {text!r}")
+        raise ConfigError(
+            f"--cite expects {CITE_FORM}, the row by its key columns' values joined with "
+            f"{KEY_SEP} as present prints it, got {text!r}"
+        )
     return Cite(m.group("id"), m.group("row") or None, m.group("col") or None)
 
 
@@ -110,66 +127,107 @@ def _citable(rc: RunContext, cite: Cite) -> Any:
     )
 
 
-def cited_cells(
-    rc: RunContext, cites: list[Cite]
-) -> tuple[dict[str, EvidenceTable], dict[str, dict[str, dict[str, Any]]], list[str]]:
-    """(evidence tables of the cited cells by artifact id, the same cells as plain values, the
-    citations that resolve to nothing). A non-table artifact is citable and contributes no
-    cells; a row or column that is not in the table counts as missing."""
-    tables: dict[str, EvidenceTable] = {}
-    cells: dict[str, dict[str, dict[str, Any]]] = {}
-    missing: list[str] = []
+@dataclass
+class Cited:
+    """What the citations of one answer resolve to."""
+
+    tables: dict[str, EvidenceTable]  # artifact id -> the cited cells as an evidence table
+    cells: dict[str, dict[str, dict[str, Any]]]  # artifact id -> row key -> {column: value}
+    missing: list[str]
+    help: list[dict[str, Any]]  # per missed row or column: the key form and the nearest keys
+    keys: dict[str, str]  # artifact id -> the key columns' names joined with `|`
+    key_values: list[str]  # every key column's value of the cited rows
+    steps: dict[str, str]  # artifact id -> the step that produced it
+
+
+def declared_key(rc: RunContext, step_id: str, output: str) -> list[str] | None:
+    """The key the producing module declares for an output (`outputs.<name>.key`), if any."""
+    try:
+        spec = rc.module_for(step_id).manifest.outputs.get(output)
+    except Exception:  # noqa: BLE001  (a step with no module resolves by the prefix rule)
+        return None
+    return list(spec.key) if spec is not None and spec.key else None
+
+
+def cited_cells(rc: RunContext, cites: list[Cite]) -> Cited:
+    """The cited cells by artifact id, as evidence tables and as plain values, with the
+    citations that resolve to nothing. A non-table artifact is citable and contributes no
+    cells; a row or column that is not in the table counts as missing, and its help names the
+    key form of the table and up to five keys nearest the miss. A citation without a row takes
+    every row. Reads: artifacts, steps; the cited files."""
+    out = Cited({}, {}, [], [], {}, [], {})
     for c in cites:
         art = _citable(rc, c)
         if art is None:
-            missing.append(c.artifact_id)
+            out.missing.append(c.artifact_id)
             continue
+        aid = c.artifact_id
+        out.steps[aid] = str(art["step_id"])
         if not is_tabular(str(art["kind"]), str(art["path"])):
             if c.row is not None or c.column is not None:
-                missing.append(f"{c.artifact_id}:{c.row or ''}:{c.column or ''}")
+                out.missing.append(f"{aid}:{c.row or ''}:{c.column or ''}")
             continue
-        full = load_table(Path(art["path"]), str(art["name"]))
+        key = declared_key(rc, str(art["step_id"]), str(art["name"]))
+        try:
+            full = load_table(Path(art["path"]), str(art["name"]), key=key)
+        except ConfigError:  # a declared key the table lacks: the prefix rule
+            full = load_table(Path(art["path"]), str(art["name"]))
+        out.keys[aid] = full.key_column
         rows = full.rows if c.row is None else {c.row: full.rows.get(c.row)}
         picked: dict[str, dict[str, Any]] = {}
-        for key, row in rows.items():
+        for k, row in rows.items():
             if row is None:
-                missing.append(f"{c.artifact_id}:{key}")
+                out.missing.append(f"{aid}:{k}")
+                out.help.append(_help(full, f"{aid}:{k}", k))
                 continue
+            out.key_values += [str(row[col]) for col in full.key_columns if col in row]
             if c.column is None:
-                picked[key] = dict(row)
+                picked[k] = dict(row)
             elif c.column in row:
-                picked[key] = {c.column: row[c.column]}
+                picked[k] = {c.column: row[c.column]}
             else:
-                missing.append(f"{c.artifact_id}:{key}:{c.column}")
-        prior = cells.get(c.artifact_id, {})
-        for key, row in picked.items():
-            prior.setdefault(key, {}).update(row)
-        cells[c.artifact_id] = prior
-        tables[c.artifact_id] = EvidenceTable(
-            name=str(art["name"]), key_column=full.key_column, columns=full.columns, rows=prior
+                out.missing.append(f"{aid}:{k}:{c.column}")
+                out.help.append(
+                    {**_help(full, f"{aid}:{k}:{c.column}", None), "columns": list(full.columns)}
+                )
+        prior = out.cells.get(aid, {})
+        for k, row in picked.items():
+            prior.setdefault(k, {}).update(row)
+        out.cells[aid] = prior
+        out.tables[aid] = EvidenceTable(
+            name=str(art["name"]),
+            key_column=full.key_column,
+            columns=full.columns,
+            rows=prior,
+            key_columns=full.key_columns,
         )
-    return tables, cells, missing
+    return out
 
 
-def count_numerals(text: str, cells: dict[str, dict[str, dict[str, Any]]]) -> tuple[int, int]:
-    values = [v for rows in cells.values() for row in rows.values() for v in row.values()]
-    found = NUMERAL.findall(text)
-    matched = sum(1 for n in found if any(numeral_matches(n, v) for v in values))
-    return matched, len(found)
+def _help(table: EvidenceTable, cite: str, miss: str | None) -> dict[str, Any]:
+    """How a row of `table` is cited, and its keys nearest `miss` (none for a column miss)."""
+    return {
+        "cite": cite,
+        "table": table.name,
+        "key_columns": list(table.key_columns),
+        "form": f"<id>:{key_form(table)}[:<column>]",
+        "near": nearest_keys(list(table.rows), miss) if miss is not None else [],
+    }
 
 
 def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) -> AnswerResult:
     """File one answer. Writes: messages, predicate_results, answers, run_events."""
     if not rc.open_ended:
         raise ConfigError("answers are filed on an open project's run only")
-    question(rc, question_id)  # must be a question of this run
+    q = question(rc, question_id)  # must be a question of this run
     words = text.strip()
     if not words:
         raise ConfigError("an answer needs text")
     if not cites:
         raise ConfigError("an answer cites at least one artifact (--cite <artifact id>)")
     store = rc.store
-    tables, cells, missing = cited_cells(rc, cites)
+    cited = cited_cells(rc, cites)
+    tables, cells, missing = cited.tables, cited.cells, cited.missing
     present_ids = [c.artifact_id for c in cites if c.artifact_id not in missing]
     facts = []
     seen: set[str] = set()
@@ -180,7 +238,20 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
                 facts.append(f)
     label = label_for(facts) if present_ids else "untested"
     quals = qualifier(rc, facts)
-    matched, total = count_numerals(words, cells)
+    producing = set(cited.steps.values())
+    src = {
+        "key": cited.key_values,
+        "param": [str(v) for f in facts if f.step_id in producing for v in f.params.values()],
+        "question": str(q["text"] or ""),
+    }
+    values = [v for rows in cells.values() for row in rows.values() for v in row.values()]
+    classes = classify_numerals(
+        words, values, numeral_sources(rc.project.design, {"numeral_sources": src})
+    )
+    matched = len(classes["matched"])
+    total = matched + len(classes["failed"])
+    not_checked = classes["exempt"]
+    quals["numerals"] = ", ".join(n["numeral"] for n in not_checked) or "none"
     answer_id = new_id()
     action = Action(
         action_id=answer_id,
@@ -203,6 +274,8 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
         observed={
             "cited": [c.to_json() for c in cites],
             "missing": missing,
+            "cite_help": cited.help,
+            "numeral_sources": src,
             "label": label,
             "qualifier": quals,
         },
@@ -226,7 +299,8 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
         "lineage": [f.to_json() for f in facts],
         "cited": [c.to_json() for c in cites],
         "cells": cells,
-        "numerals": {"matched": matched, "total": total},
+        "keys": cited.keys,
+        "numerals": {"matched": matched, "total": total, "not_checked": not_checked},
         "route": "code" if any(f.kind == "exec" for f in facts) else "tool",
         "tools": [f.module for f in facts if f.kind == "tool"],
         "decisions": [
@@ -271,6 +345,9 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
         matched=matched,
         total=total,
         provenance=provenance,
+        cite_help=cited.help,
+        not_checked=not_checked,
+        failed=classes["failed"],
     )
 
 

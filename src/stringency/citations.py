@@ -13,8 +13,9 @@ from stringency.pipelines import normalise_source
 
 def parse_cite(text: str) -> dict[str, Any]:
     """`<source>[:<row>[:<column>]]`: the source is `<step>/<output>[/<file>]` or
-    `$inputs.<name>[/<file>]` (`<step>.<output>` accepted), the row is the value of the table's
-    first column, the column a column name."""
+    `$inputs.<name>[/<file>]` (`<step>.<output>` accepted), the row is the row's key (its key
+    columns' values joined with `|`, L138; the first column's value where that is unique), the
+    column a column name."""
     parts = text.strip().split(":")
     if not parts or not parts[0]:
         raise ConfigError(f"--cite {text!r}: a source is required")
@@ -30,7 +31,8 @@ def parse_cite(text: str) -> dict[str, Any]:
 def resolve_cites(rc: Any, cites: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Each citation with what it resolves to: `value` (the cell, or the row as `{column:
     value}` when no column was named, or the file's existence), or `missing` saying why not.
-    A row is matched on the table's first column, then on any column named `item`, `id`,
+    A row is matched on the table's row key (`tables.row_keys`: the output's declared key, else
+    the shortest unique prefix of the columns, L138), then on any column named `item`, `id`,
     `key`, `name` or `parameter`, then on the row's position (1-based)."""
     from stringency.present import Site, _resolve, _rows_from_table
     from stringency.tables import is_tabular
@@ -69,9 +71,10 @@ def resolve_cites(rc: Any, cites: list[dict[str, Any]]) -> list[dict[str, Any]]:
             entry["missing"] = f"unreadable: {e}"
             out.append(entry)
             continue
-        row = _find_row(rows, str(c["row"]))
+        declared = _declared_key(rc, c["source"])
+        row = _find_row(rows, str(c["row"]), declared)
         if row is None:
-            entry["missing"] = f"no row {c['row']}"
+            entry["missing"] = f"no row {c['row']}{_form_hint(rows, declared)}"
             out.append(entry)
             continue
         if c.get("column") is None:
@@ -118,13 +121,49 @@ def _json_cell(path: Any, row: Any, column: Any) -> dict[str, Any]:
     return {"value": node}
 
 
-def _find_row(rows: list[dict[str, Any]], key: str) -> dict[str, Any] | None:
+def _declared_key(rc: Any, source: str) -> list[str] | None:
+    """The key a step's module declares for the cited output (`<step>/<output>`), if any."""
+    step, _, rest = source.partition("/")
+    if step.startswith("$") or not rest:
+        return None
+    try:
+        spec = rc.module_for(step).manifest.outputs.get(rest.split("/")[0])
+    except Exception:  # noqa: BLE001  (an unknown step resolves by the prefix rule)
+        return None
+    return list(spec.key) if spec is not None and spec.key else None
+
+
+def _form_hint(rows: list[dict[str, Any]], declared: list[str] | None) -> str:
+    """` (rows are cited as <k1>|<k2>)` for a table whose key has more than one column."""
+    from stringency.tables import KEY_SEP, row_keys
+
+    if not rows:
+        return ""
+    try:
+        kcols, _, _ = row_keys(list(rows[0]), rows, declared)
+    except ConfigError:
+        kcols, _, _ = row_keys(list(rows[0]), rows)
+    if len(kcols) < 2:
+        return ""
+    return " (rows are cited as " + KEY_SEP.join(f"<{c}>" for c in kcols) + ")"
+
+
+def _find_row(
+    rows: list[dict[str, Any]], key: str, declared: list[str] | None = None
+) -> dict[str, Any] | None:
+    from stringency.tables import row_keys
+
     if not rows:
         return None
-    first = next(iter(rows[0]))
-    for r in rows:
-        if str(r.get(first)) == key:
+    try:
+        kcols, keys, _ = row_keys(list(rows[0]), rows, declared)
+    except ConfigError:
+        kcols, keys, _ = row_keys(list(rows[0]), rows)
+    for k, r in zip(keys, rows, strict=True):
+        if k == key:
             return r
+    if len(kcols) > 1 and any(str(r.get(kcols[0])) == key for r in rows):
+        return None  # a part of a composite key names several rows, never one by position
     for col in ("item", "item_id", "id", "key", "name", "parameter"):
         if col in rows[0]:
             for r in rows:

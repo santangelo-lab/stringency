@@ -110,6 +110,15 @@ def lint_module(
         if dp not in module.declared_params:
             report.error(where, f"decision point {dp} is not a declared parameter")
 
+    # row keys (L138): `key` is read on outputs only; a declared key names its columns once.
+    # Whether it is unique is a property of an output, which lint does not have.
+    for name, io in m.inputs.items():
+        if io.key is not None:
+            report.warn(where, f"inputs.{name}.key is read on outputs only")
+    for name, io in m.outputs.items():
+        if io.key is not None and (not io.key or len(set(io.key)) != len(io.key)):
+            report.error(where, f"outputs.{name}.key must name at least one column, each once")
+
     # scripts
     if m.kind in ("deterministic", "report") and module.entry_script is None:
         report.error(where, "no pre.* script (or entry:) found")

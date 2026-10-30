@@ -325,8 +325,10 @@ The paths the method suggests, each said in the pinned form:
 {% endif %}
 The pinned sentences, said as written except the label sentences and the qualifier line, which
 are the engine's record, printed by `stringency answer` and said in plain words in your reply
-(the engine fills `{tools}`, `{data}`, `{why}`, `{matched}`, `{total}` and the qualifier's six
-fields, each `none` when empty):
+(the engine fills `{tools}`, `{data}`, `{why}`, `{matched}`, `{total}` and the qualifier's seven
+fields, each `none` when empty; `{numerals}` lists the numerals the engine did not check because
+they are not measurements: a design level, a row's key, a parameter value, a number from the
+question, a year, a count of animals, punches or replicates):
 
 - paths forward, the opening: "Your project asked {the objective's question in the method's words}, and the delivery holds {the deliverables}. Paths I can take from here:"
 - path, a tool: "{what it answers}: {tool title}, a tool shipped with the method; it would be labelled trusted{; it needs {ask} from you}."
@@ -338,7 +340,7 @@ fields, each `none` when empty):
 - label, trusted: "Label: trusted. Produced by {tools}, a tool shipped with the method, run by the engine on {data}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, untested: "Label: untested. Produced by code written in this session, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, untested tool: "Label: untested. Produced by {tools}, a tool shipped with the method, run by the engine on {data}; {why}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
-- qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested}"
+- qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested} | numerals not checked: {numerals}"
 - what trusted means, when first relevant or asked: "Trusted means the engine ran a tool the method ships, in a verified environment, with a passing control on record, on the delivered data; the words around the numbers are still mine."
 - what untested means, when first relevant or asked: "Untested means the engine ran code I wrote in this session and recorded it, but nothing has checked that the code computes what it claims; or it ran a tool the method ships that missed a condition of trusted, which the label names."
 - who labels, when asked: "The engine labels from what ran; I cannot change a label, and I am not allowed to write one."

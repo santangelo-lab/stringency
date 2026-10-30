@@ -94,7 +94,7 @@ FINDINGS_SENTENCE = (
 QUALIFIER_LINE = (
     "flags accepted on the path: {flags} | parameters outside range: {ranges} | "
     "person-set parameters: {person} | upstream: {upstream} | controls: {controls} | "
-    "untested inputs: {untested}"
+    "untested inputs: {untested} | numerals not checked: {numerals}"
 )
 SWITCH = OPEN_SWITCH
 
@@ -339,7 +339,8 @@ def _read_upstream(project: Path, run_id: str) -> str:
 
 
 def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
-    """The six fields of the qualifier line, each `none` when empty."""
+    """The six path fields of the qualifier line, each `none` when empty; an answer adds the
+    seventh, `numerals` (L142)."""
     flags = [
         f"{f.step_id}:{(h.get('predicate') or h.get('kind') or '').split('@')[0]}"
         for f in facts
@@ -376,7 +377,9 @@ def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
 
 
 def render_qualifier(fields: dict[str, str]) -> str:
-    return QUALIFIER_LINE.format(**fields)
+    """The qualifier line of an answer; `numerals` (L142) is the numerals the check left
+    unchecked as not measurements, `none` when the fields carry none."""
+    return QUALIFIER_LINE.format(**{"numerals": "none", **fields})
 
 
 def label_sentence(label: str, facts: list[StepFact], matched: int, total: int) -> str:

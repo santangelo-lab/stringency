@@ -280,12 +280,23 @@ def _table_rows(
     return out
 
 
-def _table_lines(slice_: dict[str, dict[str, dict[str, Any]]], title: str) -> list[str]:
+def _table_lines(
+    slice_: dict[str, dict[str, dict[str, Any]]],
+    title: str,
+    tables: dict[str, EvidenceTable] | None = None,
+) -> list[str]:
+    """Each shown row as `column=value` pairs; a row of a table whose key is more than one
+    column (L138) is led by its key, the form a reference cites it by."""
     lines: list[str] = []
     for name, rows in slice_.items():
-        lines.append(f"{title} {name}:")
+        t = (tables or {}).get(name)
+        composite = t is not None and len(t.key_columns) > 1
+        lines.append(
+            f"{title} {name}" + (f" (row key {t.key_column}):" if t and composite else ":")
+        )
         for key in sorted(rows):
-            lines.append(f"{INDENT}{_kv(rows[key])}")
+            lead = f"[{key}] " if composite else ""
+            lines.append(f"{INDENT}{lead}{_kv(rows[key])}")
     return lines
 
 
@@ -628,7 +639,7 @@ def render_flag(
             view.flagged.append({**entry, "call": call})
         view.evidence_rows = _table_rows(tables, cited)
         if view.evidence_rows:
-            lines += ["", *_table_lines(view.evidence_rows, "evidence table (rows cited)")]
+            lines += ["", *_table_lines(view.evidence_rows, "evidence table (rows cited)", tables)]
         leftovers = {k: v for k, v in evidence.items() if not _is_pair_list(v)}
         if leftovers:
             lines += ["", "other evidence:", *_evidence_lines(leftovers)]
@@ -652,7 +663,10 @@ def render_flag(
                 }
                 view.evidence_rows = _table_rows(tables, cited)
                 if view.evidence_rows:
-                    lines += ["", *_table_lines(view.evidence_rows, "evidence table (rows cited)")]
+                    lines += [
+                        "",
+                        *_table_lines(view.evidence_rows, "evidence table (rows cited)", tables),
+                    ]
         if action:
             lines += [""]
             lines += _state_lines(
@@ -792,7 +806,7 @@ def render_item(
     lines += ["", f"item {item}", f"question: {question}", f"reason: {h['reason']}", ""]
     view = HoldView(h, "", module_ref=module_ref)
     view.evidence_rows = _table_rows(tables, {(name, item) for name in tables})
-    lines += _table_lines(view.evidence_rows, "evidence row in") or ["evidence row: none"]
+    lines += _table_lines(view.evidence_rows, "evidence row in", tables) or ["evidence row: none"]
     view.replicates = _replicates(project, h, action.attempt if action else None, tables)
     from stringency.review import _sign_off_labels, item_choices
 

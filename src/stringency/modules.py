@@ -25,6 +25,10 @@ class IOSpec(Frozen):
     hash: bool = True
     schema_: str | None = Field(default=None, alias="schema")
     item_key: str | None = None
+    # An output's row key (L138, module contract 3.2 via DEVIATIONS 2026-10-29): the columns
+    # whose values, joined with `|`, address one row; replaces the shortest unique prefix of the
+    # columns that `tables.load_table` takes otherwise. Read on outputs only.
+    key: list[str] | None = None
     # An optional input may be left unwired by a pipeline step; the module's script then sees no
     # entry for it in job.json inputs and does without (a reference table, for example).
     optional: bool = False

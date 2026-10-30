@@ -33,7 +33,7 @@ equal the version every pipeline step asks for (`name@version`).
 | `runner` | `operator` or `engine`; default from the project; judgment modules are always engine-run |
 | `entry`, `post` | script names when they are not `pre.*` and `post.*` |
 | `inputs` | `{name: {type, format, hash, schema, optional, arity}}`; every input must be wired by the pipeline unless `optional`; `arity: one` (default) takes one reference, `arity: many` a list of references or a `$inputs.<glob>` over the manifest, and the script receives a list of paths (amendment approved by the owner 2026-09-23) |
-| `outputs` | `{name: {type, format, schema, item_key}}`; judgment modules declare `judgments` and `consensus` |
+| `outputs` | `{name: {type, format, schema, item_key, key}}`; judgment modules declare `judgments` and `consensus`; `key: [col, ...]` (optional, added 2026-10-29 via DEVIATIONS, L138) names the columns whose values, joined with `\|`, address one row of a table output, in place of the shortest unique prefix of its columns the engine takes otherwise |
 | `decision_points` | parameters that are analysis choices; coverage is computed over them |
 | `stochastic`, `seed_param` | `stochastic: true` needs `seed_param`, present in the params schema |
 | `judgment` | `items_from`, `item_key`, `evidence`, `batching`, `replicates`, `abstain`, `confidence`, `considered_set` |

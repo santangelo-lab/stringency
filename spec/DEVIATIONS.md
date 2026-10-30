@@ -59,3 +59,22 @@ counts only the cells a judge cited, so a judge that leaves a contradicting cell
 that the table is one of `judgment.evidence`. First users: `assess-batch` and
 `annotate-clusters`, on the method's side. Awaiting acknowledgement by Jim; built in engine
 0.2.33 as the sign-off field was.
+
+
+## Module contract 3.2: `outputs.<name>.key` (2026-10-29, PLAN L138)
+
+An optional list on a module output in the frozen manifest: `key: [<column>, ...]`, the columns
+whose values, joined with `|`, address one row of the table the output is. Additive: a manifest
+without it parses and behaves as before, the engine taking the shortest prefix of the columns
+that is unique over the table (the first column alone where it is unique, so every table keyed
+before keeps its keys); a manifest with it is refused by engines before 0.2.35 (the model
+forbids unknown keys), the intended failure for a method that relies on it. Needed because a
+table whose first column repeats (one row per cluster and stratum, one per replicate and pair)
+lost every row but the last per first-column value, so no citation reached the others; the
+prefix rule fixes that without a declaration, and the declaration fixes the columns where the
+prefix would pick a different set from the one a method means. Read where a cited output is
+resolved: an answer's `--cite`, a proposal's `--cite`. Lint errors on an empty or repeated
+list and warns on `key` declared on an input. Whether a declared key is unique is not linted
+(an output exists only after a run); a declared key that repeats numbers each repeat `#<n>`.
+The module contract document (`spec/module-contract.md`, the `outputs` row) says so. Awaiting
+acknowledgement by Jim; built in engine 0.2.35 as `must_cite` was.
