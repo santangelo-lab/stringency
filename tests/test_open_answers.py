@@ -159,7 +159,7 @@ def test_label_sentence_names_why_a_tool_answer_is_untested() -> None:
     # code anywhere on the path outranks the tool's reason
     facts.insert(1, provenance.StepFact(step_id="02_exec", kind="exec", status="completed"))
     assert provenance.label_sentence("untested", facts, 0, 0).startswith(
-        "Label: untested. Produced by code written in this session"
+        "Label: untested. Produced by code written for this question"
     )
     # an upstream pipeline input on the path changes what the sentence says it ran on
     raw = provenance.StepFact(
@@ -202,7 +202,7 @@ def test_answer_on_exec_output_is_untested_and_missing_or_authored_block(
     assert r.exit_code == 0, r.output + str(r.stderr)
     out = json.loads(r.output)
     assert out["label"] == "untested" and out["label_sentence"].startswith(
-        "Label: untested. Produced by code written in this session"
+        "Label: untested. Produced by code written for this question"
     )
     assert out["qualifier"].endswith(
         "controls: none | untested inputs: 01_exec | numerals not checked: none"
@@ -335,7 +335,12 @@ def test_pinned_sentences_are_the_engines() -> None:
     assert (
         provenance.SWITCH == OPEN_SWITCH and "Shall I open it for questions?" in provenance.SWITCH
     )
-    assert set(provenance.LABEL_SENTENCES) == {"trusted", "untested", "untested, tool"}
+    assert set(provenance.LABEL_SENTENCES) == {
+        "trusted",
+        "untested",
+        "untested, tool",
+        "trusted data, drawn by session code",
+    }
     for s in provenance.LABEL_SENTENCES.values():
         assert "{matched} of {total}" in s and s.endswith(
             "Everything else in this answer is the assistant's reading."

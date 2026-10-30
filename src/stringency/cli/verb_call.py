@@ -1,7 +1,9 @@
 """`stringency call <tool> [--question <id>] [--in k=ref]... [--set k=v]... [--asked-by
-person] [--reason] [--json]` (open_mode_plan.md 2.3): run a tool the method ships as an
-on-demand step of the open run: propose, pre-gate, execute on the engine, post-gate. Exit
-codes are the run's: 0 completed, 10 held, 11 blocked, 12 rejected, 13 failed, 15 config."""
+person] [--reason] [--gives "<quantity>"] [--json]` (open_mode_plan.md 2.3): run a tool the
+method ships as an on-demand step of the open run: propose, pre-gate, execute on the engine,
+post-gate. `--gives` (L139) is the quantity the tool's output is, on the step's created event.
+Exit codes are the run's: 0 completed, 10 held, 11 blocked, 12 rejected, 13 failed, 15
+config."""
 
 from __future__ import annotations
 
@@ -48,6 +50,11 @@ def call(
         "needs --reason in the person's words",
     ),
     reason: str | None = typer.Option(None, "--reason", help="why these values"),
+    gives: str | None = typer.Option(
+        None,
+        "--gives",
+        help="the quantity this output is, in one phrase (compared with the question's --wants)",
+    ),
     cpus: int | None = typer.Option(
         None, "--cpus", help="CPUs for each step this invocation runs, within the policy's cap"
     ),
@@ -94,6 +101,7 @@ def call(
         reason,
         source=asked_by,
         question_id=question_id,
+        gives=gives,
     )
     status = prop.status
     message = ""
@@ -116,6 +124,7 @@ def call(
         "tool": prop.plan.module.ref,
         "status": str(status),
         "question_id": question_id,
+        "gives": (gives or "").strip() or None,
         "parameters": prop.action.parameters,
         "param_source": prop.action.param_source,
         "inputs": {k: str(v.job_value()) for k, v in prop.plan.inputs.items()},

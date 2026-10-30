@@ -379,13 +379,14 @@ def propose_tool(
     *,
     source: str = "agent",
     question_id: str | None = None,
+    gives: str | None = None,
 ) -> Proposal:
     """`call <tool>`: add a tool step to an open run and propose it (open_mode_plan.md 2.2).
     The declaration carries no `params`, so `build_action` fills the module schema's defaults;
     `source` labels every proposed value (`agent`, or `person` for a value the person dictated,
     which opens no `param.agent_proposed` hold). Writes: steps, step_events (`created` with the
-    on-demand declaration and, when an input was bound by the latest-step rule, its `binding`),
-    then everything `propose` writes."""
+    on-demand declaration, `gives` when said (L139), and, when an input was bound by the
+    latest-step rule, its `binding`), then everything `propose` writes."""
     if not rc.open_ended:
         raise RefusedError("call runs a tool on demand in an open project only")
     module = rc.project.tool(name)
@@ -397,7 +398,9 @@ def propose_tool(
         inputs=bind_inputs(rc, module, bindings, record=bound),
         runner="engine",
     )
-    rc.create_on_demand_step(decl, "tool", module, question_id=question_id, binding=bound or None)
+    rc.create_on_demand_step(
+        decl, "tool", module, question_id=question_id, binding=bound or None, gives=gives
+    )
     return propose(rc, decl.id, proposed, rationale=rationale, source=source)
 
 
@@ -501,6 +504,7 @@ def propose_exec(
     rationale: str | None = None,
     question_id: str | None = None,
     allow_local: bool = False,
+    gives: str | None = None,
 ) -> Proposal:
     """`exec`: run a script written in the session as an on-demand step of the open run
     (open_mode_plan.md 2.4; owner's decision 1, 2026-10-16). The script text (a file or stdin,
@@ -510,6 +514,7 @@ def propose_exec(
     runs on the engine. Refused (exit 16) when the profile's `open.exec` is `refused`, and under
     the `local` executor without `allow_local` (the local executor inherits the engine's whole
     environment; development only).
+    `gives` (L139), the quantity the script's output is, goes on the `created` event.
     Writes: the script file, messages, steps, step_events, then everything `propose` writes."""
     if not rc.open_ended:
         raise RefusedError("exec runs a session script in an open project only")
@@ -589,7 +594,12 @@ def propose_exec(
         runner="engine",
     )
     rc.create_on_demand_step(
-        decl, "exec", module, manifest=manifest.model_dump(mode="json"), question_id=question_id
+        decl,
+        "exec",
+        module,
+        manifest=manifest.model_dump(mode="json"),
+        question_id=question_id,
+        gives=gives,
     )
     return propose(rc, step_id, None, rationale=rationale, source="agent")
 

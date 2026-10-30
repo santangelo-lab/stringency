@@ -241,9 +241,10 @@ def _check_words_of(root: Path, pipeline: str, target: str, problems: Problems) 
 
 def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
     """`tools`: the words a method writes for each tool a person may ask for after delivery
-    (open mode, 2026-10-16): `{module, title, use_when, asks: {param: question}, proposed:
-    [{param, evidence, ask}], defaults_to_say: {param: phrase}}`. The engine reads `module.yml`
-    for what a tool is; this is what the skill says about it."""
+    (open mode, 2026-10-16): `{module, title, use_when, not_for, asks: {param: question},
+    proposed: [{param, evidence, ask}], defaults_to_say: {param: phrase}}`. `not_for`
+    (optional, L139) says which questions the tool's output is near but does not answer. The
+    engine reads `module.yml` for what a tool is; this is what the skill says about it."""
     if value is None:
         return []
     if not isinstance(value, list):
@@ -257,7 +258,15 @@ def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
             problems.add(f"{where}: must be a mapping")
             continue
         for key in t:
-            if key not in ("module", "title", "use_when", "asks", "proposed", "defaults_to_say"):
+            if key not in (
+                "module",
+                "title",
+                "use_when",
+                "not_for",
+                "asks",
+                "proposed",
+                "defaults_to_say",
+            ):
                 problems.add(f"{where}: unknown key `{key}`")
         module = t.get("module")
         if not isinstance(module, str) or not SLUG.match(module):
@@ -278,6 +287,12 @@ def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
                 f"{where} ({module}): `use_when` must say when this tool answers a question"
             )
             continue
+        not_for = t.get("not_for")
+        if not_for is not None and (not isinstance(not_for, str) or not not_for.strip()):
+            problems.add(
+                f"{where} ({module}): `not_for` must say which questions this tool does not answer"
+            )
+            not_for = None
         asks = _str_map(t.get("asks") or {}, f"{where}.asks", problems, allow_empty=True)
         defaults = _str_map(
             t.get("defaults_to_say") or {}, f"{where}.defaults_to_say", problems, allow_empty=True
@@ -303,6 +318,7 @@ def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
                 "module": module,
                 "title": title.strip(),
                 "use_when": use_when.strip(),
+                "not_for": not_for.strip() if isinstance(not_for, str) else None,
                 "asks": [{"param": k, "ask": v} for k, v in asks.items()],
                 "proposed": proposed,
                 "defaults_to_say": [{"key": k, "say": v} for k, v in defaults.items()],

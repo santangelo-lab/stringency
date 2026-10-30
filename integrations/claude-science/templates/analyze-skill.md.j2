@@ -288,8 +288,12 @@ suggested paths. Tools before code; never a path the delivery lacks the data for
 verdict-shaped path. Say the paths in the pinned forms, then the switch paragraph, and wait for
 the yes. On the yes, the operator skill's 10.2 applies: `init --mode open --from-delivery`
 beside the upstream, the yes recorded as that project's confirm verdict, a picked path filed
-with `ask --suggested`. Then per question: `ask`, one route (a tool whose use-when fits, else
-`exec` when the delivery or the pipeline's own inputs hold the data, else cannot), `answer`
+with `ask --suggested`. Then per question: `ask --wants` (the quantity that would answer it),
+the fit (a tool fits only when what its output is, its gives, is the wants; a near tool that
+does not fit gets the near-miss sentence, never a call: an untested answer to the question beats
+a trusted answer to another), the fit sentence before every `call --gives` or `exec --gives`,
+one route (a tool that fits, else `exec` when the delivery or the pipeline's own inputs hold the
+data, else cannot), `answer`
 citing every cell, then your own reply to the person, never the engine output relayed: the
 answer you filed, written to explain the result (what it shows, the few numbers that carry it,
 any caveat the data shows), the block `present --answer <id> --chat` prints pasted under it
@@ -312,6 +316,9 @@ The tools this method ships for questions, in the method's words:
 
 {% for t in tools %}
 - {{ t.title }} (`{{ t.module }}`): use when {{ t.use_when }}.
+{% if t.not_for %}
+  - not for {{ t.not_for }}.
+{% endif %}
 {% for a in t.asks %}
   - Ask before calling it: {{ a.ask }} (`{{ a.param }}`; pass it with `--set {{ a.param }}=<value> --asked-by person --reason "<their words>"`).
 {% endfor %}
@@ -333,7 +340,7 @@ The paths the method suggests, each said in the pinned form:
 {% endif %}
 The pinned sentences, said as written except the label sentences and the qualifier line, which
 are the engine's record, printed by `stringency answer` and said in plain words in your reply
-(the engine fills `{tools}`, `{data}`, `{why}`, `{matched}`, `{total}` and the qualifier's seven
+(the engine fills `{tools}`, `{data}`, `{tables}`, `{why}`, `{matched}`, `{total}` and the qualifier's seven
 fields, each `none` when empty; `{numerals}` lists the numerals the engine did not check because
 they are not measurements: a design level, a row's key, a parameter value, a number from the
 question, a year, a count of animals, punches or replicates):
@@ -343,10 +350,14 @@ question, a year, a count of animals, punches or replicates):
 - path, code: "{what it answers}: no tool ships for this, so I would write code; it would be labelled untested."
 - paths forward, the close: "You can pick one, ask something else, or stop here."
 - switch: "Your results are delivered. You can ask questions of them here. Nothing you ask is declared in advance and nothing here is a pre-registered result. Some questions I answer with tools shipped with this method, which are tested; some with code written in this session, which is not; the engine labels each answer trusted or untested from what ran, counts every run of the same tool on the same data, and nothing you ask changes the delivered files. Shall I open it for questions?"
+- fit, before every call or exec: "The question wants {the wants}; {tool title | my code} gives {the gives}."
+- near miss: "The nearest tool is {tool title}; it gives {its gives}, which is not {the wants}. I can run {tool title} and read {its gives} as a proxy, saying what it misses; write code for {the wants}, labelled untested; or stop."
 - before exec: "No tool shipped with this method answers that, so I am writing code for it; the engine will run it on {the delivered data | the pipeline's inputs | the delivered data and the pipeline's inputs} and label the answer untested."
+- before drawing: "No tool draws it that way, so I am writing code that draws the numbers of {the tables}; the engine checks every number the figure draws against them, and labels it trusted data, drawn by session code, only if all of them match."
 - cannot: "I cannot answer that from this delivery: {it holds {what} only | it needs {what}, which is neither delivered nor an input of the pipeline | it is a judgment, not a result}. {What would answer it, or nothing.}"
 - label, trusted: "Label: trusted. Produced by {tools}, a tool shipped with the method, run by the engine on {data}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
-- label, untested: "Label: untested. Produced by code written in this session, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
+- label, untested: "Label: untested. Produced by code written for this question, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
+- label, drawn: "Label: trusted data, drawn by session code. The numbers are {tables}, trusted; the drawing is code written in this session, which nothing has checked. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, untested tool: "Label: untested. Produced by {tools}, a tool shipped with the method, run by the engine on {data}; {why}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested} | numerals not checked: {numerals}"
 - what trusted means, when first relevant or asked: "Trusted means the engine ran a tool the method ships, in a verified environment, with a passing control on record, on the delivered data; the words around the numbers are still mine."

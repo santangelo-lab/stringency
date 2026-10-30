@@ -140,11 +140,13 @@ class RunContext:
         manifest: dict[str, Any] | None = None,
         question_id: str | None = None,
         binding: dict[str, Any] | None = None,
+        gives: str | None = None,
     ) -> None:
         """Add a step to an open run (open_mode_plan.md 2.2). Writes: steps (pending) and the
         `created` step event, whose payload carries `on_demand: {kind, decl, manifest?,
-        question_id, binding?}` (no new column; the `captures` precedent); `binding` names, per
-        input bound by a rule rather than by `--in`, the rule and the alternatives (L135)."""
+        question_id, binding?, gives?}` (no new column; the `captures` precedent); `binding`
+        names, per input bound by a rule rather than by `--in`, the rule and the alternatives
+        (L135); `gives` is the quantity the step's output is, in the operator's words (L139)."""
         if not self.open_ended:
             raise RefusedError("steps are added on demand only in an open project")
         on_demand: dict[str, Any] = {
@@ -155,6 +157,8 @@ class RunContext:
         }
         if binding:
             on_demand["binding"] = binding
+        if gives and gives.strip():
+            on_demand["gives"] = gives.strip()
         self.store.create_step(
             {
                 "run_id": self.run_id,

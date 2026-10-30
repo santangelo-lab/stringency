@@ -328,7 +328,7 @@ def test_pinned_open_mode_sentences_identical_in_skill_template_and_engine():
 
     operator = _pinned(OPERATOR.read_text(), "### 10.7 The pinned sentences")
     rendered = _pinned(_render_toy_with_tools(), "The pinned sentences, said as written")
-    assert len(operator) == 17, sorted(operator)
+    assert len(operator) == 21, sorted(operator)
     assert operator == rendered
     assert operator["report, once, when the first answer lands"] == provenance.REPORT_SENTENCE
     assert operator["findings, once, when the person is done"] == provenance.FINDINGS_SENTENCE
@@ -340,6 +340,10 @@ def test_pinned_open_mode_sentences_identical_in_skill_template_and_engine():
     assert operator["label, trusted"] == provenance.LABEL_SENTENCES["trusted"]
     assert operator["label, untested"] == provenance.LABEL_SENTENCES["untested"]
     assert operator["label, untested tool"] == provenance.LABEL_SENTENCES["untested, tool"]
+    assert operator["label, drawn"] == provenance.LABEL_SENTENCES[provenance.DRAWN]
+    # L139: code is code written for this question, and no label sentence says fail
+    assert "code written for this question" in operator["label, untested"]
+    assert not any("fail" in operator[k] for k in ("label, untested", "label, drawn"))
     assert operator["qualifier"] == provenance.QUALIFIER_LINE
 
 

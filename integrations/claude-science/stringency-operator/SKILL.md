@@ -356,8 +356,10 @@ A delivered pipeline is the first half of the work. The second half, questions o
 it delivered, is open mode (engine 0.2.22): a second project beside the delivery, with no declared
 topology, in which you answer the person's questions with **tools** the method ships (modules
 listing `open`, run by the engine on demand) or with **code written in this session**, which the
-engine runs and records but labels untested. The engine labels every answer `trusted` or
-`untested` from what ran; you never write the label. Nothing asked here changes the delivered
+engine runs and records but labels untested. The engine labels every answer `trusted`,
+`untested`, or `trusted data, drawn by session code` (a figure your code drew from a trusted
+table, every drawn number matching a cell of it; engine 0.2.35) from what ran; you never write
+the label. Nothing asked here changes the delivered
 files. Beside the delivered files, the open project holds the upstream pipeline's own inputs,
 read-only (`upstream_<name>`), so a question about what the pipeline removed or changed has the
 data from before it ran.
@@ -411,10 +413,15 @@ else, and then carry on whatever the person says.
 
 ### 10.3 The loop, per question
 
-`ask` → route (10.4) → `call` or `exec` or cannot → `answer` → your reply, in your own words.
+`ask` → fit and route (10.4) → `call` or `exec` or cannot → `answer` → your reply, in your own
+words.
 
-- `stringency ask "<the person's words verbatim>" --json` prints the question id and the tools.
-- `stringency call <tool> --question <id> [--in <input>=<ref>] [--set k=v ...] --json` runs a
+- `stringency ask "<the person's words verbatim>" --wants "<the quantity that would answer it>"
+  --json` prints the question id, what it wants and the tools. The wants is one phrase naming
+  the number or picture that would answer the question ("the fraction of villus cells that are
+  B cells, per animal"), written before you look at the tools (engine 0.2.35).
+- `stringency call <tool> --question <id> --gives "<the quantity its output is>" [--in
+  <input>=<ref>] [--set k=v ...] --json` runs a
   tool as an on-demand step through the ordinary gate (exit 0 completed, 10 held, 11 blocked,
   12 rejected, 13 failed). An unbound input binds the one delivered file of its type or the
   latest artifact of that type, and among one output delivered by several steps the latest
@@ -423,13 +430,21 @@ else, and then carry on whatever the person says.
   a deterministic tool runs its controls first (`controls_run` in the payload); a failing control
   is said plainly, and that tool's answers are labelled untested. A judgment tool's controls are
   yours to run with `stringency controls run --module <tool>`, answering its dispatch.
-- `stringency exec <script file> --out <name>=<type>[/<format>] --question <id> --reason "<why
-  no tool>" [--in upstream_<name>=$inputs.upstream_<name>] --json` runs a script you wrote, under
+- `stringency exec <script file> --out <name>=<type>[/<format>] --question <id> --gives "<the
+  quantity its output is>" --reason "<why no tool>" [--in upstream_<name>=$inputs.upstream_<name>]
+  --json` runs a script you wrote, under
   the executor, inputs read-only. Every delivered file is bound by name; an upstream input is
   bound only when you name it, and only when the question needs the data from before the
   pipeline ran. Write the script to a file outside the project; it reads a JSON job from stdin
   (`inputs`, `outputs`, `seed`) exactly as a module does. Say the before-exec sentence of 10.7
-  first.
+  first. A script that only redraws a figure from trusted tables (a tool's table, a delivered
+  table; a new title, axis label, order or colour) declares its figures (`--out <name>=figure`)
+  and `--out figure_drawn=table`, and writes into `figure_drawn` every number the figures draw,
+  each as it stands in the input table (`--in <name>=$steps.<step>.<output>`); say the
+  before-drawing sentence of 10.7 instead. The engine checks every number of `figure_drawn`
+  against the cells of the script's inputs; when all match, every input is trusted and the
+  script writes nothing but figures and `figure_drawn`, the label is "trusted data, drawn by
+  session code", else untested, and `exec` prints why.
 - `stringency answer --question <id> --cite <artifact id>[:<row>[:<column>]] ... --text <file>
   --json` records your reply. Write the text for the person, the way you would explain the
   result to a colleague: lead with what it shows in plain words (which group is higher and by
@@ -458,7 +473,9 @@ else, and then carry on whatever the person says.
   said is a row shown: every number in your reply is in a row of the block you paste. The trust sentence carries the engine's label word and
   its reason in your words: trusted ("from the method's Compare the groups tool, which the
   method tests; its controls passed"), untested because it is code you wrote ("nothing has
-  checked the code"), or untested for the tool's reason the label names. Never call an untested
+  checked the code"), trusted data drawn by session code ("the numbers are the tool's table,
+  which the method tests; the drawing is my code, which nothing has checked"), or untested for
+  the tool's reason the label names. Never call an untested
   answer trusted, never soften or upgrade a label, and never say a number in the reply that is
   not in the filed text or the shown table. Never the ids, the paths, the second project, the
   qualifier line or the script unless they ask; "how was this checked" gets `--details` in
@@ -481,15 +498,28 @@ else, and then carry on whatever the person says.
   directory from the trace at any time; it is the cap-off command, and forgetting it costs
   nothing. Never `deliver --answer` (refused). Relay `report.md` only when asked.
 
-### 10.4 The three routes
+### 10.4 The fit, then the three routes
 
-For each question pick exactly one route, in this order: a **tool** when a tool's `use_when`
-fits the question and its inputs are in the delivery or already produced here; **exec** when no
-tool fits and the delivery or the upstream inputs hold the data the question needs; **cannot**
-otherwise, said with the
-cannot sentence of 10.7. Never combine tools to approximate a question none of them answers,
-never run a tool on an input it was not written for, and never answer a judgment ("is this
-good", "should we exclude") with either route: that is a hold or a person's call, not a result.
+First the fit, recorded: the question's wants is filed with `ask --wants` before you read the
+tools. Then, for the tool whose `use_when` is nearest, say what its output is, in one phrase
+(its title, its `use_when`, its `not_for` and its outputs in `tools list` tell you); that is its
+gives, passed with `call --gives` (and a script's with `exec --gives`). A tool fits only when its
+gives is the wants: the same quantity, of the same cells, per the same unit. A tool whose
+`not_for` names the question does not fit.
+
+Then pick exactly one route, in this order: a **tool** when one fits and its inputs are in the
+delivery or already produced here; **exec** when no tool fits and the delivery or the upstream
+inputs hold the data the question needs; **cannot** otherwise, said with the cannot sentence of
+10.7. When the nearest tool gives something near the wants but not it, do not call it: say the
+near-miss sentence of 10.7 and let the person choose between the proxy, code, and stopping. An
+untested answer to the question asked beats a trusted answer to another question: a trusted
+label on a number nobody asked for is not an answer. Before every `call` or `exec`, say the fit
+sentence of 10.7, wants and gives in one line, and pass the same words to `--gives`. Never
+combine tools to approximate a question none of them answers, never run a tool on an input it
+was not written for, and never answer a judgment ("is this good", "should we exclude") with
+either route: that is a hold or a person's call, not a result. `present --answer` shows the
+wants and the gives under the answer text, and the coverage report counts the answers whose
+gives is not their question's wants (the exact text; no other rule).
 
 ### 10.5 A tool's parameters
 
@@ -518,7 +548,8 @@ number that is not a cell of an artifact you cited.
 The label sentences and the qualifier line are the engine's record: printed by `stringency
 answer`, written into every delivered answer file, and the source of the trust sentence of your
 reply (10.3), which says them in plain words. The rest are said as written. The engine fills `{tools}` with the tools on the
-answer's path, `{data}` with what the path rests on, `{why}` with the condition of trusted a
+answer's path, `{data}` with what the path rests on, `{tables}` with the trusted tables a drawing's
+numbers match, `{why}` with the condition of trusted a
 tool missed, `{matched}` and `{total}` with the numeral counts, and the qualifier's seven fields,
 each `none` when empty; `{numerals}` lists the numerals the engine did not check because they
 are not measurements (a design level, a row's key, a parameter value of the cited step, a number
@@ -531,10 +562,14 @@ same text; a test keeps the copies identical.
 - path, code: "{what it answers}: no tool ships for this, so I would write code; it would be labelled untested."
 - paths forward, the close: "You can pick one, ask something else, or stop here."
 - switch: "Your results are delivered. You can ask questions of them here. Nothing you ask is declared in advance and nothing here is a pre-registered result. Some questions I answer with tools shipped with this method, which are tested; some with code written in this session, which is not; the engine labels each answer trusted or untested from what ran, counts every run of the same tool on the same data, and nothing you ask changes the delivered files. Shall I open it for questions?"
+- fit, before every call or exec: "The question wants {the wants}; {tool title | my code} gives {the gives}."
+- near miss: "The nearest tool is {tool title}; it gives {its gives}, which is not {the wants}. I can run {tool title} and read {its gives} as a proxy, saying what it misses; write code for {the wants}, labelled untested; or stop."
 - before exec: "No tool shipped with this method answers that, so I am writing code for it; the engine will run it on {the delivered data | the pipeline's inputs | the delivered data and the pipeline's inputs} and label the answer untested."
+- before drawing: "No tool draws it that way, so I am writing code that draws the numbers of {the tables}; the engine checks every number the figure draws against them, and labels it trusted data, drawn by session code, only if all of them match."
 - cannot: "I cannot answer that from this delivery: {it holds {what} only | it needs {what}, which is neither delivered nor an input of the pipeline | it is a judgment, not a result}. {What would answer it, or nothing.}"
 - label, trusted: "Label: trusted. Produced by {tools}, a tool shipped with the method, run by the engine on {data}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
-- label, untested: "Label: untested. Produced by code written in this session, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
+- label, untested: "Label: untested. Produced by code written for this question, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
+- label, drawn: "Label: trusted data, drawn by session code. The numbers are {tables}, trusted; the drawing is code written in this session, which nothing has checked. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, untested tool: "Label: untested. Produced by {tools}, a tool shipped with the method, run by the engine on {data}; {why}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested} | numerals not checked: {numerals}"
 - what trusted means, when first relevant or asked: "Trusted means the engine ran a tool the method ships, in a verified environment, with a passing control on record, on the delivered data; the words around the numbers are still mine."

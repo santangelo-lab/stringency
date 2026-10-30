@@ -2,7 +2,9 @@
 
 A question is the person's words verbatim, filed before anything runs for it. `origin` tells
 the two populations apart: `person` (their own words) and `suggested` (a path the operator
-proposed before the switch and the person picked). The reply is an `answers` row (S5).
+proposed before the switch and the person picked). `wants` (L139, migration 0007) is the
+quantity that would answer it, in the operator's words, filed before the route so the fit of a
+tool to the question is on record. The reply is an `answers` row (S5).
 
 Reads: runs, questions. Writes: questions, messages.
 """
@@ -35,9 +37,15 @@ def open_for_questions(project: Project) -> RunContext:
 
 
 def file_question(
-    rc: RunContext, text: str, *, origin: str = "person", via: str | None = None
+    rc: RunContext,
+    text: str,
+    *,
+    origin: str = "person",
+    via: str | None = None,
+    wants: str | None = None,
 ) -> dict[str, Any]:
-    """Writes: messages (the words, content-addressed), questions. Returns the row."""
+    """Writes: messages (the words, content-addressed), questions (with `wants`, the quantity
+    that would answer it, when given; L139). Returns the row."""
     if origin not in ORIGINS:
         raise ConfigError(f"origin must be one of {', '.join(ORIGINS)}")
     words = text.strip()
@@ -61,6 +69,7 @@ def file_question(
         "asked_via": via or ("relayed" if env.get("session_ref") else "tty"),
         "operator_session_ref": env.get("session_ref"),
         "ts": now_iso(),
+        "wants": (wants or "").strip() or None,
     }
     store.insert("questions", row)
     return {**row, "text": words}

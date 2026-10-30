@@ -150,5 +150,19 @@ def nearest_keys(keys: Sequence[str], miss: str, n: int = 5) -> list[str]:
     return [k for _, k in ranked[:n]]
 
 
+def numeric_texts(path: Path) -> list[str]:
+    """Every cell of a delimited table, header excluded, that reads plainly as a number, as the
+    text written (the delimiter as `load_table` picks it). A drawing exec's `figure_drawn` is
+    checked cell by cell against its inputs with these (L140)."""
+    delim = "\t" if path.suffix.lower() in {".tsv", ".txt", ".tab"} else ","
+    out: list[str] = []
+    with open(path, newline="") as f:
+        reader = csv.reader(f, delimiter=delim)
+        next(reader, None)
+        for row in reader:
+            out += [v.strip() for v in row if _NUMBER.fullmatch(v.strip())]
+    return out
+
+
 def table_text(path: Path) -> str:
     return path.read_text()

@@ -1,5 +1,6 @@
-"""`stringency ask "<text>" [--suggested] [--json]` (open_mode_plan.md 2.3): file a person's
-question on the open run. Prints the question id and the tools that could answer it."""
+"""`stringency ask "<text>" [--wants "<quantity>"] [--suggested] [--json]` (open_mode_plan.md
+2.3; L139): file a person's question on the open run, with the quantity that would answer it.
+Prints the question id, what it wants, and the tools that could answer it."""
 
 from __future__ import annotations
 
@@ -19,11 +20,17 @@ def ask(
         "--suggested",
         help="a path the operator proposed before the switch and the person picked",
     ),
+    wants: str | None = typer.Option(
+        None,
+        "--wants",
+        help="the quantity that would answer it, in one phrase (a tool's output is compared "
+        "with it by its --gives)",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = Project.find()
     rc = open_for_questions(project)
-    q = file_question(rc, text, origin="suggested" if suggested else "person")
+    q = file_question(rc, text, origin="suggested" if suggested else "person", wants=wants)
     tools = [
         {"name": m.manifest.name, "ref": m.ref, "operation": m.manifest.operation}
         for m in project.tools()
@@ -35,10 +42,12 @@ def ask(
         "seq": q["seq"],
         "origin": q["origin"],
         "text": q["text"],
+        "wants": q["wants"],
         "tools": tools,
     }
     human = (
         f"run {rc.run_id}\nquestion {q['question_id']} ({q['origin']}, #{q['seq']}): {q['text']}\n"
+        f"wants: {q['wants'] or 'not said'}\n"
         "tools: " + (", ".join(t["name"] for t in tools) or "none")
     )
     refresh_if_present(project.root)

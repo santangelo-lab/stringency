@@ -1,7 +1,8 @@
 """The coverage report (design 12.2): generated, fixed in structure, never hand-edited.
 
 Reads: runs, steps, predicate_results, holds, reviews, invocations, judgments, consensus,
-executions, actions, controls_runs. Writes nothing.
+executions, actions, controls_runs; on an open run also questions and answers (the fit, L139).
+Writes nothing.
 """
 
 from __future__ import annotations
@@ -130,6 +131,48 @@ def egress_line(e: dict[str, Any] | None) -> str:
         f"Data egress: the highest class reached was {reached} {CLASS_NAMES[reached]}; {limit} "
         f"(report {e.get('report')})."
     )
+
+
+def fit_coverage(rc: RunContext) -> dict[str, Any]:
+    """The fit of the open run's answers to their questions (L139): the questions filed without
+    a `wants`, and per admissible answer whether its recorded `gives` is its question's `wants`.
+    The only rule is the exact text after trimming: an answer whose gives differs is counted,
+    whatever the words; one without a wants or a gives is not compared. Reads: questions,
+    answers (`provenance_json.fit`)."""
+    store = rc.store
+    questions = store.all(
+        "SELECT seq, wants FROM questions WHERE run_id=? ORDER BY seq", (rc.run_id,)
+    )
+    rows = store.all(
+        "SELECT a.answer_id, q.seq, a.provenance_json FROM answers a JOIN questions q ON "
+        "q.question_id = a.question_id WHERE a.run_id=? AND a.status='admissible' "
+        "ORDER BY a.rowid",
+        (rc.run_id,),
+    )
+    differs: list[dict[str, Any]] = []
+    same = not_compared = 0
+    for r in rows:
+        fit = json.loads(r["provenance_json"] or "{}").get("fit") or {}
+        if fit.get("differs") is True:
+            differs.append(
+                {
+                    "answer_id": r["answer_id"],
+                    "question": r["seq"],
+                    "wants": fit.get("wants"),
+                    "gives": fit.get("gives"),
+                }
+            )
+        elif fit.get("differs") is False:
+            same += 1
+        else:
+            not_compared += 1
+    return {
+        "questions_without_wants": [q["seq"] for q in questions if not q["wants"]],
+        "answers": len(rows),
+        "gives_not_wants": differs,
+        "gives_is_wants": same,
+        "not_compared": not_compared,
+    }
 
 
 def coverage_data(rc: RunContext) -> dict[str, Any]:
@@ -322,6 +365,7 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "uncontrolled_tools": uncontrolled,
             "exec_steps": [x["step_id"] for x in rc.on_demand() if x.get("kind") == "exec"],
             "upstream_lineage": captured_upstream_lineage(store, rc.run_id),
+            "fit": fit_coverage(rc),
         }
         if rc.open_ended
         else None,
@@ -582,6 +626,23 @@ def render_coverage(d: dict[str, Any]) -> str:
             + (", ".join(op["uncontrolled_tools"]) or "none")
         )
         lines.append("  scripts written in the session: " + (", ".join(op["exec_steps"]) or "none"))
+        fit = op.get("fit") or {}
+        if fit:
+            lines.append(
+                "  questions filed without what would answer them (no --wants): "
+                + (", ".join(f"#{n}" for n in fit["questions_without_wants"]) or "none")
+            )
+            lines.append(
+                f"  fit, by the exact text of gives against wants and no other rule: "
+                f"{len(fit['gives_not_wants'])} of {fit['answers']} answer(s) give what their "
+                f"question did not want, {fit['gives_is_wants']} give what it wanted, "
+                f"{fit['not_compared']} not compared (a wants or a gives not said)"
+            )
+            for d in fit["gives_not_wants"]:
+                lines.append(
+                    f"    #{d['question']} answer {d['answer_id']}: wants {d['wants']}; "
+                    f"gives {d['gives']}"
+                )
         ex = d.get("explored") or {}
         for e in ex.get("rerun_counts", []):
             lines.append(

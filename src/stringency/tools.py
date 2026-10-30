@@ -386,6 +386,8 @@ def render_tools(payload: dict[str, Any]) -> str:
         lines.append(head)
         if w.get("use_when"):
             lines.append(f"  use when: {w['use_when']}")
+        if w.get("not_for"):
+            lines.append(f"  not for: {w['not_for']}")
         for name, spec in t["inputs"].items():
             cands = ", ".join(
                 str(c.get("ref") or c.get("delivered"))

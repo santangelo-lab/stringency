@@ -8,10 +8,11 @@ numerals the text may use (a row by its key, the key columns' values joined with
 the qualifier, L142), builds a synthetic `answer` action and an `OutputBundle` whose prose
 is the text, evaluates the `ans.*` predicates (invariant: a cited id that does not exist, a
 numeral matching no cited cell, the label written by the operator), derives the label from the
-cited artifacts' lineage, and writes the `answers` row, admissible or blocked. A blocked answer
-is kept, as a rejected proposal is. A figure attached with `--figure` (L143) is stored in the
-answer's `provenance_json` under `figures`, each with its own label derived from its own
-lineage; it does not enter the answer's label or the numeral check.
+cited artifacts' lineage (one of `provenance.LABELS`), records the fit (the question's `wants`
+beside the cited steps' `gives`, L139), and writes the `answers` row, admissible or blocked. A
+blocked answer is kept, as a rejected proposal is. A figure attached with `--figure` (L143) is
+stored in the answer's `provenance_json` under `figures`, each with its own label derived from
+its own lineage; it does not enter the answer's label or the numeral check.
 
 Reads: artifacts, steps, questions, and everything `provenance.lineage` reads. Writes:
 messages (the text), predicate_results (the `ans.*` verdicts, action id = the answer id),
@@ -39,6 +40,7 @@ from stringency.provenance import (
     TRUSTED,
     WHY_UNTESTED,
     data_phrase,
+    fit_facts,
     label_for,
     label_sentence,
     lineage,
@@ -373,6 +375,7 @@ def file_answer(
         "cells": cells,
         "keys": cited.keys,
         "numerals": {"matched": matched, "total": total, "not_checked": not_checked},
+        "fit": fit_facts(rc, q, list(cited.steps.values())),
         "route": "code" if any(f.kind == "exec" for f in facts) else "tool",
         "tools": [f.module for f in facts if f.kind == "tool"],
         "decisions": [

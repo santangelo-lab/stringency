@@ -1602,6 +1602,8 @@ def present_answer(
         "route": prov.get("route"),
         "tools": tools,
         "text": text,
+        # the question's wants beside the cited steps' gives (L139); None before 0.2.35
+        "fit": prov.get("fit"),
         "sections": sections,
         "figures": [
             {k: f.get(k) for k in ("artifact_id", "name", "path", "label", "label_line")}
@@ -2085,6 +2087,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
             out.append(f"(this answer was {payload['status']} and is not shown as an answer)")
             out.append("")
         out.append(payload["text"].rstrip())
+        if payload.get("fit"):
+            out.append("")
+            out.append(payload["fit"]["line"])
     elif payload["kind"] == "run":
         out.append(f"## {payload['pipeline']}: {payload['progress']}")
     elif payload["kind"] == "step":
