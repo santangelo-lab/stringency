@@ -248,13 +248,44 @@ def _is_artifact_id(text: str) -> bool:
     return len(text) == 26 and text.isalnum() and text.upper() == text
 
 
-def bind_inputs(rc: RunContext, module: Module, bindings: dict[str, str]) -> dict[str, str]:
+def _latest_of_one_output(rc: RunContext, refs: list[str]) -> tuple[str, list[str]] | None:
+    """Among delivered inputs of one type that are one output name delivered by several steps
+    (`derived_from.output` equal, each named `<step>_<output>` by
+    `project.declarations_from_delivery`), the one from the latest step, by step id order (a
+    pipeline's step ids are numbered in run order), and the others; None when the inputs are not
+    all of that shape (L135)."""
+    by_name = rc.project.inputs.by_name()
+    items = [by_name[r.removeprefix("$inputs.")] for r in refs]
+    keyed: list[tuple[str, str]] = []
+    outputs: set[str] = set()
+    for item, r in zip(items, refs, strict=True):
+        d = item.derived_from
+        if d is None or not d.step_id or not d.output or item.name != f"{d.step_id}_{d.output}":
+            return None
+        outputs.add(d.output)
+        keyed.append((d.step_id, r))
+    if len(outputs) != 1 or len({k for k, _ in keyed}) != len(keyed):
+        return None
+    keyed.sort()
+    return keyed[-1][1], [r for _, r in keyed[:-1]]
+
+
+def bind_inputs(
+    rc: RunContext,
+    module: Module,
+    bindings: dict[str, str],
+    *,
+    record: dict[str, Any] | None = None,
+) -> dict[str, str]:
     """The input references of an on-demand step: `--in <name>=<$inputs.x | $steps.id.out |
     artifact id>` for what the operator named; an unbound input binds the one delivered project
     input or else the latest produced artifact of its type (an input of the upstream pipeline
-    binds only when named); otherwise refused (exit 15) naming the
-    candidates. An optional input binds only what is named or an artifact of this run produced
-    under its own name, else stays unbound (L49). Reads: artifacts, steps."""
+    binds only when named); several delivered inputs of its type that are one output delivered
+    by several steps bind the latest step's, recorded in `record` (`bound_by: latest_step`, the
+    alternatives; L135); otherwise refused (exit 15) naming the `--in` forms. An optional input
+    binds only what is named or an artifact of this run produced under its own name, else stays
+    unbound (L49). Reads: artifacts, steps; writes nothing (the caller puts `record` in the
+    step's `created` event)."""
     out: dict[str, str] = {}
     inputs_by_name = rc.project.inputs.by_name()
     for name, ref in bindings.items():
@@ -300,15 +331,41 @@ def bind_inputs(rc: RunContext, module: Module, bindings: dict[str, str]) -> dic
             if same_name:
                 out[name] = same_name[0]
             continue
+        latest = _latest_of_one_output(rc, candidates) if len(candidates) > 1 else None
         if len(candidates) == 1 and not produced:
             out[name] = candidates[0]
         elif produced:
             out[name] = produced[0]
+        elif latest is not None:
+            out[name] = latest[0]
+            if record is not None:
+                record[name] = {
+                    "bound_by": "latest_step",
+                    "ref": latest[0],
+                    "alternatives": latest[1],
+                }
         else:
-            have = ", ".join(candidates) or "none"
+            upstream = [
+                f"$inputs.{n}"
+                for n, item in sorted(inputs_by_name.items())
+                if item.type == spec.type and item.upstream_input is not None
+            ]
+            forms = " or ".join(f"--in {name}={c}" for c in candidates + upstream)
+            if len(candidates) > 1:
+                why = (
+                    f"{len(candidates)} inputs have its type and are not one output delivered "
+                    "by several steps"
+                )
+            else:
+                why = "no delivered input or produced artifact has its type"
             raise ConfigError(
-                f"input {name} ({spec.type}) of {module.manifest.name} is unbound; "
-                f"name it with --in {name}=<ref>; candidates: {have}"
+                f"input {name} ({spec.type}) of {module.manifest.name} is unbound: {why}; "
+                + (f"name one with {forms}" if forms else f"name it with --in {name}=<ref>")
+                + (
+                    " (an upstream input binds only by name)"
+                    if upstream and len(candidates) <= 1
+                    else ""
+                )
             )
     return out
 
@@ -327,18 +384,20 @@ def propose_tool(
     The declaration carries no `params`, so `build_action` fills the module schema's defaults;
     `source` labels every proposed value (`agent`, or `person` for a value the person dictated,
     which opens no `param.agent_proposed` hold). Writes: steps, step_events (`created` with the
-    on-demand declaration), then everything `propose` writes."""
+    on-demand declaration and, when an input was bound by the latest-step rule, its `binding`),
+    then everything `propose` writes."""
     if not rc.open_ended:
         raise RefusedError("call runs a tool on demand in an open project only")
     module = rc.project.tool(name)
+    bound: dict[str, Any] = {}
     decl = StepDecl(
         id=rc.next_step_id(module.manifest.name),
         module=module.ref,
         title=module.manifest.name,
-        inputs=bind_inputs(rc, module, bindings),
+        inputs=bind_inputs(rc, module, bindings, record=bound),
         runner="engine",
     )
-    rc.create_on_demand_step(decl, "tool", module, question_id=question_id)
+    rc.create_on_demand_step(decl, "tool", module, question_id=question_id, binding=bound or None)
     return propose(rc, decl.id, proposed, rationale=rationale, source=source)
 
 

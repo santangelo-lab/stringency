@@ -117,11 +117,15 @@ def question_unsupported(ctx: GateContext) -> Verdict:
     default=Disposition.BLOCK,
 )
 def deliverable_unproduced(ctx: GateContext) -> Verdict:
+    """A deliverable is an output name some step produces, or `<step>.<output>` naming a step
+    whose module produces that output (L135; a qualified name fired here before, so no
+    recorded verdict changes)."""
     produced: set[str] = set()
     for step in ctx.project.pipeline.steps:
         m = ctx.project.modules.get(step.module)
         if m is not None:
             produced |= set(m.outputs)
+            produced |= {f"{step.id}.{o}" for o in m.outputs}
     missing = [d for d in ctx.objective.deliverables if d not in produced]
     if missing:
         return Verdict(

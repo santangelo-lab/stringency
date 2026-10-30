@@ -139,10 +139,14 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
     open_block = _open(data.get("open"), tools, problems)
 
     after_delivery_titles: list[str] = []
+    words_of = open_block.get("words_of")
+    words_of_skill = f"stringency-analyze-{words_of}" if words_of else ""
     if method_root is not None:
         _cross_check(method_root, pipeline, data["question"], steps, deliverables, problems)
         _cross_check_decisions(method_root, pipeline, decisions, problems)
         _cross_check_tools(method_root, pipeline, tools, open_block, problems)
+        if words_of:
+            words_of_skill = _check_words_of(method_root, pipeline, words_of, problems)
         _check_questions_file(method_root, pipeline, tools, problems)
         delivery = method_root / "skills" / f"{pipeline}.yml"
         if delivery.exists():
@@ -201,8 +205,38 @@ def validate(data: Any, source: Path, method_root: Path | None) -> tuple[dict[st
         "tools": tools,
         "open_intro": open_block.get("intro", ""),
         "open_paths": open_block.get("paths", []),
+        "words_of": words_of or "",
+        "words_of_skill": words_of_skill,
     }
     return ctx, problems
+
+
+def _check_words_of(root: Path, pipeline: str, target: str, problems: Problems) -> str:
+    """`open.words_of` names another analyze file of this method that carries tool words and
+    is not itself a pointer (followed once). Returns the name of the skill it renders to."""
+    skill = f"stringency-analyze-{target}"
+    if target == pipeline:
+        problems.add("open.words_of: names this pipeline itself")
+        return skill
+    f = root / "skills" / f"{target}{SUFFIX}"
+    if not f.exists():
+        problems.add(f"open.words_of: no analyze file {f.name} in this method")
+        return skill
+    try:
+        d = _read_yaml(f)
+    except yaml.YAMLError as e:
+        problems.add(f"open.words_of: {f.name} is not valid YAML ({e})")
+        return skill
+    if not isinstance(d, dict):
+        problems.add(f"open.words_of: {f.name} is not a mapping")
+        return skill
+    ob = d.get("open")
+    if isinstance(ob, dict) and "words_of" in ob:
+        problems.add(f"open.words_of: {f.name} points on to another file; one pointer only")
+    if not d.get("tools"):
+        problems.add(f"open.words_of: {f.name} carries no `tools` to take the words of")
+    name = d.get("name")
+    return f"stringency-analyze-{name.strip()}" if isinstance(name, str) else skill
 
 
 def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
@@ -280,15 +314,33 @@ def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
 def _open(value: Any, tools: list[dict[str, Any]], problems: Problems) -> dict[str, Any]:
     """`open`: `{intro, paths: [{answers, tool | code, needs, asks}]}`, the method's suggested
     paths forward in its own words (open mode, 2026-10-16). A path names a listed tool or says
-    `code: true`, never both; `needs` names the pipeline outputs it needs delivered."""
+    `code: true`, never both; `needs` names the pipeline outputs it needs delivered. Or
+    `{words_of: <pipeline>}` (L136, 2026-10-29): this pipeline's delivery is opened with that
+    pipeline's tool words and `open:` block, so the file carries no `tools`, `intro` or `paths`
+    of its own."""
     if value is None:
         return {}
     if not isinstance(value, dict):
         problems.add("open: a mapping is required")
         return {}
     for key in value:
-        if key not in ("intro", "paths"):
+        if key not in ("intro", "paths", "words_of"):
             problems.add(f"open: unknown key `{key}`")
+    if "words_of" in value:
+        target = value["words_of"]
+        if not isinstance(target, str) or not SLUG.match(target):
+            problems.add("open.words_of: must name a pipeline")
+            return {}
+        if "intro" in value or "paths" in value:
+            problems.add(
+                "open.words_of: a file that takes another pipeline's words carries no "
+                "`intro` or `paths` of its own"
+            )
+        if tools:
+            problems.add(
+                "open.words_of: a file that takes another pipeline's words carries no `tools`"
+            )
+        return {"words_of": target}
     intro = value.get("intro", "")
     if intro is not None and not isinstance(intro, str):
         problems.add("open.intro: must be a sentence")
@@ -618,7 +670,9 @@ def _cross_check(
             m = _read_yaml(mfile)
             if isinstance(m, dict) and isinstance(m.get("outputs"), dict):
                 outputs |= set(m["outputs"])
+                outputs |= {f"{s.get('id')}.{o}" for o in m["outputs"]}
     if outputs:
+        # a bare output name, or `<step>.<output>` for one step's (L135)
         for d in deliverables:
             if d not in outputs:
                 problems.add(

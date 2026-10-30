@@ -119,11 +119,15 @@ def test_tools_list_on_a_delivered_pipeline_project(
     tool = payload["tools"][0]
     assert tool["ref"] == "compare-groups@0.1.1" and tool["kind"] == "deterministic"
     assert tool["env_status"] == "verified"  # the local executor digests the lock file
-    # the delivered frame is what the tool's input could bind
+    # the delivered frame is what the tool's input could bind; the project's own input is a
+    # candidate the open project holds as upstream_groups, bound only by name (L135)
     cands = tool["inputs"]["object"]["candidates"]
-    assert [c["delivered"] for c in cands] == ["01_filter.object.csv"] and cands[0][
-        "type"
-    ] == "frame"
+    assert [c.get("delivered") or c["ref"] for c in cands] == [
+        "01_filter.object.csv",
+        "$inputs.upstream_groups",
+    ]
+    assert cands[0]["type"] == "frame" and cands[1]["binds_by_name"] is True
+    assert "binds_by_name" not in cands[0] and tool["offer"] == "offerable"
     assert set(tool["params"]) == {"replicate_unit", "correction"}
     assert tool["params"]["correction"]["decision_point"] is True
     assert tool["controls"]["last_passing"] is None

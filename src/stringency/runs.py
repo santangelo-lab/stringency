@@ -139,12 +139,22 @@ class RunContext:
         *,
         manifest: dict[str, Any] | None = None,
         question_id: str | None = None,
+        binding: dict[str, Any] | None = None,
     ) -> None:
         """Add a step to an open run (open_mode_plan.md 2.2). Writes: steps (pending) and the
         `created` step event, whose payload carries `on_demand: {kind, decl, manifest?,
-        question_id}` (no new column; the `captures` precedent)."""
+        question_id, binding?}` (no new column; the `captures` precedent); `binding` names, per
+        input bound by a rule rather than by `--in`, the rule and the alternatives (L135)."""
         if not self.open_ended:
             raise RefusedError("steps are added on demand only in an open project")
+        on_demand: dict[str, Any] = {
+            "kind": kind,
+            "decl": decl.model_dump(mode="json", exclude_none=True),
+            "manifest": manifest,
+            "question_id": question_id,
+        }
+        if binding:
+            on_demand["binding"] = binding
         self.store.create_step(
             {
                 "run_id": self.run_id,
@@ -153,14 +163,7 @@ class RunContext:
                 "module_version": module.manifest.version,
                 "operation": module.manifest.operation,
             },
-            extra={
-                "on_demand": {
-                    "kind": kind,
-                    "decl": decl.model_dump(mode="json", exclude_none=True),
-                    "manifest": manifest,
-                    "question_id": question_id,
-                }
-            },
+            extra={"on_demand": on_demand},
         )
 
     def artifact_kinds(self) -> dict[str, str]:

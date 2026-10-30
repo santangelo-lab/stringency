@@ -21,6 +21,7 @@ from stringency import __version__, hashing
 from stringency.actions import Action
 from stringency.artifacts import read_sidecar, sidecar_path
 from stringency.clock import now_iso
+from stringency.config import deliverable_ref
 from stringency.coverage import coverage_data, render_coverage
 from stringency.exit_codes import ConfigError, HeldError, RefusedError
 from stringency.gate import evaluate
@@ -177,14 +178,22 @@ def deliver_gate(rc: RunContext, finals: list[Any]) -> None:
 
 
 def final_artifacts(rc: RunContext, include: list[str]) -> list[Any]:
-    """Report-module outputs by default, plus `--include <step>.<output>`; also any output
-    named as a deliverable in the objective."""
+    """Report-module outputs by default, plus `--include <step>.<output>`; also every output
+    the objective names as a deliverable: a bare name from every step that produces it, a
+    `<step>.<output>` from that step only (L135). Reads: artifacts."""
     store, project = rc.store, rc.project
     wanted: set[tuple[str, str]] = set()
+    bare: set[str] = set()
+    for d in project.objective.deliverables:
+        sid, out = deliverable_ref(d)
+        if sid is None:
+            bare.add(out)
+        else:
+            wanted.add((sid, out))
     for step in project.pipeline.steps:
         m = project.modules.require(step.module).manifest
         for name in m.outputs:
-            if m.kind == "report" or name in project.objective.deliverables:
+            if m.kind == "report" or name in bare:
                 wanted.add((step.id, name))
     for inc in include:
         if "." not in inc:
@@ -226,7 +235,7 @@ def deliver(
         raise RefusedError(f"run {rc.run_id} is {status}; deliver needs a completed run")
     finals = final_artifacts(rc, include or [])
     deliver_gate(rc, finals)
-    produced_names = {a["name"] for a in finals}
+    produced_names = {a["name"] for a in finals} | {f"{a['step_id']}.{a['name']}" for a in finals}
     missing = [d for d in project.objective.deliverables if d not in produced_names]
     if missing:
         raise ConfigError(

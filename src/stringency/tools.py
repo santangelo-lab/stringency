@@ -7,14 +7,21 @@ tools before proposing the switch) and on an open project. Every tool is a modul
 words for the person (`tools:`) and the method's suggested paths (`open.paths`) are carried
 through unread; with `--context`, the objective's question and deliverables and the design's
 factors and levels are added, so the operator composes the paths forward from one payload.
+With `--method <repo@tag>` (L135, 2026-10-29) the tools and words are another checkout's, cloned
+the way `init --method` clones, read against this project's delivery: a delivery whose own
+method predates the open tools is listed with the method the open project will pin. An analyze
+file that says `open: {words_of: <pipeline>}` (L136) takes that pipeline's words.
 
 Reads: stringency.yml, inputs.yml, objective.yml, design.yml, the module index, `deliveries`,
-`artifacts`, `steps`, `controls_runs`, and the skill files. Writes nothing.
+`artifacts`, `steps`, `controls_runs`, and the skill files. Writes nothing in the project (a
+`--method` clone goes to a temporary directory, removed after).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -57,12 +64,18 @@ def _last_passing_control(site: Site, module: Module) -> dict[str, Any] | None:
     return dict(row) if row is not None else None
 
 
+BINDS_BY_NAME = "binds by name (--in)"
+OPTIONAL_NOTE = "bind with --in to use"
+
+
 def _candidates(site: Site) -> list[dict[str, Any]]:
     """What a tool's inputs could bind: on an open project the declared inputs and the latest
-    run's produced artifacts; on a pipeline project the latest delivery's files."""
+    run's produced artifacts; on a pipeline project the latest delivery's files and the
+    project's own declared inputs, as the open project will hold them (`upstream_<name>`,
+    `binds_by_name`: `call` binds them only when named with `--in`, L135)."""
     out: list[dict[str, Any]] = []
+    inputs = load_model(InputsManifest, site.root / "inputs.yml")
     if site.open_ended:
-        inputs = load_model(InputsManifest, site.root / "inputs.yml")
         for i in inputs.items:
             c: dict[str, Any] = {
                 "ref": f"$inputs.{i.name}",
@@ -73,6 +86,7 @@ def _candidates(site: Site) -> list[dict[str, Any]]:
             if i.upstream_input is not None:
                 # read-only, from before the pipeline ran; binds only with --in
                 c["upstream_input"] = i.upstream_input.input
+                c["binds_by_name"] = True
             out.append(c)
         run = site.store.one(
             "SELECT run_id FROM runs WHERE kind='run' ORDER BY started DESC, rowid DESC LIMIT 1"
@@ -95,16 +109,14 @@ def _candidates(site: Site) -> list[dict[str, Any]]:
                 )
         return out
     d = site.store.one("SELECT path FROM deliveries ORDER BY ts DESC, rowid DESC LIMIT 1")
-    if d is None:
-        return out
-    index_path = Path(d["path"]) / "index.json"
-    if not index_path.exists():
-        return out
-    try:
-        index = json.loads(index_path.read_text())
-    except json.JSONDecodeError:
-        return out
-    for f in index.get("files", []):
+    index: dict[str, Any] = {}
+    if d is not None and (Path(d["path"]) / "index.json").exists():
+        try:
+            index = json.loads((Path(d["path"]) / "index.json").read_text())
+        except json.JSONDecodeError:
+            index = {}
+    files = index.get("files", []) if isinstance(index, dict) else []
+    for f in files:
         out.append(
             {
                 "ref": None,
@@ -112,7 +124,26 @@ def _candidates(site: Site) -> list[dict[str, Any]]:
                 "name": f.get("output"),
                 "step_id": f.get("step_id"),
                 "type": f.get("kind"),
-                "path": str(Path(d["path"]) / str(f.get("file"))),
+                "path": str(Path(d["path"]) / str(f.get("file"))) if d is not None else None,
+            }
+        )
+    # the project's own inputs: the open project holds them read-only as `upstream_<name>`
+    # (project.declarations_from_delivery), and `call` binds one only when it is named
+    taken = {str(f.get("output")) for f in files} | {
+        f"{f.get('step_id')}_{f.get('output')}" for f in files
+    }
+    for i in inputs.items:
+        name = f"upstream_{i.name}"
+        if name in taken:
+            continue
+        out.append(
+            {
+                "ref": f"$inputs.{name}",
+                "name": name,
+                "type": i.type,
+                "path": i.path,
+                "upstream_input": i.name,
+                "binds_by_name": True,
             }
         )
     return out
@@ -128,29 +159,72 @@ def _skill_files(site: Site) -> list[Path]:
     return [f] if f.exists() else []
 
 
-def _words(site: Site) -> tuple[dict[str, dict[str, Any]], dict[str, Any], list[str]]:
-    """(tool words by module name, the `open:` block, notes). Malformed files are reported as
-    notes, never fatal: the verb reads, it does not lint."""
+def _read_analyze(f: Path, notes: list[str]) -> dict[str, Any] | None:
+    try:
+        data = yaml.safe_load(f.read_text())
+    except yaml.YAMLError as e:
+        notes.append(f"{f}: not valid YAML ({e})")
+        return None
+    except OSError as e:
+        notes.append(f"{f}: cannot be read ({e})")
+        return None
+    if not isinstance(data, dict):
+        notes.append(f"{f}: not a mapping")
+        return None
+    return data
+
+
+def words_of(data: dict[str, Any]) -> str | None:
+    """The pipeline whose analyze file holds this file's tool words and `open:` block (`open:
+    {words_of: <pipeline>}`, L136), or None."""
+    ob = data.get("open")
+    target = ob.get("words_of") if isinstance(ob, dict) else None
+    return str(target) if isinstance(target, str) and target.strip() else None
+
+
+def _words(
+    site: Site,
+) -> tuple[dict[str, dict[str, Any]], dict[str, Any], list[str], str | None]:
+    """(tool words by module name, the `open:` block, notes, the pipeline whose words were
+    taken through `words_of`). On a pipeline project the pipeline's own analyze file, or, when
+    it says `open: {words_of: <pipeline>}`, that pipeline's file instead (the pointer is followed
+    once, never a chain); on an open project every analyze file, a file with `words_of`
+    contributing nothing of its own. Malformed files are reported as notes, never fatal: the
+    verb reads, it does not lint."""
     words: dict[str, dict[str, Any]] = {}
     open_block: dict[str, Any] = {}
     notes: list[str] = []
+    followed: str | None = None
     for f in _skill_files(site):
-        try:
-            data = yaml.safe_load(f.read_text())
-        except yaml.YAMLError as e:
-            notes.append(f"{f}: not valid YAML ({e})")
+        data = _read_analyze(f, notes)
+        if data is None:
             continue
-        if not isinstance(data, dict):
-            notes.append(f"{f}: not a mapping")
-            continue
+        target = words_of(data)
+        if target is not None:
+            if site.open_ended:
+                continue  # the file it points to is read in its own turn
+            tf = f.parent / f"{target}.analyze.yml"
+            if not tf.exists():
+                notes.append(f"{f}: open.words_of names {target}, but {tf} does not exist")
+                continue
+            data = _read_analyze(tf, notes)
+            if data is None:
+                continue
+            followed = target
+            again = words_of(data)
+            if again is not None:
+                notes.append(
+                    f"{tf}: open.words_of names {again}; the pointer is followed once, not again"
+                )
         for t in data.get("tools") or []:
             if isinstance(t, dict) and t.get("module"):
                 words[str(t["module"])] = {k: v for k, v in t.items() if k != "module"}
         ob = data.get("open")
         if isinstance(ob, dict):
+            ob = {k: v for k, v in ob.items() if k != "words_of"}
             paths = list(open_block.get("paths") or []) + list(ob.get("paths") or [])
             open_block = {**open_block, **ob, "paths": paths}
-    return words, open_block, notes
+    return words, open_block, notes, followed
 
 
 def _tool_entry(
@@ -158,14 +232,31 @@ def _tool_entry(
 ) -> dict[str, Any]:
     m = module.manifest
     inputs: dict[str, Any] = {}
+    unmatched: list[str] = []
+    by_name: list[str] = []
     for name, spec in m.inputs.items():
+        cands = [c for c in candidates if c.get("type") == spec.type]
         inputs[name] = {
             "type": spec.type,
             "format": spec.format,
             "optional": spec.optional,
             "arity": spec.arity,
-            "candidates": [c for c in candidates if c.get("type") == spec.type],
+            "candidates": cands,
         }
+        if spec.optional:
+            # an optional input binds nothing by type (steps.bind_inputs, L49)
+            inputs[name]["note"] = OPTIONAL_NOTE
+            continue
+        if not cands:
+            unmatched.append(name)
+        elif all(c.get("binds_by_name") for c in cands):
+            by_name.extend(f"{name}={c['ref']}" for c in cands)
+    if unmatched:
+        offer = f"not offered: no candidate for {', '.join(unmatched)}"
+    elif by_name:
+        offer = "offerable; bind with --in " + " or ".join(by_name)
+    else:
+        offer = "offerable"
     params: dict[str, Any] = {}
     for name, schema in module.declared_params.items():
         params[name] = {
@@ -194,6 +285,8 @@ def _tool_entry(
         "outputs": {k: {"type": v.type, "format": v.format} for k, v in m.outputs.items()},
         "controls": control,
         "words": words,
+        "offerable": not unmatched,
+        "offer": offer,
     }
     return entry
 
@@ -222,10 +315,36 @@ def context_block(site: Site) -> dict[str, Any]:
     }
 
 
-def tools_payload(site: Site, *, context: bool = False) -> dict[str, Any]:
+def tools_payload(
+    site: Site, *, context: bool = False, method: str | None = None
+) -> dict[str, Any]:
+    """The listing. With `method` (`<repo>@<tag>`, as `init --method` takes it), that method is
+    cloned into a temporary directory by the resolver `init` uses and its tools and skill files
+    are read against this project's delivery and declared inputs (L135)."""
+    if method is None:
+        return _payload(site, context=context)
+    from stringency.git import clone_at
+    from stringency.project import _parse_method
+
+    url, tag = _parse_method(method)
+    with tempfile.TemporaryDirectory(prefix="stringency-tools-") as tmp:
+        dest = Path(tmp) / "method"
+        sha = clone_at(url, tag, dest)
+        payload = _payload(dataclasses.replace(site, method_dir=dest), context=context)
+    payload["method"] = {
+        "repo": url,
+        "tag": tag,
+        "sha": sha,
+        "from": "--method",
+        "project_pins": {"repo": site.config.method.repo, "tag": site.config.method.tag},
+    }
+    return payload
+
+
+def _payload(site: Site, *, context: bool) -> dict[str, Any]:
     tools = site.tools()
     candidates = _candidates(site)
-    words, open_block, notes = _words(site)
+    words, open_block, notes, followed = _words(site)
     payload: dict[str, Any] = {
         "schema": "stringency.tools/1",
         "project_id": site.config.project_id,
@@ -234,6 +353,7 @@ def tools_payload(site: Site, *, context: bool = False) -> dict[str, Any]:
         "method": {"repo": site.config.method.repo, "tag": site.config.method.tag},
         "tools": [_tool_entry(site, m, candidates, words.get(m.manifest.name)) for m in tools],
         "open": open_block,
+        "words_of": followed,
         "candidates": candidates,
         "notes": notes,
     }
@@ -245,6 +365,15 @@ def tools_payload(site: Site, *, context: bool = False) -> dict[str, Any]:
 def render_tools(payload: dict[str, Any]) -> str:
     lines: list[str] = []
     tools = payload["tools"]
+    meth = payload["method"]
+    if meth.get("from") == "--method":
+        pins = meth["project_pins"]
+        lines.append(
+            f"tools of method {meth['repo']}@{meth['tag']} ({str(meth['sha'])[:12]}), against "
+            f"this project's delivery; the project pins {pins['repo']}@{pins['tag']}"
+        )
+    if payload.get("words_of"):
+        lines.append(f"words: the {payload['words_of']} analyze file's (open.words_of)")
     if not tools:
         lines.append(
             f"no tools: no module of method {payload['method']['tag']} lists open in its modes"
@@ -258,9 +387,16 @@ def render_tools(payload: dict[str, Any]) -> str:
         if w.get("use_when"):
             lines.append(f"  use when: {w['use_when']}")
         for name, spec in t["inputs"].items():
-            cands = ", ".join(str(c.get("ref") or c.get("delivered")) for c in spec["candidates"])
+            cands = ", ".join(
+                str(c.get("ref") or c.get("delivered"))
+                + (f" {BINDS_BY_NAME}" if c.get("binds_by_name") else "")
+                for c in spec["candidates"]
+            )
             opt = ", optional" if spec["optional"] else ""
-            lines.append(f"  input {name} ({spec['type']}{opt}): {cands or 'nothing matches'}")
+            note = f"; {spec['note']}" if spec.get("note") else ""
+            lines.append(
+                f"  input {name} ({spec['type']}{opt}): {cands or 'nothing matches'}{note}"
+            )
         for name, p in t["params"].items():
             dp = "  [decision point]" if p["decision_point"] else ""
             ask = w.get("asks", {}).get(name) if isinstance(w.get("asks"), dict) else None
@@ -276,6 +412,7 @@ def render_tools(payload: dict[str, Any]) -> str:
             lines.append(f"  control: {lp['control_name']} passed {lp['ts']}")
         else:
             lines.append(f"  control: {c.get('note', UNTESTED_NOTE)}")
+        lines.append(f"  {t['offer']}")
     paths = (payload.get("open") or {}).get("paths") or []
     if paths:
         lines.append("paths the method suggests:")

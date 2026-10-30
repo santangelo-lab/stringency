@@ -47,10 +47,13 @@ class Site:
     config: StringencyConfig
     store: Store
     pipeline: Pipeline
+    # another checkout of a method to read the tools and skill files from (`tools list
+    # --method`, L135); the project's own `method/` when None
+    method_dir: Path | None = None
 
     @property
     def method_root(self) -> Path:
-        return self.root / "method"
+        return self.method_dir if self.method_dir is not None else self.root / "method"
 
     @classmethod
     def load(cls, root: Path) -> Site:

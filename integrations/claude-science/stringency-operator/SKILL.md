@@ -347,7 +347,10 @@ data from before it ran.
 ### 10.1 Before it begins: the review and the paths forward
 
 After the three-part report of a delivery (section 7), and before you say anything about
-questions, run `stringency tools list --context --json` in the delivered project. It lists every
+questions, run `stringency tools list --context --json` in the delivered project. When the
+delivered project's method is older than the one the open project will pin (the tag you will
+pass to `init --method` in 10.2), add `--method <repo>@<that tag>`: the listing is then that
+method's tools against this delivery. It lists every
 tool with its inputs and what in the delivery could bind them, its parameters and decision
 points, its last passing control or what will happen without one ("runs before the tool's first use;
 its outputs are trusted if it passes", or "none: outputs will be labelled untested"), the words the
@@ -356,8 +359,16 @@ and under `context` the objective's question and deliverables and the design's f
 levels. From that one payload compose three to five paths forward, in the pinned form of 10.7:
 a tool whose control is on record or runs before its first use is "would be labelled trusted";
 a tool whose note says "none" is said as "would be labelled untested, since no control checks
-it"; tools before code; never a path the delivery lacks the data for (a tool whose input has no
-candidate is not offered); never a verdict-shaped path ("is the result significant"). Say the
+it"; tools before code; never a path the delivery lacks the data for (a tool the listing says
+is "not offered" has an input with no candidate); never a verdict-shaped path ("is the result
+significant"). A candidate marked "binds by name (--in)" is the pipeline's own input, which the
+open project holds read-only as `upstream_<name>`; a tool whose only candidate is one is
+"offerable; bind with --in", and you call it with that `--in`. The `--in` forms, one line each:
+
+- an optional input (the listing says "bind with --in to use"): `stringency call <tool> --in <input>=$inputs.<delivered name>`
+- an upstream input: `stringency call <tool> --in <input>=$inputs.upstream_<name>`
+
+Say the
 paths, then the switch paragraph, and ask for the yes. The person may pick a path, ask something
 else, or stop; stopping is an answer.
 
@@ -365,7 +376,7 @@ else, or stop; stopping is an answer.
 
 The switch is one relayed yes, not an inherited confirmation (owner's decision 4). On the yes:
 
-1. `stringency init <upstream>-open --method <the same method@tag> --mode open
+1. `stringency init <upstream>-open --method <the same method@tag, or the one 10.1 listed with> --mode open
    --from-delivery <upstream>/deliver/<run id> --judgment-harness <as upstream> --executor <as
    upstream> --execution engine --owner ... --reviewer ...` beside the upstream project. It exits
    10 with a confirm hold whose echo is the switch paragraph and the bound delivery.
@@ -388,7 +399,8 @@ else, and then carry on whatever the person says.
 - `stringency call <tool> --question <id> [--in <input>=<ref>] [--set k=v ...] --json` runs a
   tool as an on-demand step through the ordinary gate (exit 0 completed, 10 held, 11 blocked,
   12 rejected, 13 failed). An unbound input binds the one delivered file of its type or the
-  latest artifact of that type; name it with `--in` when the engine says it is ambiguous, and
+  latest artifact of that type, and among one output delivered by several steps the latest
+  step's; name it with `--in` when the engine says it is ambiguous (it prints the forms), and
   to run a tool on an upstream input (`--in <input>=$inputs.upstream_<name>`). The first call of
   a deterministic tool runs its controls first (`controls_run` in the payload); a failing control
   is said plainly, and that tool's answers are labelled untested. A judgment tool's controls are

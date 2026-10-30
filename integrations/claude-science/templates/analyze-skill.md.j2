@@ -345,6 +345,8 @@ fields, each `none` when empty):
 - trusted only, when asked: "I can answer only with tools shipped with the method, if you prefer; then anything no tool answers I will say I cannot answer."
 - report, once, when the first answer lands: "Everything you ask goes into the report, on disk beside the results as it is answered, with its figures. Tell me whenever an answer is an important finding: it then goes into the report in full, at the top."
 - findings, once, when the person is done: "Which of these answers are important findings? Each one you name goes into the report in full, at the top, with its tables and figures; the others stay in the report in short. Name them by number, say all, or say none."
+{% elif words_of %}
+This pipeline's delivery is opened for questions with the `{{ words_of_skill }}` skill's words; load that skill after delivery.
 {% else %}
 This method ships no tools for questions of a delivered dataset (no module lists `open`), so
 open mode is not offered after this pipeline delivers. If the person asks a question of the

@@ -204,6 +204,13 @@ class Design(Lenient):
         return seen
 
 
+def deliverable_ref(d: str) -> tuple[str | None, str]:
+    """`(step, output)` of a deliverable: `<step>.<output>` names one step's output, a bare
+    output name every step's (step None)."""
+    sid, sep, out = d.partition(".")
+    return (sid, out) if sep and sid and out else (None, d)
+
+
 class Objective(Lenient):
     """Engine-known core of objective.yml plus a plugin-interpreted `domain` block."""
 
@@ -214,6 +221,8 @@ class Objective(Lenient):
     replication_unit: str | None = None
     min_n_per_group: int = 0
     deliverables: list[str] = Field(default_factory=list)
+    """An output name (every step that produces it delivers it) or `<step>.<output>` (that
+    step's only; 2026-10-29, L135), the form `deliver --include` takes."""
     domain: dict[str, Any] = Field(default_factory=dict)
     params: dict[str, dict[str, Any]] = Field(default_factory=dict)
     """Parameters declared before the run, by step (design 2.5, 2026-10-14): `init` checks each

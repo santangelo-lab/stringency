@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from stringency.config import deliverable_ref
 from stringency.predicates.context import Disposition, GateContext, Verdict
 from stringency.predicates.registry import predicate
 
@@ -56,10 +57,12 @@ def deliverable_unreachable(ctx: GateContext) -> Verdict:
     pipeline = ctx.project.pipeline
     unreachable: list[str] = []
     for d in ctx.objective.deliverables:
+        # `<step>.<output>` names one step's output (L135); a bare name every producer's
+        sid, out = deliverable_ref(d)
         producers: list[str] = []
         for s in pipeline.steps:
             mm = ctx.project.module_for(s.module)
-            if mm is not None and d in mm.outputs:
+            if mm is not None and out in mm.outputs and (sid is None or s.id == sid):
                 producers.append(s.id)
         if producers and all(ctx.project.step_status.get(p) in TERMINAL for p in producers):
             unreachable.append(d)

@@ -1,13 +1,15 @@
 """Lint (design 13). Errors fail; warnings do not.
 
 `lint_path` accepts a module directory or a method repo. A method repo is linted whole:
-every module, every pipeline, and the policy.
+every module, every pipeline, the policy, and the `open:` blocks of its analyze skill files.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import yaml
 
 from stringency import __version__
 from stringency.config import Design
@@ -542,6 +544,7 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
         report.errors.append(str(e))
         return report
     _lint_env_manifest(path, modules, report)
+    _lint_analyze_open(path, report)
     for module in modules.all():
         lint_module(
             module, report, plugin=plugins.get(module.manifest.domain), policy=policy, design=design
@@ -564,6 +567,49 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
                 policy=policy,
             )
     return report
+
+
+def _lint_analyze_open(path: Path, report: LintReport) -> None:
+    """`skills/*.analyze.yml` `open:` (L136): two files that both carry `open.intro` are a
+    warning, since an open project reads every analyze file and the later file's intro wins; a
+    file that takes another's words says `open: {words_of: <pipeline>}` instead. A `words_of`
+    naming no analyze file, or one that itself points on, is a warning (followed once)."""
+    skills = path / "skills"
+    if not skills.is_dir():
+        return
+    intros: list[str] = []
+    pointers: dict[str, str] = {}
+    for f in sorted(skills.glob("*.analyze.yml")):
+        try:
+            data = yaml.safe_load(f.read_text())
+        except (OSError, yaml.YAMLError):
+            continue  # the renderer's `--check` reports a malformed file
+        ob = data.get("open") if isinstance(data, dict) else None
+        if not isinstance(ob, dict):
+            continue
+        target = ob.get("words_of")
+        if isinstance(target, str) and target.strip():
+            pointers[f.name] = target.strip()
+        elif isinstance(ob.get("intro"), str) and ob["intro"].strip():
+            intros.append(f.name)
+    if len(intros) > 1:
+        report.warn(
+            str(skills),
+            f"open.intro in {len(intros)} analyze files ({', '.join(intros)}): an open project "
+            "reads them all and the later file's intro wins; let one carry the words and point "
+            "the others at it with `open: {words_of: <pipeline>}`",
+        )
+    for name, target in pointers.items():
+        tf = skills / f"{target}.analyze.yml"
+        if not tf.exists():
+            report.warn(
+                str(skills / name), f"open.words_of names {target}, but {tf.name} is absent"
+            )
+        elif f"{target}.analyze.yml" in pointers:
+            report.warn(
+                str(skills / name),
+                f"open.words_of names {target}, whose file points on; the pointer is followed once",
+            )
 
 
 def _lint_env_manifest(path: Path, modules: ModuleIndex, report: LintReport) -> None:
