@@ -299,7 +299,7 @@ def test_where_clause_parses_and_filters() -> None:
         apply_where(rows, "z = 1")
 
 
-def test_lint_errors_on_a_where_column_the_view_does_not_have(method_repo: MethodRepo) -> None:
+def test_lint_warns_on_a_where_column_the_view_does_not_list(method_repo: MethodRepo) -> None:
     d = method_repo.path / "skills"
     d.mkdir(exist_ok=True)
     (d / "toy.yml").write_text(
@@ -316,10 +316,14 @@ def test_lint_errors_on_a_where_column_the_view_does_not_have(method_repo: Metho
             }
         )
     )
-    errors = [e for e in lint_path(method_repo.path).errors if "where" in e]
-    assert len(errors) == 2, errors
-    assert "after_delivery[1]" in errors[0] and "column z" in errors[0]
-    assert "after_delivery[2]" in errors[1]
+    report = lint_path(method_repo.path)
+    warnings = [w for w in report.warnings if "where" in w]
+    # a column the view does not list is a warning (the view shows a subset of the table);
+    # a malformed clause stays an error
+    assert len(warnings) == 1, warnings
+    assert "after_delivery[1]" in warnings[0] and "column z" in warnings[0]
+    errors = [e for e in report.errors if "where" in e]
+    assert len(errors) == 1 and "after_delivery[2]" in errors[0], errors
 
 
 def test_present_applies_where_and_names_a_missing_column(held: Project) -> None:

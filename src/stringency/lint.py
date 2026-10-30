@@ -839,10 +839,14 @@ def _lint_view_where(path: Path, modules: ModuleIndex, report: LintReport) -> No
                     if out is not None and out.key:
                         known += list(out.key)
                 if known and column not in known:
-                    report.error(
+                    # the listed columns are what the view shows, not all the table has (a
+                    # hold view filtering on a column it does not print, 2026-10-30), so this
+                    # is a warning; `present` names a column the table lacks when it renders
+                    report.warn(
                         at,
-                        f"where names column {column}, which the view does not have "
-                        f"(its columns: {', '.join(dict.fromkeys(known))})",
+                        f"where names column {column}, which the view does not list "
+                        f"(its columns: {', '.join(dict.fromkeys(known))}); present checks it "
+                        "against the table",
                     )
 
 
