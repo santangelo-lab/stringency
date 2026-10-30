@@ -3,8 +3,12 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-27)
+## Current state (2026-10-30)
 
+- The second pilot's findings built (`notes/2026-10-30-0300-second-pilot-packages.md`): L130 to
+  L144 on `main` at 0.2.36, unpushed; `v0.2.35` tagged on branch `release-0.2.35` (L130, L135,
+  L136, L138, L142); L145 filed. The owner pushes the branch, the tag and main; the Xenium
+  method requires `>=0.2.35`.
 - Engine backlog without the owner (`notes/2026-10-27-2200-engine-backlog-l112-l96-l128.md`):
   L112 (a judgment with no items completes without a dispatch), L96 (lint on a default outside
   its range) and L128 (the job's key order keeps the declarations' order) done on `main`,

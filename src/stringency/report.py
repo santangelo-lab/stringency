@@ -42,7 +42,7 @@ from stringency.findings import placements, story, story_numerals
 from stringency.ids import new_id
 from stringency.methods import methods_paragraph, number_word
 from stringency.present import Site, _settled_lines, answer_sections, markdown_table
-from stringency.provenance import TRUSTED_MEANS, UNTESTED_MEANS
+from stringency.provenance import DRAWN_MEANS, TRUSTED_MEANS, UNTESTED_MEANS, fit_line
 from stringency.runs import RunContext, captured_plugins
 from stringency.summary import NOT_CHECKED_OPEN
 
@@ -196,6 +196,12 @@ def _answer_file_text(ans: dict[str, Any], entry: dict[str, Any], cited_files: l
         "",
         ans["text"].rstrip(),
         "",
+        # the question's wants beside the cited steps' gives (L139); absent before 0.2.36
+        *(
+            [fit_line(prov["fit"].get("wants"), prov["fit"].get("gives"))]
+            if isinstance(prov.get("fit"), dict)
+            else []
+        ),
         "Cited files: " + (", ".join(cited_files) or "none"),
         *[f"Figure: {f['file'] or f['name']}. {f['label_line']}" for f in entry["figures"]],
         f"Runs: {entry['runs']}",
@@ -671,6 +677,8 @@ def render_report(
         "## How to read the labels",
         "",
         TRUSTED_MEANS,
+        "",
+        DRAWN_MEANS,
         "",
         UNTESTED_MEANS,
         "",
