@@ -29,6 +29,8 @@ Full answer with its tables: `q02-what-is-the-mean-per-group.md`.
 
 Trusted means the engine ran a tool the method ships, in a verified environment, with a passing control on record, on the delivered data; the words around the numbers are still mine.
 
+Trusted data, drawn by session code means the engine ran a tool the method ships for every number on the figure, and the drawing itself is code written in this session: the engine checked that every number the figure draws is a cell of those trusted tables, and nothing has checked the drawing code beyond that.
+
 Untested means the engine ran code I wrote in this session and recorded it, but nothing has checked that the code computes what it claims; or it ran a tool the method ships that missed a condition of trusted, which the label names.
 
 ## The record
