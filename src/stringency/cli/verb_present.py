@@ -1,5 +1,5 @@
-"""`stringency present [--run <id>] [--hold <id>] [--answer <id> [--details]] [--answers]
-[--skills-dir <dir>] [--json]` (design 14.3)."""
+"""`stringency present [--run <id>] [--hold <id>] [--answer <id> [--chat] [--details]]
+[--answers] [--skills-dir <dir>] [--json]` (design 14.3; `--chat`, L141)."""
 
 from __future__ import annotations
 
@@ -32,6 +32,14 @@ def present(
         "--details",
         help="with --answer: add the qualifier line, the cells checked, every decision, the ids",
     ),
+    chat: bool = typer.Option(
+        False,
+        "--chat",
+        help=(
+            "with --answer: the block to paste under the reply: the cited rows, the figures, "
+            "the label sentence; the full answer view only with --details"
+        ),
+    ),
     skills_dir: Path | None = typer.Option(
         None,
         "--skills-dir",
@@ -43,7 +51,7 @@ def present(
     if answers:
         payload = present_answers(project, run_id)
     elif answer_id is not None:
-        payload = present_answer(project, answer_id, skills_dir, details=details)
+        payload = present_answer(project, answer_id, skills_dir, details=details, chat=chat)
     elif hold_id is not None or (run_id is None and _has_open_hold(project)):
         payload = present_hold(project, hold_id, skills_dir)
     else:

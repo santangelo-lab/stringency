@@ -559,6 +559,7 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
         return report
     _lint_env_manifest(path, modules, report)
     _lint_analyze_open(path, report)
+    _lint_answer_views(path, modules, report)
     for module in modules.all():
         lint_module(
             module, report, plugin=plugins.get(module.manifest.domain), policy=policy, design=design
@@ -751,6 +752,33 @@ def _lint_view_columns(
                     f"{f.name}",
                     f"columns of {step}/{output} no view shows: " + ", ".join(unseen),
                 )
+
+
+def _lint_answer_views(path: Path, modules: ModuleIndex, report: LintReport) -> None:
+    """`skills/open.yml` `answer_view` (L141): a module that lists `open` with no entry there is
+    a warning, since `present --answer` and the report then fall back to the engine default (the
+    cited rows), which knows nothing of how the method would show the tool's output. A file
+    that does not parse is left to the reader, which degrades to the default."""
+    tools = sorted(m.manifest.name for m in modules.all() if "open" in m.manifest.modes)
+    if not tools:
+        return
+    f = path / "skills" / "open.yml"
+    viewed: set[str] = set()
+    if f.is_file():
+        try:
+            data = yaml.safe_load(f.read_text())
+        except (OSError, yaml.YAMLError):
+            data = None
+        raw = data.get("answer_view") if isinstance(data, dict) else None
+        if isinstance(raw, list):
+            viewed = {str(v.get("tool")) for v in raw if isinstance(v, dict)}
+    for tool in tools:
+        if tool not in viewed:
+            report.warn(
+                f"{path.name}/skills/open.yml",
+                f"{tool} lists open with no answer_view entry: present --answer and the report "
+                "show the engine default (the cited rows) for its answers",
+            )
 
 
 def _lint_env_manifest(path: Path, modules: ModuleIndex, report: LintReport) -> None:

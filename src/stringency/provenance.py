@@ -89,7 +89,9 @@ REPORT_SENTENCE = (
 FINDINGS_SENTENCE = (
     "Which of these answers are important findings? Each one you name goes into the report in "
     "full, at the top, with its tables and figures; the others stay in the report in short. "
-    "Name them by number, say all, or say none."
+    "Name them by number, say all, or say none. If you want them in an order of your own, "
+    "under headings in your words, or opened by a paragraph you write, tell me and the report "
+    "will follow it."
 )
 QUALIFIER_LINE = (
     "flags accepted on the path: {flags} | parameters outside range: {ranges} | "

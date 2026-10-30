@@ -55,11 +55,13 @@ def answer_file_name(seq: int, question: str, nth: int = 1) -> str:
 
 
 def answer_artifacts(rc: RunContext, answers: list[dict[str, Any]]) -> list[Any]:
-    """The produced artifacts the chosen answers cite, each once, in citation order."""
+    """The produced artifacts the chosen answers cite, then the figures each attaches (L143,
+    `provenance.figures`), each once, in citation order. Reads: artifacts."""
     rows: list[Any] = []
     seen: set[str] = set()
     for a in answers:
-        for c in a["cited"]:
+        figures = (a.get("provenance") or {}).get("figures") or []
+        for c in [*a["cited"], *figures]:
             aid = str(c["artifact_id"])
             if aid in seen:
                 continue

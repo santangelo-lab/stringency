@@ -19,7 +19,7 @@ from typing import Any
 import yaml
 from jinja2 import Environment, StrictUndefined
 
-from stringency.config import StringencyConfig, load_model
+from stringency.config import Design, StringencyConfig, load_model
 from stringency.db.store import Store
 from stringency.exit_codes import ConfigError
 from stringency.modules import ModuleIndex
@@ -31,7 +31,8 @@ from stringency.pipelines import (
     open_pipeline,
 )
 from stringency.plain import progress_sentence
-from stringency.tables import is_tabular
+from stringency.predicates.engine.judg import NUMERAL, numeral_matches
+from stringency.tables import KEY_SEP, is_tabular
 
 KINDS = ("table", "json_table", "jsonl", "text", "file", "figure", "figures", "chart")
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp", ".pdf")
@@ -1383,16 +1384,153 @@ def answer_sections(
     return sections, views
 
 
+def _said(written: str, value: Any) -> bool:
+    """`written` is `value` as the text says it: the gate's rule (`numeral_matches`), except a
+    numeral in exponent form, which matches at its written significant digits only (the gate's
+    absolute tolerance would match any two values below 1e-12, every p value of a table)."""
+    if "e" not in written.lower():
+        return numeral_matches(written, value)
+    try:
+        fw, fv = float(written), float(value)
+    except (TypeError, ValueError):
+        return False
+    mantissa = written.lower().split("e", 1)[0]
+    d = len(mantissa.split(".", 1)[1]) if "." in mantissa else 0
+    return f"{fv:.{d}e}" == f"{fw:.{d}e}"
+
+
+def _design_levels(project: Site) -> set[str]:
+    """The numerals of the design's factor levels as written (`6`, `24`): a time point named in
+    the text says which rows, not a cell, so it selects no column. Reads design.yml."""
+    try:
+        design = load_model(Design, project.root / "design.yml")
+    except Exception:  # noqa: BLE001  (a reading view never fails on the design)
+        return set()
+    out: set[str] = set()
+    for f in (design.factors or {}).values():
+        for lv in f.levels:
+            out.update(NUMERAL.findall(str(lv)))
+    return out
+
+
+def chat_tables(
+    project: Site, prov: dict[str, Any], cited: list[dict[str, Any]], text: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The relay-ready part of an answer (L141): one table per cited table, its key columns and
+    the cited cells only, and the cited figures. A table's rows are the rows cited by key, and
+    for a table cited whole the rows holding a cell a numeral of the text matches; its columns
+    are the columns cited by name and those holding such a cell, or every cited column when no
+    numeral matches one, in the table's order. A numeral that is a level of a design factor or a
+    value of a cited row's key names rows, and selects nothing. A cited table with no row to show is listed by name with no rows.
+    Returns (tables, cited figures). Reads: artifacts."""
+    cells: dict[str, dict[str, dict[str, Any]]] = prov.get("cells") or {}
+    keys: dict[str, str] = prov.get("keys") or {}
+    # a numeral that names rows (a design level, a value of a cited row's key) selects nothing
+    naming = _design_levels(project) | {
+        n for rows in cells.values() for k in rows for n in NUMERAL.findall(str(k))
+    }
+    nums = [m.group(0) for m in NUMERAL.finditer(text) if m.group(0) not in naming]
+
+    def hit(v: Any) -> bool:
+        return any(_said(n, v) for n in nums)
+
+    tables: list[dict[str, Any]] = []
+    figures: list[dict[str, Any]] = []
+    for aid in dict.fromkeys(str(c.get("artifact_id")) for c in cited):
+        art = project.store.one("SELECT * FROM artifacts WHERE artifact_id = ?", (aid,))
+        if art is None:
+            continue
+        if not is_tabular(str(art["kind"]), str(art["path"])):
+            if str(art["kind"]) == "figure":
+                figures.append({"artifact_id": aid, "name": art["name"], "path": art["path"]})
+            continue
+        mine = [c for c in cited if str(c.get("artifact_id")) == aid]
+        whole = any(not c.get("row") for c in mine)
+        named_rows = [str(c["row"]) for c in mine if c.get("row")]
+        stored = cells.get(aid) or {}
+        # in the order the answer cited them (the stored cells are keyed in sorted order)
+        rows = {k: stored[k] for k in named_rows if k in stored} | stored
+        key_names = (keys.get(aid) or _key_column(Path(str(art["path"])))).split(KEY_SEP)
+        shown = {
+            k: r
+            for k, r in rows.items()
+            if not whole or k in named_rows or any(map(hit, r.values()))
+        }
+        cols: list[str] = []
+        for c in mine:
+            if c.get("column") and c["column"] not in cols:
+                cols.append(str(c["column"]))
+        for r in shown.values():
+            cols += [c for c, v in r.items() if c not in key_names and c not in cols and hit(v)]
+        if not cols:
+            for r in shown.values():
+                cols += [c for c in r if c not in key_names and c not in cols]
+        header = _header(Path(str(art["path"])))
+        cols.sort(key=lambda c: header.index(c) if c in header else len(header))
+        out_rows: list[dict[str, Any]] = []
+        for k, r in shown.items():
+            parts = k.split(KEY_SEP)
+            names = key_names if len(parts) == len(key_names) else [KEY_SEP.join(key_names)]
+            vals = parts if len(parts) == len(key_names) else [k]
+            out_rows.append({**dict(zip(names, vals, strict=True)), **{c: r.get(c) for c in cols}})
+        head = (
+            key_names
+            if all(len(k.split(KEY_SEP)) == len(key_names) for k in shown)
+            else [KEY_SEP.join(key_names)]
+        )
+        tables.append(
+            {
+                "artifact_id": aid,
+                "title": str(art["name"]),
+                "kind": "table",
+                **_table(out_rows, head + cols, {}),
+            }
+        )
+    return tables, figures
+
+
+def render_chat(payload: dict[str, Any]) -> str:
+    """`present --answer --chat` (L141): the block the operator pastes under its reply, the
+    cited rows first, then each cited or attached figure's path (an attached figure with its own
+    label), then the label sentence."""
+    chat = payload["chat"]
+    out: list[str] = []
+    for t in chat["tables"]:
+        out.append(f"**{t['title']}**")
+        out.append("")
+        if t["rows"]:
+            out.append(markdown_table(t["columns"], t["rows"]))
+        else:
+            out.append("(cited; no number in the text comes from it)")
+        out.append("")
+    for f in chat["figures"]:
+        out.append(f"Figure {f['name']}: {f['path']}")
+    for f in payload.get("figures") or []:
+        out.append(f"Figure {f['name']}: {f['path']}")
+        out.append(str(f.get("label_line") or ""))
+    if chat["figures"] or payload.get("figures"):
+        out.append("")
+    out.append(payload["label_sentence"] or "")
+    return "\n".join(out) + "\n"
+
+
 def present_answer(
-    project: Site, answer_id: str, skills_dir: Path | None = None, *, details: bool = False
+    project: Site,
+    answer_id: str,
+    skills_dir: Path | None = None,
+    *,
+    details: bool = False,
+    chat: bool = False,
 ) -> dict[str, Any]:
     """One answer as the operator reads it to compose the reply (open_mode_plan.md 2.7;
     2026-10-19, the owner's second drive): the question, the text, the tables and figures the
     method's `answer_view` names for the tool (else every cited table's cited rows, with the
     row names), the label sentence, the parameters the person settled, and the delivered file
     when there is one; with `details`, also the qualifier line, the cells the numbers were
-    checked against, every decision with its source and the ids. Loads no plugin. Reads:
-    answers, questions, messages, artifacts, deliveries."""
+    checked against, every decision with its source and the ids. The figures attached to the
+    answer (L143) are listed with their own labels. With `chat` (L141), `chat` holds the
+    relay-ready block (`chat_tables`) and the full view renders only with `details`. Loads no
+    plugin. Reads: answers, questions, messages, artifacts, deliveries."""
     row = project.store.one(
         "SELECT a.*, q.seq, q.origin, q.text_ref AS q_ref FROM answers a JOIN questions q ON "
         "q.question_id = a.question_id WHERE a.answer_id = ?",
@@ -1405,6 +1543,11 @@ def present_answer(
     tools = [str(t) for t in prov.get("tools", [])]
     sections, views = answer_sections(project, row["run_id"], prov, cited, skills_dir)
     entry = _report_entry(project, row["run_id"], answer_id)
+    text = project.store.message(row["text_ref"]) or ""
+    block = None
+    if chat:
+        tables, cited_figures = chat_tables(project, prov, cited, text)
+        block = {"tables": tables, "figures": cited_figures}
     return {
         "schema": "stringency.present/1",
         "kind": "answer",
@@ -1420,8 +1563,12 @@ def present_answer(
         "qualifier": prov.get("qualifier_line"),
         "route": prov.get("route"),
         "tools": tools,
-        "text": project.store.message(row["text_ref"]) or "",
+        "text": text,
         "sections": sections,
+        "figures": [
+            {k: f.get(k) for k in ("artifact_id", "name", "path", "label", "label_line")}
+            for f in prov.get("figures") or []
+        ],
         "cited": cited,
         "cells": prov.get("cells") or {},
         "decisions": prov.get("decisions") or [],
@@ -1429,6 +1576,7 @@ def present_answer(
         "report": entry,
         "never_show": [],
         "details": details,
+        **({"chat": block} if block is not None else {}),
         "skill": "answer view from skills/open.yml" if views else "the engine default answer view",
     }
 
@@ -1441,15 +1589,20 @@ def _finding_words(entry: dict[str, Any]) -> str:
     return f"a finding, marked by {by} on {ts}" if ts else f"a finding, marked by {by}"
 
 
-def _key_column(path: Path) -> str:
-    """The first column's name, the row key of an answer filed before the answer recorded its
-    keys (0.2.35, L138); `row` when it cannot be read."""
+def _header(path: Path) -> list[str]:
+    """A delimited table's column names; none when it cannot be read."""
     try:
         lines = _data_lines(path.read_text())
         delim = "\t" if path.suffix.lower() in (".tsv", ".tab") or "\t" in lines[0] else ","
-        header = next(csv.reader(lines[:1], delimiter=delim))
+        return next(csv.reader(lines[:1], delimiter=delim))
     except Exception:  # noqa: BLE001  (a reading view never fails on one table)
-        return "row"
+        return []
+
+
+def _key_column(path: Path) -> str:
+    """The first column's name, the row key of an answer filed before the answer recorded its
+    keys (0.2.35, L138); `row` when it cannot be read."""
+    header = _header(path)
     return header[0] if header and header[0] else "row"
 
 
@@ -1693,6 +1846,11 @@ def render_html(payload: dict[str, Any], url_for: Callable[[str], str] | None = 
 
 def render_markdown(payload: dict[str, Any]) -> str:
     out: list[str] = []
+    if payload["kind"] == "answer" and payload.get("chat") is not None:
+        block = render_chat(payload)
+        if not payload["details"]:
+            return block
+        return block + "\n---\n\n" + render_markdown({**payload, "chat": None})
     if payload["kind"] == "answers":
         if not payload["answers"]:
             return "no answers filed\n"
@@ -1797,6 +1955,12 @@ def render_markdown(payload: dict[str, Any]) -> str:
         out.append("Deliverables:")
         out += [f"- {p}" for p in payload["deliverables"]] or ["- none"]
     if payload["kind"] == "answer":
+        for f in payload.get("figures") or []:
+            out.append("")
+            out.append(f"### Figure attached: {f['name']}")
+            out.append("")
+            out.append(f"figure: {f['path']}")
+            out.append(str(f.get("label_line") or ""))
         out.append("")
         out.append(payload["label_sentence"] or "")
         out += _settled_lines(payload["decisions"])

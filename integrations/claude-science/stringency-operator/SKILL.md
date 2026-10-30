@@ -429,17 +429,22 @@ else, and then carry on whatever the person says.
   artifact a number comes from, by row and column where you can; the row is the row's key, its
   key columns' values joined with `|` as `present` prints it (`1|domain_2` where a table has a
   row per cluster and stratum; the first column alone where that is unique; engine 0.2.35); every
-  numeral in the text must be a cited cell. Exit 0 prints the label sentence and the qualifier line; exit 12 is a
+  numeral in the text must be a cited cell. A figure that illustrates the answer is attached
+  with `--figure <artifact id>` (repeatable; engine 0.2.35), never filed as an answer of its
+  own: it keeps its own label, shown beside the answer's, and the report shows it under the
+  answer. Exit 0 prints the label sentence and the qualifier line; exit 12 is a
   block (10.6). When the delivery cannot answer the question (the column it needs is not
   there, the tool that would answer it does not exist), file that instead of approximating:
   `stringency answer --question <id> --cannot --reason "<one sentence>" --json` (engine
   0.2.28) records it as unanswerable, with no label, and the report's short list says so.
 - Then reply to the person yourself; do not relay engine output. `stringency present --answer
-  <id>` gives you the parts (the tables and figures the method's answer view names, with their
-  row names, and the label sentence); `--details` adds the qualifier line, the cells checked
-  and every decision. Your reply is: the answer text you filed, the table or figure that shows
-  it (as a table, or the figure sent as a file), one plain sentence on how far to trust it, and
-  the parameters the person set, if any. The trust sentence carries the engine's label word and
+  <id> --chat` prints the block to paste under your reply (engine 0.2.35): the cited rows, one
+  table per cited table with its key columns and the cited cells, then each figure's path (an
+  attached figure with its own label), then the label sentence; `--details` adds the method's
+  full answer view, the qualifier line, the cells checked and every decision. Your reply is: the
+  answer text you filed, the chat block pasted as printed (each figure sent as a file), one
+  plain sentence on how far to trust it, and the parameters the person set, if any. A number
+  said is a row shown: every number in your reply is in a row of the block you paste. The trust sentence carries the engine's label word and
   its reason in your words: trusted ("from the method's Compare the groups tool, which the
   method tests; its controls passed"), untested because it is code you wrote ("nothing has
   checked the code"), or untested for the tool's reason the label names. Never call an untested
@@ -454,7 +459,12 @@ else, and then carry on whatever the person says.
   answer. A finding is the person's call, in their words: `stringency finding <answer id>
   [--reason "<their words>"]` marks it, `--remove` unmarks; no hold opens, and the report is
   rewritten. When the person says they are done (or asks what will be kept), ask the findings
-  sentence of 10.7 once, mark what they name, and hand over: save `deliver/<run>/report.md` as
+  sentence of 10.7 once, mark what they name, and set what they say of the report's shape:
+  `finding <answer id>... --order <n>` puts the findings in their order (n for the first id
+  named, n+1 for the next), `finding <answer id>... --under "<their heading>"` groups them, and
+  `deliver --story <file>` opens the report with a paragraph in their words, labelled as theirs
+  (refused, exit 16, when a number in it is in no cell a finding cites; never write it for
+  them, and never add a number they did not say). Then hand over: save `deliver/<run>/report.md` as
   the artifact (the same file, a new version each time it changes) and say in one line where
   it is on disk and how many of the answers are findings. `stringency deliver` rewrites the
   directory from the trace at any time; it is the cap-off command, and forgetting it costs
@@ -521,4 +531,4 @@ same text; a test keeps the copies identical.
 - who labels, when asked: "The engine labels from what ran; I cannot change a label, and I am not allowed to write one."
 - trusted only, when asked: "I can answer only with tools shipped with the method, if you prefer; then anything no tool answers I will say I cannot answer."
 - report, once, when the first answer lands: "Everything you ask goes into the report, on disk beside the results as it is answered, with its figures. Tell me whenever an answer is an important finding: it then goes into the report in full, at the top."
-- findings, once, when the person is done: "Which of these answers are important findings? Each one you name goes into the report in full, at the top, with its tables and figures; the others stay in the report in short. Name them by number, say all, or say none."
+- findings, once, when the person is done: "Which of these answers are important findings? Each one you name goes into the report in full, at the top, with its tables and figures; the others stay in the report in short. Name them by number, say all, or say none. If you want them in an order of your own, under headings in your words, or opened by a paragraph you write, tell me and the report will follow it."

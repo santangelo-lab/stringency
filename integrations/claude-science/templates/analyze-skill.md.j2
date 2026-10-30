@@ -292,15 +292,17 @@ with `ask --suggested`. Then per question: `ask`, one route (a tool whose use-wh
 `exec` when the delivery or the pipeline's own inputs hold the data, else cannot), `answer`
 citing every cell, then your own reply to the person, never the engine output relayed: the
 answer you filed, written to explain the result (what it shows, the few numbers that carry it,
-any caveat the data shows), the table or figure from `present --answer`, and one plain sentence
-on how far to trust it that carries the engine's label word and reason. You never write the
+any caveat the data shows), the block `present --answer <id> --chat` prints pasted under it
+(the cited rows, the figures, the label sentence: a number said is a row shown), and one plain
+sentence on how far to trust it that carries the engine's label word and reason. You never write the
 label and never upgrade it; the engine prints it from what ran. The open project holds the pipeline's own
 inputs read-only as `upstream_<name>`, bound only when you name them with `--in`, for questions
 about what the pipeline removed or changed. A tool's controls run before its first use. Every
 admissible answer is in `deliver/<run>/` as it is filed, and `report.md` there leads with the
 findings; say the report sentence once when the first answer lands, mark findings on the
 person's word (`finding <answer id>`), and when they say they are done ask the findings sentence
-once, mark what they name, and hand over `report.md` as the artifact.
+once, mark what they name, set the order, headings and paragraph they give (`finding --order`,
+`--under`, `deliver --story`), and hand over `report.md` as the artifact.
 
 {% if open_intro %}
 {{ open_intro }}
@@ -352,7 +354,7 @@ question, a year, a count of animals, punches or replicates):
 - who labels, when asked: "The engine labels from what ran; I cannot change a label, and I am not allowed to write one."
 - trusted only, when asked: "I can answer only with tools shipped with the method, if you prefer; then anything no tool answers I will say I cannot answer."
 - report, once, when the first answer lands: "Everything you ask goes into the report, on disk beside the results as it is answered, with its figures. Tell me whenever an answer is an important finding: it then goes into the report in full, at the top."
-- findings, once, when the person is done: "Which of these answers are important findings? Each one you name goes into the report in full, at the top, with its tables and figures; the others stay in the report in short. Name them by number, say all, or say none."
+- findings, once, when the person is done: "Which of these answers are important findings? Each one you name goes into the report in full, at the top, with its tables and figures; the others stay in the report in short. Name them by number, say all, or say none. If you want them in an order of your own, under headings in your words, or opened by a paragraph you write, tell me and the report will follow it."
 {% elif words_of %}
 This pipeline's delivery is opened for questions with the `{{ words_of_skill }}` skill's words; load that skill after delivery.
 {% else %}
@@ -393,10 +395,11 @@ The `stringency-operator` skill is the authority on every line below; on conflic
   <upstream>/deliver/<run>` exits 10, the yes recorded with `review --attest`; `ask "<words>"
   [--suggested] --json`; `call <tool> --question <id> [--in k=ref] [--set k=v --asked-by
   person --reason "..."] --json`; `exec <file> --out <name>=<type> --question <id> --reason
-  "..." --json`; `answer --question <id> --cite <artifact>[:row[:column]]... --text <file>
-  --json` (12 is a block: fix the text, never a number; the answer lands in `deliver/<run>/`);
-  `present --answer <id>`; `finding <answer id>... [--reason "..."] [--remove]`; `deliver`
-  rewrites the report.
+  "..." --json`; `answer --question <id> --cite <artifact>[:row[:column]]... [--figure
+  <artifact>]... --text <file> --json` (12 is a block: fix the text, never a number; the answer
+  lands in `deliver/<run>/`); `present --answer <id> --chat`; `finding <answer id>... [--reason
+  "..."] [--order <n>] [--under "<heading>"] [--remove]`; `deliver [--story <file>]` rewrites
+  the report.
 - Never: give a verdict; write under `prov/`; edit `method/`, `stringency.yml`, `objective.yml`,
   `design.yml`, or `inputs.yml`; compose any part of a container command; start `review --serve`;
   run `run --new` unless the person asks for another run; run analysis code outside `exec`;

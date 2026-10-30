@@ -1,6 +1,7 @@
-"""`stringency answer --question <id> --cite <artifact id[:row[:column]]>... (--text <file> |
--) [--json]` (open_mode_plan.md 2.5): file the operator's reply against the cells it cites.
-Exit 0 admissible, 12 blocked (the answer is kept, as a rejected proposal is), 15 config."""
+"""`stringency answer --question <id> --cite <artifact id[:row[:column]]>... [--figure <artifact
+id>]... (--text <file> | -) [--json]` (open_mode_plan.md 2.5): file the operator's reply against
+the cells it cites, with the figures that illustrate it attached (L143). Exit 0 admissible, 12
+blocked (the answer is kept, as a rejected proposal is), 15 config."""
 
 from __future__ import annotations
 
@@ -29,6 +30,14 @@ def answer(
             "prints it); repeatable; the cells the numbers come from"
         ),
     ),
+    figures: list[str] = typer.Option(
+        [],
+        "--figure",
+        help=(
+            "<artifact id> of a figure that illustrates this answer; repeatable; attached to "
+            "the answer with its own label, not filed as an answer of its own"
+        ),
+    ),
     text: str | None = typer.Option(
         None, "--text", help="a file holding the reply text, or - for stdin"
     ),
@@ -39,8 +48,8 @@ def answer(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     if cannot:
-        if text is not None or cites:
-            raise ConfigError("--cannot takes --reason only, no --text and no --cite")
+        if text is not None or cites or figures:
+            raise ConfigError("--cannot takes --reason only, no --text, --cite or --figure")
         project = Project.find()
         rc = open_for_questions(project)
         out = file_unanswerable(rc, question_id, reason or "")
@@ -63,7 +72,7 @@ def answer(
         body = p.read_text()
     project = Project.find()
     rc = open_for_questions(project)
-    res = file_answer(rc, question_id, body, [parse_cite(c) for c in cites])
+    res = file_answer(rc, question_id, body, [parse_cite(c) for c in cites], list(figures))
     payload = {**res.to_json(), "run_id": rc.run_id}
     if res.status == "admissible":
         # every admissible answer is in deliver/<run>/ the moment it exists (2026-10-19)
@@ -73,9 +82,12 @@ def answer(
             "path": str(d.path / "report.md"),
             "file": mine["file"] if mine else None,
         }
+        figs = "".join(
+            f"figure {f['name']} ({f['step_id']}): {f['label_line']}\n" for f in res.figures
+        )
         human = (
             f"answer {res.answer_id} recorded ({res.status})\n{res.sentence}\n{res.qualifier}\n"
-            f"in the report as {mine['file'] if mine else '?'} ({d.path / 'report.md'})"
+            f"{figs}in the report as {mine['file'] if mine else '?'} ({d.path / 'report.md'})"
         )
     else:
         human = (

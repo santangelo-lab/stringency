@@ -9,7 +9,9 @@ the qualifier, L142), builds a synthetic `answer` action and an `OutputBundle` w
 is the text, evaluates the `ans.*` predicates (invariant: a cited id that does not exist, a
 numeral matching no cited cell, the label written by the operator), derives the label from the
 cited artifacts' lineage, and writes the `answers` row, admissible or blocked. A blocked answer
-is kept, as a rejected proposal is.
+is kept, as a rejected proposal is. A figure attached with `--figure` (L143) is stored in the
+answer's `provenance_json` under `figures`, each with its own label derived from its own
+lineage; it does not enter the answer's label or the numeral check.
 
 Reads: artifacts, steps, questions, and everything `provenance.lineage` reads. Writes:
 messages (the text), predicate_results (the `ans.*` verdicts, action id = the answer id),
@@ -20,7 +22,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -34,11 +36,15 @@ from stringency.predicates import registry
 from stringency.predicates.context import EvidenceTable, OutputBundle
 from stringency.predicates.engine.ans import classify_numerals, numeral_sources
 from stringency.provenance import (
+    TRUSTED,
+    WHY_UNTESTED,
+    data_phrase,
     label_for,
     label_sentence,
     lineage,
     qualifier,
     render_qualifier,
+    untested_reason,
 )
 from stringency.questions import question
 from stringency.runs import RunContext
@@ -83,6 +89,7 @@ class AnswerResult:
     cite_help: list[dict[str, Any]]
     not_checked: list[dict[str, str]]
     failed: list[dict[str, str]]
+    figures: list[dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -104,6 +111,7 @@ class AnswerResult:
             },
             "blocked": [r.line() for r in self.gate.blocked],
             **({"cite_help": self.cite_help} if self.cite_help else {}),
+            "figures": self.figures,
             "provenance": self.provenance,
         }
 
@@ -215,8 +223,71 @@ def _help(table: EvidenceTable, cite: str, miss: str | None) -> dict[str, Any]:
     }
 
 
-def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) -> AnswerResult:
-    """File one answer. Writes: messages, predicate_results, answers, run_events."""
+def figure_line(label: str, facts: list[Any]) -> str:
+    """The sentence beside an attached figure (L143): its own label word and what drew it, in
+    the label sentences' terms, without the numeral count (a figure's numbers are not checked)."""
+    tools = [f for f in facts if f.kind in ("tool", "pipeline")]
+    names = " and ".join(f"{f.title or f.step_id} ({f.module})" for f in tools) or "a tool"
+    data = data_phrase(facts)
+    if label == TRUSTED:
+        return (
+            f"Figure label: trusted. Drawn by {names}, a tool shipped with the method, run by "
+            f"the engine on {data}."
+        )
+    why = untested_reason(facts)
+    if why is None or why == "exec":
+        return (
+            "Figure label: untested. Drawn by code written in this session, run and recorded "
+            f"by the engine on {data}; no test or control has checked it."
+        )
+    return (
+        f"Figure label: untested. Drawn by {names}, a tool shipped with the method, run by the "
+        f"engine on {data}; {WHY_UNTESTED[why]}."
+    )
+
+
+def attached_figures(rc: RunContext, figure_ids: list[str]) -> list[dict[str, Any]]:
+    """The figures `answer --figure` attaches (L143), each a produced figure of a completed
+    step of this run (exit 15 otherwise), with its own label from its own lineage
+    (`provenance.label_for`), never the answer's. Reads: artifacts, steps, and everything
+    `provenance.lineage` reads."""
+    out: list[dict[str, Any]] = []
+    for fid in dict.fromkeys(f.strip() for f in figure_ids):
+        art = _citable(rc, Cite(fid))
+        if art is None:
+            raise ConfigError(
+                f"--figure {fid}: not a produced artifact of a completed step of run {rc.run_id}"
+            )
+        if str(art["kind"]) != "figure":
+            raise ConfigError(
+                f"--figure {fid}: {art['name']} is a {art['kind']}, not a figure; cite it with --cite"
+            )
+        facts = lineage(rc, fid)
+        label = label_for(facts)
+        out.append(
+            {
+                "artifact_id": fid,
+                "name": str(art["name"]),
+                "step_id": str(art["step_id"]),
+                "path": str(art["path"]),
+                "label": label,
+                "label_line": figure_line(label, facts),
+                "lineage": [f.to_json() for f in facts],
+            }
+        )
+    return out
+
+
+def file_answer(
+    rc: RunContext,
+    question_id: str,
+    text: str,
+    cites: list[Cite],
+    figures: list[str] | None = None,
+) -> AnswerResult:
+    """File one answer, with the figures `--figure` attaches (L143) stored in the answer's
+    `provenance_json` under `figures`. Writes: messages, predicate_results, answers,
+    run_events."""
     if not rc.open_ended:
         raise ConfigError("answers are filed on an open project's run only")
     q = question(rc, question_id)  # must be a question of this run
@@ -225,6 +296,7 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
         raise ConfigError("an answer needs text")
     if not cites:
         raise ConfigError("an answer cites at least one artifact (--cite <artifact id>)")
+    attached = attached_figures(rc, list(figures or []))
     store = rc.store
     cited = cited_cells(rc, cites)
     tables, cells, missing = cited.tables, cited.cells, cited.missing
@@ -309,6 +381,7 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
             if f.kind in ("tool", "exec")
             for k, src in f.param_sources.items()
         ],
+        "figures": attached,
     }
     ref = hashing.hash_text(words)
     store.store_message(ref, words)
@@ -348,6 +421,7 @@ def file_answer(rc: RunContext, question_id: str, text: str, cites: list[Cite]) 
         cite_help=cited.help,
         not_checked=not_checked,
         failed=classes["failed"],
+        figures=attached,
     )
 
 
