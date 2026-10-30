@@ -152,6 +152,10 @@ gives the step id; use that.
 `plain` to the person after every call; it is the engine's sentence about what completed and
 where it stopped.
 
+`run`, `call`, `exec` and `controls run` take `--cpus N --memory G` for the steps of that
+invocation, which the person may raise or lower within the cap in the policy (`resources:` in
+`policy.yml`); without them a step runs with its module's `resources`.
+
 **21, a ticket.** `stringency next --json`; read `job_spec`. The engine has already created the
 step directory and written `job_json` there. Run `operator_line` exactly as printed, as one
 command: it is the container `exec` line (stdin from `job.json`, both output streams to the job

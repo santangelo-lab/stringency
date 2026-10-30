@@ -16,6 +16,7 @@ from stringency.machine import StepStatus
 from stringency.notify import notify_after
 from stringency.project import Project
 from stringency.questions import open_for_questions, question
+from stringency.resources import Override
 from stringency.runloop import next_step
 from stringency.steps import execute_engine, propose_tool
 
@@ -47,14 +48,24 @@ def call(
         "needs --reason in the person's words",
     ),
     reason: str | None = typer.Option(None, "--reason", help="why these values"),
+    cpus: int | None = typer.Option(
+        None, "--cpus", help="CPUs for each step this invocation runs, within the policy's cap"
+    ),
+    memory: str | None = typer.Option(
+        None,
+        "--memory",
+        help="memory in GB for each step this invocation runs (64 or 64GB), within the policy's cap",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    override = Override.from_options(cpus, memory)
     if asked_by not in ASKED_BY:
         raise ConfigError("--asked-by must be agent or person")
     if asked_by == "person" and not reason:
         raise ConfigError("--asked-by person needs --reason: the person's words for the values")
     project = Project.find()
     rc = open_for_questions(project)
+    rc.resource_override = override
     if question_id is not None:
         question(rc, question_id)  # must be a question of this run
     # a tool the method tested is checked before its first step here, so its answer can be

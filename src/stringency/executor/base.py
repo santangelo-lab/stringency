@@ -19,6 +19,8 @@ class Job:
     ro_bind_paths: Sequence[Path] = ()
     stdin_json: Mapping[str, Any] | None = None
     timeout: float | None = None
+    # the step's allocation (L130): {cpus, memory_gb, timeout_s}; the executor sets the
+    # environment from it (`resources.env_for`) and, under apptainer, the cgroup limits
     resources: Mapping[str, Any] = field(default_factory=dict)
     stdout_path: Path | None = None
     stderr_path: Path | None = None
@@ -55,6 +57,12 @@ class Executor(Protocol):
 
     def command_line(self, job: Job) -> list[str]:
         """The argv this executor would run for `job`, so a ticket can print it verbatim."""
+        ...
+
+    def limits_for(self, job: Job) -> str:
+        """Whether the job's CPUs and memory are enforced as cgroup limits (L130): `applied`,
+        `unavailable` (asked for and the host cannot), or `not_used` (the executor sets none,
+        or the job has no CPUs or memory)."""
         ...
 
     def run(self, job: Job) -> ExecResult: ...

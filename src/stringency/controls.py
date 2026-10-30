@@ -116,6 +116,7 @@ from stringency.ids import new_id  # noqa: E402
 from stringency.modules import Module  # noqa: E402
 from stringency.pipelines import Pipeline, StepDecl  # noqa: E402
 from stringency.project import Project  # noqa: E402
+from stringency.resources import Override  # noqa: E402
 
 
 @dataclass
@@ -611,10 +612,16 @@ def regression_against(previous: dict[str, Any] | None, metrics: dict[str, Any])
 
 
 def run_control(
-    project: Project, module: Module, spec: ControlSpec, *, allow_mock: bool = False
+    project: Project,
+    module: Module,
+    spec: ControlSpec,
+    *,
+    allow_mock: bool = False,
+    override: Override | None = None,
 ) -> ControlResult:
     """Execute one control end to end and record it. Writes: controls_runs, and everything a
-    run writes, under `controls/<module>/<control>/`."""
+    run writes, under `controls/<module>/<control>/`. `override` is `controls run --cpus
+    --memory` (L130), recorded in the step's started event as any run's is."""
     # a deterministic tool's control never reaches the harness, so the mock answers nothing
     # there (2026-10-19, open mode: controls run before a tool's first use)
     if (
@@ -684,6 +691,7 @@ def run_control(
             kind="control",
             delta={"control": spec.name, "module": module.ref, "kind": spec.kind},
         )
+    rc.resource_override = override
     nx = run_loop(rc)
     st = str(rc.step_status().get(step_id))
     if nx.kind == "dispatching":
@@ -761,11 +769,15 @@ def run_control(
 
 
 def run_controls(
-    project: Project, module_name: str | None = None, *, allow_mock: bool = False
+    project: Project,
+    module_name: str | None = None,
+    *,
+    allow_mock: bool = False,
+    override: Override | None = None,
 ) -> list[ControlResult]:
     results = []
     for module, spec, _ in iter_controls(project, module_name):
-        results.append(run_control(project, module, spec, allow_mock=allow_mock))
+        results.append(run_control(project, module, spec, allow_mock=allow_mock, override=override))
     return results
 
 

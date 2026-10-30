@@ -424,8 +424,9 @@ def test_apptainer_inspect_with_checksum_line(tmp_path: Path) -> None:
 
 FAKE_APPTAINER = """#!/bin/bash
 # A stand-in for apptainer in tests: `inspect --json <image>` prints a label stub;
-# `exec [--containall] [--pwd D] [--bind B]... <image> <cmd...>` runs <cmd> on the host, with
-# python3 resolved to the test interpreter so the toy scripts see the same Python.
+# `exec [--containall] [--pwd D] [--bind B]... [--env K=V]... [--cpus N] [--memory M] <image>
+# <cmd...>` runs <cmd> on the host, with python3 resolved to the test interpreter so the toy
+# scripts see the same Python.
 if [ "$1" = inspect ]; then
   echo '{"data": {"attributes": {"labels": {"org.label-schema.usage.singularity.deffile.from": "python:3.12-slim"}}}, "type": "container"}'
   exit 0
@@ -434,7 +435,7 @@ shift
 while [ $# -gt 0 ]; do
   case "$1" in
     --containall) shift ;;
-    --pwd|--bind) shift 2 ;;
+    --pwd|--bind|--env|--cpus|--memory) shift 2 ;;
     *) break ;;
   esac
 done

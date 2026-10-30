@@ -29,6 +29,7 @@ from pathlib import Path
 
 from stringency.executor.base import ExecResult, Job
 from stringency.operator_exec.envcheck import load_env_manifest
+from stringency.resources import env_for
 
 
 def _paths_in(value: object) -> list[Path]:
@@ -214,6 +215,38 @@ def network_isolation(binary: str, image: Path | None) -> bool | None:
 
 NETWORK_FLAGS = ["--net", "--network", "none"]
 
+_LIMITS: dict[tuple[str, str], bool] = {}
+
+
+def cgroup_limits(binary: str, image: Path | None) -> bool | None:
+    """Whether `<binary> exec --cpus 1 --memory 256M <image> /bin/true` works on this host
+    (L130): True, False, or None when it cannot be tried (no binary, no image). Tried once per
+    binary and image for the life of the process, as `network_isolation` is; `probe` reports
+    it, and the executor adds `--cpus` and `--memory` to a job's line only when it is True. A
+    host without cgroup delegation never fails a run for it."""
+    if image is None or not image.exists() or shutil.which(binary) is None:
+        return None
+    key = (binary, str(image))
+    if key not in _LIMITS:
+        try:
+            proc = subprocess.run(
+                [binary, "exec", "--cpus", "1", "--memory", "256M", str(image), "/bin/true"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            _LIMITS[key] = proc.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            _LIMITS[key] = False
+    return _LIMITS[key]
+
+
+def memory_flag(memory_gb: float) -> str:
+    """`--memory`'s value: whole gigabytes as `64G`, a fraction in megabytes (`512M`)."""
+    if float(memory_gb).is_integer():
+        return f"{int(memory_gb)}G"
+    return f"{max(1, round(float(memory_gb) * 1024))}M"
+
 
 def find_binary() -> str:
     """`STRINGENCY_APPTAINER_BIN` if set, else the first of apptainer, singularity on PATH,
@@ -265,6 +298,15 @@ class ApptainerExecutor:
         cmd: list[str] = [self.binary, "exec", "--containall", "--pwd", str(job.cwd)]
         if self.network_for(job) == "none":
             cmd += NETWORK_FLAGS
+        # the allocation (L130): `--containall` cleans the environment, so the variables are
+        # passed with `--env`; the cgroup limits only where the host applies them
+        for k, v in env_for(job.resources).items():
+            cmd += ["--env", f"{k}={v}"]
+        if self.limits_for(job) == "applied":
+            if job.resources.get("cpus") is not None:
+                cmd += ["--cpus", str(job.resources["cpus"])]
+            if job.resources.get("memory_gb") is not None:
+                cmd += ["--memory", memory_flag(job.resources["memory_gb"])]
         for b in bind_set(job):
             cmd += ["--bind", b]
         # `--containall` gives the container a 64 MB tmpfs at /tmp; module code that uses
@@ -273,6 +315,16 @@ class ApptainerExecutor:
         cmd += ["--bind", f"{job.cwd / 'tmp'}:/tmp"]
         cmd += [str(image) if image else "<no image>", *[str(c) for c in job.command]]
         return cmd
+
+    def limits_for(self, job: Job) -> str:
+        """`applied` when the job has CPUs or memory and the host takes `--cpus`/`--memory`
+        (probed once, `cgroup_limits`), `unavailable` when it has them and the host cannot,
+        `not_used` when it has neither."""
+        r = job.resources
+        if r.get("cpus") is None and r.get("memory_gb") is None:
+            return "not_used"
+        ok = cgroup_limits(self.binary, self.image_for(job.env_name))
+        return "applied" if ok else "unavailable"
 
     def network_for(self, job: Job) -> str | None:
         """`none` when the job asks for isolation and the host enforces it, `unenforced` when it

@@ -11,6 +11,7 @@ development runs see the engine venv.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -18,6 +19,7 @@ from pathlib import Path
 
 from stringency import hashing
 from stringency.executor.base import ExecResult, Job
+from stringency.resources import env_for
 
 LOCKFILES = ("uv.lock", "renv.lock")
 
@@ -51,7 +53,14 @@ class LocalExecutor:
         """The portable form (`python3 <script>`); `run` resolves `python3` to this interpreter."""
         return [str(c) for c in job.command]
 
+    def limits_for(self, job: Job) -> str:
+        """The local executor enforces no CPU or memory limit; the allocation reaches the
+        script through the environment only (L130)."""
+        return "not_used"
+
     def run(self, job: Job) -> ExecResult:
+        """The allocation's variables (`STRINGENCY_CPUS`, `STRINGENCY_MEMORY_GB`, the thread
+        variables) are added to the inherited environment."""
         job.cwd.mkdir(parents=True, exist_ok=True)
         out = job.stdout_path or job.cwd / "stdout.txt"
         err = job.stderr_path or job.cwd / "stderr.txt"
@@ -63,6 +72,8 @@ class LocalExecutor:
         command = [str(c) for c in job.command]
         if command and command[0] == "python3":
             command[0] = sys.executable
+        extra = env_for(job.resources)
+        env = {**os.environ, **extra} if extra else None
         t0 = time.monotonic()
         timed_out = False
         with open(out, "w") as fo, open(err, "w") as fe:
@@ -70,6 +81,7 @@ class LocalExecutor:
                 proc = subprocess.run(
                     command,
                     cwd=job.cwd,
+                    env=env,
                     input=stdin,
                     stdout=fo,
                     stderr=fe,

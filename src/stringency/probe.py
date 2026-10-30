@@ -18,7 +18,13 @@ from pathlib import Path
 from typing import Any
 
 from stringency import __version__, siteconfig
-from stringency.executor.apptainer import find_binary, network_isolation, resolve_image, sha256_file
+from stringency.executor.apptainer import (
+    cgroup_limits,
+    find_binary,
+    network_isolation,
+    resolve_image,
+    sha256_file,
+)
 from stringency.operator_exec.envcheck import load_env_manifest
 from stringency.plugins import installed_plugin_versions
 from stringency.policy import load_policy
@@ -197,6 +203,20 @@ def _probe_method(
                 "network and record network as unenforced"
             )
         checks.append(Check("network isolation", iso, detail))
+        # the allocation (L130): does this host apply `--cpus`/`--memory` as cgroup limits?
+        # Reported, never judged: a host without them runs every step without limits.
+        limits = cgroup_limits(find_binary(), present)
+        report["cgroup_limits"] = limits
+        if limits is None:
+            detail = "no image present to try `--cpus --memory` with"
+        elif limits:
+            detail = "`--cpus --memory` work unprivileged; a step's allocation is enforced"
+        else:
+            detail = (
+                "`--cpus --memory` are refused on this host; a step's allocation reaches it "
+                "through job.json and the environment only"
+            )
+        checks.append(Check("cgroup limits", None, detail))
         return report
 
 

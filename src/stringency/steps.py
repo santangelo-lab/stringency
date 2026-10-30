@@ -32,6 +32,7 @@ from stringency.modules import IOSpec, Module, ModuleManifest
 from stringency.pipelines import Ref, StepDecl
 from stringency.predicates import registry
 from stringency.predicates.context import EvidenceTable, OutputBundle, OutputInfo
+from stringency.resources import Allocation
 from stringency.runs import RunContext
 from stringency.schemas import validate
 from stringency.state import ObjectState, State, store_snapshot
@@ -86,6 +87,8 @@ class StepPlan:
     timeout: float | None = None  # an exec step: the policy's open.exec_timeout_s
     network_isolation: bool = False  # an exec step asks the executor to isolate the network
     method_root: Path | None = None  # the checkout bound read-only (default: above the module)
+    # what the step runs with (L130): job.json `resources`, the environment, the event
+    resources: Allocation | None = None
 
 
 @dataclass
@@ -215,6 +218,11 @@ def plan_step(rc: RunContext, step_id: str, attempt: int) -> StepPlan:
     }
     entry = rc.on_demand_entry(step_id)
     is_exec = entry is not None and entry.get("kind") == "exec"
+    timeout = (
+        float(rc.project.policy.profile(rc.project.config.profile).open.exec_timeout_s)
+        if is_exec
+        else None
+    )
     return StepPlan(
         step=step,
         module=module,
@@ -227,10 +235,9 @@ def plan_step(rc: RunContext, step_id: str, attempt: int) -> StepPlan:
         objective=rc.project.objective.model_dump(),
         inputs_read_only=entry is not None,
         method_root=rc.project.method_root,
-        timeout=float(rc.project.policy.profile(rc.project.config.profile).open.exec_timeout_s)
-        if is_exec
-        else None,
+        timeout=timeout,
         network_isolation=is_exec,
+        resources=rc.allocation(module, timeout_s=timeout),
     )
 
 
@@ -691,7 +698,7 @@ def propose(
             rc.run_id,
             step_id,
             StepStatus.AWAITING_EXECUTION,
-            payload={"ticket": action.ticket},
+            payload={"ticket": action.ticket, **operator_allocation(rc, action, plan)},
         )
         write_job_file(action, plan)
         status = StepStatus.AWAITING_EXECUTION
@@ -777,7 +784,7 @@ def resume_after_hold(rc: RunContext, step_id: str) -> Proposal:
             rc.run_id,
             step_id,
             StepStatus.AWAITING_EXECUTION,
-            payload={"ticket": action.ticket},
+            payload={"ticket": action.ticket, **operator_allocation(rc, action, plan)},
         )
         write_job_file(action, plan)
     return Proposal(action, plan, GateResult("pre", ()), step_status(store, rc.run_id, step_id))
@@ -809,7 +816,9 @@ def action_from_row(row: Any) -> Action:
 def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
     """The executor job of a step. Input directories are bound read-write for a declared step
     (as before) and read-only for an on-demand one (`plan.inputs_read_only`, design 10.3
-    amended 2026-10-16); the method checkout is read-only always."""
+    amended 2026-10-16); the method checkout is read-only always. The step's allocation
+    (L130) is the stdin's `resources` and the Job's, from which the executor sets the
+    environment; the timeout enforced is still the plan's (an exec step's) only."""
     m = plan.module.manifest
     seed = action.parameters.get(m.seed_param) if m.stochastic and m.seed_param else None
     input_dirs = [p.parent for ri in plan.inputs.values() for p in ri.paths]
@@ -819,6 +828,7 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
     if plan.inputs_read_only:
         ro = input_dirs + ro
         input_dirs = []
+    resources = (plan.resources or Allocation()).job_value()
     return Job(
         command=interpreter_for(script),
         env_name=m.env,
@@ -834,8 +844,11 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
             "seed": seed,
             "design": plan.design,
             "objective": plan.objective,
+            # the allocation the script should size its workers by (L130, module contract note)
+            "resources": resources,
         },
         timeout=plan.timeout,
+        resources=resources,
         stdout_path=plan.step_dir / "stdout.txt",
         stderr_path=plan.step_dir / "stderr.txt",
     )
@@ -892,6 +905,26 @@ def write_job_file(action: Action, plan: StepPlan) -> Path | None:
     return path
 
 
+def allocation_payload(executor: Executor, plan: StepPlan, job: Job | None) -> dict[str, Any]:
+    """What a step's started event carries about its allocation (L130): `resources` (cpus,
+    memory_gb, timeout_s), `resources_source` (each value's source: module, override or
+    policy), and `cgroups`, whether the executor enforces the CPUs and memory as limits
+    (`applied`, `unavailable`, `not_used`), absent when no job is given (a judgment's started
+    event: its scripts ran or run apart from it). Reads nothing from the trace; the caller
+    writes it into step_events with the transition."""
+    out = (plan.resources or Allocation()).event_payload()
+    if job is not None:
+        out["cgroups"] = executor.limits_for(job)
+    return out
+
+
+def operator_allocation(rc: RunContext, action: Action, plan: StepPlan) -> dict[str, Any]:
+    """`allocation_payload` for an operator step: the job the ticket's printed line runs."""
+    script = plan.module.entry_script
+    job = job_for(action, plan, script) if script is not None else None
+    return allocation_payload(rc.executor, plan, job)
+
+
 def exec_line(executor: Executor, action: Action, plan: StepPlan) -> str | None:
     """The exact shell line an operator runs for the ticket: the executor's argv for the job,
     stdin from `job.json`, both streams to the job log."""
@@ -920,11 +953,18 @@ def execute_engine(rc: RunContext, proposal: Proposal) -> StepOutcome:
     script = plan.module.entry_script
     if script is None:
         raise ConfigError(f"module {plan.module.ref} has no entry script")
-    transition(store, rc.run_id, action.step_id, StepStatus.RUNNING)
+    job = job_for(action, plan, script)
+    transition(
+        store,
+        rc.run_id,
+        action.step_id,
+        StepStatus.RUNNING,
+        payload=allocation_payload(rc.executor, plan, job),
+    )
     plan.step_dir.mkdir(parents=True, exist_ok=True)
     blob = script_blob(plan.module)  # hashed before it runs; exec.script_drift compares
     with executing(rc.project.root, rc.run_id, action.step_id):
-        res = rc.executor.run(job_for(action, plan, script))
+        res = rc.executor.run(job)
     info = ExecInfo(
         runner="engine",
         env_status="verified" if res.env_digest else "as_reported",

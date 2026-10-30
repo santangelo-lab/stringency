@@ -19,6 +19,7 @@ from stringency.machine import StepStatus
 from stringency.notify import notify_after
 from stringency.project import Project
 from stringency.questions import open_for_questions, question
+from stringency.resources import Override
 from stringency.runloop import next_step
 from stringency.steps import EXEC_LANGS, execute_engine, parse_outs, propose_exec
 
@@ -58,12 +59,22 @@ def exec_(
     allow_local: bool = typer.Option(
         False, "--allow-local", help="development only: run under the local executor"
     ),
+    cpus: int | None = typer.Option(
+        None, "--cpus", help="CPUs for each step this invocation runs, within the policy's cap"
+    ),
+    memory: str | None = typer.Option(
+        None,
+        "--memory",
+        help="memory in GB for each step this invocation runs (64 or 64GB), within the policy's cap",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    override = Override.from_options(cpus, memory)
     text, suffix = read_script(script)
     chosen = lang or (suffix if suffix in EXEC_LANGS else None) or "py"
     project = Project.find()
     rc = open_for_questions(project)
+    rc.resource_override = override
     if question_id is not None:
         question(rc, question_id)
     prop = propose_exec(

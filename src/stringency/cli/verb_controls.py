@@ -8,6 +8,7 @@ from stringency.cli.common import emit, handle_errors
 from stringency.controls import run_controls
 from stringency.exit_codes import Exit
 from stringency.project import Project
+from stringency.resources import Override
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -19,10 +20,19 @@ def run(
     allow_mock: bool = typer.Option(
         False, "--allow-mock", help="tests only: let the mock harness answer"
     ),
+    cpus: int | None = typer.Option(
+        None, "--cpus", help="CPUs for each step this invocation runs, within the policy's cap"
+    ),
+    memory: str | None = typer.Option(
+        None,
+        "--memory",
+        help="memory in GB for each step this invocation runs (64 or 64GB), within the policy's cap",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    override = Override.from_options(cpus, memory)
     project = Project.find()
-    results = run_controls(project, module, allow_mock=allow_mock)
+    results = run_controls(project, module, allow_mock=allow_mock, override=override)
     lines = []
     for r in results:
         metrics = ", ".join(f"{k} {v}" for k, v in sorted(r.metrics.items()))

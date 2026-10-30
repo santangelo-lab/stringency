@@ -48,6 +48,7 @@ from stringency.repeat import (
     run_direct,
     wrap_schema,
 )
+from stringency.resources import Allocation
 from stringency.runs import RunContext
 from stringency.state import latest_state
 from stringency.steps import (
@@ -56,6 +57,7 @@ from stringency.steps import (
     StepOutcome,
     StepPlan,
     action_from_row,
+    allocation_payload,
     finish,
     plan_step,
     settle_post,
@@ -123,7 +125,9 @@ def prepare_evidence(rc: RunContext, plan: StepPlan, *, run_pre: bool = True) ->
                 "outputs": {n: str(ev_dir / f"{n}.tsv") for n in m.judgment.evidence},
                 "design": plan.design,
                 "objective": plan.objective,
+                "resources": (plan.resources or Allocation()).job_value(),  # L130
             },
+            resources=(plan.resources or Allocation()).job_value(),
             stdout_path=plan.step_dir / "pre.stdout",
             stderr_path=plan.step_dir / "pre.stderr",
         )
@@ -338,7 +342,11 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
                 rc.run_id,
                 action.step_id,
                 StepStatus.DISPATCHING,
-                payload={"requests": len(requests), "dir": str(dispatch_dir)},
+                payload={
+                    "requests": len(requests),
+                    "dir": str(dispatch_dir),
+                    **allocation_payload(rc.executor, plan, None),
+                },
             )
             rc.refresh_status()
             return StepOutcome(
@@ -347,7 +355,13 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
                 action,
                 message=f"dispatching: {len(requests)} request(s) in {dispatch_dir}; have one fresh subagent answer each, then run again",
             )
-        transition(store, rc.run_id, action.step_id, StepStatus.RUNNING)
+        transition(
+            store,
+            rc.run_id,
+            action.step_id,
+            StepStatus.RUNNING,
+            payload=allocation_payload(rc.executor, plan, None),
+        )
         t0 = time.monotonic()
         replicates = run_direct(harness, requests, schema, sampling)
         duration_ms: int | None = int((time.monotonic() - t0) * 1000)
@@ -703,6 +717,7 @@ def run_post(rc: RunContext, plan: StepPlan, replicates: list[Replicate]) -> lis
             cwd=plan.step_dir,
             ro_bind_paths=[rc.project.method_root],
             stdin_json=payload,
+            resources=(plan.resources or Allocation()).job_value(),
             stdout_path=plan.step_dir / "post.stdout",
             stderr_path=plan.step_dir / "post.stderr",
         )

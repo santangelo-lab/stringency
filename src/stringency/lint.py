@@ -12,7 +12,7 @@ from pathlib import Path
 from stringency import __version__
 from stringency.config import Design
 from stringency.controls import load_control
-from stringency.egress import scan_module
+from stringency.egress import module_scripts, scan_module
 from stringency.executor.apptainer import resolve_image
 from stringency.exit_codes import ConfigError
 from stringency.gate import in_scope_specs
@@ -22,6 +22,7 @@ from stringency.plugins import Plugin, load_plugins
 from stringency.policy import Policy, load_policy
 from stringency.predicates import registry
 from stringency.prompting import check_vars
+from stringency.resources import host_core_reads, parse_duration_s, parse_memory_gb
 from stringency.schemas import includes_base_judgment, schema_is_valid, validate
 from stringency.versions import check_requires
 
@@ -137,6 +138,25 @@ def lint_module(
             f"module.yml declares egress class {decl.cls} but no script matches the network scan; "
             "the declaration stands",
         )
+
+    # the allocation (L130): a script that sizes its workers by the host's core count rather
+    # than by the job's `resources` (a text check, `resources.host_core_reads`), and a
+    # `resources` value the engine cannot read
+    for script in module_scripts(module.path):
+        reads = host_core_reads(script)
+        if reads:
+            lines = ", ".join(str(n) for n, _ in reads)
+            report.warn(
+                where,
+                f"{script.relative_to(module.path)} reads the host's core count (line {lines}) "
+                "and not the job's allocation; size workers by job.json `resources.cpus` or "
+                "$STRINGENCY_CPUS",
+            )
+    for key, parse in (("memory", parse_memory_gb), ("timeout", parse_duration_s)):
+        try:
+            parse(getattr(m.resources, key))
+        except ConfigError as e:
+            report.warn(where, f"resources.{key}: {e}; the engine allocates none for it")
 
     # judgment modules
     if m.kind == "judgment":

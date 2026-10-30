@@ -33,6 +33,17 @@ class OpenPolicy(BaseModel):
         return self
 
 
+class ResourceCap(BaseModel):
+    """The machine's cap on a step's allocation (PLAN L130, the owner 2026-10-29): `resources:
+    {max_cpus, max_memory_gb}`; a key that is absent caps nothing. Set high, so it is rarely
+    reached; a step's allocation is its request (the module's, or the invocation's override)
+    bounded by these."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    max_cpus: int | None = Field(default=None, gt=0)
+    max_memory_gb: float | None = Field(default=None, gt=0)
+
+
 class ProfilePolicy(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     remap: dict[str, str] = Field(default_factory=dict)
@@ -96,6 +107,7 @@ class Policy(BaseModel):
     )
     agreement: dict[str, AgreementRule] = Field(default_factory=lambda: dict(DEFAULT_AGREEMENT))
     requires: Requires | None = None  # the engine and plugin versions this method needs (L28)
+    resources: ResourceCap | None = None  # the machine's cap on an allocation (L130)
     raw: dict[str, Any] = Field(default_factory=dict, exclude=True)
 
     @model_validator(mode="after")

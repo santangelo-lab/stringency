@@ -16,6 +16,7 @@ from stringency.exit_codes import ConfigError, RefusedError
 from stringency.judgment import check_responses, check_text
 from stringency.notify import notify_after
 from stringency.project import Project
+from stringency.resources import Override
 from stringency.runloop import Next, file_responses, run_loop
 from stringency.runs import RunContext, latest_run, load_run, open_or_resume
 
@@ -64,8 +65,17 @@ def run(
         "--check",
         help="with --responses: check the responses as filing would, and file nothing",
     ),
+    cpus: int | None = typer.Option(
+        None, "--cpus", help="CPUs for each step this invocation runs, within the policy's cap"
+    ),
+    memory: str | None = typer.Option(
+        None,
+        "--memory",
+        help="memory in GB for each step this invocation runs (64 or 64GB), within the policy's cap",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    override = Override.from_options(cpus, memory)
     project = Project.find()
     if project.open_ended:
         raise RefusedError(
@@ -79,6 +89,7 @@ def run(
         emit({"schema": "stringency.response_check/1", **res}, as_json, check_text(res))
         return
     rc = open_or_resume(project, allow_dirty=allow_dirty, new=new)
+    rc.resource_override = override
     for c in rc.plugin_changes:
         sys.stderr.write(
             f"note: plugin {c['plugin']} is {c['now'] or 'not installed'} now; it was "

@@ -30,6 +30,7 @@ from stringency.plugins import installed_plugin_versions
 from stringency.predicates import registry
 from stringency.predicates.context import GateContext
 from stringency.project import Project
+from stringency.resources import Allocation, Override, allocate
 from stringency.state import ObjectState, State, latest_state, store_snapshot
 from stringency.versions import check_requires
 
@@ -53,6 +54,9 @@ class RunContext:
     # hashed on first read, not at load: a read-only view (a hold page, `review --hold`) never
     # reads it, and hashing every declared input took 55 s on a large project (backlog L23)
     _input_digests: dict[str, str] | None = field(default=None, repr=False)
+    # the invocation's `--cpus` / `--memory` (L130): not stored; each step's started event
+    # records the allocation it ran with and where each value came from
+    resource_override: Override | None = None
     # -- the run's topology ----------------------------------------------------------
 
     @property
@@ -93,6 +97,19 @@ class RunContext:
 
     def decl(self, step_id: str) -> StepDecl:
         return self.pipeline.step(step_id)
+
+    def allocation(self, module: Module, *, timeout_s: float | None = None) -> Allocation:
+        """The allocation of a step of `module` under this invocation (L130): the override when
+        given, else the module's `resources`, bounded by the policy's `resources` cap. Reads
+        the policy and the manifest only."""
+        cap = self.project.policy.resources
+        return allocate(
+            module.manifest.resources,
+            override=self.resource_override,
+            max_cpus=cap.max_cpus if cap else None,
+            max_memory_gb=cap.max_memory_gb if cap else None,
+            timeout_s=timeout_s,
+        )
 
     def on_demand_entry(self, step_id: str) -> dict[str, Any] | None:
         for x in self.on_demand():

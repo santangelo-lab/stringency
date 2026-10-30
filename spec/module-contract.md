@@ -55,6 +55,15 @@ Scripts receive one JSON job on stdin:
  "design": {...}, "objective": {...}}
 ```
 
+Note, not part of the frozen contract (added 2026-10-29, PLAN L130): the job also carries
+`resources: {cpus, memory_gb, timeout_s}`, the step's allocation (the module's `resources`, or the
+invocation's `--cpus`/`--memory`, bounded by the policy's `resources` cap; a value is null when
+nothing sets it), and the executor sets `STRINGENCY_CPUS`, `STRINGENCY_MEMORY_GB` and the thread
+variables (`OMP_NUM_THREADS`, `MKL_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `NUMEXPR_NUM_THREADS`)
+to it. A script sizes its workers by `resources.cpus` rather than by the host's core count; lint
+warns on a script that reads the core count and not the allocation. The manifest's `resources`
+row above is unchanged.
+
 `design` and `objective` are the project's bound declarations as dictionaries (added 2026-09-23,
 E1), so a module that needs the factors or the contrasts reads them from the job rather than from
 a file it must find. An `arity: many` input appears as a list of paths, in the order the pipeline
