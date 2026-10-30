@@ -560,6 +560,8 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
     _lint_env_manifest(path, modules, report)
     _lint_analyze_open(path, report)
     _lint_answer_views(path, modules, report)
+
+    _lint_view_where(path, modules, report)
     for module in modules.all():
         lint_module(
             module, report, plugin=plugins.get(module.manifest.domain), policy=policy, design=design
@@ -779,6 +781,69 @@ def _lint_answer_views(path: Path, modules: ModuleIndex, report: LintReport) -> 
                 f"{tool} lists open with no answer_view entry: present --answer and the report "
                 "show the engine default (the cited rows) for its answers",
             )
+
+
+VIEW_LISTS = ("after_delivery", "hold_view", "step_view", "answer_view")
+
+
+def _lint_view_where(path: Path, modules: ModuleIndex, report: LintReport) -> None:
+    """A view's `where:` (L134 e) in the delivery skills `skills/<pipeline>.yml` and
+    `skills/open.yml`: a clause that is not `<column> = <value>` or `<column> in <v1>,<v2>` is
+    an error, and so is a column the view cannot have. The columns a method states for a view
+    are its `columns:` and, for an `answer_view`, the output's declared `key`; a view that
+    states neither is checked when it is rendered (`present` names the missing column)."""
+    from stringency.present import parse_where
+
+    skills = path / "skills"
+    if not skills.is_dir():
+        return
+    for f in sorted(skills.glob("*.yml")):
+        if f.name.endswith((".analyze.yml", ".questions.yml")):
+            continue
+        try:
+            data = yaml.safe_load(f.read_text())
+        except (OSError, yaml.YAMLError):
+            continue  # `present` degrades to the engine default and says so
+        if not isinstance(data, dict) or data.get("skill") != 1:
+            continue
+        for key in VIEW_LISTS:
+            entries = data.get(key)
+            for i, v in enumerate(entries if isinstance(entries, list) else []):
+                if not isinstance(v, dict) or "where" not in v:
+                    continue
+                at = f"{f}: {key}[{i}]"
+                where = v["where"]
+                if isinstance(where, dict):
+                    column = str(where.get("column") or "")
+                    if not column:
+                        report.error(at, "where: {column, equals} needs a column")
+                        continue
+                elif isinstance(where, str):
+                    try:
+                        column, _values = parse_where(where)
+                    except ValueError as e:
+                        report.error(at, str(e))
+                        continue
+                else:
+                    report.error(
+                        at, "where must be `<column> = <value>` or `<column> in <v1>,<v2>`"
+                    )
+                    continue
+                known: list[str] = []
+                cols = v.get("columns")
+                if isinstance(cols, list):
+                    known += [str(c) for c in cols]
+                if key == "answer_view":
+                    mod = modules.by_name(str(v.get("tool") or ""))
+                    out = mod.manifest.outputs.get(str(v.get("output") or "")) if mod else None
+                    if out is not None and out.key:
+                        known += list(out.key)
+                if known and column not in known:
+                    report.error(
+                        at,
+                        f"where names column {column}, which the view does not have "
+                        f"(its columns: {', '.join(dict.fromkeys(known))})",
+                    )
 
 
 def _lint_env_manifest(path: Path, modules: ModuleIndex, report: LintReport) -> None:

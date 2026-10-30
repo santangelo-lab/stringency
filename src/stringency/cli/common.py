@@ -6,15 +6,53 @@ import json
 import sys
 from collections.abc import Callable
 from functools import wraps
+from pathlib import Path
 from typing import Any
 
 import typer
 
 from stringency.exit_codes import Exit, StringencyError
 
+DETACH_HELP = (
+    "start the verb in a child that outlives this command and print {job_id, pid, log} at "
+    "once; `stringency wait --job <id>` prints what it printed, with its exit code"
+)
+OUT_HELP = (
+    "write the JSON payload to this file and print only its path and a one-line summary "
+    "(for a connection that cuts long output)"
+)
 
-def emit(payload: dict[str, Any], as_json: bool, human: str | None = None) -> None:
-    """Print `payload` as JSON when --json was given, else `human` (or a plain rendering)."""
+
+def emit(
+    payload: dict[str, Any],
+    as_json: bool,
+    human: str | None = None,
+    *,
+    out: Path | None = None,
+    summary: str | None = None,
+) -> None:
+    """Print `payload` as JSON when --json was given, else `human` (or a plain rendering).
+    With `out` (L134 f) the JSON payload is written to that file whatever `as_json` says, and
+    what is printed is the file's path, its size and a one-line summary (`summary`, else the
+    first line of `human`), as JSON under `--json`."""
+    if out is not None:
+        text = json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
+        target = Path(out)
+        target.write_text(text)
+        first = next((ln for ln in (human or "").splitlines() if ln.strip()), "")
+        line = summary or first or str(payload.get("kind") or payload.get("schema") or "")
+        small = {
+            "schema": "stringency.out/1",
+            "out": str(target.resolve()),
+            "bytes": len(text.encode("utf-8")),
+            "payload_schema": payload.get("schema"),
+            "summary": line,
+        }
+        if as_json:
+            sys.stdout.write(json.dumps(small, indent=2, sort_keys=True) + "\n")
+        else:
+            sys.stdout.write(f"wrote {small['out']} ({small['bytes']} bytes): {line}\n")
+        return
     if as_json:
         sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n")
     elif human is not None:
@@ -45,3 +83,12 @@ def handle_errors[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
 
 def not_implemented(verb: str) -> None:
     raise StringencyError(f"{verb}: not implemented", Exit.REFUSED)
+
+
+def detach_now(as_json: bool) -> None:
+    """`--detach` (L134 c): start this command line again in a detached child and print the
+    job's `{job_id, pid, log}`. Writes `prov/jobs/<job_id>/` (see `stringency.jobs`)."""
+    from stringency.jobs import detach, detached_text
+
+    p = detach()
+    emit(p, as_json, detached_text(p))

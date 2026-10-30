@@ -10,9 +10,10 @@ from typing import Any
 import typer
 
 from stringency.board import refresh_if_present
-from stringency.cli.common import emit, handle_errors
+from stringency.cli.common import DETACH_HELP, OUT_HELP, detach_now, emit, handle_errors
 from stringency.deliver import deliver as do_deliver
 from stringency.exit_codes import ConfigError, RefusedError
+from stringency.harness.subagent import read_requests
 from stringency.judgment import check_responses, check_text
 from stringency.notify import notify_after
 from stringency.project import Project
@@ -73,8 +74,18 @@ def run(
         "--memory",
         help="memory in GB for each step this invocation runs (64 or 64GB), within the policy's cap",
     ),
+    print_requests: bool = typer.Option(
+        False,
+        "--print-requests",
+        help="at a dispatch (exit 20): every request's JSON inline in the payload",
+    ),
+    detach: bool = typer.Option(False, "--detach", help=DETACH_HELP),
+    out: Path | None = typer.Option(None, "--out", help=OUT_HELP),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    if detach:
+        detach_now(as_json)
+        return
     override = Override.from_options(cpus, memory)
     project = Project.find()
     if project.open_ended:
@@ -86,7 +97,7 @@ def run(
         if responses is None:
             raise ConfigError("--check needs --responses <file>")
         res = check_responses(_latest(project), read_responses(responses))
-        emit({"schema": "stringency.response_check/1", **res}, as_json, check_text(res))
+        emit({"schema": "stringency.response_check/1", **res}, as_json, check_text(res), out=out)
         return
     rc = open_or_resume(project, allow_dirty=allow_dirty, new=new)
     rc.resource_override = override
@@ -101,6 +112,10 @@ def run(
         human_prefix = f"responses filed in {ddir}\n"
     nx = run_loop(rc, until=until)
     payload = {**nx.to_json(), "run_id": rc.run_id, "run_status": rc.run["status"]}
+    if print_requests and nx.kind == "dispatching":
+        # every request inline, so an operator behind a slow connection fetches nothing (L134 d)
+        payload["requests"] = read_requests(Path(nx.detail["dispatch_dir"]))
+        payload["requests_inline"] = True
     human = f"run {rc.run_id}\n{human_prefix}{completed_line(nx)}{nx.message}"
     if deliver and nx.kind == "completed" and rc.run["status"] == "completed":
         d = do_deliver(rc)
@@ -112,6 +127,8 @@ def run(
         human += f"\ndelivered run {rc.run_id} to {d.path}\n{len(d.files)} file(s)"
     refresh_if_present(project.root)
     notify_after(project, run_id=rc.run_id, nx=nx, delivery=payload.get("delivery"))
-    emit(payload, as_json, human)
+    emit(
+        payload, as_json, human, out=out, summary=nx.message.splitlines()[0] if nx.message else None
+    )
     if nx.exit_code:
         raise typer.Exit(code=nx.exit_code)

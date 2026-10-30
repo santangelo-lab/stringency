@@ -59,6 +59,7 @@ from stringency.console import (
     driver,
     group_cards,
     hold_context,
+    plugin_problem,
     references,
     timeline,
 )
@@ -268,6 +269,16 @@ LANDING_HTML = _ENV.from_string(
 {% endfor %}
 </ul>
 </details>
+{% if archived %}
+<details>
+<summary>Archived: {{ archived | length }} project{{ "s" if archived | length != 1 }}</summary>
+<table>
+<tr><th>project</th><th>archived</th><th>by</th><th>why</th></tr>
+{% for a in archived %}<tr><td>{% if a.href %}<a href="{{ a.href }}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</td><td>{{ a.when }}</td><td>{{ a.by }}</td><td>{{ a.reason }}</td></tr>
+{% endfor %}
+</table>
+</details>
+{% endif %}
 </section>
 """
     + _FOOT
@@ -619,6 +630,8 @@ def _is_active(entry: dict[str, Any]) -> bool:
     run = entry.get("run")
     if run is None:
         return entry.get("confirm") != "rejected"
+    if run.get("state") == "open":
+        return False  # an open project with nothing under way is idle (L132)
     if run["status"] not in ("completed", "abandoned"):
         return True
     delivered = entry.get("delivered")
@@ -899,6 +912,15 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 self._send(HTTPStatus.OK, self._render_project(reg.root_of(parts[1])))
             elif parts[0] == "hold" and len(parts) == 2:
                 _pid, root = reg.owner_of("hold", parts[1])
+                problem = plugin_problem(project_entry(root).get("domain"))
+                if problem is not None:
+                    # the page needs the project's plugin; say which, not "no such page" (L132)
+                    self._error(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        f"{root.name}: {problem}; this hold can be answered at a terminal in "
+                        f"{root} with an engine that has it",
+                    )
+                    return
                 project = Project.load(root)
                 self._send(HTTPStatus.OK, self._render_hold(project, get_hold(project, parts[1])))
             elif parts[0] == "run" and len(parts) == 2:
@@ -1167,8 +1189,23 @@ class ReviewHandler(BaseHTTPRequestHandler):
         board: list[dict[str, Any]] = []
         roots = self.state.roots
         refs = references(roots)
+        archived: list[dict[str, Any]] = []
         for root in roots:
             entry = project_entry(root)
+            if entry.get("archived"):
+                # put away with `stringency archive` (L132): listed, not worked on
+                a = entry["archived"]
+                archived.append(
+                    {
+                        "name": root.name,
+                        "href": self._project_href(root),
+                        "when": a["ts"][:10],
+                        "by": a["by"],
+                        "reason": a["reason"],
+                    }
+                )
+                continue
+            problem = None if "error" in entry else plugin_problem(entry.get("domain"))
             drv: dict[str, Any] = _NO_DRIVER
             if "error" not in entry:
                 site = Site.load(root)
@@ -1178,12 +1215,16 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     drv = self._driver(site, entry, refs)
                 finally:
                     site.store.close()
+            cells = row(entry)
+            if problem is not None:
+                cells["waiting on"] = problem
             board.append(
                 {
                     "name": root.name,
                     "href": self._project_href(root),
-                    "cells": row(entry),
-                    "sentence": sentence(entry),
+                    "cells": cells,
+                    "sentence": sentence(entry)
+                    + (f" Unreadable here: {problem}." if problem else ""),
                     "driver": drv,
                     "active": _is_active(entry),
                     "you": _asks_you(entry, cards),
@@ -1205,8 +1246,9 @@ class ReviewHandler(BaseHTTPRequestHandler):
             idle=idle,
             today=today,
             board=board,
+            archived=archived,
             columns=list(COLUMNS),
-            n_projects=len(roots),
+            n_projects=len(roots) - len(archived),
             user=self.state.user,
             host=self.state.host,
             read_only=self.state.read_only,

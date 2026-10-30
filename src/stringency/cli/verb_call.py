@@ -8,7 +8,7 @@ from __future__ import annotations
 import typer
 
 from stringency.board import refresh_if_present
-from stringency.cli.common import emit, handle_errors
+from stringency.cli.common import DETACH_HELP, detach_now, emit, handle_errors
 from stringency.cli.verb_propose import parse_sets
 from stringency.controls import ControlResult, ensure_current
 from stringency.exit_codes import ConfigError, Exit, StringencyError
@@ -56,8 +56,12 @@ def call(
         "--memory",
         help="memory in GB for each step this invocation runs (64 or 64GB), within the policy's cap",
     ),
+    detach: bool = typer.Option(False, "--detach", help=DETACH_HELP),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    if detach:
+        detach_now(as_json)
+        return
     override = Override.from_options(cpus, memory)
     if asked_by not in ASKED_BY:
         raise ConfigError("--asked-by must be agent or person")
@@ -120,6 +124,9 @@ def call(
         "controls_error": control_error,
         "next": nx.to_json(),
     }
+    if nx.kind == "held":
+        # the console's page for the hold when `page_url` is set (L134 b)
+        payload["console_url"] = nx.detail.get("console_url")
     lines = [f"run {rc.run_id}"]
     if control_error:
         lines.append(

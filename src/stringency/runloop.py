@@ -84,7 +84,7 @@ def while_held(hold_id: str) -> dict[str, Any]:
     engine so a session holding an older published copy can read the current one. None of these
     resolves the hold, so the terse message of design 14.2 is unchanged; they go in the JSON only.
     Reads the notify file and the filesystem; writes nothing."""
-    from stringency.notify import load_config, page_link
+    from stringency.notify import console_url, load_config, page_link
 
     try:
         cfg = load_config()
@@ -95,6 +95,9 @@ def while_held(hold_id: str) -> dict[str, Any]:
     return {
         "wait_command": f"stringency wait --hold {hold_id} --timeout 86400 --json",
         "review_page": page,
+        # the link the operator gives the person (L134 b): `page_url` with the hold's route,
+        # read even when notifications are off
+        "console_url": console_url(hold_id),
         "operator_skill": str(skill) if skill else None,
     }
 

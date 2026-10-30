@@ -178,6 +178,23 @@ class Registry:
         raise ConfigError(f"no {what} {ident} in {len(self.roots)} project(s)")
 
 
+def plugin_problem(domain: str | None) -> str | None:
+    """Why this console cannot load a project's pages that need its plugin (L132): "plugin
+    <name> not installed in this console's environment", or None when the plugin is loaded or
+    the project names none. The board and `present` need no plugin; a hold's page does."""
+    if not domain:
+        return None
+    from stringency.plugins import load_plugins
+
+    try:
+        loaded = load_plugins()
+    except Exception as e:  # noqa: BLE001 - a broken plugin is reported, not raised
+        return f"the plugins of this console's environment could not be loaded ({e})"
+    if domain in loaded:
+        return None
+    return f"plugin {domain} not installed in this console's environment"
+
+
 # -- the inbox (plan 3.7) ------------------------------------------------------------------------
 
 ASK_GROUPS: tuple[tuple[str, str], ...] = (

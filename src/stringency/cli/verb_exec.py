@@ -12,7 +12,7 @@ from pathlib import Path
 import typer
 
 from stringency.board import refresh_if_present
-from stringency.cli.common import emit, handle_errors
+from stringency.cli.common import DETACH_HELP, detach_now, emit, handle_errors
 from stringency.cli.verb_call import parse_ins
 from stringency.exit_codes import ConfigError, Exit
 from stringency.machine import StepStatus
@@ -67,8 +67,12 @@ def exec_(
         "--memory",
         help="memory in GB for each step this invocation runs (64 or 64GB), within the policy's cap",
     ),
+    detach: bool = typer.Option(False, "--detach", help=DETACH_HELP),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    if detach:
+        detach_now(as_json)  # a script on stdin (`-`) is kept in the job's directory
+        return
     override = Override.from_options(cpus, memory)
     text, suffix = read_script(script)
     chosen = lang or (suffix if suffix in EXEC_LANGS else None) or "py"

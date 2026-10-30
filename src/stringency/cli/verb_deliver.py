@@ -11,7 +11,7 @@ from pathlib import Path
 import typer
 
 from stringency.board import refresh_if_present
-from stringency.cli.common import emit, handle_errors
+from stringency.cli.common import DETACH_HELP, OUT_HELP, detach_now, emit, handle_errors
 from stringency.deliver import deliver as do_deliver
 from stringency.exit_codes import ConfigError, RefusedError
 from stringency.findings import record_story
@@ -38,8 +38,13 @@ def deliver(
             "the report opens with, labelled as theirs; its numbers must be the findings' cells"
         ),
     ),
+    detach: bool = typer.Option(False, "--detach", help=DETACH_HELP),
+    out: Path | None = typer.Option(None, "--out", help=OUT_HELP),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    if detach:
+        detach_now(as_json)
+        return
     project = Project.find()
     if run_id is None:
         row = latest_run(project.store)
@@ -82,6 +87,7 @@ def deliver(
             ("story recorded in the person's words\n" if recorded is not None else "")
             + f"report {'rewritten' if d.changed else 'unchanged'}: {d.path / 'report.md'}\n"
             f"{n_f} finding(s) of {len(d.answers)} answer(s); {len(d.files)} cited file(s)",
+            out=out,
         )
         return
     notify_after(project, run_id=run_id, delivery=payload)
@@ -89,4 +95,6 @@ def deliver(
         payload,
         as_json,
         f"delivered run {run_id} to {d.path}\n{len(d.files)} file(s)\n\n{d.coverage}\n{d.methods}",
+        out=out,
+        summary=f"delivered run {run_id} to {d.path}: {len(d.files)} file(s)",
     )

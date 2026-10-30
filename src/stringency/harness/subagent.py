@@ -65,6 +65,25 @@ def write_requests(
     )
 
 
+def read_requests(dispatch_dir: Path) -> list[dict[str, Any]]:
+    """Every request of a dispatch, in the manifest's order, each as its file holds it plus
+    `request_file` (L134 d: an operator behind a slow connection reads them inline instead of
+    fetching each file). Reads `manifest.json` and the `req_N.json` files; writes nothing."""
+    manifest = dispatch_dir / "manifest.json"
+    if manifest.is_file():
+        names = json.loads(manifest.read_text()).get("requests") or []
+        paths = [dispatch_dir / Path(str(p)).name for p in names]
+    else:
+        paths = sorted(
+            dispatch_dir.glob("req_*.json"), key=lambda p: int(p.stem.split("_")[1] or 0)
+        )
+    out: list[dict[str, Any]] = []
+    for p in paths:
+        data = json.loads(p.read_text())
+        out.append({"request_file": str(p), **(data if isinstance(data, dict) else {})})
+    return out
+
+
 MODEL_ID = re.compile(r"[a-z][a-z0-9]*(?:[-.][a-z0-9]+)+")
 
 

@@ -6,6 +6,10 @@ ids appear only where a command needs them (hold ids), never hashes or paths exc
 directory. `--write` keeps `<root>/STATUS.md` current; the verbs that change a project's state call
 `refresh_if_present`, so the board follows without the operator remembering (a failure there never
 breaks the verb).
+
+An open project's run never completes by itself (design 7.1), so with no step under way and no
+hold open the board says it is open and idle since its last call or answer (L132); a project
+archived with `stringency archive` (`prov/archived.json`) is skipped.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from stringency.archive import archived
 from stringency.clock import now_iso
 from stringency.config import StringencyConfig, load_model
 from stringency.db.store import Store
@@ -27,12 +32,14 @@ BOARD_FILE = "STATUS.md"
 
 
 def scan_projects(root: Path) -> list[Path]:
-    """Project directories one level under `root`: a `stringency.yml` and a `prov/run.db`."""
+    """Project directories one level under `root`: a `stringency.yml` and a `prov/run.db`, and
+    not archived (L132)."""
     out = []
     for d in sorted(Path(root).iterdir()):
         if not d.is_dir() or d.name in SKIP_DIRS or d.name.startswith("."):
             continue
-        if (d / "stringency.yml").exists() and (d / "prov" / "run.db").exists():
+        has_trace = (d / "stringency.yml").exists() and (d / "prov" / "run.db").exists()
+        if has_trace and archived(d) is None:
             out.append(d)
     return out
 
@@ -57,21 +64,65 @@ def _who(cfg: StringencyConfig, role: str) -> str:
     return cfg.roles.reviewer if role == "reviewer" else cfg.roles.owner
 
 
-def _titles(root: Path, cfg: StringencyConfig) -> dict[str, str]:
-    """Step titles from the method's pipeline file; empty when it cannot be read."""
+def _titles(root: Path, cfg: StringencyConfig) -> tuple[dict[str, str], str | None]:
+    """Step titles from the method's pipeline file, and the plugin the project needs (the
+    pipeline's domain, or an open project's `domain`); empty and None when the file cannot be
+    read."""
+    if cfg.pipeline is None:
+        return {}, cfg.domain  # an open project's steps are on demand; their titles are their ids
     try:
-        if cfg.pipeline is None:
-            return {}  # an open project's steps are on demand; their titles are their ids
         pipeline = load_pipeline(find_pipeline(root / "method", cfg.pipeline))
-        return {s: pipeline.title(s) for s in pipeline.order()}
+        return {s: pipeline.title(s) for s in pipeline.order()}, pipeline.domain
     except Exception:  # noqa: BLE001
-        return {}
+        return {}, None
+
+
+# the step statuses of something under way; an open run with none of these and no open hold is
+# idle (L132)
+UNDER_WAY = (
+    "pending",
+    "proposed",
+    "admissible",
+    "running",
+    "awaiting_execution",
+    "dispatching",
+    "produced",
+    "held",
+)
+
+
+def _open_activity(store: Store, run_id: str) -> dict[str, Any]:
+    """An open run's questions and answers and its last call or answer: the latest step event
+    (a `rendered` mark is a reading, not a call), answer or question. Reads: steps, step_events,
+    answers, questions."""
+    last = store.scalar(
+        "SELECT MAX(ts) FROM (SELECT ts FROM step_events WHERE run_id = ? AND event != 'rendered' "
+        "UNION ALL SELECT ts FROM answers WHERE run_id = ? "
+        "UNION ALL SELECT ts FROM questions WHERE run_id = ?)",
+        (run_id, run_id, run_id),
+    )
+    return {
+        "idle_since": str(last) if last else None,
+        "questions": int(
+            store.scalar("SELECT COUNT(*) FROM questions WHERE run_id = ?", (run_id,)) or 0
+        ),
+        "answers": int(
+            store.scalar("SELECT COUNT(*) FROM answers WHERE run_id = ?", (run_id,)) or 0
+        ),
+    }
+
+
+def when_text(ts: str | None) -> str:
+    """`2026-10-22T14:03:09Z` as `2026-10-22 14:03 UTC`."""
+    if not ts:
+        return "an unknown time"
+    return f"{ts[:10]} {ts[11:16]} UTC" if len(ts) >= 16 else ts
 
 
 def project_entry(root: Path) -> dict[str, Any]:
     """One board row. Reads: stringency.yml, holds, reviews, runs, steps, deliveries, and
     deliver/<run>/index.json. Loads no plugin and writes nothing."""
-    entry: dict[str, Any] = {"name": root.name, "path": str(root)}
+    entry: dict[str, Any] = {"name": root.name, "path": str(root), "archived": archived(root)}
     try:
         cfg = load_model(StringencyConfig, root / "stringency.yml")
         store = Store.open(root / "prov" / "run.db", create=False)
@@ -97,15 +148,21 @@ def project_entry(root: Path) -> dict[str, Any]:
         run = latest_run(store)
         entry["run"] = None
         entry["step"] = None
-        titles = _titles(root, cfg)
+        titles, entry["domain"] = _titles(root, cfg)
         if run is not None:
             entry["run"] = {"run_id": run["run_id"], "status": run["status"]}
             steps = store.all(
                 "SELECT step_id, status FROM steps WHERE run_id = ? ORDER BY rowid",
                 (run["run_id"],),
             )
-            # a skipped conditional step counts as done (L13)
-            current = next((s for s in steps if s["status"] not in ("completed", "skipped")), None)
+            # a skipped conditional step counts as done (L13); an open run's on-demand steps
+            # are each their own, so only one under way is current there (L132)
+            if cfg.pipeline is None:
+                current = next((s for s in steps if s["status"] in UNDER_WAY), None)
+            else:
+                current = next(
+                    (s for s in steps if s["status"] not in ("completed", "skipped")), None
+                )
             entry["steps_done"] = sum(1 for s in steps if s["status"] in ("completed", "skipped"))
             entry["steps_total"] = len(steps)
             if current is not None:
@@ -114,7 +171,8 @@ def project_entry(root: Path) -> dict[str, Any]:
                     "title": titles.get(current["step_id"], current["step_id"]),
                     "status": current["status"],
                 }
-            for h in open_holds(store, run["run_id"]):
+            run_holds = open_holds(store, run["run_id"])
+            for h in run_holds:
                 holds.append(
                     {
                         "kind": h["kind"],
@@ -123,6 +181,10 @@ def project_entry(root: Path) -> dict[str, Any]:
                         "step_id": h["step_id"],
                     }
                 )
+            if cfg.pipeline is None and run["status"] not in ("completed", "abandoned"):
+                entry["run"].update(_open_activity(store, run["run_id"]))
+                if current is None and not run_holds:
+                    entry["run"]["state"] = "open"
         entry["holds"] = holds
         entry["delivered"] = _latest_delivery(store)
     finally:
@@ -159,6 +221,12 @@ def sentence(e: dict[str, Any]) -> str:
         step = e["step"]
         if st == "completed":
             parts.append("The latest run completed.")
+        elif e["run"].get("state") == "open":
+            parts.append(
+                f"It is open, idle since {when_text(e['run'].get('idle_since'))}: "
+                f"{e['run'].get('questions', 0)} question(s), {e['run'].get('answers', 0)} "
+                "answer(s); `stringency abandon` closes it."
+            )
         elif st == "abandoned":
             parts.append("The latest run was abandoned.")
         elif step is None:
@@ -206,6 +274,8 @@ def row(e: dict[str, Any]) -> dict[str, str]:
         cells = [e["name"], "", "", "", "", "", "unreadable", ""]
         return dict(zip(COLUMNS, cells, strict=True))
     run = e["run"]["status"] if e["run"] else "none"
+    if e["run"] and e["run"].get("state") == "open":
+        run = f"open, idle since {when_text(e['run'].get('idle_since'))}"
     step = ""
     if e["step"]:
         step = f"{e['step']['title']} ({e['step']['status'].replace('_', ' ')})"

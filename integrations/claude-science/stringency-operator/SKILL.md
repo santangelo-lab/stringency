@@ -156,6 +156,16 @@ where it stopped.
 invocation, which the person may raise or lower within the cap in the policy (`resources:` in
 `policy.yml`); without them a step runs with its module's `resources`.
 
+**A session with a command limit** (mode B's `call_command` ends a command after 60 seconds;
+engine 0.2.35). Start `run`, `call`, `exec`, `deliver` and `controls run` with `--detach`: the
+verb prints `{job_id, pid, log}` and returns at once while the work goes on. Then, each in a
+fresh command, `stringency wait --job <job_id> --for 50 --json`: `state: running` (exit 10)
+means wait again the same way; otherwise it prints what the verb printed, with its exit code,
+and you act on that as on the verb itself. Read a long payload with `--out <file>` on `run`,
+`deliver` and `present` and read the file in parts; at a dispatch, `run --json
+--print-requests` (or `stringency judgments --dispatch --print --json`) carries every request
+inline, so no request file is fetched.
+
 **21, a ticket.** `stringency next --json`; read `job_spec`. The engine has already created the
 step directory and written `job_json` there. Run `operator_line` exactly as printed, as one
 command: it is the container `exec` line (stdin from `job.json`, both output streams to the job
@@ -272,14 +282,15 @@ verdict, the wait returns too; that is the same verdict, not a second one. Relay
 verbatim; do not restate them in your words.
 
 **Console mode** (owner's decision 7, 2026-10-07). On when the person says they are using the
-console, when the held payload's `review_page` is set (engine 0.2.11 or later), or when
-`~/.config/stringency/notify.yml` has a `page_url` (the console's address; `review --serve`,
-engine 0.2.8 or later). Then, at a hold, instead of steps 1 to 4 and
+console, when the held payload's `console_url` or `review_page` is set (engine 0.2.35 and 0.2.11
+or later), or when `~/.config/stringency/notify.yml` has a `page_url` (the console's address;
+`review --serve`, engine 0.2.8 or later). Then, at a hold, instead of steps 1 to 4 and
 `present --hold`: say one sentence, "The analysis paused at {step title}: {for a flag, the
 predicate's reason verbatim; for a confirm, 'does this reading of your experiment match'; for an
 egress hold, 'is it acceptable that this leaves the machine'; for an item hold, 'which call for
-{item} should stand'}. Answer on the console ({review_page}, or {page_url}/hold/{id})
-or here." Then arm `stringency wait --hold {id} --timeout 86400 --json` as a background command
+{item} should stand'}. Answer on the console ({console_url}, or {review_page}, or
+{page_url}/hold/{id}) or here." Always give the link when the payload of `run --json`, `call
+--json` or `present --hold --json` carries `console_url`; it is the person's way to the hold. Then arm `stringency wait --hold {id} --timeout 86400 --json` as a background command
 and say once "waiting on the console for the {step title} hold". When it returns, read
 `verdict`, `via` and `reason` and relay them verbatim; on an item hold also `label`, the label the
 item took, which on a sign-off is the route the run takes (the method's documentation says what

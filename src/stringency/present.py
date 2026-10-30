@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -407,6 +408,12 @@ def render_items(
         where = item.get("where")
         if isinstance(where, dict) and where.get("column"):
             rows, note = _where(rows, where, hold)
+        elif isinstance(where, str):
+            try:
+                rows = apply_where(rows, where)
+            except ValueError as e:
+                sections.append({"title": title, "kind": kind, "error": f"{src}: {e}"})
+                continue
         if kind == "chart":
             try:
                 sections.append({"title": title, **chart_section(rows, item, hold)})
@@ -448,6 +455,34 @@ def _where(
     else:
         value = eq
     return [r for r in rows if str(r.get(col)) == str(value)], None
+
+
+def parse_where(clause: str) -> tuple[str, list[str]]:
+    """A view's `where:` clause (L134 e), one clause: `<column> = <value>` or `<column> in
+    <v1>,<v2>`. Returns the column and the values a row's cell may equal; a value may be quoted.
+    Raises ValueError naming the forms when the clause is neither."""
+    text = clause.strip()
+    one = re.fullmatch(r"([^\s=]+)\s*=\s*(.+)", text)
+    many = None if one else re.fullmatch(r"([^\s=]+)\s+in\s+(.+)", text)
+    m = one or many
+    if m is None:
+        raise ValueError(f"where `{clause}` is not `<column> = <value>` or `<column> in <v1>,<v2>`")
+    column = m.group(1)
+    raw = m.group(2).split(",") if many else [m.group(2)]
+    values = [v.strip().strip("'\"") for v in raw]
+    if not all(values):
+        raise ValueError(f"where `{clause}` names an empty value")
+    return column, values
+
+
+def apply_where(rows: list[dict[str, Any]], clause: str) -> list[dict[str, Any]]:
+    """The rows whose `column` cell is one of the clause's values, compared as text. Raises
+    ValueError when the clause does not parse or the table has rows but no such column."""
+    column, values = parse_where(clause)
+    if rows and column not in rows[0]:
+        raise ValueError(f"where `{clause}`: the table has no column {column}")
+    wanted = set(values)
+    return [r for r in rows if str(r.get(column)) in wanted]
 
 
 def _captions(directory: Path) -> dict[str, str]:
@@ -868,6 +903,7 @@ def present_hold(
     )
     skill, note = load_skill(project, skills_dir)
     from stringency.console import plain_block
+    from stringency.notify import console_url
 
     plain = plain_block(h, ctx)
     payload: dict[str, Any] = {
@@ -885,6 +921,8 @@ def present_hold(
         "run_id": h["run_id"],
         "predicate": predicate or None,
         "evidence": ctx.get("evidence"),
+        # the console's page for the hold when `page_url` is set (L134 b)
+        "console_url": console_url(str(h["hold_id"])),
         "review": {
             "accept": f'stringency review --verdict accept --hold {h["hold_id"]} --reason "<why>"',
             "reject": f'stringency review --verdict reject --hold {h["hold_id"]} --reason "<why>"',
@@ -1639,6 +1677,11 @@ def _artifact_section(project: Site, art: Any, view: dict[str, Any]) -> dict[str
         rows = _rows_from_table(path)
     except (OSError, ValueError) as e:
         return {"title": title, "kind": "table", "error": f"{path.name}: {e}"}
+    if isinstance(view.get("where"), str):  # the view's filter (L134 e)
+        try:
+            rows = apply_where(rows, str(view["where"]))
+        except ValueError as e:
+            return {"title": title, "kind": "table", "error": f"{path.name}: {e}"}
     head = view.get("head")
     note = None
     if isinstance(head, int) and len(rows) > head:
@@ -1705,6 +1748,180 @@ def present_step(
     ns = skill.get("never_show")
     payload["never_show"] = [str(x) for x in ns] if isinstance(ns, list) else []
     return payload
+
+
+STEP_TABLE_HEAD = 20  # rows of an output table `present --step` prints when no view names it
+
+
+def _step_of(source: str) -> str:
+    """The step a view's source lies under: `<step>/<rest>` or `<step>.<output>...`."""
+    s = normalise_source(source)
+    return s.split("/", 1)[0] if "/" in s else s.split(".", 1)[0]
+
+
+def present_completed_step(
+    project: Site, run_id: str | None, step_id: str, skills_dir: Path | None = None
+) -> dict[str, Any]:
+    """`present --step <id>` (L134 a): a completed step's outputs and the method's views of
+    them, while the run is in any state, a held run included (the evidence a later proposal is
+    read from). In order: the method's `step_view` entries for the step; its `hold_view`
+    entries whose source lies under the step (none with an `{item}`); the declared decision
+    evidence of any step whose source lies under it; and, when none of these shows anything,
+    each output itself (a table's first rows, a figure, a file). Defaults to the latest run.
+    Refuses a step that is not completed (15). Reads: runs, steps, artifacts, the skill file
+    and the step's files. Writes nothing; the CLI records the rendering (`record_rendered`)."""
+    if run_id is None:
+        row = project.store.one(
+            "SELECT run_id FROM runs WHERE kind = 'run' ORDER BY started DESC, rowid DESC LIMIT 1"
+        )
+        if row is None:
+            raise ConfigError("no run to present a step of")
+        run_id = str(row["run_id"])
+    st = project.store.one(
+        "SELECT status FROM steps WHERE run_id = ? AND step_id = ?", (run_id, step_id)
+    )
+    if st is None:
+        raise ConfigError(f"no step {step_id} in run {run_id}")
+    if st["status"] != "completed":
+        raise ConfigError(
+            f"step {step_id} is {st['status']}; present --step renders a completed step"
+        )
+    payload = present_step(project, run_id, step_id, skills_dir)
+    payload["title"] = (
+        project.pipeline.title(step_id) if project.pipeline.has_step(step_id) else step_id
+    )
+    payload["status"] = "completed"
+    payload["run_status"] = project.store.scalar(
+        "SELECT status FROM runs WHERE run_id = ?", (run_id,)
+    )
+    shown = {str(s.get("source") or "") for s in payload["sections"]}
+    skill, _note = load_skill(project, skills_dir)
+    raw = skill.get("hold_view") if skill is not None else None
+    views = [
+        v
+        for v in (raw if isinstance(raw, list) else [])
+        if isinstance(v, dict)
+        and v.get("source")
+        and "{item}" not in str(v["source"])
+        and _step_of(str(v["source"]).replace("{step}", step_id)) == step_id
+        and str(v["source"]) not in shown
+    ]
+    if views:
+        payload["sections"] += render_items(
+            project, run_id, views, None, {"step_id": step_id, "evidence": None}
+        )[0]
+        shown |= {str(v["source"]) for v in views}
+    for sid in project.pipeline.order():
+        for name, decl in project.pipeline.step(sid).params.items():
+            src = decl.decision.evidence.source if decl.decision is not None else None
+            if not src or _step_of(src) != step_id or src in shown:
+                continue
+            shown.add(src)
+            suffix = Path(src).suffix.lower()
+            kind = (
+                "figure"
+                if suffix in IMAGE_SUFFIXES
+                else ("table" if suffix in (".csv", ".tsv", ".txt", "") else "text")
+            )
+            payload["sections"] += render_items(
+                project,
+                run_id,
+                [{"title": f"the evidence for {sid}.{name} ({src})", "source": src, "kind": kind}],
+                None,
+            )[0]
+    arts = project.store.all(
+        "SELECT name, kind, path FROM artifacts WHERE run_id = ? AND step_id = ? AND "
+        "status = 'produced' ORDER BY rowid",
+        (run_id, step_id),
+    )
+    payload["outputs"] = [{"name": a["name"], "kind": a["kind"], "path": a["path"]} for a in arts]
+    if not any("error" not in s for s in payload["sections"]):
+        for a in arts:
+            payload["sections"].append(_output_section(a, step_id))
+    return payload
+
+
+def _output_section(art: Any, step_id: str) -> dict[str, Any]:
+    """One output of a step as `present --step` shows it with no view naming it; its source in
+    the skill's form, `<step>/<file>`."""
+    path = Path(str(art["path"]))
+    title = f"{art['name']} ({path.name})"
+    src = f"{step_id}/{path.name}"
+    if path.suffix.lower() in IMAGE_SUFFIXES or art["kind"] == "figure":
+        return {
+            "title": title,
+            "kind": "figure",
+            "path": str(path),
+            "caption": _caption(path),
+            "beside": None,
+            "beside_caption": None,
+            "beside_missing": None,
+            "source": src,
+        }
+    if is_tabular(str(art["kind"]), path) and path.is_file():
+        try:
+            rows = _rows_from_table(path)
+        except (OSError, ValueError) as e:
+            return {"title": title, "kind": "table", "error": f"{path.name}: {e}"}
+        sec = {
+            "title": title,
+            "kind": "table",
+            "source": src,
+            **_table(rows[:STEP_TABLE_HEAD], None, {}),
+        }
+        if len(rows) > STEP_TABLE_HEAD:
+            sec["note"] = f"first {STEP_TABLE_HEAD} of {len(rows)} rows; the file is {path}"
+        return sec
+    return {"title": title, "kind": "file", "path": str(path), "source": src}
+
+
+def record_rendered(project: Site, payload: dict[str, Any], verb: str = "present --step") -> int:
+    """`present --step` marks the step it rendered (L134 a): one `step_events` row `rendered`
+    on that step with `{verb, ts}` and the sources shown, the OS user and the operator session.
+    A hold's provenance line reads it ("rendered by present --step at <ts>") and `propose`
+    copies the latest ones onto its `proposed` event. Writes: step_events. Returns the seq."""
+    import getpass
+    import os
+
+    from stringency.clock import now_iso
+    from stringency.operator_id import operator_env
+
+    sources: list[str] = []
+    for s in payload.get("sections") or []:
+        src = s.get("source")
+        if src and src not in sources:
+            sources.append(str(src))
+    return project.store.step_event(
+        str(payload["run_id"]),
+        str(payload["step_id"]),
+        "rendered",
+        {
+            "verb": verb,
+            "ts": now_iso(),
+            "sources": sources,
+            "user": os.environ.get("USER") or os.environ.get("LOGNAME") or getpass.getuser(),
+            "session_ref": operator_env().get("session_ref"),
+        },
+    )
+
+
+def rendered_marks(store: Store, run_id: str) -> list[dict[str, Any]]:
+    """The latest `rendered` mark of each step of a run, oldest first: `{step_id, verb, ts}`.
+    Reads: step_events."""
+    rows = store.all(
+        "SELECT step_id, payload_json, ts FROM step_events WHERE run_id = ? AND event = 'rendered' "
+        "ORDER BY ts, seq",
+        (run_id,),
+    )
+    latest: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        p = json.loads(r["payload_json"] or "{}")
+        latest[str(r["step_id"])] = {
+            "step_id": str(r["step_id"]),
+            "verb": p.get("verb"),
+            "ts": p.get("ts") or r["ts"],
+        }
+    return sorted(latest.values(), key=lambda m: str(m["ts"]))
 
 
 def present_rows(
@@ -1870,6 +2087,15 @@ def render_markdown(payload: dict[str, Any]) -> str:
         out.append(payload["text"].rstrip())
     elif payload["kind"] == "run":
         out.append(f"## {payload['pipeline']}: {payload['progress']}")
+    elif payload["kind"] == "step":
+        out.append(
+            f"## {payload.get('title') or payload['step_id']}: completed"
+            + (f" (the run is {payload['run_status']})" if payload.get("run_status") else "")
+        )
+        if payload.get("outputs"):
+            out.append("")
+            out.append("Outputs:")
+            out += [f"- {o['name']}: {o['path']}" for o in payload["outputs"]]
     else:
         packet = payload.get("packet")
         heading = f": {packet['heading']}" if packet and packet.get("heading") else ""

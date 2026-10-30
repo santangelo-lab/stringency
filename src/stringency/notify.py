@@ -117,6 +117,23 @@ def page_link(page_url: str, path: str) -> str:
     return urlunsplit((u.scheme, u.netloc, path, u.query, ""))
 
 
+def console_url(hold_id: str, path: Path | None = None) -> str | None:
+    """The console's page for a hold (L134 b): `page_url` from the per-user notify file joined
+    with the console's `/hold/<id>` route (`review_serve.py`), its token kept. Read on its own,
+    so a file with no channels, or with notifications switched off, still gives the link. None
+    when there is no file, no `page_url`, or the file cannot be read; never raises. Reads the
+    notify file only."""
+    p = path or config_path()
+    try:
+        data = yaml.safe_load(p.read_text()) if p.is_file() else None
+    except (OSError, yaml.YAMLError):
+        return None
+    page = data.get("page_url") if isinstance(data, dict) else None
+    if not isinstance(page, str) or not page.strip():
+        return None
+    return page_link(page.strip(), f"/hold/{hold_id}")
+
+
 def _link(cfg: Config, root: Path, route: str, terminal: str) -> str:
     return page_link(cfg.page_url, route) if cfg.page_url else terminal
 

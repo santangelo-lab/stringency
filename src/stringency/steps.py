@@ -630,7 +630,11 @@ def propose(
     (`{text, cited, considered}`, each citation resolved to its cell) behind `rationale_ref`,
     and the pre-gate reads them from the action in memory.
 
+    The `proposed` step event carries `rendered`, the latest `present --step` mark of each step
+    of the run so far (L134 a), when there is one.
+
     Writes: actions, messages (rationale), predicate_results, steps, step_events, holds.
+    Reads: step_events (`rendered`).
     """
     store = rc.store
     if not rc.pipeline.has_step(step_id):
@@ -684,6 +688,13 @@ def propose(
         action = action.with_ticket(action.action_id)
     if record is not None:
         action = Action(**{**action.__dict__, "rationale": record})
+    from stringency.present import rendered_marks
+
+    # what `present --step` rendered in this run before the proposal (L134 a), on the event
+    proposed_payload: dict[str, Any] = {"action_id": action.action_id}
+    marks = rendered_marks(store, rc.run_id)
+    if marks:
+        proposed_payload["rendered"] = marks
     with store.transaction():
         write_action(store, action)
         transition(
@@ -692,7 +703,7 @@ def propose(
             step_id,
             StepStatus.PROPOSED,
             attempt=attempt,
-            payload={"action_id": action.action_id},
+            payload=proposed_payload,
         )
     state = rc.current_state()
     ctx = rc.gate_context("pre", action, state)

@@ -8,6 +8,7 @@ from stringency import __version__
 from stringency.cli import (
     verb_abandon,
     verb_answer,
+    verb_archive,
     verb_ask,
     verb_audit,
     verb_board,
@@ -19,6 +20,7 @@ from stringency.cli import (
     verb_finding,
     verb_fork,
     verb_init,
+    verb_judgments,
     verb_lint,
     verb_next,
     verb_plugins,
@@ -60,6 +62,8 @@ app.command("review")(verb_review.review)
 app.command("deliver")(verb_deliver.deliver)
 app.command("fork")(verb_fork.fork)
 app.command("abandon")(verb_abandon.abandon)
+app.command("archive")(verb_archive.archive)
+app.command("judgments")(verb_judgments.judgments)
 app.command("wait")(verb_wait.wait)
 app.command("lint")(verb_lint.lint)
 app.command("audit")(verb_audit.audit_verb)
@@ -84,7 +88,19 @@ def _root(
 
 
 def main() -> None:
-    app()
+    """The console script. A child started by `--detach` (`STRINGENCY_JOB_DIR` set) runs the
+    verb and records its exit code in the job's directory (L134, `stringency.jobs`)."""
+    import os
+
+    job = os.environ.pop("STRINGENCY_JOB_DIR", None)
+    if job is None:
+        app()
+        return
+    from pathlib import Path
+
+    from stringency.jobs import run_as_job
+
+    run_as_job(Path(job), app)
 
 
 if __name__ == "__main__":

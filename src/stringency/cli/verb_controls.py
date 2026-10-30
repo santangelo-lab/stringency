@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from stringency.cli.common import emit, handle_errors
+from stringency.cli.common import DETACH_HELP, detach_now, emit, handle_errors
 from stringency.controls import run_controls
 from stringency.exit_codes import Exit
 from stringency.project import Project
@@ -28,8 +28,12 @@ def run(
         "--memory",
         help="memory in GB for each step this invocation runs (64 or 64GB), within the policy's cap",
     ),
+    detach: bool = typer.Option(False, "--detach", help=DETACH_HELP),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    if detach:
+        detach_now(as_json)
+        return
     override = Override.from_options(cpus, memory)
     project = Project.find()
     results = run_controls(project, module, allow_mock=allow_mock, override=override)
