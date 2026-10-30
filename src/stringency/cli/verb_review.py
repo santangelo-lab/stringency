@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -13,6 +14,23 @@ from stringency.exit_codes import ConfigError
 from stringency.notify import notify_after
 from stringency.project import Project
 from stringency.review import choose, get_hold, queue, record_review, show
+
+
+def parse_correction(text: str | None) -> dict[str, Any] | None:
+    """`--correction` as JSON, or as one `<field>=<value>` pair (L133: `confidence=medium`)."""
+    if not text:
+        return None
+    stripped = text.strip()
+    if not stripped.startswith("{") and "=" in stripped:
+        field, _, value = stripped.partition("=")
+        return {field.strip(): value.strip()}
+    try:
+        doc = json.loads(stripped)
+    except json.JSONDecodeError as e:
+        raise ConfigError(f"--correction is neither JSON nor <field>=<value>: {e}") from e
+    if not isinstance(doc, dict):
+        raise ConfigError("--correction must be a JSON object or <field>=<value>")
+    return doc
 
 
 @handle_errors
@@ -32,7 +50,10 @@ def review(
         None, "--replicate", help="accept: which replicate's call"
     ),
     correction: str | None = typer.Option(
-        None, "--correction", help="override: JSON with label (and ontology_id)"
+        None,
+        "--correction",
+        help="override: JSON with label (and ontology_id) on an item hold; <field>=<value> "
+        "(confidence=<band>) on a flag that names a correction",
     ),
     reason: str | None = typer.Option(None, "--reason"),
     choose_label: str | None = typer.Option(
@@ -136,7 +157,7 @@ def review(
         return
     if hold is None:
         raise ConfigError("--verdict needs --hold <id>")
-    corr = json.loads(correction) if correction else None
+    corr = parse_correction(correction)
     result = record_review(
         project, hold, verdict, reason=reason, correction=corr, replicate=replicate, attest=attest
     )

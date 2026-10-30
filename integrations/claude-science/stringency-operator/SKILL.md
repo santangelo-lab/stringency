@@ -221,13 +221,15 @@ refused (exit 16); only `run --new` opens another run, and only when the user as
 When the engine stops with a hold, the operator reads `stringency review --hold <id> --json` (or
 the packet file the message names) and says, in this order and nothing else:
 
-1. Where and what: "The analysis paused at {step title}. The engine is asking: {for a flag, 'is
-   this acceptable: ' plus the predicate's reason verbatim; for a confirm, 'does this reading of
-   your experiment match'; for an egress hold, 'is it acceptable that this leaves the machine';
+1. Where and what: "The analysis paused at {step title}. The engine is asking: {for a flag, the
+   packet's `question` verbatim ('is this acceptable: ...', engine 0.2.35; before it, 'is this
+   acceptable: ' plus the predicate's reason verbatim); for a confirm, 'does this reading of your
+   experiment match' (in open mode, 'is this the delivery you meant to open for questions'); for
+   an egress hold, 'is it acceptable that this leaves the machine';
    for an item hold, 'which of these calls for {item} should stand'; for a sign-off, 'which label
    {item} takes: {the packet's choices}'}."
 2. The record: the packet's reason and evidence lines verbatim under "What the engine recorded";
-   for item holds, each replicate's call, confidence, and rationale verbatim; for an egress hold,
+   for a flag, the packet's `rule` lines first, verbatim; for item holds, each replicate's call, confidence, and rationale verbatim; for an egress hold,
    the report's `ceiling:` and `assessed:` lines, every entry under "What leaves the machine" and
    the report's "not assessed" line, all verbatim. No summary, no reordering.
 3. The options: every entry of `verdicts`, as "{verdict}: {effect}", verbatim, in the engine's
@@ -249,10 +251,13 @@ ahead" get: "To record this I need one of {verdicts} and your reason in your own
 is inferred from tone. Item holds: the person may name a label instead of a verdict; record it
 with `--choose {label}` (the engine records accept when a replicate called it, else override), and
 on a sign-off a reason is required. Otherwise accept needs the replicate number the person names
-and override passes the person's label through unchanged.
+and override passes the person's label through unchanged. A flag lists `override` only when its
+packet names a correction (`judg.confidence_consistent`: the confidence the calls take); then
+override passes the person's value unchanged as `--correction <field>=<value>`.
 
 Then one command: `stringency review --verdict {v} --hold {id} --reason "{their words}"
-[--replicate n | --correction '{"label": ...}'] --attest`, or `stringency review --choose {label}
+[--replicate n | --correction '{"label": ...}' | --correction <field>=<value>] --attest`, or
+`stringency review --choose {label}
 --hold {id} --reason "{their words}" --attest`, with `STRINGENCY_SESSION_REF` set.
 Report the engine's reply in one sentence. On exit 16 (strict profile refuses relayed review),
 name the two routes the engine allows: the review page, or `stringency review --hold {id}` at a
@@ -297,8 +302,9 @@ mean in `skills/<pipeline>.yml`; the engine renders it. The operator relays, nev
   of what the tools printed, and do not quote run ids, hashes, checksums, or command lines; the
   footer names what the method asked not to show.
 - When a run stops at a hold: run `stringency present --hold <id>` and relay it before asking for
-  the review (section 6): the hold's kind and reason, the tables the method attached to that
-  predicate (for a judgment, the per-item verdicts with their cited evidence), and the two review
+  the review (section 6): for a flag, the question, the rule with its facts, the tables the method
+  attached to that predicate (scoped to the hold's items when the view says `scope: item`), and
+  what each verdict does; for any other hold, its kind and reason, the tables, and the review
   commands. Then follow section 6 for the verdict.
 - Between events: do not report "still running". Point at `STATUS.md` beside the projects
   (`stringency board <dir> --write` creates it once; the verbs keep it current), or run
@@ -316,8 +322,9 @@ predicate named. Never edit job.json to use a value the ticket did not admit. A 
 
 Some steps take a parameter nobody can set before the run has produced the evidence for it: the
 step's default is `unset` or a sign-off is required, and the operator proposes the value. Run
-`stringency run --until <the step before>` so the evidence exists, read the evidence the method
-names (`present` shows it; never compute from it), then `stringency propose <step> --set
+`stringency run --until <the step before>` so the evidence exists, render the evidence the method
+names through `present` and read it there before you propose (the hold's provenance line says
+whether you did; never compute from it), then `stringency propose <step> --set
 <parameter>=<value> --cite <step>/<output>[:<row>[:<column>]] ... --considered <v1,v2,...>
 --reason "<why, in words the cited cells support>"` (engine 0.2.29). Cite every cell your reason
 rests on, from the evidence the pipeline's `decision:` block names for that parameter, and list

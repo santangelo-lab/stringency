@@ -49,6 +49,8 @@ hold_view:                 # rendered by `present --hold` (and the console) for 
     where: {column: <col>, equals: <value or $param.<parameter>>}  # table kinds: keep the rows whose column equals the value; $param.<p> is the hold's proposed value of p
     beside: <a second image, shown in a second column>          # figure
     select: [<file>, ...]  # figures: a subset of the directory's images, in this order
+    scope: item            # optional: only the rows and images of the items the hold names (L133)
+    item_column: <col>     # optional, with scope: item: the column that holds the item
     x: <column>            # chart: a line of y against x from a table
     y: <column>
     mark_param: <parameter>        # chart: a vertical line at the hold's value of this parameter
@@ -79,6 +81,16 @@ entry's `where:` keeps the rows whose column equals a value, and `$param.<name>`
 the one the hold proposes (engine 0.2.18), so an organ sign-off shows the punches the proposed
 organ keeps; a hold that proposes no such value shows every row with a note saying so. A table
 whose file opens with `#` comment lines is read from its header line (engine 0.2.18).
+
+A hold's packet (engine 0.2.35, L133): `scope: item` narrows a view to the items the hold names
+(an item hold's item, or the items a judgment predicate's evidence names): a table keeps the rows
+whose `item_column` (else the first column holding one of the items) is one of them, a figures
+view keeps the images whose file or caption names one (all of them when none does), and an
+image is shown once across the hold's views. A table view at a parameter hold also shows, after
+its own `columns`, every column of the file that the proposal's citations or reason name (L131);
+`lint <project>` warns when a view names a column the produced output lacks and lists the
+output's columns no view shows (an output that declares a `schema` is checked from it in the
+method repository too).
 
 Figures (console, engine 0.2.10): `figure` shows one image, `beside` a second at the same size
 in a second column (this run's batch panel beside the uncorrected one); `figures` shows the

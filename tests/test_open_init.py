@@ -210,7 +210,8 @@ def test_init_from_delivery_binds_an_open_project_with_the_switch_paragraph(
     echo = q.echo_path().read_text()
     assert " ".join(OPEN_SWITCH.split()) in " ".join(echo.split())
     assert f"run {item.derived_from.run_id} of {up.root}" in " ".join(echo.split())
-    assert "compare-groups (compare_groups), plot-groups (plot_groups)" in echo
+    # the tools as a count and their names, no operation ids (L137)
+    assert "The method's 2 tools: compare-groups, plot-groups." in " ".join(echo.split())
     # the init predicates all passed against the empty topology
     rows = q.store.all("SELECT predicate_id, fired FROM predicate_results WHERE run_id='init'")
     assert {r["predicate_id"] for r in rows} >= {

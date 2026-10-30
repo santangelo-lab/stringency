@@ -134,6 +134,8 @@ class HoldView:
     resolution: dict[str, Any] | None = None  # how a resolved hold was resolved
     decision_lines: list[str] = field(default_factory=list)  # L61/L55: evidence, citations
     presented: str | None = None  # L62: whether the evidence was rendered before the proposal
+    question: str | None = None  # L133: the flag packet's question
+    rule: list[str] = field(default_factory=list)  # L133: the rule with the payload's facts
 
     def to_json(self) -> dict[str, Any]:
         h = self.hold
@@ -160,6 +162,8 @@ class HoldView:
             "resolution": self.resolution,
             "decision_lines": self.decision_lines,
             "presented": self.presented,
+            "question": self.question,
+            "rule": self.rule,
             "text": self.text,
         }
 
@@ -364,13 +368,35 @@ def _shown(v: object) -> object:
 
 
 def verdicts_for(
-    kind: str, hold_id: str, phase: str | None, *, item_level: bool = True
+    kind: str,
+    hold_id: str,
+    phase: str | None,
+    *,
+    item_level: bool = True,
+    predicate: str | None = None,
+    open_mode: bool = False,
 ) -> list[dict[str, str]]:
     """The verdicts a hold kind admits and what each does (design 7.2, 7.3). A step-level
-    `run_disagreement` (invalid replicates) takes the flag's verdicts."""
+    `run_disagreement` (invalid replicates) takes the flag's verdicts. A flag's sentences are
+    the predicate's own when `packets.SAYS` words them, and a predicate that names a correction
+    adds `override` (L133); an open project's confirm says what opening does (L137)."""
     base = f"stringency review --verdict {{verdict}} --hold {hold_id}"
     if kind == "run_disagreement" and not item_level:
         kind, phase = "flag", phase or "post"
+    if kind == "confirm" and open_mode:
+        return [
+            {
+                "verdict": "accept",
+                "effect": "the project opens for questions of these files; nothing runs until "
+                "you ask, and the egress acknowledgement is the next hold",
+                "command": base.format(verdict="accept") + ' --reason "<why>"',
+            },
+            {
+                "verdict": "reject",
+                "effect": "the project stays closed; initialise it again from another delivery",
+                "command": base.format(verdict="reject") + ' --reason "<why>"',
+            },
+        ]
     if kind == "confirm":
         return [
             {
@@ -425,16 +451,38 @@ def verdicts_for(
             },
         ]
     if kind == "flag":
+        from stringency.packets import says_for
+
+        says = says_for(predicate or "")
         proceeds = "the step proceeds to execution" if phase == "pre" else "the step is completed"
-        return [
+        out = [
             {
                 "verdict": "accept",
-                "effect": f"the flagged condition is acceptable here; the hold clears and {proceeds}",
+                "effect": says.verdicts.get(
+                    "accept",
+                    f"the flagged condition is acceptable here; the hold clears and {proceeds}",
+                ),
                 "command": base.format(verdict="accept") + ' --reason "<why>"',
             },
+        ]
+        if says.correction:
+            out.append(
+                {
+                    "verdict": "override",
+                    "effect": says.verdicts.get(
+                        "override", f"the {says.correction} you name is recorded with your review"
+                    ),
+                    "command": base.format(verdict="override")
+                    + f' --correction {says.correction}=<value> --reason "<why>"',
+                }
+            )
+        return out + [
             {
                 "verdict": "reject",
-                "effect": "the attempt closes; a new attempt needs a change to the method or a fork",
+                "effect": says.verdicts.get(
+                    "reject",
+                    "the attempt closes; a new attempt needs a change to the method or a fork",
+                ),
                 "command": base.format(verdict="reject") + ' --reason "<why>"',
             },
             {
@@ -520,11 +568,16 @@ def _closing_lines(project: Project, h: Any, verdicts: list[dict[str, str]]) -> 
 def render_confirm(project: Project, h: Any) -> HoldView:
     """Reads: holds.context_json (the declaration digests) and `echo.md` on disk."""
     ctx = json.loads(h["context_json"] or "{}")
+    question = (
+        "is this the delivery you meant to open for questions"
+        if project.open_ended
+        else "does the engine's reading of the declarations match the experiment"
+    )
     lines = [
         f"hold {h['hold_id']}  kind confirm  waits on {who_waits(project, h)}",
         f"created {h['created']}",
         "",
-        "question: does the engine's reading of the declarations match the experiment",
+        f"question: {question}",
         "",
     ]
     echo = project.echo_path()
@@ -534,7 +587,7 @@ def render_confirm(project: Project, h: Any) -> HoldView:
         lines.append("echo-back missing on disk; the hold was bound to:")
         hashes = ctx.get("hashes") or {}
         lines += [f"{INDENT}{name}: {digest}" for name, digest in sorted(hashes.items())]
-    verdicts = verdicts_for("confirm", h["hold_id"], None)
+    verdicts = verdicts_for("confirm", h["hold_id"], None, open_mode=project.open_ended)
     lines += ["", *_closing_lines(project, h, verdicts)]
     return HoldView(h, "\n".join(lines), verdicts=verdicts)
 
@@ -587,14 +640,20 @@ def render_flag(
     evidence = ctx.get("evidence", {})
     module_ref = plan.module.ref if plan else (action.module if action else None)
     lines = _header(project, h, action, module_ref)
+    from stringency.packets import criteria_of, flag_packet
+
+    packet = flag_packet(h, ctx, [], criteria=criteria_of(project.policy), store=project.store)
     lines += [
         "",
-        "question: is the flagged condition acceptable here",
+        f"question: {packet['question']}",
+        "rule:",
+        *[f"{INDENT}{line}" for line in packet["rule"]],
         "",
         f"predicate {predicate}  phase {phase}",
         f"reason: {h['reason']}",
     ]
     view = HoldView(h, "", module_ref=module_ref)
+    view.question, view.rule = packet["question"], list(packet["rule"])
     if action:
         lines.append("parameters: " + (_kv(action.parameters) or "none"))
         record = rationale_record(
@@ -677,7 +736,7 @@ def render_flag(
             )
             if phase == "post":
                 lines += _execution_lines(rc, action.action_id)
-    view.verdicts = verdicts_for("flag", h["hold_id"], phase)
+    view.verdicts = verdicts_for("flag", h["hold_id"], phase, predicate=predicate)
     lines += ["", *_closing_lines(project, h, view.verdicts)]
     view.text = "\n".join(lines)
     return view

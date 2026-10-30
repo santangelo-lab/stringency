@@ -59,7 +59,6 @@ from stringency.console import (
     driver,
     group_cards,
     hold_context,
-    plain_block,
     references,
     timeline,
 )
@@ -352,7 +351,16 @@ HOLD_HTML = _ENV.from_string(
 <h1 class="ask-{{ ask_group }}"><span class="asktag">{{ ask_label }}</span>{{ ask_heading }}{% if card_title and card_title not in ("the plan", "what leaves the machine") %}: {{ card_title }}{% endif %}</h1>
 <p class="note">{{ project }}{% if step_title %} · {{ step_title }}{% endif %}{% if item_id %} · item {{ item_id }}{% endif %} · {{ kind }} hold · open {{ age }}{% if predicate %} · {{ predicate }}{% endif %}. The form records the same verdicts by the same rules as the terminal. <kbd>a</kbd> accept, <kbd>r</kbd> reject, <kbd>d</kbd> defer{% if replicates %}, <kbd>o</kbd> override{% endif %}, <kbd>Ctrl-Enter</kbd> record.</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
-{% if found %}
+{% if packet %}
+<h2>The question</h2>
+<p class="found">{{ packet.question }}</p>
+<h2>The rule and the facts</h2>
+<ul class="guidance">{% for line in packet.rule %}<li>{{ line }}</li>{% endfor %}</ul>
+{% if (resolved or read_only) and packet.verdicts %}
+<p class="note">What each verdict does:</p>
+<ul class="guidance">{% for v in packet.verdicts %}<li><strong>{{ v.verdict }}</strong>: {{ v.effect }}</li>{% endfor %}</ul>
+{% endif %}
+{% elif found %}
 <h2>What the engine found</h2>
 {% if check %}<p class="note">The check: {{ check }}</p>{% endif %}
 <p class="found">{{ found }}</p>
@@ -441,6 +449,17 @@ HOLD_HTML = _ENV.from_string(
 <option value="">choose</option>
 {% for r in replicates %}
 <option value="{{ r.replicate }}">replicate {{ r.replicate }}: {{ r.label if r.label is not none else 'abstain' }} ({{ r.confidence }})</option>
+{% endfor %}
+</select>
+</fieldset>
+{% endif %}
+{% if flag_correction %}
+<fieldset>
+<legend>Correction (override only): the {{ flag_correction.field }} the flagged calls take</legend>
+<select name="flag_correction">
+<option value="">choose</option>
+{% for val in flag_correction["values"] %}
+<option value="{{ val }}">{{ val }}</option>
 {% endfor %}
 </select>
 </fieldset>
@@ -957,6 +976,13 @@ class ReviewHandler(BaseHTTPRequestHandler):
         replicate = int(rep_raw) if rep_raw else None
         label = form.get("label", [""])[0].strip()
         correction = {"label": label} if verdict == "override" and label else None
+        flag_value = form.get("flag_correction", [""])[0].strip()
+        if verdict == "override" and h["item_id"] is None:
+            # an override on a flag that names a correction (L133): `<field>=<value>`
+            from stringency.packets import says_for
+
+            field = says_for(str(hold_context(h).get("predicate") or "")).correction
+            correction = {field: flag_value} if field and flag_value else None
         choice = form.get("choice", [""])[0].strip()
         try:
             if choice and label and choice != label:
@@ -1480,6 +1506,10 @@ class ReviewHandler(BaseHTTPRequestHandler):
         try:
             skill, _note = load_skill(site)
             hp = present_hold(site, h["hold_id"])
+            # the plain block and the packet as `present --hold` builds them (an open confirm's
+            # rows, L137; a flag's question and rule, L133)
+            plain = {k: hp.get(k) for k in ("check", "found", "compared", "guidance")}
+            packet = hp.get("packet")
             if hp["sections"]:
                 # a project hold (confirm, egress) has no run: its sections are the echo-back
                 # and the report, rendered as a page; a run's hold maps figure paths to routes
@@ -1490,15 +1520,26 @@ class ReviewHandler(BaseHTTPRequestHandler):
         ctx = hold_context(h)
         group = ask_of(h, ctx)
         title = card_title(h, ctx, group, step_title or "the plan", skill)
-        plain = plain_block(h, ctx)
+        flag_correction = None
+        if packet and not is_item:
+            from stringency.packets import criteria_of, says_for
+
+            says = says_for(str(ctx.get("predicate") or ""))
+            if says.correction and says.correction_values:
+                flag_correction = {
+                    "field": says.correction,
+                    "values": says.correction_values(criteria_of(project.policy)),
+                }
         return HOLD_HTML.render(
             title=f"stringency console: {title}",
             ask_group=group,
             ask_label=ASK_LABELS.get(group, group),
             check=plain["check"],
             found=plain["found"],
-            compared=plain["compared"],
+            compared=plain["compared"] or [],
             guidance=plain.get("guidance") or [],
+            packet=packet,
+            flag_correction=flag_correction,
             ask_heading=ASK_HEADINGS[group],
             card_title=title,
             decision=_decision_rows(ctx),

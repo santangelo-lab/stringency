@@ -1,7 +1,21 @@
 hold <id>  kind flag  waits on reviewer tester
 step 03_label  module label-groups@0.1.1  attempt 1  created <ts>
 
-question: is the flagged condition acceptable here
+question: Is this acceptable: 6 calls declare a higher confidence than their citations support?
+rule:
+  Reviewer 1 called A abundant at medium; medium needs at least 2 supporting and at most 1 contradicting citations; this call cites 3 supporting and 2 contradicting.
+  The contradicting citations: summary[C].mean_value = 74.37; summary[A].sd_value = 9.06.
+  Reviewer 1 called B sparse at medium; medium needs at least 2 supporting and at most 1 contradicting citations; this call cites 3 supporting and 2 contradicting.
+  The contradicting citations: summary[B].n_rows = 17; summary[B].n_units = 3.
+  Reviewer 2 called A abundant at medium; medium needs at least 2 supporting and at most 1 contradicting citations; this call cites 3 supporting and 2 contradicting.
+  The contradicting citations: summary[C].mean_value = 74.37; summary[A].sd_value = 9.06.
+  Reviewer 2 called B sparse at medium; medium needs at least 2 supporting and at most 1 contradicting citations; this call cites 3 supporting and 2 contradicting.
+  The contradicting citations: summary[B].n_rows = 17; summary[B].n_units = 3.
+  Reviewer 3 called A abundant at medium; medium needs at least 2 supporting and at most 1 contradicting citations; this call cites 3 supporting and 3 contradicting.
+  The contradicting citations: summary[C].mean_value = 74.37; summary[C].sd_value = 18.38; summary[C].n_rows = 7.
+  Reviewer 3 called B sparse at high; high needs at least 3 supporting and at most 0 contradicting citations; this call cites 3 supporting and 1 contradicting.
+  The contradicting citation: summary[A].n_rows = 17.
+  The bands the policy sets: high needs at least 3 supporting and at most 0 contradicting citations; medium needs at least 2 supporting and at most 1 contradicting citations; low needs at least 1 supporting citation.
 
 predicate judg.confidence_consistent@1  phase post
 reason: judg.confidence_consistent: declared confidence exceeds what the cited evidence supports
@@ -87,9 +101,11 @@ evidence table (rows cited) summary:
   group=C  n_rows=7  n_units=3  mean_value=74.37  sd_value=18.38  top_unit=u9
 
 verdicts:
-  accept: the flagged condition is acceptable here; the hold clears and the step is completed
+  accept: the calls stand at the confidence the reviewers declared; the hold clears and the step is completed
     stringency review --verdict accept --hold <id> --reason "<why>"
-  reject: the attempt closes; a new attempt needs a change to the method or a fork
+  override: the labels stand and the confidence you name is recorded with your review for the flagged calls; the hold clears and the step is completed
+    stringency review --verdict override --hold <id> --correction confidence=<value> --reason "<why>"
+  reject: the attempt closes and its calls are discarded; a new attempt needs a change to the method or a fork
     stringency review --verdict reject --hold <id> --reason "<why>"
   defer: the hold stays; the deferral is recorded so the queue shows it was seen
     stringency review --verdict defer --hold <id>

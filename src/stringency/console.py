@@ -219,6 +219,11 @@ def ask_of(h: Any, ctx: dict[str, Any]) -> str:
     ev = evidence if isinstance(evidence, dict) else {}
     if "proposed" in ev or "decision_points" in ev:
         return "parameters"
+    from stringency.packets import flagged_pairs
+
+    if flagged_pairs(ev):
+        # a judgment predicate's flag on some replicates' calls, not the consensus (L133)
+        return "flag"
     if "consensus_label" in ev or "items" in ev:
         return "consensus"
     return "flag"
@@ -279,6 +284,8 @@ def _opening_block(kind: str, ctx: dict[str, Any]) -> dict[str, Any]:
     declarations, with the echo-back's summary paragraph as what it found. Egress: what leaves
     the machine, with the assessed class and the ceiling. Reads the echo-back or the report on
     disk when the hold's context names it; writes nothing."""
+    if kind == "confirm" and isinstance(ctx.get("bound"), dict):
+        return _open_confirm_block(ctx["bound"])
     if kind == "confirm":
         found = ""
         path = ctx.get("echo_path")
@@ -345,6 +352,37 @@ def _opening_block(kind: str, ctx: dict[str, Any]) -> dict[str, Any]:
             "Each entry under leaves is a route out (who receives what); none should surprise you.",
         ],
     }
+
+
+def _open_confirm_block(bound: dict[str, Any]) -> dict[str, Any]:
+    """The plain block of an open project's confirm hold (L137), from the hold's `bound` rows
+    (no echo file is parsed): what accepting does, and what to check in open mode."""
+    deliveries = [d for d in bound.get("deliveries") or [] if isinstance(d, dict)]
+    n_files = sum(len(d.get("rows") or []) for d in deliveries)
+    runs = "; ".join(
+        f"run {d.get('run_id')} of {Path(str(d.get('project'))).name}" for d in deliveries
+    )
+    tools = list(bound.get("tools") or [])
+    what = (
+        f"the delivery of {runs} ({n_files} files)"
+        if len(deliveries) == 1
+        else f"the deliveries of {runs} ({n_files} files)"
+        if deliveries
+        else "no delivery"
+    )
+    found = (
+        f"The engine bound {what} and the method's {len(tools)} tools; accepting opens the "
+        "project for questions of those files; nothing runs until you ask, and the egress "
+        "ceiling is the next hold."
+    )
+    guidance = [
+        "The delivery is the run you meant.",
+        "The tables your questions need are there, by name.",
+    ]
+    if bound.get("upstream_inputs"):
+        guidance.append("The read-only upstream input is the right object.")
+    guidance.append("Reject to initialise from another delivery.")
+    return {"check": None, "found": found, "compared": [], "guidance": guidance}
 
 
 def _first_sentence(doc: str) -> str:
@@ -460,6 +498,11 @@ def card_title(h: Any, ctx: dict[str, Any], group: str, step_title: str, skill: 
         return f"{step_title}, item {h['item_id']}"
     if group == "invalid":
         return f"{step_title}: a replicate was invalid"
+    from stringency.packets import heading_of
+
+    heading = heading_of(h, ctx)
+    if heading:
+        return f"{step_title}, {heading}"
     return f"{step_title}: {predicate.split('@')[0] or h['reason']}"
 
 

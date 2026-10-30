@@ -207,7 +207,9 @@ def test_present_hold_shows_review_commands_and_matching_view(make_project: Init
     ] == [["g1", "exclude"]]
     md = render_markdown(payload)
     assert "waits for" in md and "--verdict reject" in md
-    assert "What the engine found: something looked off" in md and "| n | 1 |" in md
+    # the packet (L133): the question, then the rule with the evidence's facts
+    assert "Question: Is this acceptable: something looked off?" in md and "- n: 1" in md
+    assert payload["packet"]["says"] == "default" and "override" not in payload["review"]
 
 
 def test_present_skips_a_tables_leading_comment_lines(make_project: InitFn) -> None:
@@ -396,8 +398,9 @@ def test_present_hold_markdown_opens_with_the_plain_block(make_project: InitFn) 
     )
     assert payload["check"] and payload["compared"] == []
     text = render_markdown(payload)
-    assert "What was checked: The operator chose a value for a parameter" in text
-    assert "What the engine found: " in text and "The engine recorded" not in text
+    assert "- The check: The operator chose a value for a parameter" in text
+    assert "Question: Is this acceptable: the operator's value for min_value?" in text
+    assert "The engine recorded" not in text
 
 
 def test_md_html_renders_the_engines_markdown() -> None:

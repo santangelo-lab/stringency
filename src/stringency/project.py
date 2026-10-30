@@ -39,7 +39,12 @@ from stringency.config import (
     load_yaml,
 )
 from stringency.db.store import Store
-from stringency.echo import render_echo, render_inherited_echo, render_open_echo
+from stringency.echo import (
+    bound_structure,
+    render_echo,
+    render_inherited_echo,
+    render_open_echo,
+)
 from stringency.egress import EgressAssessment, assess
 from stringency.egress import render_markdown as render_egress_markdown
 from stringency.executor.base import Executor
@@ -383,7 +388,11 @@ class Project:
         if self.open_ended:
             # the switch paragraph and the bound delivery (open_mode_plan.md 1, decision 4)
             return render_open_echo(
-                self.objective, self.inputs, self.declaration_hashes(), self.tools()
+                self.objective,
+                self.inputs,
+                self.declaration_hashes(),
+                self.tools(),
+                self.method_root,
             )
         inherited = self.inherited_confirmation()
         if inherited is not None:
@@ -585,7 +594,9 @@ class Project:
     def ensure_confirm_hold(self, objects: dict[str, ObjectState] | None = None) -> str | None:
         """Open the init confirm hold for the current declarations if none exists (design 2.7).
 
-        Reads: holds. Writes: holds (kind `confirm`, waits on the owner) and `echo.md`. When the
+        Reads: holds. Writes: holds (kind `confirm`, waits on the owner; an open project's
+        `context_json` carries `mode: open` and the bound delivery as rows, `bound`) and
+        `echo.md`. When the
         confirmation is inherited (2.7, `inherited_confirmation`), also writes one `reviews` row
         (`via: inherited`, the upstream owner's acceptance by reference) and resolves the hold at
         once, so `run` may open without a new acceptance.
@@ -606,6 +617,16 @@ class Project:
                 context["brief_blake3"] = hashing.hash_file(self.root / decl.brief)
         if inherited is not None:
             context["inherited"] = inherited
+        if self.open_ended:
+            # the bound delivery as rows (L137): the console and `present --hold` read these,
+            # not the echo file's paragraphs
+            context["mode"] = "open"
+            context["bound"] = bound_structure(
+                self.objective,
+                self.inputs,
+                [m.manifest.name for m in self.tools()],
+                self.method_root,
+            )
         digest = hashing.prefixed(self.declaration_digest())
         hold_id = self.store.create_hold(
             {

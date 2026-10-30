@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import textwrap
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 from stringency.config import Design, InputsManifest, Objective
 from stringency.modules import Module
@@ -190,56 +193,256 @@ def render_open_echo(
     inputs: InputsManifest,
     hashes: Mapping[str, str],
     tools: list[Module],
+    method_root: Path | None = None,
 ) -> str:
-    """The echo-back of an open project (open_mode_plan.md 1 and 2.1, 2026-10-16): the switch
-    paragraph, then the bound delivery (the upstream run and project, the files by name and
-    type) and the tools the method ships, then the hashes the accept is bound to."""
-    lines = open_echo_lines(objective, inputs, tools)
+    """The echo-back of an open project (open_mode_plan.md 1 and 2.1, 2026-10-16; L137,
+    2026-10-29): the switch paragraph, then the bound delivery grouped by step (each file's name,
+    type and the delivering pipeline's own words for it), the upstream input on one line, the
+    upstream question, the tools as a count and their names, then the hashes the accept is bound
+    to."""
+    lines = open_echo_lines(objective, inputs, tools, method_root)
     bound = "\n".join(f"  {k}: {v}" for k, v in sorted(hashes.items()))
     return (
         "# Echo-back (open mode)\n\n"
         + wrap_text(OPEN_SWITCH)
         + "\n\n"
-        + wrap_text("\n".join(lines))
+        + "\n".join(lines)
         + f"\n\nBound to:\n{bound}\n"
     )
 
 
-def open_echo_lines(objective: Objective, inputs: InputsManifest, tools: list[Module]) -> list[str]:
-    """What an open project is bound to, without the switch paragraph: the delivery, the
-    upstream pipeline's own inputs, other inputs, the upstream question and the tools. The
-    echo-back says it after the switch; the open summary's "What was analyzed" is it."""
-    lines: list[str] = []
-    runs: dict[tuple[str, str], list[str]] = {}
-    raw: list[str] = []
-    before: dict[str, list[str]] = {}
+def _upstream_pipeline(project: str | None) -> str | None:
+    """The pipeline an upstream project ran, from its `stringency.yml`; None when unreadable."""
+    if not project:
+        return None
+    try:
+        data = yaml.safe_load((Path(project) / "stringency.yml").read_text())
+    except (OSError, yaml.YAMLError):
+        return None
+    pipe = data.get("pipeline") if isinstance(data, dict) else None
+    return str(pipe) if pipe else None
+
+
+def pipeline_deliverables(pipeline: str | None, roots: list[Path]) -> dict[str, str]:
+    """The delivering pipeline's own words for its outputs: `deliverables:` in
+    `skills/<pipeline>.analyze.yml` (spec/method-skills.md), from the first method root that
+    has the file. Empty when no file says it."""
+    if not pipeline:
+        return {}
+    for root in roots:
+        f = root / "skills" / f"{pipeline}.analyze.yml"
+        if not f.is_file():
+            continue
+        try:
+            data = yaml.safe_load(f.read_text())
+        except yaml.YAMLError:
+            return {}
+        d = data.get("deliverables") if isinstance(data, dict) else None
+        if isinstance(d, dict):
+            return {str(k): " ".join(str(v).split()) for k, v in d.items() if v}
+        return {}
+    return {}
+
+
+def bound_structure(
+    objective: Objective,
+    inputs: InputsManifest,
+    tools: list[str],
+    method_root: Path | None = None,
+) -> dict[str, Any]:
+    """What an open project is bound to, as rows (L137): `deliveries`, one per upstream run,
+    each with `rows` of `{name, type, step, output, what, twice}` in the declarations' order
+    (`what` is the delivering pipeline's own words for the output, `twice` the other steps the
+    same output name ships from); `upstream_inputs` `{name, type, input, project}`; `raw`
+    `{name, type}`; the upstream `question`; the `tools` by name. The confirm hold carries it in
+    `context_json.bound`, so the console reads rows instead of the echo file's paragraphs.
+    Reads the upstream projects' `stringency.yml` and the analyze files; writes nothing."""
+    runs: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    pipelines: dict[tuple[str, str], str | None] = {}
+    upstream: list[dict[str, str]] = []
+    raw: list[dict[str, str]] = []
     for i in inputs.items:
         if i.upstream_input is not None:
-            before.setdefault(i.upstream_input.project, []).append(
-                f"{i.upstream_input.input} ({i.type}) as {i.name}"
+            upstream.append(
+                {
+                    "name": i.name,
+                    "type": i.type,
+                    "input": i.upstream_input.input,
+                    "project": i.upstream_input.project,
+                }
             )
             continue
         d = i.derived_from
         if d is None:
-            raw.append(f"{i.name} ({i.type})")
+            raw.append({"name": i.name, "type": i.type})
             continue
-        runs.setdefault((d.run_id, d.project or "an unrecorded project"), []).append(
-            f"{i.name} ({i.type}, step {d.step_id}, output {d.output})"
+        key = (d.run_id, d.project or "an unrecorded project")
+        pipelines.setdefault(key, _upstream_pipeline(d.project))
+        runs.setdefault(key, []).append(
+            {
+                "name": i.name,
+                "type": i.type,
+                "step": d.step_id or "",
+                "output": d.output or i.name,
+            }
         )
-    for (run_id, project), files in runs.items():
-        lines.append(f"Delivery bound: run {run_id} of {project}: " + "; ".join(files) + ".")
-    for project, names in before.items():
-        lines.append(
-            f"The pipeline's own inputs, read-only, from before it ran: {'; '.join(names)} of "
-            f"{project}."
+    deliveries: list[dict[str, Any]] = []
+    for (run_id, project), rows in runs.items():
+        roots = [r for r in (method_root, Path(project) / "method") if r is not None]
+        words = pipeline_deliverables(pipelines[(run_id, project)], roots)
+        steps_of: dict[str, list[str]] = {}
+        for r in rows:
+            steps_of.setdefault(r["output"], []).append(r["step"])
+        for r in rows:
+            r["what"] = words.get(r["output"], "")
+            r["twice"] = [s for s in steps_of[r["output"]] if s != r["step"]]
+        deliveries.append(
+            {
+                "run_id": run_id,
+                "project": project,
+                "pipeline": pipelines[(run_id, project)],
+                "rows": rows,
+            }
         )
+    return {
+        "deliveries": deliveries,
+        "upstream_inputs": upstream,
+        "raw": raw,
+        "question": objective.question,
+        "tools": list(tools),
+    }
+
+
+def _hanging(text: str, width: int = WIDTH) -> list[str]:
+    """One list entry wrapped at `width` with its continuation lines indented two spaces."""
+    return textwrap.wrap(
+        text,
+        width=width,
+        subsequent_indent="  ",
+        break_long_words=False,
+        break_on_hyphens=False,
+    ) or [text]
+
+
+def file_words(row: Mapping[str, Any], last: bool = True) -> str:
+    """What one bound file is, for a reader: the pipeline's words, and where the same output
+    also ships from. Of several copies the last carries the words (the pipeline's words describe
+    what it delivers last); an earlier copy says which step wrote it and where the final one is."""
+    what = str(row.get("what") or "")
+    twice = [str(s) for s in row.get("twice") or []]
+    if not twice:
+        return what
+    if last:
+        also = f"also as {row.get('output')} from {', '.join(twice)}"
+        return f"{what} ({also})" if what else also
+    return (
+        f"{row.get('output')} as {row.get('step')} wrote it; the same name ships from "
+        f"{', '.join(twice)}"
+    )
+
+
+def _last_flags(rows: list[Mapping[str, Any]]) -> list[bool]:
+    """For each row, whether it is the last of the rows that ship its output name."""
+    remaining: dict[str, int] = {}
+    for r in rows:
+        remaining[str(r["output"])] = remaining.get(str(r["output"]), 0) + 1
+    out = []
+    for r in rows:
+        remaining[str(r["output"])] -= 1
+        out.append(remaining[str(r["output"])] == 0)
+    return out
+
+
+def bound_table(bound: Mapping[str, Any]) -> list[dict[str, str]]:
+    """The bound files as table rows grouped by step, for the confirm card and `present --hold`:
+    `step`, `name`, `type`, `what` (`file_words`), the step named once per group."""
+    out: list[dict[str, str]] = []
+    for dv in bound.get("deliveries") or []:
+        for step, members in _by_step(dv["rows"]).items():
+            for n, (r, last) in enumerate(members):
+                out.append(
+                    {
+                        "step": step if n == 0 else "",
+                        "name": str(r["name"]),
+                        "type": str(r["type"]),
+                        "what": file_words(r, last),
+                    }
+                )
+    return out
+
+
+def _by_step(rows: list[Mapping[str, Any]]) -> dict[str, list[tuple[Mapping[str, Any], bool]]]:
+    """The rows grouped by step in first-seen order, each with its `last` flag."""
+    steps: dict[str, list[tuple[Mapping[str, Any], bool]]] = {}
+    for r, last in zip(rows, _last_flags(rows), strict=True):
+        steps.setdefault(str(r["step"]), []).append((r, last))
+    return steps
+
+
+def bound_lines(bound: Mapping[str, Any]) -> list[str]:
+    """The bound structure as the echo-back says it: a paragraph per delivery, then the files
+    grouped by step as lists, then the upstream input, the other inputs, the question and the
+    tools, one line each. Lines fit in 100 columns."""
+    lines: list[str] = []
+    for dv in bound.get("deliveries") or []:
+        rows = list(dv["rows"])
+        if lines:
+            lines.append("")
+        lines += _hanging_para(
+            f"Delivery bound: run {dv['run_id']} of {dv['project']} ({len(rows)} files), by step."
+        )
+        for step, members in _by_step(rows).items():
+            lines += ["", f"Step {step}:"]
+            for r, last in members:
+                words = file_words(r, last)
+                entry = f"- {r['name']} ({r['type']})" + (f": {words}" if words else "")
+                lines += _hanging(entry)
+    rest = bound_rest(bound)
+    if rest:
+        lines.append("")
+        for sentence in rest:
+            lines += _hanging(f"- {sentence}")
+    return lines
+
+
+def bound_rest(bound: Mapping[str, Any]) -> list[str]:
+    """The bound inputs that are not the delivery, one sentence each: the upstream input the
+    pipeline ran on, the inputs that are not a delivery, the upstream question, the tools as a
+    count and their names."""
+    rest: list[str] = []
+    for u in bound.get("upstream_inputs") or []:
+        rest.append(
+            f"The input the pipeline ran on, read-only, bound by name: {u['name']} ({u['type']}), "
+            f"the input {u['input']} of {u['project']}."
+        )
+    raw = bound.get("raw") or []
     if raw:
-        lines.append("Inputs that are not a delivery: " + ", ".join(raw) + ".")
-    lines.append(f"The upstream project asked {objective.question}.")
-    if tools:
-        lines.append(
-            "Tools shipped with the method: "
-            + ", ".join(f"{m.manifest.name} ({m.manifest.operation})" for m in tools)
+        rest.append(
+            "Inputs that are not a delivery: "
+            + ", ".join(f"{r['name']} ({r['type']})" for r in raw)
             + "."
         )
-    return lines
+    rest.append(f"The upstream project asked {bound.get('question')}.")
+    tools = list(bound.get("tools") or [])
+    if tools:
+        rest.append(f"The method's {len(tools)} tools: {', '.join(tools)}.")
+    return rest
+
+
+def _hanging_para(text: str, width: int = WIDTH) -> list[str]:
+    return textwrap.wrap(text, width=width, break_long_words=False, break_on_hyphens=False) or [
+        text
+    ]
+
+
+def open_echo_lines(
+    objective: Objective,
+    inputs: InputsManifest,
+    tools: list[Module],
+    method_root: Path | None = None,
+) -> list[str]:
+    """What an open project is bound to, without the switch paragraph (`bound_lines` of
+    `bound_structure`). The echo-back says it after the switch; the open summary's "What was
+    analyzed" is it."""
+    names = [m.manifest.name for m in tools]
+    return bound_lines(bound_structure(objective, inputs, names, method_root))

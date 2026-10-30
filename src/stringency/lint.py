@@ -511,10 +511,15 @@ def _lint_when(pipeline: Pipeline, modules: ModuleIndex, report: LintReport, whe
 
 
 def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
-    """Lint a module directory or a method repo."""
+    """Lint a module directory, a method repo, or a project (its method clone, and the method's
+    view columns against the outputs its latest runs produced, L131)."""
     _ensure_predicates()
-    report = LintReport()
     path = Path(path)
+    if (path / "stringency.yml").exists() and (path / "method").is_dir():
+        report = lint_path(path / "method", design=design)
+        _lint_view_columns(path / "method", report, project_root=path)
+        return report
+    report = LintReport()
     plugins = load_plugins()
     if (path / "module.yml").exists():
         try:
@@ -575,6 +580,7 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
                 method_root=path,
                 policy=policy,
             )
+    _lint_view_columns(path, report)
     return report
 
 
@@ -619,6 +625,132 @@ def _lint_analyze_open(path: Path, report: LintReport) -> None:
                 str(skills / name),
                 f"open.words_of names {target}, whose file points on; the pointer is followed once",
             )
+
+
+VIEW_KEYS = ("hold_view", "step_view", "after_delivery")
+
+
+def _view_output(source: str, pipeline: Pipeline) -> tuple[str, str] | None:
+    """The (step, output) a view's source names: `<step>/<output>[.<ext>]` (a run's file) or
+    `<step>.<output>.<ext>` (a delivered file). None for anything else (an evidence file a
+    judgment wrote, an input)."""
+    head, sep, rest = source.partition("/")
+    if sep and pipeline.has_step(head) and "/" not in rest:
+        return head, rest.split(".")[0]
+    parts = source.split(".")
+    if len(parts) >= 2 and pipeline.has_step(parts[0]):
+        return parts[0], parts[1]
+    return None
+
+
+def _schema_columns(module: Module | None, output: str) -> list[str] | None:
+    """The columns an output's declared `schema` names (JSON Schema `properties`, of the object
+    or of its `items`); None when the output declares none."""
+    if module is None:
+        return None
+    try:
+        schema = module.output_schema_for(output)
+    except ConfigError:
+        return None
+    if not isinstance(schema, dict):
+        return None
+    node = schema.get("items") if isinstance(schema.get("items"), dict) else schema
+    props = node.get("properties") if isinstance(node, dict) else None
+    return [str(k) for k in props] if isinstance(props, dict) else None
+
+
+def _produced_columns(project_root: Path, step: str, output: str) -> list[str] | None:
+    """The header of the newest produced artifact of (step, output) in a project's trace;
+    None when there is none or it is not a delimited table. Reads: artifacts (read-only)."""
+    import sqlite3
+
+    from stringency.present import _header_of
+
+    db = project_root / "prov" / "run.db"
+    if not db.exists():
+        return None
+    conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        row = conn.execute(
+            "SELECT path FROM artifacts WHERE step_id = ? AND name = ? AND status = 'produced' "
+            "ORDER BY rowid DESC LIMIT 1",
+            (step, output),
+        ).fetchone()
+    except sqlite3.DatabaseError:
+        return None
+    finally:
+        conn.close()
+    if row is None or not Path(str(row[0])).is_file():
+        return None
+    return _header_of(Path(str(row[0]))) or None
+
+
+def _lint_view_columns(
+    method_root: Path, report: LintReport, *, project_root: Path | None = None
+) -> None:
+    """A delivery skill's table views against their outputs' columns (L131): a view naming a
+    column the output lacks is a warning, and so is an output whose columns no view shows. The
+    output's columns are its declared `schema` when it has one, else (linting a project) the
+    header of the newest file the trace records for it; an output with neither is not checked.
+    Reads the skills and, for a project, its trace."""
+    import yaml
+
+    from stringency.pipelines import find_pipeline
+
+    skills = method_root / "skills"
+    if not skills.is_dir():
+        return
+    try:
+        modules = ModuleIndex(method_root)
+    except ConfigError:
+        return
+    for f in sorted(skills.glob("*.yml")):
+        try:
+            data = yaml.safe_load(f.read_text())
+        except yaml.YAMLError:
+            continue
+        if not isinstance(data, dict) or data.get("skill") != 1 or not data.get("pipeline"):
+            continue
+        try:
+            pipeline = load_pipeline(find_pipeline(method_root, str(data["pipeline"])))
+        except ConfigError:
+            continue
+        shown: dict[tuple[str, str], set[str]] = {}
+        header: dict[tuple[str, str], list[str]] = {}
+        for key in VIEW_KEYS:
+            views = data.get(key)
+            for v in views if isinstance(views, list) else []:
+                if not isinstance(v, dict) or str(v.get("kind") or "table") != "table":
+                    continue
+                cols = v.get("columns")
+                target = _view_output(str(v.get("source") or ""), pipeline)
+                if not isinstance(cols, list) or target is None:
+                    continue
+                step, output = target
+                if target not in header:
+                    module = modules.get(pipeline.step(step).module)
+                    found = _schema_columns(module, output)
+                    if found is None and project_root is not None:
+                        found = _produced_columns(project_root, step, output)
+                    if found is None:
+                        continue
+                    header[target] = found
+                lacks = [str(c) for c in cols if str(c) not in header[target]]
+                title = str(v.get("title") or v.get("source"))
+                if lacks:
+                    report.warn(
+                        f"{f.name} {key}",
+                        f"the view '{title}' names column(s) {step}/{output} lacks: "
+                        + ", ".join(lacks),
+                    )
+                shown.setdefault(target, set()).update(str(c) for c in cols)
+        for (step, output), cols_seen in shown.items():
+            unseen = [c for c in header[(step, output)] if c not in cols_seen]
+            if unseen:
+                report.warn(
+                    f"{f.name}",
+                    f"columns of {step}/{output} no view shows: " + ", ".join(unseen),
+                )
 
 
 def _lint_env_manifest(path: Path, modules: ModuleIndex, report: LintReport) -> None:

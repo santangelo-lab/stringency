@@ -174,11 +174,13 @@ any real plugin exists.
 When the engine stops with a hold, the operator reads `stringency review --hold <id> --json` (or
 the packet file the message names) and says, in this order and nothing else:
 
-1. Where and what: "The analysis paused at {step title}. The engine is asking: {for a flag, 'is
-   this acceptable: ' plus the predicate's reason verbatim; for a confirm, 'does this reading of
-   your experiment match'; for an item hold, 'which of these calls for {item} should stand'}."
+1. Where and what: "The analysis paused at {step title}. The engine is asking: {for a flag, the
+   packet's `question` verbatim ('is this acceptable: ...'; L133, engine 0.2.35); for a confirm,
+   'does this reading of your experiment match'; for an item hold, 'which of these calls for
+   {item} should stand'}."
 2. The record: the packet's reason and evidence lines verbatim under "What the engine recorded";
-   for item holds, each replicate's call, confidence, and rationale verbatim. No summary, no
+   for a flag, the packet's `rule` lines first (the rule with the facts from the verdict's
+   payload); for item holds, each replicate's call, confidence, and rationale verbatim. No summary, no
    reordering.
 3. The options: every entry of `verdicts`, as "{verdict}: {effect}", verbatim, in the engine's
    order. Nothing added.

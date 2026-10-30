@@ -194,7 +194,10 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
         "the operator's reason:\n  Twelve is the floor here.\n  Rows below it are noise."
         in view.text
     )
-    assert "presented: proposed; no evidence of this step rendered in this run" in view.text
+    assert (
+        "presented: not rendered: the operator proposed without rendering the evidence through "
+        "`present`" in view.text
+    )
     srv = make_server([p.root], port=0, token=TOKEN)
     t = threading.Thread(target=srv.serve_forever, daemon=True)
     t.start()
@@ -205,15 +208,15 @@ def test_param_flag_hold_is_accepted_on_the_page(make_project: InitFn) -> None:
         status, body = get(f"{base}/hold/{h['hold_id']}?t={TOKEN}")
         assert status == 200 and "param.agent_proposed" in body and "min_value" in body
         assert "the operator&#39;s reason:" in body and "Rows below it are noise." in body
-        # the plain block (the owner, 2026-10-22): what was checked and what it found, above
-        # the decision table and before the packet
-        assert "<h2>What the engine found</h2>" in body
+        # the packet (L133; the plain block of 2026-10-22 before it): the question and the rule
+        # with its facts, above the decision table and before the terminal's packet
+        assert "<h2>The question</h2>" in body and "<h2>The rule and the facts</h2>" in body
         # the ask group colours the heading: a parameter approval, not a flag
         assert '<h1 class="ask-parameters"><span class="asktag">parameter</span>' in body
         assert (
             "The check: The operator chose a value for a parameter the method leaves open" in body
         )
-        assert body.index("What the engine found") < body.index("The decision")
+        assert body.index("The question") < body.index("The decision")
         assert '<details class="packet">' in body and body.index("The decision") < body.index(
             '<details class="packet">'
         )
@@ -427,9 +430,10 @@ def test_hold_page_shows_hold_view_tables_and_redirect(make_project: InitFn) -> 
         status, body = get(f"{base}/hold/{hid}?t={TOKEN}")
         assert status == 200 and _only_console_script(body)
         tables = _tables(body)
-        # the plain block's comparison table first, then the method's table, both above the packet
-        assert tables[0] == [["what", "value"], ["n", "1"]]
-        assert tables[1] == [["item", "verdict"], ["g1", "exclude"]]
+        # the packet's question and rule (L133) carry the facts; the method's table follows,
+        # above the terminal's packet
+        assert "<h2>The question</h2>" in body and "<li>n: 1</li>" in body
+        assert tables[0] == [["item", "verdict"], ["g1", "exclude"]]
         assert body.index("<table") < body.index("<pre>")
         assert "<form" in body
         status, loc = _no_follow(f"{base}/p/0/hold/{hid}?t={TOKEN}")

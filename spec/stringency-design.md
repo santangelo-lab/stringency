@@ -1202,6 +1202,8 @@ hold_view:                 # rendered by `present --hold` (and the console) for 
     columns: [...]         # table kinds
     beside: <a second image, shown in a second column>          # figure
     select: [<file>, ...]  # figures: a subset of the directory's images, in this order
+    scope: item            # optional: only the rows and images of the items the hold names (L133)
+    item_column: <col>     # optional, with scope: item: the column that holds the item
     x: <column>            # chart: a line of y against x from a table
     y: <column>
     mark_param: <parameter>        # chart: a vertical line at the hold's value of this parameter

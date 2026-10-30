@@ -197,11 +197,13 @@ def record_review(
     route_labels = _sign_off_labels(project, h) if is_item else None
     if verdict == "reject" and not reason:
         raise ConfigError("reject needs --reason")
-    if verdict == "override":
+    if verdict == "override" and not is_item:
         if not reason:
             raise ConfigError("override needs --reason")
-        if not is_item:
-            raise ConfigError("override applies to item holds; a flag is accepted or rejected")
+        correction = _flag_correction(project, h, correction)
+    elif verdict == "override":
+        if not reason:
+            raise ConfigError("override needs --reason")
         if not correction:
             raise ConfigError("override needs --correction '{\"label\": ...}'")
         _validate_correction(project, h, correction)
@@ -269,6 +271,36 @@ def record_review(
         step_st = _settle_step(rc, h, verdict)
         run_st = rc.refresh_status()
     return ReviewResult(review_id, hold_id, verdict, via, str(step_st), run_st)
+
+
+def _flag_correction(project: Project, h: Any, correction: dict[str, Any] | None) -> dict[str, Any]:
+    """An override on a flag hold (L133): only for a predicate whose packet names a correction
+    (`packets.SAYS`, `judg.confidence_consistent`: `confidence`), with exactly that field and a
+    value the policy allows. The calls the flag named are added, so the review says which calls
+    the corrected value is for. Reads the hold's `context_json` and the policy; writes nothing."""
+    from stringency.packets import criteria_of, flagged_pairs, says_for
+
+    ctx = json.loads(h["context_json"] or "{}")
+    predicate = str(ctx.get("predicate") or "")
+    says = says_for(predicate)
+    if says.correction is None:
+        raise ConfigError(
+            f"override applies to item holds and to flags that name a correction; "
+            f"{predicate.split('@')[0] or 'this flag'} is accepted or rejected"
+        )
+    field = says.correction
+    if not correction or set(correction) != {field}:
+        raise ConfigError(f"override on this flag needs --correction {field}=<value>")
+    allowed = (
+        says.correction_values(criteria_of(project.policy)) if says.correction_values else None
+    )
+    value = correction[field]
+    if allowed is not None and value not in allowed:
+        raise ConfigError(f"{field} {value!r} is not one of {', '.join(allowed)}")
+    calls = [
+        {"replicate": e["replicate"], "item": e["item"]} for e in flagged_pairs(ctx.get("evidence"))
+    ]
+    return {field: value, **({"calls": calls} if calls else {})}
 
 
 def _validate_correction(project: Project, h: Any, correction: dict[str, Any]) -> None:

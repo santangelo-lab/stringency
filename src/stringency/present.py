@@ -728,9 +728,20 @@ def record_presented(project: Site, payload: dict[str, Any]) -> int | None:
 def presented_line(
     store: Store, run_id: str, proposed_at: str, sources: list[str], steps: list[str]
 ) -> str:
-    """The parameter hold's line (L62): the latest `presented` event before `proposed_at` that
-    rendered one of `sources` or any output of `steps` (the evidence's steps), or the statement
-    that none did. Reads: run_events."""
+    """The parameter hold's provenance line (L62, L131). First a `rendered` event in
+    `step_events` on one of `steps` (the evidence's steps) at or before `proposed_at`: "rendered by
+    present --step <step> at <ts>". Then the latest `presented` event before `proposed_at` that
+    rendered one of `sources` or any output of `steps`. Else the statement that the evidence was
+    not rendered, naming its steps. Reads: step_events, run_events."""
+    if steps:
+        marks = ",".join("?" for _ in steps)
+        rendered = store.one(
+            f"SELECT step_id, ts FROM step_events WHERE run_id=? AND event='rendered' AND "  # noqa: S608
+            f"step_id IN ({marks}) AND ts <= ? ORDER BY ts DESC, seq DESC LIMIT 1",
+            (run_id, *steps, proposed_at),
+        )
+        if rendered is not None:
+            return f"rendered by present --step {rendered['step_id']} at {rendered['ts']}"
     rows = store.all(
         "SELECT payload_json, ts FROM run_events WHERE run_id=? AND event='presented' AND ts <= ? "
         "ORDER BY seq DESC",
@@ -746,7 +757,11 @@ def presented_line(
         if hit:
             who = "the operator session" if p.get("session_ref") else f"user {p.get('user')}"
             return f"evidence rendered {_hhmm(r['ts'])} by {who}, proposed {_hhmm(proposed_at)}"
-    return "proposed; no evidence of this step rendered in this run"
+    where = f" of {', '.join(steps)}" if steps else ""
+    return (
+        f"not rendered: the operator proposed without rendering the evidence{where} through "
+        "`present` (it read the table another way, or not at all)"
+    )
 
 
 def _hhmm(ts: str) -> str:
@@ -824,7 +839,10 @@ def present_hold(
     project: Site, hold_id: str | None, skills_dir: Path | None = None
 ) -> dict[str, Any]:
     """The hold view: kind, reason, the review commands, and the skill's tables for the predicate
-    that opened it."""
+    that opened it. A hold a predicate opened carries its packet (L133): the question, the rule
+    with the facts, the evidence scoped to the items it names, and what each verdict does. An
+    open project's confirm hold carries the bound delivery as rows (L137). Reads: holds,
+    actions, messages, judgments, artifacts, step_events, run_events; the files the views name."""
     if hold_id is None:
         h = project.store.one(
             "SELECT * FROM holds WHERE resolved_by_review IS NULL AND resolved_via IS NULL ORDER BY created DESC, rowid DESC LIMIT 1"
@@ -836,6 +854,10 @@ def present_hold(
         if h is None:
             raise ConfigError(f"no hold {hold_id}")
     ctx = json.loads(h["context_json"]) if h["context_json"] else {}
+    if h["kind"] == "confirm" and project.open_ended and not isinstance(ctx.get("bound"), dict):
+        bound = _bound_now(project)  # a confirm hold written before L137 carries no rows
+        if bound is not None:
+            ctx = {**ctx, "bound": bound}
     predicate = str(ctx.get("predicate") or "")
     pred_id = predicate.split("@")[0]
     who = (
@@ -871,6 +893,19 @@ def present_hold(
         "files": [],
         "never_show": [],
     }
+    if pred_id:
+        from stringency.packets import flag_packet
+        from stringency.review_render import verdicts_for
+
+        verdicts = verdicts_for(
+            "flag", h["hold_id"], str(ctx.get("phase") or "post"), predicate=predicate
+        )
+        payload["packet"] = flag_packet(
+            h, ctx, verdicts, criteria=_criteria(project), store=project.store
+        )
+        for v in verdicts:
+            if v["verdict"] == "override":
+                payload["review"]["override"] = v["command"]
     if h["kind"] == "egress":
         report = ctx.get("report_path")
         if report and Path(report).exists():
@@ -883,7 +918,10 @@ def present_hold(
                     "text": Path(report).read_text(),
                 }
             )
-    if h["kind"] == "confirm":
+    if h["kind"] == "confirm" and isinstance(ctx.get("bound"), dict):
+        payload["bound"] = ctx["bound"]
+        payload["sections"] += _open_confirm_sections(ctx["bound"], ctx.get("hashes") or {})
+    elif h["kind"] == "confirm":
         echo = ctx.get("echo_path")
         if echo and Path(echo).exists():
             payload["sections"].append(
@@ -915,7 +953,18 @@ def present_hold(
             "step_id": h["step_id"],
             "evidence": ctx.get("evidence"),
         }
-        payload["sections"] += render_items(project, h["run_id"], matching, None, hold_info)[0]
+        named, why = _named_columns(project, h, ctx) if pred_id.startswith("param.") else ([], "")
+        widened = [_widen(project, h["run_id"], v, hold_info, named, why) for v in matching]
+        sections = render_items(project, h["run_id"], [w[0] for w in widened], None, hold_info)[0]
+        items = (payload.get("packet") or {}).get("evidence", {}).get("items") or (
+            [str(h["item_id"])] if h["item_id"] is not None else []
+        )
+        for (view, added), section in zip(widened, sections, strict=False):
+            if added:
+                section["note"] = f"beside the method's columns, {', '.join(added)}: named by {why}"
+            if view.get("scope") == "item" and items:
+                _scope_to_items(section, view, items)
+        payload["sections"] += _figures_once(sections)
         ns = skill.get("never_show")
         payload["never_show"] = [str(x) for x in ns] if isinstance(ns, list) else []
     if h["run_id"] and h["step_id"] and not payload["sections"] and pred_id.startswith("param."):
@@ -934,6 +983,208 @@ def present_hold(
     if h["run_id"] and h["step_id"] and pred_id.startswith("param."):
         payload["presented"] = _presented_for_hold(project, h)
     return payload
+
+
+def _criteria(project: Site) -> dict[str, dict[str, Any]]:
+    """The method policy's confidence bands, for a packet's rule; empty when the policy cannot
+    be read (present loads no plugin and must not fail on a policy it cannot parse)."""
+    from stringency.packets import criteria_of
+    from stringency.policy import load_policy
+
+    try:
+        return criteria_of(load_policy(project.root / project.config.policy))
+    except (ConfigError, OSError, ValueError):
+        return {}
+
+
+def _bound_now(project: Site) -> dict[str, Any] | None:
+    """The bound delivery as rows for an open project's confirm hold written before the hold
+    carried them (L137): from `inputs.yml`, `objective.yml` and the method's tools as they are
+    now. None when the declarations cannot be read."""
+    from stringency.config import InputsManifest, Objective
+    from stringency.echo import bound_structure
+
+    try:
+        inputs = load_model(InputsManifest, project.root / "inputs.yml")
+        objective = load_model(Objective, project.root / "objective.yml")
+        tools = [m.manifest.name for m in project.tools()]
+    except (ConfigError, OSError, ValueError):
+        return None
+    return bound_structure(objective, inputs, tools, project.method_root)
+
+
+def _open_confirm_sections(bound: dict[str, Any], hashes: dict[str, Any]) -> list[dict[str, Any]]:
+    """An open project's confirm hold as sections (L137): the switch paragraph once, the bound
+    files as a table grouped by step, the upstream input, question and tools as lines, and the
+    digests the accept binds to. Nothing is parsed out of the echo file."""
+    from stringency.echo import OPEN_SWITCH, bound_rest, bound_table
+
+    rows = bound_table(bound)
+    out: list[dict[str, Any]] = [
+        {"title": "What opening means", "kind": "text", "text": OPEN_SWITCH},
+    ]
+    start = 0
+    for dv in bound.get("deliveries") or []:
+        n = len(dv.get("rows") or [])
+        out.append(
+            {
+                "title": f"The delivery: run {dv['run_id']} of {dv['project']}, by step",
+                "kind": "table",
+                **_table(rows[start : start + n], ["step", "name", "type", "what"], {}),
+            }
+        )
+        start += n
+    out.append(
+        {
+            "title": "Also bound",
+            "kind": "text",
+            "markdown": True,
+            "text": "\n".join(f"- {line}" for line in bound_rest(bound)),
+        }
+    )
+    if hashes:
+        out.append(
+            {
+                "title": "Bound to",
+                "kind": "text",
+                "markdown": True,
+                "text": "The accept binds to these declaration digests:\n"
+                + "\n".join(f"  {k}: {v}" for k, v in sorted(hashes.items())),
+            }
+        )
+    return out
+
+
+def _named_columns(project: Site, h: Any, ctx: dict[str, Any]) -> tuple[list[str], str]:
+    """What a proposal names that could be a column (L131): the columns its citations name and
+    the words of the operator's reason and the hold's reason, with a phrase saying where they
+    came from. Reads: actions, messages."""
+    from stringency.actions import rationale_record
+
+    raw = ctx.get("evidence")
+    ev: dict[str, Any] = raw if isinstance(raw, dict) else {}
+    cited = [
+        str(c["column"]) for c in (ev.get("cited") or []) if isinstance(c, dict) and c.get("column")
+    ]
+    a = project.store.one(
+        "SELECT rationale_ref FROM actions WHERE run_id=? AND step_id=? ORDER BY attempt DESC, rowid DESC LIMIT 1",
+        (h["run_id"], h["step_id"]),
+    )
+    record = (
+        rationale_record(project.store.message(a["rationale_ref"]))
+        if a is not None and a["rationale_ref"]
+        else None
+    )
+    text = " ".join([str(h["reason"] or ""), str((record or {}).get("text") or "")])
+    for c in (record or {}).get("cited") or []:
+        if isinstance(c, dict) and c.get("column"):
+            cited.append(str(c["column"]))
+    return cited + [text], "the proposal's citations or reason"
+
+
+def _header_of(path: Path) -> list[str]:
+    """A delimited file's column names (its first data line); empty when unreadable."""
+    if path.is_dir() or path.suffix.lower() not in (".csv", ".tsv", ".tab", ".txt", ""):
+        return []
+    try:
+        with path.open() as fh:
+            for line in fh:
+                if line.startswith("#") or not line.strip():
+                    continue
+                delim = "\t" if "\t" in line else ","
+                return next(csv.reader([line], delimiter=delim))
+    except (OSError, UnicodeDecodeError, StopIteration):
+        return []
+    return []
+
+
+def _widen(
+    project: Site,
+    run_id: str,
+    view: dict[str, Any],
+    hold: dict[str, Any],
+    named: list[str],
+    why: str,
+) -> tuple[dict[str, Any], list[str]]:
+    """A table view with the columns the proposal names added after the view's own (L131): a
+    column of the output's header that a citation names, or whose name stands as a word in the
+    operator's or the hold's reason. Returns the view to render and the columns added."""
+    import re
+
+    cols = view.get("columns")
+    if not named or not isinstance(cols, list) or str(view.get("kind") or "table") != "table":
+        return view, []
+    path = _resolve(project, run_id, _fill(str(view.get("source") or ""), hold), None)
+    header = _header_of(path) if path is not None else []
+    text = named[-1]
+    cited = set(named[:-1])
+    added = [
+        c
+        for c in header
+        if c not in cols
+        and (c in cited or re.search(rf"(?<![A-Za-z0-9_]){re.escape(c)}(?![A-Za-z0-9_])", text))
+    ]
+    if not added:
+        return view, []
+    return {**view, "columns": [*cols, *added]}, added
+
+
+def _scope_to_items(section: dict[str, Any], view: dict[str, Any], items: list[str]) -> None:
+    """`scope: item` on a hold view (L133): a table keeps the rows of the hold's items (by the
+    view's `item_column`, else the first column holding one of them); a figures section keeps
+    the images whose file or caption names an item, all of them when none does."""
+    wanted = set(items)
+    section["scope"] = "item"
+    if section.get("kind") == "figures":
+        images = list(section.get("images") or [])
+        mine = [
+            im
+            for im in images
+            if any(
+                _names(str(im.get("file") or im.get("path") or ""), i)
+                or _names(str(im.get("what") or ""), i)
+                for i in wanted
+            )
+        ]
+        if mine:
+            section["images"] = mine
+        return
+    cols = list(section.get("columns") or [])
+    rows = list(section.get("rows") or [])
+    col = view.get("item_column")
+    idx = cols.index(col) if isinstance(col, str) and col in cols else None
+    if idx is None:
+        idx = next(
+            (i for i in range(len(cols)) if any(r[i] in wanted for r in rows)),
+            None,
+        )
+    if idx is None:
+        section["note"] = f"no column names {', '.join(items)}; every row is shown"
+        return
+    section["rows"] = [r for r in rows if r[idx] in wanted]
+
+
+def _names(text: str, item: str) -> bool:
+    import re
+
+    return re.search(rf"(?<![A-Za-z0-9]){re.escape(item)}(?![A-Za-z0-9])", text) is not None
+
+
+def _figures_once(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Each image once across a hold's sections: a later figures section drops images an
+    earlier one shows (L133, the maps listed twice)."""
+    seen: set[str] = set()
+    for s in sections:
+        if s.get("kind") != "figures":
+            continue
+        keep = []
+        for im in s.get("images") or []:
+            key = str(Path(str(im.get("path"))).resolve())
+            if key not in seen:
+                seen.add(key)
+                keep.append(im)
+        s["images"] = keep
+    return sections
 
 
 def _presented_for_hold(project: Site, h: Any) -> str | None:
@@ -1462,11 +1713,24 @@ def render_markdown(payload: dict[str, Any]) -> str:
     elif payload["kind"] == "run":
         out.append(f"## {payload['pipeline']}: {payload['progress']}")
     else:
+        packet = payload.get("packet")
+        heading = f": {packet['heading']}" if packet and packet.get("heading") else ""
         out.append(
-            f"## Hold {payload['hold_id']} ({payload['hold_kind']}) waits for {payload['waits_on']}"
+            f"## Hold {payload['hold_id']} ({payload['hold_kind']}) waits for "
+            f"{payload['waits_on']}{heading}"
         )
         out.append("")
-        if payload.get("found"):
+        if packet:
+            # the packet (L133): the question, the rule with the facts, then (below) the
+            # evidence, then what each verdict does
+            out.append(f"Question: {packet['question']}")
+            out.append("")
+            out.append("The rule and the facts:")
+            out.extend(f"- {line}" for line in packet["rule"])
+            if payload.get("presented"):
+                out.append("")
+                out.append(f"The evidence: {payload['presented']}.")
+        elif payload.get("found"):
             if payload.get("check"):
                 out.append(f"What was checked: {payload['check']}")
             out.append(f"What the engine found: {payload['found']}")
@@ -1488,11 +1752,14 @@ def render_markdown(payload: dict[str, Any]) -> str:
             if payload.get("evidence"):
                 out.append("")
                 out.append(f"Evidence: {_fmt(payload['evidence'], None)}")
-        out.append("")
-        out.append("To resolve it, in the project directory, with your reason in your own words:")
-        out.append("")
-        out.append(f"    {payload['review']['accept']}")
-        out.append(f"    {payload['review']['reject']}")
+        if not packet:
+            out.append("")
+            out.append(
+                "To resolve it, in the project directory, with your reason in your own words:"
+            )
+            out.append("")
+            out.append(f"    {payload['review']['accept']}")
+            out.append(f"    {payload['review']['reject']}")
     for s in payload["sections"]:
         out.append("")
         out.append(f"### {s['title']}")
@@ -1519,6 +1786,12 @@ def render_markdown(payload: dict[str, Any]) -> str:
             out.append("chart: " + "; ".join(words))
         else:
             out.append(markdown_table(s["columns"], s["rows"]))
+    if payload["kind"] == "hold" and payload.get("packet"):
+        out.append("")
+        out.append("What each verdict does (in the project directory, your reason in your words):")
+        for v in payload["packet"]["verdicts"]:
+            out.append(f"- {v['verdict']}: {v['effect']}")
+            out.append(f"      {v['command']}")
     if payload["kind"] == "run" and not payload["sections"]:
         out.append("")
         out.append("Deliverables:")
