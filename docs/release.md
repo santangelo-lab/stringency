@@ -59,6 +59,8 @@ release that touches a skill and every method tag with a new or changed analysis
 When a combination of engine, plugin and method has delivered a real project or passed the
 synthetic runs, add a row to `compat/known-good.yml` (engine tag, plugin tags, method tags, date,
 host, what ran) and commit. The bootstrap installs the latest dated row; the compat workflow lints it.
+The beta-tester package (`santangelo-lab/stringency-beta`, 2026-11-03) pins its own combination in
+its `channel.yml` from a dated row here; a beta release starts from one.
 
 ## Add a member
 
