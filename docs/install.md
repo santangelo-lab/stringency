@@ -27,7 +27,10 @@ directory). The bootstrap does the first two sections:
 
 It installs `uv` and Python 3.12 when missing, reads `compat/known-good.yml`, installs that
 engine and plugin into `<prefix>/versions/<label>/`, copies the skills beside them, and runs
-`stringency probe`. The rest of this page says what it did and what remains.
+`stringency probe`. `--toy` also installs the engine's toy plugin, which the toy method needs
+(a first run on a new machine; a production install leaves it out). Its closing text follows the
+site's executor: under `executor: local` it names no container runtime and no images. The rest
+of this page says what it did and what remains.
 
 ## What gets installed, and where
 
