@@ -3,17 +3,17 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-11-03)
+## Current state (2026-11-03, evening)
 
-- The MacBook spike S1 (`notes/2026-11-03-1450-macbook-s1-install.md`): v0.2.37 (PR #17 merged
-  and tagged) passes its suite on an Apple Silicon Mac. `install.sh` fixes on branch
-  `beta-mac-s1`, unpushed: uv's Python 3.12 when the system has none, bash 3.2's empty array,
-  `UV_VENV_CLEAR` for a label installed before. L149 (`bootstrap.sh --no-toy`) and L150 (the
-  console's default port is the Claude Science app's) filed. The liveness check passed on
-  Darwin in the first Mac-local toy run (a held run reads "unknown", never "gone").
-- The MacBook spike S2 (`notes/2026-11-03-1620-macbook-s2-claude-science.md`): Claude Science
-  drives the local engine through host folder grants, except `init`, which its sandbox stops at
-  `.git`. L151 to L153 filed on the same branch. Next: merge `beta-mac-s1`; L151 to L153.
+- The MacBook rows closed (`notes/2026-11-03-2230-beta-mac-rows.md`): L149 to L153 on branch
+  `beta-mac-s1` (PR #18), with the `install.sh` Mac fixes the spikes made; version 0.2.38. The
+  owner merges; then tag v0.2.38, and the beta repository pins it (`channel.yml`, drop
+  `setup.add_toy_plugin`). L146 to L148 open.
+- The MacBook spikes (`notes/2026-11-03-1450-macbook-s1-install.md`,
+  `notes/2026-11-03-1620-macbook-s2-claude-science.md`): v0.2.37 passes its suite on an Apple
+  Silicon Mac; the local profile runs the toy end to end under Claude Code, and under Claude
+  Science through host folder grants (now `init` too, with L151). Liveness on Darwin: a held run
+  reads "unknown", never "gone".
 
 ## Earlier state (2026-11-03, before the Mac)
 
@@ -394,6 +394,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-03-2230-beta-mac-rows.md` — L149 to L153 closed on `beta-mac-s1` (PR #18): bootstrap `--toy`, `run --deliver` after a final ticket, the console's next free port, the delegate's `reported.agent`, the method clone's git directory beside the tree; engine 0.2.38.
 - `2026-11-03-1620-macbook-s2-claude-science.md` — the MacBook spike S2, the engine's side: Claude Science on the local engine through host grants; `init` stopped by the sandbox's `.git` rule; L151 to L153.
 - `2026-11-03-1450-macbook-s1-install.md` — the MacBook spike S1, the engine's side: the suite green on the Mac, three `install.sh` fixes for macOS on branch `beta-mac-s1`, L149 and L150.
 - `2026-11-03-2100-beta-package-engine.md` — the beta-tester package's engine changes: macOS CI, the site executor and the activated local executor, status sessions, the flag verb and the console form; branch `beta-mac`, PR #17.
