@@ -224,13 +224,29 @@ def test_dirty_tree_exits_14_and_allow_dirty_records_reason(make_project: InitFn
 
 def test_status_json_schema_and_holds(make_project: InitFn) -> None:
     p = confirmed(make_project, pipeline="toy-engine", execution="engine")
-    cli(p, "run", env={**MOCK, "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml")})
+    assert json.loads(cli(p, "status", "--json").output)["sessions"] == []
+    cli(
+        p,
+        "run",
+        env={
+            **MOCK,
+            "STRINGENCY_MOCK_FIXTURE": str(HARNESS / "split.yml"),
+            "STRINGENCY_OPERATOR": "claude-code",
+            "STRINGENCY_OPERATOR_VERSION": "2.1.0",
+            "STRINGENCY_SESSION_REF": "claude-code:abc",
+        },
+    )
     r = cli(p, "status", "--json")
     st = json.loads(r.output)
     assert validate(st, json.loads((SCHEMAS / "status.json").read_text())) == []
     assert st["run"]["status"] == "held" and st["holds"][0]["who"] == "tester"
     r = cli(p, "status")
     assert "waits on reviewer tester" in r.output
+    # the sessions a project has seen (the beta package's bundle matches transcripts on them)
+    assert [s["session_ref"] for s in st["sessions"]] == ["claude-code:abc"]
+    s0 = st["sessions"][0]
+    assert s0["harness"] == "claude-code" and s0["version"] == "2.1.0"
+    assert s0["runs"] == [st["run"]["run_id"]] and s0["first_seen"] == st["run"]["started"]
 
 
 def test_abandon(make_project: InitFn) -> None:
