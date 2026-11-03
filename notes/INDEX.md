@@ -9,8 +9,11 @@ it is the first thing a new session reads.
   and tagged) passes its suite on an Apple Silicon Mac. `install.sh` fixes on branch
   `beta-mac-s1`, unpushed: uv's Python 3.12 when the system has none, bash 3.2's empty array,
   `UV_VENV_CLEAR` for a label installed before. L149 (`bootstrap.sh --no-toy`) and L150 (the
-  console's default port is the Claude Science app's) filed. Next: merge `beta-mac-s1`; the
-  liveness check on Darwin in the first Mac-local toy run.
+  console's default port is the Claude Science app's) filed. The liveness check passed on
+  Darwin in the first Mac-local toy run (a held run reads "unknown", never "gone").
+- The MacBook spike S2 (`notes/2026-11-03-1620-macbook-s2-claude-science.md`): Claude Science
+  drives the local engine through host folder grants, except `init`, which its sandbox stops at
+  `.git`. L151 to L153 filed on the same branch. Next: merge `beta-mac-s1`; L151 to L153.
 
 ## Earlier state (2026-11-03, before the Mac)
 
@@ -391,6 +394,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-03-1620-macbook-s2-claude-science.md` — the MacBook spike S2, the engine's side: Claude Science on the local engine through host grants; `init` stopped by the sandbox's `.git` rule; L151 to L153.
 - `2026-11-03-1450-macbook-s1-install.md` — the MacBook spike S1, the engine's side: the suite green on the Mac, three `install.sh` fixes for macOS on branch `beta-mac-s1`, L149 and L150.
 - `2026-11-03-2100-beta-package-engine.md` — the beta-tester package's engine changes: macOS CI, the site executor and the activated local executor, status sessions, the flag verb and the console form; branch `beta-mac`, PR #17.
 - `2026-10-27-2200-engine-backlog-l112-l96-l128.md` — L112, L96 and L128 closed on `main` (no release); L129 filed.
