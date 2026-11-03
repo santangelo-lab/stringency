@@ -720,6 +720,43 @@ def test_submit_deliver_delivers_when_the_last_ticket_completes_the_run(
     assert (Path(sj["delivery"]["path"]) / "summary.md").exists()
 
 
+def test_run_deliver_after_a_final_operator_ticket_delivers_the_completed_run(
+    make_project: InitFn,
+) -> None:
+    """L153: the last step is an operator ticket, so its `submit` completes the run; the
+    `run --deliver` the skills say to run next delivers that run instead of refusing (exit 16).
+    Once delivered, the same command refuses as before, and `run --deliver --new` opens a run."""
+    p = confirmed(make_project)
+
+    def run_json(expect: int, *extra: str) -> dict:
+        r = cli(p, "run", "--json", *extra, env=MOCK_DISPATCH)
+        assert r.exit_code == expect, r.output
+        return json.loads(r.output)
+
+    def submit(spec: dict, names: list[str]) -> None:
+        outputs, log = play_agent(spec)
+        args = ["submit", spec["ticket"]]
+        for n in names:
+            args += ["--outputs", f"{n}={outputs[n]}"]
+        r = cli(p, *args, "--evidence", str(log), "--json", env=MOCK_DISPATCH)
+        assert r.exit_code == 0, r.output
+
+    submit(run_json(21)["job_spec"], ["object"])
+    submit(run_json(21)["job_spec"], ["table"])
+    run_json(20)
+    submit(run_json(21)["job_spec"], ["report", "group_labels"])
+    assert p.store.scalar("SELECT COUNT(*) FROM deliveries") == 0
+    out = run_json(0, "--deliver")
+    assert out["kind"] == "completed" and out["run_status"] == "completed"
+    assert "before this invocation" in out["message"]
+    assert Path(out["delivery"]["path"]) == p.root / "deliver" / out["run_id"]
+    assert (Path(out["delivery"]["path"]) / "summary.md").exists()
+    assert p.store.scalar("SELECT COUNT(*) FROM runs WHERE kind = 'run'") == 1
+    r = cli(p, "run", "--deliver", "--json", env=MOCK_DISPATCH)
+    assert r.exit_code == 16 and "harvests a completed one" in str(r.stderr)
+    assert p.store.scalar("SELECT COUNT(*) FROM deliveries") == 1
+
+
 def test_run_responses_answered_by_the_operator_are_recorded_as_such(
     make_project: InitFn, tmp_path: Path
 ) -> None:
