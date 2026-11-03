@@ -17,7 +17,8 @@
 #          <prefix>/envs/               container images referenced by method manifests
 #          <prefix>/versions/<label>/skills/<skill>/SKILL.md   the operator, declare and wrap skills
 #
-# Requires `uv` (https://docs.astral.sh/uv/) and a system python3 >= 3.12. No sudo is needed when
+# Requires `uv` (https://docs.astral.sh/uv/); a system python3 >= 3.12, else uv installs 3.12
+# (macOS ships 3.9). No sudo is needed when
 # <prefix> is writable; otherwise run under sudo with uv on root's PATH, or pre-create <prefix>
 # owned by the lab group.
 set -euo pipefail
@@ -51,6 +52,12 @@ for cand in /usr/bin/python3 /usr/local/bin/python3 "$(command -v python3 || tru
   [ -n "$python" ] && break
   [ -x "$cand" ] && "$cand" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)' && python=$cand
 done
+# macOS ships 3.9: a Python of uv's own, as bootstrap.sh does (it lives under home; a sandbox
+# that does not mount home wants STRINGENCY_PYTHON set to a system 3.12 instead)
+if [ -z "$python" ]; then
+  echo "no python3 >= 3.12 on this machine; installing Python 3.12 with uv"
+  uv python install 3.12 && python=$(uv python find 3.12) || python=""
+fi
 [ -n "$python" ] || { echo "no python3 >= 3.12 found (set STRINGENCY_PYTHON)" >&2; exit 1; }
 
 if [ $toy -eq 1 ]; then
@@ -76,7 +83,7 @@ version_of() {  # <path or url@ref> -> the version without a leading v
 if [ -z "$label" ]; then
   label=$(version_of "$source")
   [ -n "$label" ] || { echo "cannot infer --label from $source" >&2; exit 1; }
-  for pl in "${plugins[@]}"; do
+  for pl in ${plugins[@]+"${plugins[@]}"}; do
     case "$pl" in
       *stringency-toy*) continue ;;
       *stringency-singlecell*) short=sc ;;
@@ -89,11 +96,12 @@ fi
 
 venv=$prefix/versions/$label
 mkdir -p "$prefix/versions" "$prefix/envs"
-uv venv --quiet --python "$python" "$venv"
+# a label installed before is replaced (uv 0.8 and later refuse an existing venv without this)
+UV_VENV_CLEAR=1 uv venv --quiet --python "$python" "$venv"
 # --no-sources: a plugin checked out from the stringency-plugins workspace carries a
 # tool.uv.sources pin of the engine to its GitHub URL, which conflicts with any other --source
 # (a branch, a tag, a local checkout); the engine installed here is the one named on the line.
-uv pip install --quiet --no-sources --python "$venv/bin/python" "$source" "${plugins[@]}"
+uv pip install --quiet --no-sources --python "$venv/bin/python" "$source" ${plugins[@]+"${plugins[@]}"}
 # The operator and declare skills ride with the engine version (backlog L14): `run --json` names
 # the installed operator skill at a hold, so a session holding an older published copy can read
 # the current text. Copied from this checkout; check it is at the tag being installed.
