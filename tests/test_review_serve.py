@@ -16,11 +16,11 @@ import pytest
 from stringency.project import Project
 from stringency.review import queue
 from stringency.review_render import render
-from stringency.review_serve import discover, make_server
+from stringency.review_serve import DEFAULT_PORT, bind_server, discover, make_server
 from stringency.runs import open_or_resume
 from stringency.steps import propose
 from tests.conftest import InitFn, accept_hold
-from tests.test_run import HARNESS, MOCK, cli
+from tests.test_run import HARNESS, MOCK, cli, confirmed
 
 TOKEN = "test-token-not-secret"
 
@@ -1158,3 +1158,46 @@ def test_decision_rows_show_an_empty_choice() -> None:
         "source": "agent",
     }
     assert rows[1]["value"] == "(unset)" and rows[1]["default"] == "1"
+
+
+def test_bind_server_takes_the_next_free_port_when_the_default_is_held(
+    make_project: InitFn,
+) -> None:
+    """L150: with no --port, a held default port (the Claude Science app on a Mac) moves the
+    console to the next free one and the held ports are reported; an explicit port fails as
+    before; every candidate held is a config error naming --port."""
+    import errno
+    import socket
+
+    p = confirmed(make_project)
+    taken: list[int] = []
+
+    def make(port: int) -> object:
+        if port in taken:
+            raise OSError(errno.EADDRINUSE, "address in use")
+        return make_server([p.root], port=0, token=TOKEN)
+
+    srv, held = bind_server(make, None)  # type: ignore[arg-type]
+    srv.server_close()
+    assert held == []
+    taken[:] = [DEFAULT_PORT, DEFAULT_PORT + 1]
+    srv, held = bind_server(make, None)  # type: ignore[arg-type]
+    srv.server_close()
+    assert held == [DEFAULT_PORT, DEFAULT_PORT + 1]
+    with pytest.raises(OSError):
+        bind_server(make, DEFAULT_PORT)  # type: ignore[arg-type]
+    taken[:] = list(range(DEFAULT_PORT, DEFAULT_PORT + 11))
+    from stringency.exit_codes import ConfigError
+
+    with pytest.raises(ConfigError, match="pass --port"):
+        bind_server(make, None)  # type: ignore[arg-type]
+    # a real bind: port 0 is explicit, so it is taken as given
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    s.listen(1)
+    busy = s.getsockname()[1]
+    try:
+        with pytest.raises(OSError):
+            make_server([p.root], port=busy, token=TOKEN)
+    finally:
+        s.close()
