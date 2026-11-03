@@ -18,3 +18,15 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run pytest
+  # macOS (beta-tester package, 2026-11-03): the suite on the mock harness and the local
+  # executor, which is what a tester's Mac runs; no apptainer, no /proc (those tests skip).
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-groups
+      - run: uv run pytest
