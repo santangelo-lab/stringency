@@ -347,11 +347,23 @@ RUN_HTML = _ENV.from_string(
 <h2>Files</h2>
 {% if files %}
 <table>
-<tr><th>file</th><th>kind</th><th>from step</th></tr>
-{% for f in files %}<tr><td><a href="{{ f.href }}">{{ f.name }}</a></td><td>{{ f.kind }}</td><td>{{ f.step }}</td></tr>
+<tr><th>file</th><th>kind</th><th>from step</th>{% if not read_only %}<th>this result is wrong</th>{% endif %}</tr>
+{% for f in files %}<tr><td><a href="{{ f.href }}">{{ f.name }}</a></td><td>{{ f.kind }}</td><td>{{ f.step }}</td>{% if not read_only %}<td><form method="post" action="{{ flag_href }}" class="flag"><input type="hidden" name="object" value="{{ f.name }}"><input type="text" name="reason" placeholder="say what is wrong" required> <button type="submit">flag</button></form></td>{% endif %}</tr>
 {% endfor %}
 </table>
 {% else %}<p>Not delivered yet; nothing to download.</p>{% endif %}
+{% if files and not read_only %}
+<form method="post" action="{{ flag_href }}" class="flag"><label>Something else about this run is wrong: <input type="text" name="reason" placeholder="say what" required></label> <button type="submit">flag</button></form>
+<p class="note">A flag is recorded under your account, with the file as it is now, and goes to the method's author with the run; it changes nothing about the run.</p>
+{% endif %}
+{% if flags %}
+<h2>Flagged as wrong</h2>
+<table>
+<tr><th>when</th><th>who</th><th>what</th><th>said</th></tr>
+{% for g in flags %}<tr><td>{{ g.ts }}</td><td>{{ g.flagged_by }} ({{ g.via }})</td><td>{{ g.object_name or "the run" }}{% if g.step_id %} · {{ g.step_id }}{% endif %}</td><td>{{ g.reason }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
 """
     + _FOOT
 )
@@ -493,6 +505,15 @@ HOLD_HTML = _ENV.from_string(
 <button type="submit">Record verdict</button>
 </form>
 {% endif %}
+"""
+    + _FOOT
+)
+
+FLAG_DONE_HTML = _ENV.from_string(
+    _HEAD
+    + """<h1>Flag recorded</h1>
+<p>Flag {{ flag_id }} on run {{ run_id }}: {{ what }}, by {{ who }} via web.</p>
+<p><a href="{{ run_href }}">Back to the results</a> · <a href="{{ project_href }}">The project</a> · <a href="{{ list_href }}">All projects</a></p>
 """
     + _FOOT
 )
@@ -977,6 +998,9 @@ class ReviewHandler(BaseHTTPRequestHandler):
             self._error(HTTPStatus.METHOD_NOT_ALLOWED, READ_ONLY_MESSAGE)
             return
         parts = [unquote(p) for p in url.path.split("/") if p]
+        if len(parts) == 2 and parts[0] == "flag":
+            self._post_flag(parts[1], form)
+            return
         try:
             if len(parts) == 2 and parts[0] == "hold":
                 hold_id = parts[1]
@@ -1051,6 +1075,49 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 via=result.via,
                 step_status=result.step_status,
                 run_status=result.run_status,
+                project_href=self._project_href(project.root) or "/",
+                list_href=self._list_href(),
+                refresh=None,
+                style=_STYLE,
+                bar=self._bar(),
+            ),
+        )
+
+    def _post_flag(self, run_id: str, form: dict[str, list[str]]) -> None:
+        """`POST /flag/<run id>` with `reason` and, for one delivered file, `object`: a flag
+        (the beta-tester package, 2026-11-03), recorded as the account serving the page, via
+        `web`, the same identity rule as a verdict (design 7.5). Writes through `record_flag`."""
+        from stringency.flags import record_flag
+
+        try:
+            _pid, root = self.state.registry.owner_of("run", run_id)
+            project = Project.load(root)
+        except (ConfigError, ValueError) as e:
+            self._error(HTTPStatus.NOT_FOUND, str(e))
+            return
+        reason = form.get("reason", [""])[0].strip()
+        object_name = form.get("object", [""])[0].strip() or None
+        step_id = form.get("step", [""])[0].strip() or None
+        try:
+            result = record_flag(
+                project, run_id, reason=reason, step_id=step_id, object_name=object_name, via="web"
+            )
+        except RefusedError as e:
+            self._error(HTTPStatus.FORBIDDEN, str(e))
+            return
+        except ConfigError as e:
+            self._error(HTTPStatus.BAD_REQUEST, str(e))
+            return
+        refresh_if_present(project.root)
+        self._send(
+            HTTPStatus.OK,
+            FLAG_DONE_HTML.render(
+                title="stringency flag recorded",
+                flag_id=result["flag_id"],
+                run_id=run_id,
+                what=result["object_name"] or "the run",
+                who=result["flagged_by"],
+                run_href=self._href(f"/run/{run_id}"),
                 project_href=self._project_href(project.root) or "/",
                 list_href=self._list_href(),
                 refresh=None,
@@ -1400,6 +1467,9 @@ class ReviewHandler(BaseHTTPRequestHandler):
             sections=Markup(sections_html),  # noqa: S704 - autoescaped template output
             summary=summary,
             files=files,
+            flags=payload.get("flags") or [],
+            flag_href=self._href(f"/flag/{run_id}"),
+            read_only=self.state.read_only,
             list_href=self._list_href(),
             project_href=self._project_href(root) or "/",
             refresh=None,
