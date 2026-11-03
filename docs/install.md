@@ -40,7 +40,7 @@ Three things, versioned separately and checked against each other:
 |---|---|---|
 | the engine | the `stringency` command: gates, holds, the trace | one virtual environment per version under `<prefix>/versions/<label>/`, with `<prefix>/current` pointing at the version in use |
 | plugins | a domain's object types, predicates and vocabularies (`stringency-singlecell` for Xenium) | installed into the same environment as the engine |
-| methods | a git repository of pipelines, modules, prompts and controls, pinned by tag per project | cloned by the engine into each project at `init`; nothing to install |
+| methods | a git repository of pipelines, modules, prompts and controls, pinned by tag per project | cloned by the engine into each project at `init` (`method/`, with its git directory beside it as `method.git`); nothing to install |
 
 A method's `policy.yml` says which engine and plugin versions it needs (`requires`), and
 `compat/known-good.yml` in this repository lists the combinations that have run together.

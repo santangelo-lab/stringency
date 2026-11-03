@@ -8,10 +8,26 @@ from pathlib import Path
 from stringency.exit_codes import ConfigError
 
 
+def git_dir_beside(worktree: Path) -> Path:
+    """Where `clone_at` keeps a checkout's git directory: `<name>.git` beside `<name>/`, so the
+    working tree holds no path named `.git` (the Claude Science sandbox on a Mac refuses to
+    create one, L151)."""
+    return worktree.with_name(worktree.name + ".git")
+
+
+def _locate(repo: Path) -> list[str]:
+    """How git is pointed at `repo`: a checkout with its own `.git` (a method source repository,
+    a test fixture) by `-C`; a checkout `clone_at` made by its git directory beside it."""
+    beside = git_dir_beside(repo)
+    if not (repo / ".git").exists() and beside.is_dir():
+        return ["--git-dir", str(beside), "--work-tree", str(repo)]
+    return ["-C", str(repo)]
+
+
 def _git(repo: Path, *args: str) -> str:
     try:
         out = subprocess.run(
-            ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True
+            ["git", *_locate(repo), *args], check=True, capture_output=True, text=True
         )
     except FileNotFoundError:
         raise ConfigError("git is not installed") from None
@@ -52,23 +68,30 @@ def remote_url(repo: Path) -> str | None:
 def clone_at(url: str, tag: str, dest: Path) -> str:
     """Clone `url` into `dest` and check out `tag`. Returns the checked-out SHA.
 
-    `url` may be a `git+https://...` URL, a plain URL, or a local path.
+    `url` may be a `git+https://...` URL, a plain URL, or a local path. The git directory is
+    `git_dir_beside(dest)`, not `dest/.git`: the working tree is the method's files alone, and
+    every later git fact (`head_sha`, `is_dirty`, `blob_hash`) reads through `_locate`.
     """
     if url.startswith("git+"):
         url = url[4:]
+    gitdir = git_dir_beside(dest)
+    if gitdir.exists() or dest.exists():
+        raise ConfigError(f"could not clone {url} at {tag}: {dest} or {gitdir} already exists")
+    dest.mkdir(parents=True)
+
+    def run(*args: str) -> None:
+        subprocess.run(
+            ["git", "--git-dir", str(gitdir), "--work-tree", str(dest), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
     try:
-        subprocess.run(
-            ["git", "clone", "--quiet", "--no-checkout", url, str(dest)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        subprocess.run(
-            ["git", "-C", str(dest), "checkout", "--quiet", tag],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        run("init", "--quiet")
+        run("remote", "add", "origin", url)
+        run("fetch", "--quiet", "--tags", "origin")
+        run("checkout", "--quiet", tag)
     except subprocess.CalledProcessError as e:
         raise ConfigError(f"could not clone {url} at {tag}: {e.stderr.strip()}") from None
     return head_sha(dest)
