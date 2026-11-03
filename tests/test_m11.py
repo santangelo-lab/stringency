@@ -307,3 +307,46 @@ def test_job_stdin_keeps_the_declared_key_order(tmp_path: Path) -> None:
     )
     assert res.exit_code == 0
     assert res.stdout().strip() == "['params', 'design'] ['timepoint_h', 'condition']"
+
+
+def test_local_executor_activates_a_uv_venv_when_present(tmp_path: Path) -> None:
+    """The environment the digest describes is the one that runs (the beta package,
+    2026-11-03): `envs/<name>/.venv/bin/python3` is the interpreter and leads PATH."""
+    import os
+    import stat
+
+    from stringency.executor.local import LocalExecutor, interpreter_for
+
+    envs = tmp_path / "envs"
+    venv_bin = envs / "e1" / ".venv" / "bin"
+    venv_bin.mkdir(parents=True)
+    shim = venv_bin / "python3"
+    shim.write_text('#!/bin/sh\necho "shim $VIRTUAL_ENV"; echo "$PATH" | cut -d: -f1\n')
+    shim.chmod(shim.stat().st_mode | stat.S_IXUSR)
+    (envs / "e1" / "uv.lock").write_text("version = 1\n")
+    script = tmp_path / "s.py"
+    script.write_text("print('not run by the shim')\n")
+    ex = LocalExecutor(envs)
+    python, env = ex.activation("e1")
+    assert python == shim and env["VIRTUAL_ENV"] == str(envs / "e1" / ".venv")
+    assert env["PATH"].split(os.pathsep)[0] == str(venv_bin)
+    res = ex.run(Job(command=interpreter_for(script), env_name="e1", cwd=tmp_path / "w"))
+    assert res.exit_code == 0, res.stderr()
+    assert res.stdout().splitlines() == [f"shim {envs / 'e1' / '.venv'}", str(venv_bin)]
+    assert res.command.startswith(str(shim))
+    # no .venv: the engine's own interpreter, as before
+    assert ex.activation("e2") == (None, {})
+
+
+def test_local_executor_names_an_renv_project(tmp_path: Path) -> None:
+    from stringency.executor.local import LocalExecutor
+
+    d = tmp_path / "envs" / "r1"
+    d.mkdir(parents=True)
+    (d / "renv.lock").write_text("{}\n")
+    python, env = LocalExecutor(tmp_path / "envs").activation("r1")
+    assert python is None and env == {"RENV_PROJECT": str(d)}
+    (d / ".Rprofile").write_text('source("renv/activate.R")\n')
+    assert LocalExecutor(tmp_path / "envs").activation("r1")[1]["R_PROFILE_USER"] == str(
+        d / ".Rprofile"
+    )

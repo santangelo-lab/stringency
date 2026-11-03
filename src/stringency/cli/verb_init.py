@@ -6,6 +6,7 @@ from pathlib import Path
 
 import typer
 
+from stringency import siteconfig
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import Exit
@@ -51,7 +52,11 @@ def init(
         help="command: the command run per replicate with {schema}, {response}, {prompt_file}, {dir}",
     ),
     execution: str = typer.Option("operator", "--execution"),
-    executor: str = typer.Option("apptainer", "--executor"),
+    executor: str | None = typer.Option(
+        None,
+        "--executor",
+        help="local or apptainer; default the site config's `executor`, else apptainer",
+    ),
     egress_max: int | None = typer.Option(
         None,
         "--egress-max",
@@ -96,7 +101,7 @@ def init(
             judgment_base_url=judgment_base_url,
             judgment_command=judgment_command,
             execution=execution,
-            executor=executor,
+            executor=executor or siteconfig.executor() or "apptainer",
             egress_max=egress_max,
             operator_model=operator_model,
             drafted_by=drafted_by,

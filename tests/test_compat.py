@@ -232,3 +232,68 @@ def test_known_good_table_parses_and_has_the_shape_the_bootstrap_reads() -> None
     dated = [r for r in rows if r["date"] != "pending"]
     assert dated and all(r["engine"].startswith("v") for r in dated)
     assert all(v.startswith("v") for r in dated for v in r["plugins"].values())
+
+
+def test_site_executor_local_makes_probe_want_locks_not_images(
+    method_repo: MethodRepo, tmp_path: Path
+) -> None:
+    """A Mac with no container runtime (the beta package, 2026-11-03): with `executor: local`
+    in the site config an image the manifest names is reported, not checked, the container
+    check is not judged, and an environment without a lock fails."""
+    import os
+
+    cfg = Path(os.environ["XDG_CONFIG_HOME"]) / "stringency" / "config.yml"
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text("executor: local\n")
+    mf = method_repo.path / "envs" / "manifest.yml"
+    data = yaml.safe_load(mf.read_text())
+    data["environments"]["toy-py"]["image"] = "/nowhere/toy-py-0.1.0.sif"
+    mf.write_text(yaml.safe_dump(data))
+    payload = probe(str(method_repo.path))
+    names = {c["name"]: c for c in payload["checks"]}
+    assert payload["site"]["executor"] == "local"
+    assert names["image toy-py"]["ok"] is None and "not needed" in names["image toy-py"]["detail"]
+    assert names["container"]["ok"] is None and names["lock toy-py"]["ok"]
+    assert payload["ok"], payload["checks"]
+    data["environments"]["toy-py"].pop("lock")
+    mf.write_text(yaml.safe_dump(data))
+    payload = probe(str(method_repo.path))
+    names = {c["name"]: c for c in payload["checks"]}
+    assert names["lock toy-py"]["ok"] is False and not payload["ok"]
+    cfg.write_text("executor: podman\n")
+    with pytest.raises(ConfigError):
+        probe(None)
+
+
+def test_init_takes_the_executor_from_the_site_config(
+    method_repo: MethodRepo, declarations: dict[str, Path], tmp_path: Path
+) -> None:
+    import os
+
+    cfg = Path(os.environ["XDG_CONFIG_HOME"]) / "stringency" / "config.yml"
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    args = [
+        "--method",
+        method_repo.spec,
+        "--pipeline",
+        "toy-engine",
+        "--objective",
+        str(declarations["objective.yml"]),
+        "--design",
+        str(declarations["design.yml"]),
+        "--inputs",
+        str(declarations["inputs.yml"]),
+        "--judgment-harness",
+        "mock",
+        "--json",
+    ]
+    # no site config: apptainer, as before (the test method has no image, so init fails there)
+    r = runner.invoke(app, ["init", str(tmp_path / "p"), *args])
+    assert r.exit_code == 13 and "no image for env toy-py" in r.output, r.output
+    cfg.write_text("executor: local\n")
+    r = runner.invoke(app, ["init", str(tmp_path / "q"), *args])
+    assert r.exit_code == 10, r.output  # created, holding on confirm
+    assert yaml.safe_load((tmp_path / "q" / "stringency.yml").read_text())["executor"] == "local"
+    # the flag still wins over the site config
+    r = runner.invoke(app, ["init", str(tmp_path / "r"), *args, "--executor", "apptainer"])
+    assert r.exit_code == 13 and "no image for env toy-py" in r.output, r.output

@@ -45,10 +45,14 @@ Install one of those unless you are developing.
 
 ## Prerequisites
 
-- Linux. Python 3.12 or newer on the system (`/usr/bin/python3`), and `uv`
-  (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
+- Linux, or macOS on Apple Silicon for a single person's machine with the `local` executor
+  (the beta-tester package, 2026-11-03; the suite runs on both in CI). Python 3.12 or newer on
+  the system (`/usr/bin/python3`), and `uv` (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
 - A container runtime for production runs: `apptainer` (or `singularity`). Development and the
-  test suite run with the `local` executor and need neither.
+  test suite run with the `local` executor and need neither. A machine without one sets
+  `executor: local` in `~/.config/stringency/config.yml`; `init` then creates projects for the
+  local executor unless `--executor` says otherwise, and `probe --method` checks each
+  environment's lockfile instead of its image.
 - Disk for container images (a few GB each) and for projects.
 - A group that every user of the machine belongs to, so projects and the install are readable by
   all of them.

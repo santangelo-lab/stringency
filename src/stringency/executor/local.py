@@ -6,6 +6,13 @@ with neither present no digest is reported and `repro.env_unpinned` fires.
 `interpreter_for` names interpreters portably (`python3`, `Rscript`, `bash`) so the same Job
 runs inside a container; this executor resolves `python3` to the engine's own interpreter so
 development runs see the engine venv.
+
+The environment the digest describes is also the one that runs (the beta-tester package,
+2026-11-03): when `<method>/envs/<env_name>/.venv` exists (`uv sync` in that directory, from
+its `pyproject.toml` and `uv.lock`), `python3` resolves to its interpreter, its `bin` leads
+`PATH` and `VIRTUAL_ENV` names it; when `renv.lock` exists there, `Rscript` runs with
+`RENV_PROJECT` naming the directory and `R_PROFILE_USER` its `.Rprofile` (so renv's autoloader
+activates the library). With neither, the job runs as before, in the engine's own environment.
 """
 
 from __future__ import annotations
@@ -53,6 +60,27 @@ class LocalExecutor:
         """The portable form (`python3 <script>`); `run` resolves `python3` to this interpreter."""
         return [str(c) for c in job.command]
 
+    def activation(self, env_name: str) -> tuple[Path | None, dict[str, str]]:
+        """What running in `env_name` adds: the Python interpreter of `<env>/.venv` when that
+        exists (else None, the engine's own), and the environment variables (`PATH` led by the
+        venv's `bin`, `VIRTUAL_ENV`; or `RENV_PROJECT` and `R_PROFILE_USER` for an renv lock)."""
+        d = self.envs_root / env_name
+        env: dict[str, str] = {}
+        python: Path | None = None
+        venv = d / ".venv"
+        if (venv / "bin").is_dir():
+            python = venv / "bin" / "python3"
+            if not python.exists():
+                python = venv / "bin" / "python"
+            env["PATH"] = f"{venv / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}"
+            env["VIRTUAL_ENV"] = str(venv)
+        if (d / "renv.lock").exists():
+            env["RENV_PROJECT"] = str(d)
+            profile = d / ".Rprofile"
+            if profile.exists():
+                env["R_PROFILE_USER"] = str(profile)
+        return python, env
+
     def limits_for(self, job: Job) -> str:
         """The local executor enforces no CPU or memory limit; the allocation reaches the
         script through the environment only (L130)."""
@@ -70,9 +98,10 @@ class LocalExecutor:
             else None  # declared order (L128)
         )
         command = [str(c) for c in job.command]
+        python, activated = self.activation(job.env_name)
         if command and command[0] == "python3":
-            command[0] = sys.executable
-        extra = env_for(job.resources)
+            command[0] = str(python) if python is not None else sys.executable
+        extra = {**activated, **env_for(job.resources)}
         env = {**os.environ, **extra} if extra else None
         t0 = time.monotonic()
         timed_out = False

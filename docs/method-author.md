@@ -41,9 +41,16 @@ checkout read-only into every step's container (engine 0.2.20). A directory unde
 without a `module.yml` is not a module and lint ignores it.
 
 Environments: `envs/manifest.yml` names each environment's lockfile (local executor) or image
-and sha256 (apptainer). Name images by file name and let the site say where they are
+and sha256 (apptainer), or both. Name images by file name and let the site say where they are
 (`docs/install.md`); build them from the repository (the Xenium method's `envs/README.md` and
-`.github/workflows/image.yml` are the pattern).
+`.github/workflows/image.yml` are the pattern). A lockfile environment is a directory
+`envs/<name>/` holding a `pyproject.toml` and the `uv.lock` it resolves to (or a `renv.lock`
+and the `.Rprofile` renv writes); `uv sync` (or `renv::restore()`) in that directory builds
+it, and the local executor runs the environment's modules in it (`.venv/bin/python3`, or
+`Rscript` with `RENV_PROJECT` set) when it is built, in the engine's own environment when it
+is not. Resolve the lock for every platform the method is run on (`uv lock` is universal by
+default); a method that must run on a laptop as well as the workstation ships both the lock
+and the image.
 
 ## Module scripts
 
