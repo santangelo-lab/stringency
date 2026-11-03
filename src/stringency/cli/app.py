@@ -18,6 +18,7 @@ from stringency.cli import (
     verb_deliver,
     verb_exec,
     verb_finding,
+    verb_flag,
     verb_fork,
     verb_init,
     verb_judgments,
@@ -49,6 +50,7 @@ app.command("declare")(verb_declare.declare)
 app.command("run")(verb_run.run)
 app.command("ask")(verb_ask.ask)
 app.command("finding")(verb_finding.finding)
+app.command("flag")(verb_flag.flag)
 app.command("call")(verb_call.call)
 app.command("exec")(verb_exec.exec_)
 app.command("answer")(verb_answer.answer)

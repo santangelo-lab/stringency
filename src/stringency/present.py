@@ -23,6 +23,7 @@ from jinja2 import Environment, StrictUndefined
 from stringency.config import Design, StringencyConfig, load_model
 from stringency.db.store import Store
 from stringency.exit_codes import ConfigError
+from stringency.flags import flags_for
 from stringency.modules import ModuleIndex
 from stringency.pipelines import (
     Pipeline,
@@ -716,6 +717,7 @@ def present_run(
         "files": [],
         "never_show": [],
         "deliverables": [],
+        "flags": flags_for(project.store, run_id),
     }
     if deliver_dir is not None and (deliver_dir / "index.json").exists():
         idx = json.loads((deliver_dir / "index.json").read_text())

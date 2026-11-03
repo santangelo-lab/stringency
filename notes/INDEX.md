@@ -3,7 +3,15 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-10-30)
+## Current state (2026-11-03)
+
+- The beta-tester package's engine changes (`notes/2026-11-03-2100-beta-package-engine.md`) on
+  branch `beta-mac`, PR #17: the macOS CI job, the site executor and the activated local
+  executor, `status --json` sessions, `stringency flag` (migration 0008). Next: the macOS job's
+  result, merge, tag v0.2.37; then the scanpy method's v0.1.11 (its `envs-lock` branch) and the
+  beta repository's CLI. L147 and L148 filed.
+
+## Earlier state (2026-10-30)
 
 - The second pilot's findings built (`notes/2026-10-30-0300-second-pilot-packages.md`): L130 to
   L144 on `main` at 0.2.36, unpushed; `v0.2.35` tagged on branch `release-0.2.35` (L130, L135,
@@ -374,6 +382,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-03-2100-beta-package-engine.md` — the beta-tester package's engine changes: macOS CI, the site executor and the activated local executor, status sessions, the flag verb and the console form; branch `beta-mac`, PR #17.
 - `2026-10-27-2200-engine-backlog-l112-l96-l128.md` — L112, L96 and L128 closed on `main` (no release); L129 filed.
 - `2026-10-26-2130-qc-failure-modes.md` — plugin singlecell's 24 predicates checked against its spec (all listed; the engine design lists none); literature on droplet and imaging-spatial failure modes through Consensus; `qc-failure-modes.md` with L115 to L127, mitochondrial fraction first, and the owner's D1 to D3.
 - `2026-10-26-1315-module-scripts.md` — the owner's points on the methods' module scripts: the convention (named scripts with `entry:`, a short header and `CHANGELOG.md`, one shape, `stringency_io`, ruff and lintr, a README index, existing code); phase 0 built and the Xenium pilot `cluster-umap` 0.4.2 verified identical to rc19 on PROTSEQ; the Xenium method moved to the current predicates (L86) and run end to end under 0.2.34-sc0.8.4; then every Xenium module converted and verified identical; L114.

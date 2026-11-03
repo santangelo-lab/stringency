@@ -66,15 +66,19 @@ def probe(method: str | None = None, *, hash_images: bool = True) -> dict[str, A
         checks.append(Check("skills", None, "no skills installed beside this engine (a checkout)"))
     else:
         checks.append(skills_check(skill, skills["for_engine"], __version__))
+    site_executor = siteconfig.executor()
     site = {
         "images_root": str(siteconfig.images_root()) if siteconfig.images_root() else None,
         "STRINGENCY_IMAGES": os.environ.get("STRINGENCY_IMAGES"),
+        "executor": site_executor,
     }
     report: dict[str, Any] | None = None
     needs_container = False
     if method:
-        report = _probe_method(method, plugins, checks, hash_images)
-        needs_container = any(e.get("image") for e in report["envs"].values())
+        report = _probe_method(method, plugins, checks, hash_images, site_executor == "local")
+        needs_container = site_executor != "local" and any(
+            e.get("image") for e in report["envs"].values()
+        )
     checks.append(
         Check(
             "container",
@@ -97,8 +101,14 @@ def probe(method: str | None = None, *, hash_images: bool = True) -> dict[str, A
 
 
 def _probe_method(
-    spec: str, plugins: dict[str, str], checks: list[Check], hash_images: bool
+    spec: str,
+    plugins: dict[str, str],
+    checks: list[Check],
+    hash_images: bool,
+    local_only: bool = False,
 ) -> dict[str, Any]:
+    """`local_only` (the site config says `executor: local`): a run here uses the local
+    executor, so each environment needs its lock and its image is reported, not checked."""
     with contextlib.ExitStack() as stack:
         path = Path(spec)
         if not path.exists() and "@" in spec:
@@ -137,7 +147,12 @@ def _probe_method(
         for name, entry in load_env_manifest(envs_root).items():
             env: dict[str, Any] = {"image": None, "lock": None}
             image = entry.get("image")
-            if image:
+            if image and local_only:
+                env["image"] = str(resolve_image(str(image), envs_root))
+                checks.append(
+                    Check(f"image {name}", None, "not needed: the site's executor is local")
+                )
+            elif image:
                 resolved = resolve_image(str(image), envs_root)
                 env["image"] = str(resolved)
                 exists, readable = resolved.exists(), os.access(resolved, os.R_OK)
@@ -171,6 +186,14 @@ def _probe_method(
                         )
                     )
             lock = entry.get("lock")
+            if not lock and local_only:
+                checks.append(
+                    Check(
+                        f"lock {name}",
+                        False,
+                        "no lock in the manifest, and the site's executor is local",
+                    )
+                )
             if lock:
                 lp = Path(str(lock))
                 if not lp.is_absolute():

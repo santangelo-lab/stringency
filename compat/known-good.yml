@@ -76,3 +76,12 @@ combinations:
     date: 2026-10-26
     host: the lab's Linux workstation (apptainer)
     evidence: "installed as 0.2.34-sc0.8.7 on the workstation; controls/synthetic_upstream.sh passed with the method cloned at the tag (xenium-qc-tma and xenium-upstream on the two-slide synthetic study, delivered, five clusters labelled); every module script's outputs identical to 9bf12a7's on the synthetic study and the open tools' controls"
+  - engine: v0.2.37
+    plugins:
+      stringency-singlecell: v0.10.3
+    methods:
+      stringency-toy-method: v0.3.0
+      stringency-scrnaseq-scanpy-method: v0.1.11
+    date: 2026-11-03
+    host: PROTSEQ (the local executor, an isolated home); macOS arm64 not yet tried
+    evidence: "the beta-tester package's engine changes (the site executor, the activated local executor, status sessions, flag) with the suite green on Linux and on macos-latest in CI; the scanpy method's modules on the planted fixture in envs/scanpy-agent/.venv identical to the image's outputs; the toy at 0.3.0 (the engine's in-repo toy) linted and initialised under the local executor by stringency-beta setup; no Mac run yet (the beta repository's notes/2026-11-03-macbook-handoff.md)"

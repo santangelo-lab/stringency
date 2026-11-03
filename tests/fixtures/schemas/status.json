@@ -16,6 +16,7 @@
     "steps": {"type": "array", "items": {"type": "object", "required": ["step_id", "module", "module_version", "status", "attempt"]}},
     "holds": {"type": "array", "items": {"type": "object", "required": ["hold_id", "step_id", "item_id", "kind", "reason", "waits_on", "who"]}},
     "completed_steps": {"type": "array", "items": {"type": "string"}},
+    "sessions": {"type": "array", "items": {"type": "object", "required": ["session_ref", "harness", "version", "first_seen", "last_seen", "runs", "reviews"]}},
     "plain": {"type": "string"}
   }
 }

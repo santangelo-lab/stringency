@@ -19,7 +19,16 @@ your site's values filled in:
 > and the "for engine" line of each skill you published.
 
 The session does the rest. Repeat it after an engine release or a method tag; the reply names
-what was published. Seven skills today:
+what was published.
+
+On a machine of your own with the engine installed beside Claude Science (a Mac with the
+`local` executor; the beta-tester package, 2026-11-03), there is no compute host: the paths are
+on this machine, so paste the same message with "On the compute host `<alias>`" replaced by
+"On this machine", `<prefix>` being `~/.local/lib/stringency` unless the install said otherwise,
+and each method's skills read from its checkout under `~/.local/lib/stringency/methods/<name>/`
+(the beta `setup` clones them there at their tags).
+
+Seven skills today:
 
 | skill | source | who uses it |
 |---|---|---|

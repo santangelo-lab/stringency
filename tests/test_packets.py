@@ -453,5 +453,8 @@ def test_bound_rows_mark_an_output_shipped_from_several_steps(tmp_path: Path) ->
     assert table[1]["what"] == "labels as 03_select wrote it; the same name ships from 05_apply"
     assert table[2]["what"] == "the domain of every cell (also as labels from 03_select)"
     lines = bound_lines(bound)
-    assert "Step 03_select:" in lines and all(len(x) <= 100 for x in lines)
+    # the wrap keeps lines within 100 columns except a path longer than that on its own line
+    # (macOS's temp directories: /private/var/folders/..., the CI job of 2026-11-03)
+    assert "Step 03_select:" in lines
+    assert all(len(x) <= 100 or x.startswith("/") for x in lines)
     assert "- The method's 2 tools: t1, t2." in lines

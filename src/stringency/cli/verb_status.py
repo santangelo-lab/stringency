@@ -48,6 +48,70 @@ def override_rates(project: Project, module: str | None = None) -> list[dict[str
     return out
 
 
+def sessions(project: Project) -> list[dict[str, Any]]:
+    """The harness sessions this project has seen (the beta-tester package, 2026-11-03: a
+    bundle finds the matching transcripts by these): one entry per distinct
+    `operator_session_ref` over `runs`, `reviews` and `artifacts`, with the harness and version
+    the run recorded, when it was first and last seen, and the runs and reviews it touched.
+    Reads: runs, reviews, artifacts."""
+    seen: dict[str, dict[str, Any]] = {}
+
+    def touch(ref: Any, ts: Any, **fields: Any) -> None:
+        if not ref:
+            return
+        e = seen.setdefault(
+            str(ref),
+            {
+                "session_ref": str(ref),
+                "harness": None,
+                "version": None,
+                "first_seen": None,
+                "last_seen": None,
+                "runs": [],
+                "reviews": 0,
+            },
+        )
+        if ts:
+            e["first_seen"] = min(filter(None, [e["first_seen"], ts]))
+            e["last_seen"] = max(filter(None, [e["last_seen"], ts]))
+        for k, v in fields.items():
+            if k == "run" and v not in e["runs"]:
+                e["runs"].append(v)
+            elif k == "review":
+                e["reviews"] += 1
+            elif v and e.get(k) is None:
+                e[k] = v
+
+    store = project.store
+    for r in store.all(
+        "SELECT run_id, operator_harness, operator_version, operator_session_ref, started "
+        "FROM runs ORDER BY rowid"
+    ):
+        touch(
+            r["operator_session_ref"],
+            r["started"],
+            harness=r["operator_harness"],
+            version=r["operator_version"],
+            run=r["run_id"],
+        )
+    for r in store.all(
+        "SELECT h.run_id AS run_id, v.operator_session_ref, v.operator_harness, v.ts "
+        "FROM reviews v JOIN holds h ON h.hold_id = v.hold_id ORDER BY v.rowid"
+    ):
+        touch(r["operator_session_ref"], r["ts"], harness=r["operator_harness"], review=True)
+        if r["operator_session_ref"] and r["run_id"]:
+            touch(r["operator_session_ref"], None, run=r["run_id"])
+    for r in store.all(
+        "SELECT run_id, operator_session_ref FROM artifacts WHERE operator_session_ref IS NOT NULL"
+    ):
+        touch(r["operator_session_ref"], None, run=r["run_id"])
+    out = list(seen.values())
+    for e in out:
+        if e["harness"] is None and ":" in e["session_ref"]:
+            e["harness"] = e["session_ref"].split(":", 1)[0]
+    return out
+
+
 def status_payload(project: Project, run_id: str | None) -> dict[str, Any]:
     row = load_run(project, run_id).run if run_id else latest_run(project.store)
     confirm = project.confirm_status()
@@ -65,6 +129,7 @@ def status_payload(project: Project, run_id: str | None) -> dict[str, Any]:
     ch = project.confirm_hold()
     if ch is not None and ch["resolved_by_review"] is None:
         payload["holds"].append(_hold_entry(project, ch))
+    payload["sessions"] = sessions(project)
     payload["egress"] = project.egress_status()
     eh = project.egress_hold()
     if eh is not None and eh["resolved_by_review"] is None:
