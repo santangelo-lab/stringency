@@ -44,7 +44,11 @@ what the bundle reads, and the after-delivery flag. Branch `beta-mac`.
 
 ## Open
 
-- Push `beta-mac` and open the PR so the macOS job runs; fix what it finds; merge; tag v0.2.37.
+- PR #17 open. The first macOS job: 636 passed, 4 skipped, 1 failed on a width assertion over a
+  macOS temp path (`test_packets.py`, fixed in `66fc982`); no engine code broke on Darwin. The
+  re-run's result, then merge and tag v0.2.37.
+- The public toy method at v0.2.0 fails lint on 0.2.36 (`judg.numeric_claims_match@1`); the
+  engine's in-repo toy copied over it as 0.3.0 (toy PR #1, `requires >=0.2.27`).
 - The operator skill does not yet name `flag` (a person saying in chat that a result is wrong
   should become a relayed flag); filed as L147. `audit` does not read `flags` (as it does not
   read `findings`); L148.
