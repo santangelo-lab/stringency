@@ -3,23 +3,27 @@
 # names, the skills beside them) and ends with `stringency probe`. For the AI or person setting up
 # a machine; docs/install.md explains what it did and what comes next (images, PATH, the console).
 #
-#   curl -LsSf https://raw.githubusercontent.com/santangelo-lab/stringency/main/scripts/bootstrap.sh | bash -s -- [--prefix DIR] [--engine TAG] [--plugin NAME@TAG]
-#   scripts/bootstrap.sh [--prefix DIR] [--engine TAG] [--plugin NAME@TAG]     # from a checkout
+#   curl -LsSf https://raw.githubusercontent.com/santangelo-lab/stringency/main/scripts/bootstrap.sh | bash -s -- [--prefix DIR] [--engine TAG] [--plugin NAME@TAG] [--toy]
+#   scripts/bootstrap.sh [--prefix DIR] [--engine TAG] [--plugin NAME@TAG] [--toy]     # from a checkout
 #
 # Defaults: --prefix ~/.local/lib/stringency (no sudo; a shared machine uses a group-writable
 # directory the group owns, with `umask 002`); the engine and plugin tags of the
 # latest dated row of compat/known-good.yml on main. Needs curl and git; installs uv when missing.
+# --toy also installs the engine's toy plugin (stringency-toy), which the toy method needs; a
+# production machine leaves it out (L149).
 set -euo pipefail
 prefix=$HOME/.local/lib/stringency
 engine=""
 plugin=""
+toy=""
 repo=https://github.com/santangelo-lab/stringency
 while [ $# -gt 0 ]; do
   case "$1" in
     --prefix) prefix=$2; shift 2 ;;
     --engine) engine=$2; shift 2 ;;
     --plugin) plugin=$2; shift 2 ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    --toy) toy=1; shift ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -62,19 +66,26 @@ PY
   engine=${engine:-$kg_engine}
   plugin=${plugin:-$kg_plugin}
 fi
-echo "engine $engine, plugin $plugin"
+echo "engine $engine, plugin $plugin${toy:+, with the toy plugin}"
 git clone --quiet --branch "$engine" --depth 1 "$repo" "$work/engine"
 pname=${plugin%%@*}; ptag=${plugin##*@}
+notoy=--no-toy; [ -n "$toy" ] && notoy=""
 "$work/engine/scripts/install.sh" --prefix "$prefix" --source "$work/engine" \
-  --plugin "git+https://github.com/santangelo-lab/stringency-plugins@${ptag}#subdirectory=plugins/${pname}" --no-toy
+  --plugin "git+https://github.com/santangelo-lab/stringency-plugins@${ptag}#subdirectory=plugins/${pname}" $notoy
 if "$prefix/current/bin/stringency" probe >/dev/null 2>&1; then ready="run \`stringency probe\` again any time"; else ready="this engine predates \`probe\` (0.2.19); \`stringency plugins list\` shows what is installed"; fi
-cat <<'MSG'
-
-installed. Next:
-  1. put the engine on your PATH, in ~/.profile:   export PATH=<prefix>/current/bin:$PATH
-  2. a container runtime (apptainer) for production runs; `stringency probe` says whether one is found
-  3. the method's images where the site keeps them, named in ~/.config/stringency/config.yml as images_root
-  4. `stringency probe --method <method url>@<tag>` ends with "ready" when a project on that method can run here
-docs/install.md in the engine repository explains each.
-MSG
+# the closing text follows the site's executor (~/.config/stringency/config.yml, `executor:`):
+# under `local` there is no runtime and no image to fetch (L149)
+executor=$(sed -n 's/^executor:[[:space:]]*\([a-z]*\).*/\1/p' "$HOME/.config/stringency/config.yml" 2>/dev/null | head -1)
+echo
+echo "installed. Next:"
+echo "  1. put the engine on your PATH, in ~/.profile:   export PATH=<prefix>/current/bin:\$PATH"
+if [ "$executor" = local ]; then
+  echo "  2. the site runs with the local executor (executor: local in ~/.config/stringency/config.yml): no container runtime, no images; each method environment is a uv or renv lock the method ships"
+  echo "  3. \`stringency probe --method <method url>@<tag>\` ends with \"ready\" when a project on that method can run here"
+else
+  echo "  2. a container runtime (apptainer) for production runs; \`stringency probe\` says whether one is found"
+  echo "  3. the method's images where the site keeps them, named in ~/.config/stringency/config.yml as images_root"
+  echo "  4. \`stringency probe --method <method url>@<tag>\` ends with \"ready\" when a project on that method can run here"
+fi
+echo "docs/install.md in the engine repository explains each."
 echo "  (<prefix> is $prefix; $ready)"

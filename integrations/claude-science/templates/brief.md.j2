@@ -93,9 +93,11 @@ Parse `json.loads(r.stdout)`; tell me its `plain` line; act on the exit code.
 - **20, a dispatch.** The payload names `dispatch_dir` and `requests`. Fetch each `req_N.json` with
   `c.download(...)` and spawn one fresh delegate per request. Give it only the file's local path
   and this task: read it, produce JSON with `nonce` copied verbatim, `structured` matching its
-  `schema`, and `reported` with the model it is, the agent running it, its tools, and
-  `saw_conversation: false`, and return that JSON as its result. You do not read the prompts. If
-  you have no delegate tool, answer each request in its own fresh cell and say so in your report.
+  `schema`, and `reported` with the model it is, its tools, `saw_conversation: false`, and as
+  `agent` the literal `claude-science subagent` (not the harness's own name, which the engine
+  reads as you answering yourself), and return that JSON as its result. You do not read the
+  prompts. If you have no delegate tool, answer each request in its own fresh cell, set
+  `reported.agent` to `claude-science` alone, and say so in your report.
   Assemble `doc = {"step_id": <the step>, "responses": [<reply 1>, ...]}` in request order and run
   it through stdin with a quoted heredoc, one command:
   `sx(f"stringency run --responses - --json <<'JSON'\n{json.dumps(doc)}\nJSON", intent=f"Record

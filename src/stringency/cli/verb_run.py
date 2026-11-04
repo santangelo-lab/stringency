@@ -22,6 +22,19 @@ from stringency.runloop import Next, file_responses, run_loop
 from stringency.runs import RunContext, latest_run, load_run, open_or_resume
 
 
+def completed_undelivered(project: Project) -> RunContext | None:
+    """The latest run when it completed and nothing delivered it (L153): the last step was an
+    operator ticket, whose `submit` completed the run, so the `run --deliver` the skills say to
+    run next finds nothing to run and delivers instead of refusing."""
+    row = latest_run(project.store)
+    if row is None or row["status"] != "completed":
+        return None
+    delivered = project.store.one(
+        "SELECT 1 FROM deliveries WHERE run_id = ? LIMIT 1", (row["run_id"],)
+    )
+    return None if delivered else load_run(project, row["run_id"])
+
+
 def completed_line(nx: Next) -> str:
     """One line naming the steps this invocation completed on the engine, or nothing (I8).
     Reads `Next.detail["completed_steps"]`, which `run_loop` fills from the steps table."""
@@ -99,6 +112,32 @@ def run(
         res = check_responses(_latest(project), read_responses(responses))
         emit({"schema": "stringency.response_check/1", **res}, as_json, check_text(res), out=out)
         return
+    if deliver and responses is None and not new:
+        done = completed_undelivered(project)
+        if done is not None:
+            d = do_deliver(done)
+            nx = Next(
+                kind="completed",
+                message=f"run {done.run_id} completed before this invocation; delivered",
+                detail={"plain": "The run is complete."},
+            )
+            payload = {
+                **nx.to_json(),
+                "run_id": done.run_id,
+                "run_status": "completed",
+                "delivery": {"delivery_id": d.delivery_id, "path": str(d.path), "files": d.files},
+            }
+            refresh_if_present(project.root)
+            notify_after(project, run_id=done.run_id, nx=nx, delivery=payload["delivery"])
+            emit(
+                payload,
+                as_json,
+                f"run {done.run_id}\n{nx.message}\ndelivered run {done.run_id} to {d.path}\n"
+                f"{len(d.files)} file(s)",
+                out=out,
+                summary=nx.message,
+            )
+            return
     rc = open_or_resume(project, allow_dirty=allow_dirty, new=new)
     rc.resource_override = override
     for c in rc.plugin_changes:

@@ -178,13 +178,17 @@ and the ticket says what to do.
 `req_1.json` ... `req_N.json`. For each request, spawn one fresh delegate and give it only the
 request file path and this task: read that file (in mode B, fetch it with `download` first),
 produce JSON matching its `schema`, copy its `nonce` verbatim into `nonce`, put the answer under
-`structured`, fill `reported` with the model it is, the agent running it, its tools, and
-`saw_conversation: false`, and return that JSON. Do not read the prompt text yourself when a
-delegate is available. If you have no delegate tool, answer each request in its own fresh cell
-that reads only that one file, set that reply's `reported.agent` to your own operator name (the
-value `STRINGENCY_OPERATOR` carries, such as `claude-code`, with no other word), and say so in
-your report: the engine records such a replicate with `via: operator` and `isolation: none`
-(0.2.28), and under profile `strict` it refuses the document (exit 16) until a delegate answers. Then assemble one document,
+`structured`, fill `reported` with the model it is, its tools, `saw_conversation: false`, and
+as `agent` the literal value `<operator> subagent`, where `<operator>` is the value
+`STRINGENCY_OPERATOR` carries (`claude-code subagent`, `claude-science subagent`): give the
+delegate that string in its task, since a delegate asked for "the agent running it" may answer
+with the harness's own name, which the engine reads as you answering yourself (L152). Return that
+JSON. Do not read the prompt text yourself when a delegate is available. If you have no delegate
+tool, answer each request in its own fresh cell that reads only that one file, set that reply's
+`reported.agent` to your own operator name alone (`claude-code`, with no other word; that bare
+name is only for a reply you wrote yourself), and say so in your report: the engine records such
+a replicate with `via: operator` and `isolation: none` (0.2.28), and under profile `strict` it
+refuses the document (exit 16) until a delegate answers. Then assemble one document,
 `{"step_id": "<the dispatching step>", "responses": [<reply 1>, ..., <reply N>]}` in request
 order. When your delegate tool reports a delegate's usage (tokens, duration), add it to that
 reply's `reported` as `usage` (`total_tokens`, `duration_ms`, and `tokens_in` and `tokens_out`

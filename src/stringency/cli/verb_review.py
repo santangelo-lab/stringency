@@ -71,7 +71,11 @@ def review(
         "--serve",
         help="serve a localhost form for verdicts (via: web); the reviewer starts it under their own account",
     ),
-    port: int = typer.Option(8765, "--port", help="--serve: TCP port"),
+    port: int | None = typer.Option(
+        None,
+        "--port",
+        help="--serve: TCP port (default 8765; when that is held, the next free one up to 8775)",
+    ),
     bind: str = typer.Option("127.0.0.1", "--bind", help="--serve: address to bind"),
     project_paths: list[Path] | None = typer.Option(
         None, "--project", help="--serve: a project to list (repeatable)"

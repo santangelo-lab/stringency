@@ -25,6 +25,8 @@ def test_init_layout_and_records(project: Project) -> None:
         "echo.md",
     ):
         assert (root / p).exists(), p
+    # the method checkout's git directory sits beside it: no `.git` in the project (L151)
+    assert not (root / "method" / ".git").exists() and (root / "method.git").is_dir()
     row = project.store.one("SELECT * FROM projects")
     assert row is not None
     assert row["pipeline_name"] == "toy"

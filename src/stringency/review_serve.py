@@ -29,11 +29,13 @@ Reads: what `review_render.render`, `review.queue`, `board.project_entry` and `p
 
 from __future__ import annotations
 
+import errno
 import json
 import mimetypes
 import queue
 import secrets
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from http import HTTPStatus
@@ -1703,7 +1705,10 @@ class ReviewHTTPServer(ThreadingHTTPServer):
         self.watcher.start()
 
     def server_close(self) -> None:
-        self.watcher.stop()
+        # a failed bind closes the server from inside the base __init__, before the watcher
+        watcher = getattr(self, "watcher", None)
+        if watcher is not None:
+            watcher.stop()
         super().server_close()
 
 
@@ -1735,21 +1740,50 @@ def make_server(
     return ReviewHTTPServer((bind, port), state, poll_seconds=poll_seconds)
 
 
+PORT_TRIES = 11  # the default port and the ten above it (L150)
+
+
+def bind_server(
+    make: Callable[[int], ReviewHTTPServer], port: int | None, *, tries: int = PORT_TRIES
+) -> tuple[ReviewHTTPServer, list[int]]:
+    """Bind at `port`; with no port asked for, at `DEFAULT_PORT` or, when that is held (the
+    Claude Science desktop app listens there on a Mac, L150), the next free one of `tries`.
+    Returns the server and the ports that were held. An explicit port fails as before."""
+    if port is not None:
+        return make(port), []
+    held: list[int] = []
+    for candidate in range(DEFAULT_PORT, DEFAULT_PORT + tries):
+        try:
+            return make(candidate), held
+        except OSError as e:
+            if e.errno != errno.EADDRINUSE:
+                raise
+            held.append(candidate)
+    raise ConfigError(
+        f"ports {DEFAULT_PORT} to {DEFAULT_PORT + tries - 1} are all in use; pass --port"
+    )
+
+
 def serve(
     projects: list[Path],
     projects_dir: list[Path] | Path | None,
     *,
     bind: str = DEFAULT_BIND,
-    port: int = DEFAULT_PORT,
+    port: int | None = None,
     read_only: bool = False,
     token_file: Path | None = None,
 ) -> None:
     """Print the URL with its token once, then serve until interrupted."""
     dirs = [projects_dir] if isinstance(projects_dir, Path) else list(projects_dir or [])
     token = read_token_file(token_file) if token_file is not None else None
-    srv = make_server(
-        projects, bind=bind, port=port, token=token, read_only=read_only, projects_dirs=dirs
+    srv, held = bind_server(
+        lambda p: make_server(
+            projects, bind=bind, port=p, token=token, read_only=read_only, projects_dirs=dirs
+        ),
+        port,
     )
+    for h in held:
+        print(f"port {h} is in use; taking the next", flush=True)
     host, actual = str(srv.server_address[0]), int(srv.server_address[1])
     mode = "read-only, no verdicts" if read_only else "verdicts recorded here carry via: web"
     print(
