@@ -49,7 +49,8 @@ Install one of those unless you are developing.
 ## Prerequisites
 
 - Linux, or macOS on Apple Silicon for a single person's machine with the `local` executor
-  (the beta-tester package, 2026-11-03; the suite runs on both in CI). Python 3.12 or newer on
+  (the beta-tester package, 2026-11-03; the suite runs on both in CI: macOS on every push to
+  main and on a pull request labelled `macos`, since hosted macOS runners queue for long). Python 3.12 or newer on
   the system (`/usr/bin/python3`), and `uv` (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
 - A container runtime for production runs: `apptainer` (or `singularity`). Development and the
   test suite run with the `local` executor and need neither. A machine without one sets
