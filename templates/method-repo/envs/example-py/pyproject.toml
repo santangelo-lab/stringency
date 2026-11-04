@@ -1,0 +1,26 @@
+# A lockfile environment for the local executor (docs/method-author.md, "Environments"): the
+# packages the method's Python modules import, pinned. `uv lock` here resolves for Linux x86_64
+# and macOS arm64 (the workstation and a laptop); `uv sync` here builds `.venv`, which the local
+# executor runs the environment's modules in. Rename the directory and the manifest entry
+# together; keep `package = false` (this is an environment, not a package).
+[project]
+name = "example-py-env"
+version = "0.1.0"
+description = "the example-py environment of this method, locked"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pandas>=2.3,<3",
+    "matplotlib>=3.10,<4",
+    "pyyaml>=6,<7",
+]
+
+[tool.uv]
+package = false
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+]

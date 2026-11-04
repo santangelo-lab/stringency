@@ -13,7 +13,8 @@ modules/_rlib/, _pylib/     shared code: stringency_io.R / stringency_io.py (job
 ruff.toml, .lintr           the style of the module scripts, checked by pre-commit and CI
 policy.yml                  dispositions per profile, ranges, criteria (design 6.4)
 envs/manifest.yml           environment names -> lockfile or SIF image and sha256 (design 10.3)
-envs/<name>/uv.lock         lockfile for the local executor
+envs/<name>/                lockfile environment for the local executor: pyproject.toml + uv.lock
+                            (envs/example-py) or renv.lock + .Rprofile + renv/activate.R (envs/example-r)
 controls/fixtures/          fixtures identified by hash (design 11)
 skills/<pipeline>.yml       what a person sees after delivery and at a hold (design 14.4); skills/example.yml
 skills/<pipeline>.analyze.yml  source of the analysis skill, rendered to skills/stringency-analyze-<name>/SKILL.md (spec/method-skills.md)

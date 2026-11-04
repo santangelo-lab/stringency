@@ -50,7 +50,12 @@ it, and the local executor runs the environment's modules in it (`.venv/bin/pyth
 `Rscript` with `RENV_PROJECT` set) when it is built, in the engine's own environment when it
 is not. Resolve the lock for every platform the method is run on (`uv lock` is universal by
 default); a method that must run on a laptop as well as the workstation ships both the lock
-and the image.
+and the image. The template carries one of each (`envs/example-py/`: a `pyproject.toml` with
+`tool.uv.environments` for Linux x86_64 and macOS arm64; `envs/example-r/`: renv's scaffold and
+a lock against a dated CRAN snapshot). An image is still the only choice when the environment
+is more than packages: a Nextflow pipeline and its containers, an aligner or a segmenter with
+its own binaries, a system library the packages link against, or a Bioconductor set that has
+no arm64 binaries; the Xenium method's `envs/` is the shape of that.
 
 ## Module scripts
 

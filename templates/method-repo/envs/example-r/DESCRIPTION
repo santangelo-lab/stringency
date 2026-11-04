@@ -1,0 +1,7 @@
+Type: Project
+Package: example-r
+Title: The example-r environment of this method
+Version: 0.1.0
+Imports:
+    jsonlite,
+    ggplot2
