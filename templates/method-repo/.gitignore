@@ -6,3 +6,7 @@ run.db-*
 *.fastq
 *.fastq.gz
 *.fq.gz
+# built environments (envs/<name>/); the lockfiles beside them are committed
+.venv/
+renv/library/
+renv/staging/

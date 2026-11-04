@@ -5,6 +5,9 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-03, evening)
 
+- (2026-11-04) The template's lockfile environments (`notes/2026-11-04-1000-template-envs.md`,
+  beta M3): `envs/example-py/` (uv) and `envs/example-r/` (renv) with their locks; branch
+  `m3-template-envs`. The Mac half of the proof waits for the owner's next Mac session.
 - The MacBook rows closed (`notes/2026-11-03-2230-beta-mac-rows.md`): L149 to L153 on branch
   `beta-mac-s1` (PR #18), with the `install.sh` Mac fixes the spikes made; version 0.2.38. The
   owner merges; then tag v0.2.38, and the beta repository pins it (`channel.yml`, drop
