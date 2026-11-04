@@ -73,9 +73,10 @@ notoy=--no-toy; [ -n "$toy" ] && notoy=""
 "$work/engine/scripts/install.sh" --prefix "$prefix" --source "$work/engine" \
   --plugin "git+https://github.com/santangelo-lab/stringency-plugins@${ptag}#subdirectory=plugins/${pname}" $notoy
 if "$prefix/current/bin/stringency" probe >/dev/null 2>&1; then ready="run \`stringency probe\` again any time"; else ready="this engine predates \`probe\` (0.2.19); \`stringency plugins list\` shows what is installed"; fi
-# the closing text follows the site's executor (~/.config/stringency/config.yml, `executor:`):
-# under `local` there is no runtime and no image to fetch (L149)
-executor=$(sed -n 's/^executor:[[:space:]]*\([a-z]*\).*/\1/p' "$HOME/.config/stringency/config.yml" 2>/dev/null | head -1)
+# the closing text follows the site's executor (`executor:` in ~/.config/stringency/config.yml,
+# else in <prefix>/config.yml beside the install): under `local` there is no runtime and no
+# image to fetch (L149)
+executor=$(sed -n 's/^executor:[[:space:]]*\([a-z]*\).*/\1/p' "$HOME/.config/stringency/config.yml" "$prefix/config.yml" 2>/dev/null | head -1)
 echo
 echo "installed. Next:"
 echo "  1. put the engine on your PATH, in ~/.profile:   export PATH=<prefix>/current/bin:\$PATH"

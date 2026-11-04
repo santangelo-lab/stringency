@@ -8,7 +8,9 @@ it is the first thing a new session reads.
 - The MacBook rows closed (`notes/2026-11-03-2230-beta-mac-rows.md`): L149 to L153 on branch
   `beta-mac-s1` (PR #18), with the `install.sh` Mac fixes the spikes made; version 0.2.38. The
   owner merges; then tag v0.2.38, and the beta repository pins it (`channel.yml`, drop
-  `setup.add_toy_plugin`). L146 to L148 open.
+  `setup.add_toy_plugin`). L146 to L148 open. 2026-11-04: a site configuration beside the install
+  (`<prefix>/config.yml`, under the user's file) for a Claude Science session granted the
+  install folder and not `~/.config/stringency`.
 - The MacBook spikes (`notes/2026-11-03-1450-macbook-s1-install.md`,
   `notes/2026-11-03-1620-macbook-s2-claude-science.md`): v0.2.37 passes its suite on an Apple
   Silicon Mac; the local profile runs the toy end to end under Claude Code, and under Claude
