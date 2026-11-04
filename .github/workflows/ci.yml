@@ -4,6 +4,10 @@ on:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened, labeled]
+# one run per branch: a newer push (or the macos label) cancels the run still queued or running
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
