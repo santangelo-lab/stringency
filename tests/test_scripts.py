@@ -15,7 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_install_sh_never_picks_a_venv_python(tmp_path: Path) -> None:
     src = (ROOT / "scripts" / "install.sh").read_text()
-    fn = re.search(r"^pick_python\(\) \{.*?^\}$", src, re.S | re.M).group(0)
+    m = re.search(r"^pick_python\(\) \{.*?^\}$", src, re.S | re.M)
+    assert m is not None
+    fn = m.group(0)
     # a PATH whose first python3 is this test's own interpreter when it is a venv's, else a
     # shim that reports itself as one
     bin_dir = tmp_path / "venv" / "bin"
