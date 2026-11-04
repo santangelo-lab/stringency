@@ -53,7 +53,9 @@ Install one of those unless you are developing.
   the system (`/usr/bin/python3`), and `uv` (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
 - A container runtime for production runs: `apptainer` (or `singularity`). Development and the
   test suite run with the `local` executor and need neither. A machine without one sets
-  `executor: local` in `~/.config/stringency/config.yml`; `init` then creates projects for the
+  `executor: local` in `~/.config/stringency/config.yml`, or in `config.yml` beside the install
+  (`<prefix>/config.yml`, read under the user's file, so a session that may read the install
+  but not the user's config directory still finds it); `init` then creates projects for the
   local executor unless `--executor` says otherwise, and `probe --method` checks each
   environment's lockfile instead of its image.
 - Disk for container images (a few GB each) and for projects.
