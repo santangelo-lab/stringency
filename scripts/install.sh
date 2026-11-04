@@ -46,12 +46,20 @@ done
 
 command -v uv >/dev/null || { echo "uv not found; install it with: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2; exit 1; }
 # Prefer the system interpreter: a conda or pyenv python under a home directory is invisible
-# to sandboxes that do not mount home.
+# to sandboxes that do not mount home. Never a virtual environment's python (sys.prefix differs
+# from sys.base_prefix): under `uv run` or an activated venv that is the first python3 on PATH,
+# and an engine linked to it breaks when that venv is rebuilt (the beta's setup, 2026-11-04).
+pick_python() {
+  local cand
+  for cand in /usr/bin/python3 /usr/local/bin/python3 "$(command -v python3 || true)"; do
+    [ -x "$cand" ] || continue
+    "$cand" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) and sys.prefix == sys.base_prefix else 1)' 2>/dev/null || continue
+    echo "$cand"; return 0
+  done
+  return 1
+}
 python=${STRINGENCY_PYTHON:-}
-for cand in /usr/bin/python3 /usr/local/bin/python3 "$(command -v python3 || true)"; do
-  [ -n "$python" ] && break
-  [ -x "$cand" ] && "$cand" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)' && python=$cand
-done
+[ -n "$python" ] || python=$(pick_python || true)
 # macOS ships 3.9: a Python of uv's own, as bootstrap.sh does (it lives under home; a sandbox
 # that does not mount home wants STRINGENCY_PYTHON set to a system 3.12 instead)
 if [ -z "$python" ]; then

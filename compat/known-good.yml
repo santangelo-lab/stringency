@@ -94,3 +94,12 @@ combinations:
     date: 2026-11-03
     host: PROTSEQ (the suite); the owner's MacBook, Apple Silicon, the local executor (the toy runs, on v0.2.37)
     evidence: "the MacBook spikes (the beta repository's notes/2026-11-03-1450-macbook-s1.md and -1600-macbook-s2.md): on v0.2.37 the toy delivered end to end under Claude Code and under Claude Science (init from Terminal), the suite green on the Mac, the scanpy lock's modules on arm64 matching the image's summaries; 0.2.38 closes the five rows those runs filed (L149 to L153) with the suite green on PROTSEQ and in CI on Linux and macos-latest"
+  - engine: v0.2.39
+    plugins:
+      stringency-singlecell: v0.10.3
+    methods:
+      stringency-toy-method: v0.3.1
+      stringency-scrnaseq-scanpy-method: v0.1.11
+    date: 2026-11-04
+    host: PROTSEQ (the suite); CI on Linux and macos-latest
+    evidence: "v0.2.38's rows plus the two install fixes a Mac setup against the v0.2.38 channel found (notes/2026-11-04-1500-bootstrap-0.2.39.md: the bootstrap's closing text under pipefail, install.sh choosing the beta CLI's venv python); the suite green; the toy at 0.3.1 is 0.3.0 with its skill re-rendered"

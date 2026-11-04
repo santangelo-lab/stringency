@@ -5,6 +5,9 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-03, evening)
 
+- (2026-11-04) 0.2.39 (`notes/2026-11-04-1500-bootstrap-0.2.39.md`): the bootstrap's closing text
+  no longer fails the script when a config file is missing; `install.sh` never picks a virtual
+  environment's python (the beta CLI's 3.14 venv under `uv run` on the Mac).
 - (2026-11-04) The template's lockfile environments (`notes/2026-11-04-1000-template-envs.md`,
   beta M3): `envs/example-py/` (uv) and `envs/example-r/` (renv) with their locks; branch
   `m3-template-envs`. The Mac half of the proof waits for the owner's next Mac session.
