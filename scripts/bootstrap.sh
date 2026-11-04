@@ -76,7 +76,8 @@ if "$prefix/current/bin/stringency" probe >/dev/null 2>&1; then ready="run \`str
 # the closing text follows the site's executor (`executor:` in ~/.config/stringency/config.yml,
 # else in <prefix>/config.yml beside the install): under `local` there is no runtime and no
 # image to fetch (L149)
-executor=$(sed -n 's/^executor:[[:space:]]*\([a-z]*\).*/\1/p' "$HOME/.config/stringency/config.yml" "$prefix/config.yml" 2>/dev/null | head -1)
+# (either file may be missing: cat's failure must not end the script under pipefail, 0.2.39)
+executor=$({ cat "$HOME/.config/stringency/config.yml" "$prefix/config.yml" 2>/dev/null || true; } | sed -n 's/^executor:[[:space:]]*\([a-z]*\).*/\1/p' | head -1)
 echo
 echo "installed. Next:"
 echo "  1. put the engine on your PATH, in ~/.profile:   export PATH=<prefix>/current/bin:\$PATH"

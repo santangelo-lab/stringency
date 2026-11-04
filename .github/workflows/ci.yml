@@ -3,6 +3,11 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
+# one run per branch: a newer push (or the macos label) cancels the run still queued or running
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,7 +25,11 @@ jobs:
       - run: uv run pytest
   # macOS (beta-tester package, 2026-11-03): the suite on the mock harness and the local
   # executor, which is what a tester's Mac runs; no apptainer, no /proc (those tests skip).
+  # Hosted macOS arm64 runners are scarce (jobs sat queued for a quarter of an hour and were
+  # cancelled unassigned, 2026-11-03 and -04), so this runs on every push to main and on a pull
+  # request only when it carries the `macos` label (owner's policy, 2026-11-04).
   macos:
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'macos')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
