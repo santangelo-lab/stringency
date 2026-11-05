@@ -1227,6 +1227,7 @@ def test_a_projects_dir_with_nothing_in_it_yet_serves_an_empty_board(
         status, body = get(f"{base}/api/fleet?t={TOKEN}")
         assert status == 200 and json.loads(body)["projects"] == []
         a = make_project(pipeline="toy-engine", execution="engine")
+        (area / "one").mkdir()
         for item in a.root.iterdir():
             dest = area / "one" / item.name
             shutil.copytree(item, dest) if item.is_dir() else shutil.copy2(item, dest)
