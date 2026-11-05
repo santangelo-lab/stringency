@@ -4,6 +4,7 @@ server records verdicts by the same rules as the terminal, behind a per-start to
 from __future__ import annotations
 
 import html
+import json
 import threading
 import urllib.error
 import urllib.parse
@@ -1201,3 +1202,36 @@ def test_bind_server_takes_the_next_free_port_when_the_default_is_held(
             make_server([p.root], port=busy, token=TOKEN)
     finally:
         s.close()
+
+
+def test_a_projects_dir_with_nothing_in_it_yet_serves_an_empty_board(
+    tmp_path: Path, make_project: InitFn
+) -> None:
+    # a beta tester's first day (2026-11-05): the console is started at login before any
+    # project exists; the board says so and the first project appears on the next scan
+    import shutil
+
+    area = tmp_path / "projects"
+    area.mkdir()
+    assert discover([], area) == []
+    with pytest.raises(Exception, match="needs --project"):
+        discover([], None)
+    srv = make_server([], port=0, token=TOKEN, projects_dirs=[area])
+    srv.state.registry.rescan_seconds = 0.0
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        base = f"http://127.0.0.1:{srv.server_address[1]}"
+        status, body = get(f"{base}/?t={TOKEN}")
+        assert status == 200 and "No project is running." in body
+        status, body = get(f"{base}/api/fleet?t={TOKEN}")
+        assert status == 200 and json.loads(body)["projects"] == []
+        a = make_project(pipeline="toy-engine", execution="engine")
+        for item in a.root.iterdir():
+            dest = area / "one" / item.name
+            shutil.copytree(item, dest) if item.is_dir() else shutil.copy2(item, dest)
+        status, body = get(f"{base}/api/fleet?t={TOKEN}")
+        assert status == 200 and [x["name"] for x in json.loads(body)["projects"]] == ["one"]
+    finally:
+        srv.shutdown()
+        srv.server_close()

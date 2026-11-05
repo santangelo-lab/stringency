@@ -67,6 +67,9 @@ def _resolve_run(store: Store, run_id: str | None) -> str:
     return run_id
 
 
+VIA_GIVEN = frozenset({"app"})  # the values a caller may give; web, relayed and tty are detected
+
+
 def record_flag(
     project: Project,
     run_id: str | None,
@@ -80,7 +83,8 @@ def record_flag(
     file the run's delivery index lists; its hash is taken now, so a later delivery cannot
     change what was flagged. `step_id` must be a pipeline step; when the object names one and
     `step_id` is not given, the object's step is recorded. `via` is `web` from the console,
-    else `relayed` under a harness session and `tty` otherwise, as reviews are. Writes:
+    `app` from the desktop app (given), else `relayed` under a harness session and `tty`
+    otherwise, as reviews are. Writes:
     messages, flags, run_events (`flagged`)."""
     words = (reason or "").strip()
     if not words:
