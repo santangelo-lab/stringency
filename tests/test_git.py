@@ -58,3 +58,29 @@ def test_a_source_repository_with_its_own_git_directory_still_reads(
 ) -> None:
     assert git.head_sha(method_repo.path) == method_repo.sha
     assert not git.is_dirty(method_repo.path)
+
+
+def test_clone_at_takes_a_tag_from_a_shallow_source(
+    method_repo: MethodRepo, tmp_path: Path
+) -> None:
+    # the beta's setup keeps each method as `git clone --depth 1 --branch <tag>`; `init --method
+    # <that checkout>@<tag>` then clones from a shallow source, which refuses a full fetch of
+    # its tags (the owner's Mac, 2026-11-04)
+    (method_repo.path / "CHANGELOG.md").write_text("# 0.1.1\n")
+    sha2 = method_repo.commit("v0.1.1")
+    git.tag(method_repo.path, "v0.1.1")
+    shallow = tmp_path / "shallow"
+    subprocess.run(
+        ["git", "clone", "--quiet", "--depth", "1", "--branch", "v0.1.1"]
+        + [f"file://{method_repo.path}", str(shallow)],
+        check=True,
+        capture_output=True,
+    )
+    assert (shallow / ".git" / "shallow").exists()
+    dest = tmp_path / "proj" / "method"
+    assert git.clone_at(str(shallow), "v0.1.1", dest) == sha2
+    assert git.head_sha(dest) == sha2 and (dest / "CHANGELOG.md").exists()
+    assert not (dest / ".git").exists() and (tmp_path / "proj" / "method.git").is_dir()
+    assert git.tag_sha(dest, "v0.1.1") == sha2 and not git.is_dirty(dest)
+    with pytest.raises(ConfigError, match="could not clone"):
+        git.clone_at(str(shallow), "v0.1.0", tmp_path / "p2" / "method")  # not in the source

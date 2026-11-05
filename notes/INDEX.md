@@ -3,8 +3,12 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-11-03, evening)
+## Current state (2026-11-05)
 
+- (2026-11-05) 0.2.40 (`notes/2026-11-05-1800-app-cli-0.2.40.md`, branch `app-cli-0.2.40`): what
+  the beta's desktop app asked of the engine: `clone_at` from a shallow method checkout (the
+  beta's `init --method <prefix>/methods/toy@v0.3.1`), the console serves an empty projects
+  directory, `flag --via app`. The owner merges, tags v0.2.40; the beta channel pins it.
 - (2026-11-04) 0.2.39 (`notes/2026-11-04-1500-bootstrap-0.2.39.md`): the bootstrap's closing text
   no longer fails the script when a config file is missing; `install.sh` never picks a virtual
   environment's python (the beta CLI's 3.14 venv under `uv run` on the Mac).
@@ -402,6 +406,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-05-1800-app-cli-0.2.40.md` — 0.2.40: a shallow method source in `clone_at`, an empty board for an empty projects directory, `flag --via app`.
 - `2026-11-03-2230-beta-mac-rows.md` — L149 to L153 closed on `beta-mac-s1` (PR #18): bootstrap `--toy`, `run --deliver` after a final ticket, the console's next free port, the delegate's `reported.agent`, the method clone's git directory beside the tree; engine 0.2.38.
 - `2026-11-03-1620-macbook-s2-claude-science.md` — the MacBook spike S2, the engine's side: Claude Science on the local engine through host grants; `init` stopped by the sandbox's `.git` rule; L151 to L153.
 - `2026-11-03-1450-macbook-s1-install.md` — the MacBook spike S1, the engine's side: the suite green on the Mac, three `install.sh` fixes for macOS on branch `beta-mac-s1`, L149 and L150.

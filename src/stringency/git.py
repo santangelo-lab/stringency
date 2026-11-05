@@ -91,7 +91,14 @@ def clone_at(url: str, tag: str, dest: Path) -> str:
         run("init", "--quiet")
         run("remote", "add", "origin", url)
         run("fetch", "--quiet", "--tags", "origin")
-        run("checkout", "--quiet", tag)
+        try:
+            run("checkout", "--quiet", tag)
+        except subprocess.CalledProcessError:
+            # a shallow source (a `git clone --depth 1` checkout, as the beta's setup keeps a
+            # method) advertises its tags but refuses a full fetch of them ("shallow roots are
+            # not allowed to be updated"); a shallow fetch takes what it has (2026-11-05)
+            run("fetch", "--quiet", "--depth", "1", "--tags", "origin")
+            run("checkout", "--quiet", tag)
     except subprocess.CalledProcessError as e:
         raise ConfigError(f"could not clone {url} at {tag}: {e.stderr.strip()}") from None
     return head_sha(dest)
