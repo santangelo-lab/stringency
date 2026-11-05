@@ -103,3 +103,12 @@ combinations:
     date: 2026-11-04
     host: PROTSEQ (the suite); CI on Linux and macos-latest
     evidence: "v0.2.38's rows plus the two install fixes a Mac setup against the v0.2.38 channel found (notes/2026-11-04-1500-bootstrap-0.2.39.md: the bootstrap's closing text under pipefail, install.sh choosing the beta CLI's venv python); the suite green; the toy at 0.3.1 is 0.3.0 with its skill re-rendered"
+  - engine: v0.2.40
+    plugins:
+      stringency-singlecell: v0.10.3
+    methods:
+      stringency-toy-method: v0.3.1
+      stringency-scrnaseq-scanpy-method: v0.1.11
+    date: 2026-11-05
+    host: PROTSEQ (the suite); CI on Linux and macos-latest
+    evidence: "v0.2.39's rows plus what the beta's desktop app asked of the engine (notes/2026-11-05-1800-app-cli-0.2.40.md): `init --method <shallow checkout>@<tag>` clones from the beta's depth-1 method checkout, `review --serve --projects <empty dir>` serves an empty board, `flag --via app`; the suite green"

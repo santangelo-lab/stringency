@@ -117,3 +117,25 @@ def test_console_run_page_offers_a_flag_per_file_and_records_it_via_web(
         status, body = get(f"{base}/run/{run_id}?t={TOKEN}")
         assert status == 200 and f'action="/flag/{run_id}"' not in body
         assert post(f"{base}/flag/{run_id}?t={TOKEN}", reason="q")[0] == 405
+
+
+def test_flag_via_app_is_given_and_the_rest_are_detected(make_project: InitFn) -> None:
+    # the desktop app (2026-11-05) relays the person's words outside any harness session and
+    # scrubs the session variables from the engine's environment; `--via app` is the honest value
+    p, run_id, _d = _delivered(make_project)
+    r = cli(
+        p,
+        "flag",
+        "--reason",
+        "typed in the app",
+        "--via",
+        "app",
+        "--json",
+        env={"STRINGENCY_OPERATOR": "claude-code", "STRINGENCY_SESSION_REF": "claude-code:s1"},
+    )
+    assert r.exit_code == 0, r.output
+    assert json.loads(r.output)["via"] == "app"
+    assert flags_for(p.store, run_id)[0]["via"] == "app"
+    r = cli(p, "flag", "--reason", "x", "--via", "web")
+    assert r.exit_code == 15 and "--via takes app" in r.output
+    assert len(flags_for(p.store, run_id)) == 1

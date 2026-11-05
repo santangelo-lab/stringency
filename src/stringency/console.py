@@ -46,7 +46,9 @@ def discover(projects: list[Path], projects_dirs: list[Path] | Path | None) -> l
     """Project roots: the ones named, plus every child of each directory to depth two that holds
     a `stringency.yml`, skipping the directories the board skips (`superseded/`, `declarations/`,
     dot-dirs) at both levels. Ordered as given, then by path. A named root that is not a project
-    is an error; a directory that does not exist contributes nothing."""
+    is an error; a directory that does not exist contributes nothing. With directories alone and
+    no project under them yet the list is empty and the console serves an empty board (a beta
+    tester's first day, 2026-11-05), rescanning until one appears."""
     roots: list[Path] = [p.resolve() for p in projects]
     dirs = [projects_dirs] if isinstance(projects_dirs, Path) else list(projects_dirs or [])
     for projects_dir in dirs:
@@ -63,9 +65,9 @@ def discover(projects: list[Path], projects_dirs: list[Path] | Path | None) -> l
     for r in roots:
         if not (r / "stringency.yml").exists():
             raise ConfigError(f"{r} is not a stringency project (no stringency.yml)")
-    if not roots:
+    if not roots and not dirs:
         raise ConfigError("review --serve needs --project <path> or --projects <dir>")
-    return roots
+    return roots  # empty with `--projects <dir>` alone: the board says so until a project appears
 
 
 def project_id_of(root: Path) -> str | None:
