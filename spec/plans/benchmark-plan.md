@@ -107,6 +107,76 @@ replicate unit, an override of the declared method), and in every one the engine
 the same shape: the choice is a decision point with its evidence beside it, and the hold or
 the block lands before the number is written.
 
+## The run record for Phases 2 to 4: the beta's bundle and eval store (2026-11-05)
+
+The owner's question of 2026-11-05, from the MacBook app session: the beta-tester package
+logs a tester's session as a bundle and loads it into an eval store; is that useful for the
+benchmark's trace data? Checked against `stringency_beta/bundle.py`, `redact.py` and
+`evalstore/` (`schema.sql`, `load.py`, `label.py`) in the beta repository and
+`latch/run_eval.py` as they stand. Yes, for the half that records a run; not the half that
+moves a stranger's data.
+
+**What the runner records today**, per replicate: `prompt.md`, the stream-json
+`trajectory.jsonl`, `eval_answer.json` and `result.json` (arm, harness, model, eval id,
+replicate, pass, score, the grader's reasoning, the answer, cost, turns, duration). Enough for
+Phase 0's accuracy and cost. Phase 3's hold precision and recall, abstention and failure-mode
+shift, and Phase 4's per-predicate override table, come from the trace, which nothing records.
+
+**What a bundle is**: the trace (`prov/run.db`, copied whole), the declarations, the delivered
+results (a frame, an object or a long table described by hash and shape, not carried:
+`redact.CARRY_KINDS`, `MAX_TABLE_ROWS`), the harness transcript the trace names by session
+reference, `doctor`'s output, and a signed manifest with every file's blake3. The eval store
+(`evalstore/load.py`) loads one into SQLite: every trace table under `t_<table>` by
+`bundle_id`; `runs` (steps completed, wall time); `holds` (kind, open time, verdict, reason,
+`via` policy or a person, who); `judgments` (replicates, agreement, abstentions, overrides);
+`turns` from the transcript (tool calls, commands, how many were engine verbs, numerals
+stated); `failures`, one row per event, with `caught_by` one of `predicate:<id>`,
+`replicate_disagreement`, `judge_rejection`, `human_at_hold`, `human_after_delivery`,
+`jim_review`, `nobody`. `load.report()` gives failures by operation and by what caught them,
+hold survival, recurrence across testers and harnesses, and escapes.
+
+**Read against the phases.**
+
+- Phase 2's stringency arm makes a project per replicate: that is a bundle with no change.
+  `caught_by` is Claim A as data (the failing choice caught by a predicate before the number
+  is written); `holds.via` counts the policy-accepted confirms the open question below asks
+  about; `judgments` carries abstention.
+- The bundle's `number_not_delivered` check (a numeral in the transcript that no delivered
+  table holds), applied to `eval_answer.json`, says whether the submitted answer came from the
+  delivery or from the agent's own arithmetic; `command_not_engine` counts the work done
+  around the gate; the `turns` table pairs turn counts, commands and numerals across arms.
+- `recurrence`, grouped by (what, step) across `bundles.tester` and `bundles.harness`, is the
+  per-arm failure-mode table once the arm is joined in (below).
+- The manifest's hashes, and the inputs described by hash and shape, are the frozen-tag
+  record Phase 5 asks for.
+
+**Not taken**: consent, the tester id and the tester's labels, `send`, `collect` and the
+drop. The allowlist stays: Latch's data is hashed and described, never stored twice.
+
+**Gaps, each small** (rows L154 to L156):
+
+1. The store knows no grader result, eval id, arm or replicate. A `benchmark_runs` table
+   keyed on `bundle_id`, filled from `result.json`, and the Phase 1 mapping as
+   `eval_predicates` (eval id, the predicate that should fire, the trap). Hold precision and
+   recall are then joins over `holds`, `failures.where_predicate` and
+   `benchmark_runs.passed`.
+2. The bundle finds a Claude Code transcript under `~/.claude/projects` by the session
+   reference the engine recorded, and caps its transcript hits at five (`MAX_HITS`, for a
+   tester's labelling). A replicate has its own home, and the runner already keeps
+   `trajectory.jsonl`, whose `assistant` events have the shape `transcript_turns` reads.
+   `bundle --transcript <path>` and an uncapped hit list in the beta CLI; the adapter sets the
+   session reference the engine records (`STRINGENCY_SESSION_REF`).
+3. The baseline arm has no trace. Its failure modes are a hand pass over the trajectory,
+   recorded through `label.py` (`caught_by: nobody` or `jim_review`, the evidence lines);
+   the `turns` table is built from the trajectory for both arms, so the behaviour pairing
+   needs no hand work.
+
+**Where.** `stringency-benchmarks` gets a `store/` module that imports
+`stringency_beta.evalstore`, called by `run_eval.py` after each stringency-arm replicate, into
+one SQLite file per study under `runs/` (never the testers' `eval.db`); the two flags are
+beta-CLI work. After Phase 2's adapter, which is what makes a project per replicate; about a
+day.
+
 ## Open questions, with what is known now
 
 - Latch account tier for the public data: unknown until the owner logs in.

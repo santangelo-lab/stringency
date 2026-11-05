@@ -5,6 +5,9 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-03, evening)
 
+- (2026-11-05) The benchmark's run record (`notes/2026-11-05-1135-benchmark-run-record.md`):
+  the beta's bundle and eval store fit Phases 2 to 4's trace record; the section in
+  `benchmark-plan.md` and rows L154 to L156; nothing built, after the Phase 2 adapter.
 - (2026-11-04) 0.2.39 (`notes/2026-11-04-1500-bootstrap-0.2.39.md`): the bootstrap's closing text
   no longer fails the script when a config file is missing; `install.sh` never picks a virtual
   environment's python (the beta CLI's 3.14 venv under `uv run` on the Mac).
@@ -402,6 +405,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-05-1135-benchmark-run-record.md` — the beta's bundle and eval store as the benchmark's per-replicate trace record (Phases 2 to 4): what fits, what is not taken, three gaps as rows L154 to L156; an assessment, nothing built.
 - `2026-11-03-2230-beta-mac-rows.md` — L149 to L153 closed on `beta-mac-s1` (PR #18): bootstrap `--toy`, `run --deliver` after a final ticket, the console's next free port, the delegate's `reported.agent`, the method clone's git directory beside the tree; engine 0.2.38.
 - `2026-11-03-1620-macbook-s2-claude-science.md` — the MacBook spike S2, the engine's side: Claude Science on the local engine through host grants; `init` stopped by the sandbox's `.git` rule; L151 to L153.
 - `2026-11-03-1450-macbook-s1-install.md` — the MacBook spike S1, the engine's side: the suite green on the Mac, three `install.sh` fixes for macOS on branch `beta-mac-s1`, L149 and L150.
