@@ -345,7 +345,10 @@ whether you did; never compute from it), then `stringency propose <step> --set
 rests on, from the evidence the pipeline's `decision:` block names for that parameter, and list
 the candidates you weighed; the engine resolves each citation to its cell, prints them at the
 hold, and opens a hold of its own when a numeral in your reason matches no cited cell or when a
-decision point's evidence is cited nowhere. The proposal opens a hold the person answers by the
+decision point's evidence is cited nowhere. A label is not a measurement (engine 0.2.41): a row's
+key (`at 6` when you cite row 6 of the sweep, or any row of a table you cite), a value you listed
+under `--considered`, a value you set, a design level, a numeral of the question, or an
+identifier such as `6-2` is left unchecked and listed; a measurement must still be a cited cell. The proposal opens a hold the person answers by the
 hold protocol: your reason is what they read, so it must be one they could check against the
 tables. You never proceed on your own proposal, never propose a value the evidence does not
 name, and never change a parameter nobody asked about. Then `run` again. This text is section 9 of the `stringency-operator` skill; the two must not drift.
@@ -459,7 +462,10 @@ words.
   artifact a number comes from, by row and column where you can; the row is the row's key, its
   key columns' values joined with `|` as `present` prints it (`1|domain_2` where a table has a
   row per cluster and stratum; the first column alone where that is unique; engine 0.2.35); every
-  numeral in the text must be a cited cell. A figure that illustrates the answer is attached
+  numeral in the text must be a cited cell, except a label: a row key of a cited table (`cluster
+  8` where the table has a row for cluster 8), a design level, a parameter of the producing
+  step, a numeral of the question, a year, a count of animals, punches or replicates, or an
+  identifier such as `6-2` (engine 0.2.41); these are listed as not checked. A figure that illustrates the answer is attached
   with `--figure <artifact id>` (repeatable; engine 0.2.35), never filed as an answer of its
   own: it keeps its own label, shown beside the answer's, and the report shows it under the
   answer. Exit 0 prints the label sentence and the qualifier line; exit 12 is a

@@ -148,6 +148,7 @@ class Cited:
     keys: dict[str, str]  # artifact id -> the key columns' names joined with `|`
     key_values: list[str]  # every key column's value of the cited rows
     steps: dict[str, str]  # artifact id -> the step that produced it
+    table_values: list[str] = field(default_factory=list)  # every row key of every cited table
 
 
 def declared_key(rc: RunContext, step_id: str, output: str) -> list[str] | None:
@@ -165,7 +166,7 @@ def cited_cells(rc: RunContext, cites: list[Cite]) -> Cited:
     cells; a row or column that is not in the table counts as missing, and its help names the
     key form of the table and up to five keys nearest the miss. A citation without a row takes
     every row. Reads: artifacts, steps; the cited files."""
-    out = Cited({}, {}, [], [], {}, [], {})
+    out = Cited({}, {}, [], [], {}, [], {}, [])
     for c in cites:
         art = _citable(rc, c)
         if art is None:
@@ -183,6 +184,9 @@ def cited_cells(rc: RunContext, cites: list[Cite]) -> Cited:
         except ConfigError:  # a declared key the table lacks: the prefix rule
             full = load_table(Path(art["path"]), str(art["name"]))
         out.keys[aid] = full.key_column
+        out.table_values += [
+            str(r[col]) for r in full.rows.values() for col in full.key_columns if col in r
+        ]
         rows = full.rows if c.row is None else {c.row: full.rows.get(c.row)}
         picked: dict[str, dict[str, Any]] = {}
         for k, row in rows.items():
@@ -315,6 +319,7 @@ def file_answer(
     producing = set(cited.steps.values())
     src = {
         "key": cited.key_values,
+        "table": sorted(set(cited.table_values)),
         "param": [str(v) for f in facts if f.step_id in producing for v in f.params.values()],
         "question": str(q["text"] or ""),
     }

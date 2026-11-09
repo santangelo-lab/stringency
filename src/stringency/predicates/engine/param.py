@@ -45,7 +45,35 @@ def _rationale(ctx: GateContext) -> dict[str, Any]:
         "text": str(r.get("text") or ""),
         "cited": list(r.get("cited") or []),
         "considered": list(r.get("considered") or []),
+        "question": str(r.get("question") or ""),
     }
+
+
+def _table_keys(cited: list[dict[str, Any]]) -> list[str]:
+    """Every row key value of every table a citation resolved into (L157): the labels a reason
+    may name without citing their rows. Each table is read once; a file that is not a table,
+    or cannot be read, contributes nothing."""
+    from pathlib import Path
+
+    from stringency.exit_codes import ConfigError
+    from stringency.tables import is_tabular, load_table
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for c in cited:
+        path = c.get("path")
+        if not path or path in seen or "missing" in c or c.get("row") is None:
+            continue
+        seen.add(str(path))
+        p = Path(str(path))
+        if not is_tabular("", p):
+            continue
+        try:
+            full = load_table(p, p.stem)
+        except (OSError, ValueError, ConfigError):
+            continue
+        out += [str(r[col]) for r in full.rows.values() for col in full.key_columns if col in r]
+    return sorted(set(out))
 
 
 def _evidence_sources(points: dict[str, Any]) -> list[str]:
@@ -199,13 +227,15 @@ def agent_proposed(ctx: GateContext) -> Verdict:
 
 @predicate(
     id="param.reason_unmatched",
-    version=2,
+    version=3,
     scope=["*"],
     phase="pre",
     default=Disposition.FLAG,
     summary=(
-        "Every number in the operator's reason must appear in a cell the proposal cites or be "
-        "a value the proposal sets; this lists the numbers that do neither."
+        "Every number in the operator's reason must appear in a cell the proposal cites, or be "
+        "a label (a row key of a cited table, a design level, an identifier), a value the "
+        "proposal sets or considered, or a numeral of the question; this lists the numbers "
+        "that are none of these."
     ),
 )
 def reason_unmatched(ctx: GateContext) -> Verdict:
@@ -214,28 +244,48 @@ def reason_unmatched(ctx: GateContext) -> Verdict:
     checked as `ans.numeral_unmatched` checks an answer. Only an agent's proposal with a reason
     is read. Version 2 (backlog L93, 2026-10-22): the proposal's own parameter values are not
     claims about evidence and match without a citation, so "a floor of 200 genes" is not flagged
-    for 200 when 200 is the value proposed."""
+    for 200 when 200 is the value proposed. Version 3 (L157, 2026-11-09): the reason is read by
+    `ans.classify_numerals`, the rules an answer is read by, so a label is not a measurement:
+    the key of a cited row (`at 6` when row 6 of the sweep is cited) or of any row of a cited
+    table, a design level, a value the proposal considered, a numeral inside a parameter value
+    (`cluster = 20`), a numeral of the question a call answers, a year, a count before a unit
+    word, or part of a hyphenated identifier (`6-2`) is left unchecked and listed in the
+    evidence (`not_checked`); the reason names each numeral that still fails with the nearest
+    class considered."""
     from stringency.citations import cited_values
-    from stringency.predicates.engine.judg import _numeral_problems
+    from stringency.predicates.engine.ans import classify_numerals, numeral_sources
 
     if ctx.action.proposed_by != "agent":
         return Verdict(False)
     r = _rationale(ctx)
     if not r["text"].strip():
         return Verdict(False)
-    allowed = cited_values(r["cited"]) + [
-        v for v in ctx.action.parameters.values() if isinstance(v, (int, float, str))
-    ]
-    problems = _numeral_problems(r["text"], allowed, {"reason": True})
-    if not problems:
+    cells = cited_values(r["cited"])
+    src = {
+        "key": [str(c["row"]) for c in r["cited"] if c.get("row") is not None],
+        "table": _table_keys(r["cited"]),
+        "param": [
+            str(v) for v in ctx.action.parameters.values() if isinstance(v, (int, float, str))
+        ],
+        "considered": [str(v) for v in r["considered"]],
+        "question": r["question"],
+    }
+    got = classify_numerals(r["text"], cells, numeral_sources(ctx.design, {"numeral_sources": src}))
+    if not got["failed"]:
         return Verdict(False)
-    nums = ", ".join(p["numeral"] for p in problems)
+    nums = ", ".join(p["numeral"] for p in got["failed"])
+    evidence = {
+        "numerals": nums,
+        "problems": [{"reason": True, **p} for p in got["failed"]],
+        "not_checked": got["exempt"],
+    }
     if not r["cited"]:
-        return Verdict(
-            True, f"the reason carries numerals ({nums}) and cites nothing", {"numerals": nums}
-        )
+        return Verdict(True, f"the reason carries numerals ({nums}) and cites nothing", evidence)
     return Verdict(
-        True, f"a numeral in the reason matches no cited cell: {nums}", {"numerals": nums}
+        True,
+        "a numeral in the reason matches no cited cell: "
+        + ", ".join(f"{p['numeral']} (nearest: {p['nearest']})" for p in got["failed"]),
+        evidence,
     )
 
 

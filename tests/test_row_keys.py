@@ -331,6 +331,15 @@ EXEMPTIONS: list[tuple[str, str, str, dict[str, object]]] = [
     ),
     ("year", "In the 2024 data it is 36.68.", "In the 2300 data it is 36.68.", {}),
     ("count", "Over 2 animals it is 36.68.", "Over 2 cells it is 36.68.", {}),
+    # L157: labels. A row key of the cited table, cited or not; a considered value; an identifier
+    ("table", "Cluster 11 is 36.68.", "Cluster 12 is 36.68.", {"table": ["9", "11"]}),
+    (
+        "considered",
+        "Against 4 and 7 it is 36.68.",
+        "Against 3 it is 36.68.",
+        {"considered": [4, 7]},
+    ),
+    ("id", "Animal 6-2 is 36.68.", "Animal 620 is 36.68.", {}),
 ]
 
 
@@ -339,7 +348,7 @@ def test_each_exemption_class_must_pass_and_must_fire(
     project: Project, cls: str, ok: str, bad: str, sources: dict[str, object]
 ) -> None:
     spec = registry.get("ans.numeral_unmatched")
-    assert spec is not None and spec.version == 2
+    assert spec is not None and spec.version == 3
     assert spec.fn(_numeral_ctx(project, ok, **sources)).fired is False, ok
     v = spec.fn(_numeral_ctx(project, bad, **sources))
     assert v.fired is True, bad
@@ -350,6 +359,7 @@ def test_each_exemption_class_must_pass_and_must_fire(
         "year": "(nearest: a year (1900 to 2100))",
         "count": "cells is not a unit word of a count before a unit word (animals, punches, "
         "replicates)",
+        "id": "(nearest: a level of a design factor (48))",
     }.get(cls, f"(nearest: {EXEMPT_CLASSES[cls]}")
     assert want in (v.reason or ""), v.reason
 
@@ -368,3 +378,16 @@ def test_the_reason_names_the_nearest_class_and_a_measurement_still_blocks(
     assert v.evidence["not_checked"] == [{"numeral": "24", "class": "level"}]
     v = spec.fn(_numeral_ctx(project, "Over 3 cells it is 36.68."))
     assert "(nearest: a level of a design factor (6); cells is not a unit word" in (v.reason or "")
+
+
+def test_identifiers_are_not_numerals_but_negative_numbers_are() -> None:
+    """L157: `6-2`, `24-1-Lung-A` and `ctrl-1` are names; `-0.64` after a space and `x = -2`
+    are numbers and are checked."""
+    from stringency.predicates.engine.ans import classify_numerals
+
+    got = classify_numerals(
+        "Punch 24-1-Lung-A of animal 6-2 and ctrl-1 give -0.64 and x = -2.", [], {}
+    )
+    assert [e["numeral"] for e in got["exempt"]] == ["24", "1", "6", "2", "1"]
+    assert all(e["class"] == "id" for e in got["exempt"])
+    assert [f["numeral"] for f in got["failed"]] == ["-0.64", "-2"]

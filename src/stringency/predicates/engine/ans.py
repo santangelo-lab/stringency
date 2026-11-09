@@ -6,7 +6,13 @@ mode makes, that every number in an answer is a cell the person can see.
 measurement: a level of a design factor, a key value of a cited table, a parameter value of the
 step that produced a cited artifact, a numeral of the question itself, a year, or a count of
 one or two digits before a unit word no table carries. The answer's qualifier line lists them
-(`numerals not checked`), so a reader sees what was not checked."""
+(`numerals not checked`), so a reader sees what was not checked.
+
+Version 3 (L157, 2026-11-09): a label is not a measurement either. A numeral that is the key
+of any row of a cited table (`cluster 8` when the table has a row for cluster 8, cited or not),
+a value the proposal considered, or part of a hyphenated identifier (`6-2`, `24-1-Lung-A`,
+`ctrl-1`) is left unchecked and listed; `classify_numerals` is shared with
+`param.reason_unmatched@3`, so a proposal's reason is read by the same rules as an answer."""
 
 from __future__ import annotations
 
@@ -25,11 +31,16 @@ LABEL_WORDS = re.compile(r"\b(trusted|untested)\b", re.IGNORECASE)
 EXEMPT_CLASSES: dict[str, str] = {
     "level": "a level of a design factor",
     "key": "a key value of a cited table",
+    "table": "the key of a row of a cited table",
     "param": "a parameter value of the cited step",
+    "considered": "a value the proposal considered",
     "question": "a numeral in the question",
     "year": "a year",
     "count": "a count before a unit word",
+    "id": "part of an identifier",
 }
+# The classes tried against a source list, in order; `year`, `count` and `id` read the text.
+_SOURCE_CLASSES = ("level", "key", "table", "param", "considered", "question")
 # Unit words no method table counts (DECISIONS 2026-10-29, L142): `cells` is not one, since
 # cells are counted in tables. Kept short on purpose.
 UNIT_WORDS = ("animals", "animal", "punches", "punch", "replicates", "replicate")
@@ -37,6 +48,7 @@ _UNIT_AFTER = re.compile(r"\s+(" + "|".join(UNIT_WORDS) + r")\b", re.IGNORECASE)
 _WORD_AFTER = re.compile(r"\s+([A-Za-z]+)")
 _YEAR = re.compile(r"[0-9]{4}")
 _COUNT = re.compile(r"[0-9]{1,2}")
+_IDENT_CHAR = re.compile(r"[A-Za-z0-9_]")
 
 
 @predicate(
@@ -83,9 +95,24 @@ def numeral_sources(design: Any, observed: Mapping[str, Any]) -> dict[str, list[
     return {
         "level": _numerals_of(levels),
         "key": _numerals_of(src.get("key", [])),
+        "table": _numerals_of(src.get("table", [])),
         "param": _numerals_of(src.get("param", [])),
+        "considered": _numerals_of(src.get("considered", [])),
         "question": _numerals_of([src.get("question", "")]),
     }
+
+
+def in_identifier(text: str, start: int, end: int) -> bool:
+    """Whether the numeral at `text[start:end]` is part of a hyphenated identifier: joined by
+    `-` to a word character on either side (`6-2`, `24-1-Lung-A`, `ctrl-1`, `k-5`). A negative
+    number after a space or an operator (`-0.64`, `x = -2`) is not; nor is a range written
+    with spaces."""
+    before = text[start - 2 : start] if start >= 2 else ""
+    after = text[end : end + 2]
+    return bool(
+        (len(before) == 2 and before[1] == "-" and _IDENT_CHAR.match(before[0]))
+        or (len(after) == 2 and after[0] == "-" and _IDENT_CHAR.match(after[1]))
+    )
 
 
 def _same(written: str, value: str) -> bool:
@@ -96,7 +123,7 @@ def _same(written: str, value: str) -> bool:
 
 
 def _exempt(num: str, text: str, end: int, sources: Mapping[str, list[str]]) -> str | None:
-    for cls in ("level", "key", "param", "question"):
+    for cls in _SOURCE_CLASSES:
         if any(_same(num, v) for v in sources.get(cls, [])):
             return cls
     if _YEAR.fullmatch(num) and 1900 <= int(num) <= 2100:
@@ -114,7 +141,7 @@ def _nearest(num: str, text: str, end: int, sources: Mapping[str, list[str]]) ->
         return f"{EXEMPT_CLASSES['year']} (1900 to 2100)"
     best: tuple[float, str, str] | None = None
     fw = float(num)
-    for cls in ("level", "key", "param", "question"):
+    for cls in _SOURCE_CLASSES:
         for v in sources.get(cls, []):
             try:
                 d = abs(float(v) - fw)
@@ -148,6 +175,9 @@ def classify_numerals(
         if any(numeral_matches(num, v) for v in cells):
             out["matched"].append({"numeral": num})
             continue
+        if in_identifier(text, m.start(), m.end()):
+            out["exempt"].append({"numeral": num, "class": "id"})
+            continue
         cls = _exempt(num, text, m.end(), sources)
         if cls is not None:
             out["exempt"].append({"numeral": num, "class": cls})
@@ -158,7 +188,7 @@ def classify_numerals(
 
 @predicate(
     id="ans.numeral_unmatched",
-    version=2,
+    version=3,
     scope=["answer"],
     phase="post",
     default=Disposition.BLOCK,
@@ -169,7 +199,9 @@ def numeral_unmatched(ctx: GateContext) -> Verdict:
     same rule as report prose and rationales); the denominator is the cited cells, not every
     cell of every table, because any numeral matches something in a ten-thousand-row table.
     Version 2 (L142): a numeral that is not a measurement is exempt (`classify_numerals`); the
-    reason names each numeral that still fails with the nearest exemption class considered."""
+    reason names each numeral that still fails with the nearest exemption class considered.
+    Version 3 (L157): the key of any row of a cited table, a considered value and a hyphenated
+    identifier are exempt too."""
     if ctx.output is None or not ctx.output.prose:
         return Verdict(False)
     cells = [

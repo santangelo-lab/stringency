@@ -607,6 +607,20 @@ def propose_exec(
 # -- propose: action + pre-gate ----------------------------------------------------------
 
 
+def _question_of(rc: RunContext, step_id: str) -> str:
+    """The text of the question an on-demand step (`call`, `exec`) was proposed for, or ""."""
+    entry = rc.on_demand_entry(step_id)
+    qid = entry.get("question_id") if entry else None
+    if not qid:
+        return ""
+    from stringency.questions import question
+
+    try:
+        return str(question(rc, str(qid)).get("text") or "")
+    except ConfigError:
+        return ""
+
+
 def starting_params(rc: RunContext, step_id: str) -> dict[str, tuple[Any, str]] | None:
     """What a step's proposal starts from, below the operator's own values (design 2.5, 2.6):
     the objective's declared parameters for the step (`declared`), overlaid by what a fork's
@@ -675,6 +689,10 @@ def propose(
             "cited": resolve_cites(rc, list(cites or [])),
             "considered": list(considered or []),
         }
+        question = _question_of(rc, step_id)
+        if question:
+            # the question a call or exec answers (L157): its numerals are names, not claims
+            record["question"] = question
         text = (
             rationale
             if rationale and not cites and not considered
