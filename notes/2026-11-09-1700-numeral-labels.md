@@ -68,22 +68,22 @@ cited cell.
 
 ## Open
 
-For the owner's word, from the same sessions (engine side unless said):
+For the owner's word, from the same sessions, as PLAN rows L158 to L160 here and section 9 of the Xenium method's `PLAN.md`:
 
-- `wait --job` and exit 10 for both "still running" and "landed held" (skill section 5 already
+- L158: `wait --job` and exit 10 for both "still running" and "landed held" (skill section 5 already
   says to read `state`). A distinct code breaks the frozen list; the alternative is `wait --job`
   returning the verb's own JSON with `state: held` and exit 10 only when the verb exited 10,
   and `state: running` with exit 0 and `running: true` at the timeout. His call.
-- One `propose` opens two holds (`param.agent_proposed` and `param.reason_unmatched` in the
+- L159: one `propose` opens two holds (`param.agent_proposed` and `param.reason_unmatched` in the
   same second): the operator skill's hold protocol reads one hold per stop. Either the engine
   folds the reason flag into the proposal hold's packet (one hold, two findings) or the skill
   says to read the queue, not the payload's first hold.
-- A person's file as a tool input: `call --in` takes `$inputs.<name>`, `$steps.<id>.<out>` or an
+- L160: a person's file as a tool input: `call --in` takes `$inputs.<name>`, `$steps.<id>.<out>` or an
   artifact id, so a collaborator's gene-set table reaches `score-pathways`'s `custom_genesets`
   (declared, hashed, optional) only through an `exec` that writes it, which labels everything
   after it untested. An `inputs add <name> <path> --type <t> --source "<words>"` verb for an open
   project (hashed, recorded, bindable as `$inputs.<name>`) is the owner's "input tool".
-- Open mode's skill answers a direct question by presenting options first; the owner wants the
+- Xenium method PLAN section 9: open mode's skill answers a direct question by presenting options first; the owner wants the
   asked thing answered, options after, or on "what can we look at next". Skill text, not engine.
 
 ## Verify

@@ -149,6 +149,8 @@ console rows until asked) and what waits on a person (the skill republish, the t
 | L147 | a person who says in chat that a delivered result is wrong leaves no record unless they open the console: the operator skill does not name `stringency flag` (built 2026-11-03 for the beta-tester package: an append-only `flags` row bound to the delivered file, `via: relayed` under a harness session) | the operator skill's after-delivery section: when the person says a table, figure or number is wrong, run `flag --object <file> --reason "<their words>"` and say it was recorded; the beta package's eval store reads the row | the operator skill (with L146's engine line) | the beta-tester package, 2026-11-03 |
 | L148 | `audit` does not read `flags` (nor `findings`): a flag deleted by direct SQL would not be found, though the trigger refuses it | `audit` counts `flags` rows against their `flagged` events in `run_events`, as it checks artifacts against `artifact:is_final` | engine `audit.py` | the beta-tester package, 2026-11-03 |
 
+| L159 | one `propose` opens two holds in the same second (`param.agent_proposed` and `param.reason_unmatched`, Lyons Lung 2026-11-09), and the operator skill's hold protocol reads one hold per stop: the owner's operator answered the first and waited on the second without showing it | either the engine folds a proposal's own flags into the proposal hold's packet (one hold, the findings listed, one verdict), or the skill's section 5 says to read `review --list` and relay every open hold before waiting; the owner chooses | the gate; skills | a stop the person is not shown is a stop that never happened to them |
+
 ### Engine: judgments and evidence
 
 | id | item | what closes it | level | reasoning |
@@ -172,6 +174,8 @@ console rows until asked) and what waits on a person (the skill republish, the t
 | K4 | `STATUS.md` carries no line for the newest change and `board` has no `--watch` | `notes/2026-09-18-1830-board-and-present.md` | engine, low |
 | H5 | staged mode: objective list with stages, `run --objective`, fork at a stage boundary carries an objective, `obj.declared_after_result` | after application 1 as two chained projects shows where option 1 chafes (`spec/archive/declarations-and-objectives.md`); the owner, 2026-10-21: deferred | *design*; deferred |
 
+| L160 | a person's file cannot be a tool input in an open project: `call --in` takes `$inputs.<name>`, `$steps.<id>.<out>` or an artifact id, so a collaborator's gene-set table reaches `score-pathways`'s declared, hashed, optional `custom_genesets` only through an `exec` that writes it, which labels everything after it untested (Lyons Lung 2026-11-09; the owner: "some sort of input tool needed") | `stringency inputs add <name> <path> --type <type> --source "<the person's words>"` in an open project: hashed, recorded as an `input_added` event with the words, bindable as `$inputs.<name>`, listed in the answer's qualifier as a person-supplied input; never an edit of `inputs.yml` | engine; the declare and operator skills | a file the person brought is data with a source, not code; the trace should say so instead of marking the path untested |
+
 ### Engine: the gate and the step lifecycle
 
 From the owner's walkthrough of the gate, 2026-10-22 (`gate-soundness.md`); its other rows are
@@ -193,6 +197,8 @@ L100 and L101 (decision points), L102 (method and plugin) and L103 (holds).
 | id | item | what closes it | level | reasoning |
 |---|---|---|---|---|
 | L34 | **one operator harness, one subscription-funded judge route** (as it stood 2026-10-14; the owner: open Codex as a harness and build in as much flexibility on the harness side as possible). H1 to H3 built 2026-10-21 (engine 0.2.32): the survey (`integrations/codex/README.md`), Codex recognised by `operator_id`, `render_skill.py --harness`, the `openai-compatible` and `command` adapters, L36 conformance | what remains: the Qwen3 evaluation (`judge-sources-plan.md` S2) as sibling projects under both harnesses, which needs a local model served on the GPU and the Lyons re-judgment; the owner defines "competent" (decision 3) first; design 10.1 and 10.2 carry the dated text | method and owner; `judge-sources-plan.md` 6 (3) |
+
+| L158 | `wait --job --for <s>` returns `running` with exit 10, the code a held verb returns when it lands: an operator reading the code alone cannot tell "still running" from "stopped at a hold" (the owner's operator lost 25 minutes on it, 2026-11-09; skill section 5 says to read `state`) | the owner's call: a distinct code (`22 running`) against design 14.2's frozen list, or exit 0 with `state: running` at the timeout and the verb's own code only once it has exited; the skill's section 5 updated either way | harnesses | an exit code that means two things is not a signal |
 
 ### Method and plugin
 
