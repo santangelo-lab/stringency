@@ -69,6 +69,11 @@ methods change.
 - No contract changed. `via: policy` (L162) and `text: declared` (`declared-text-params.md`
   (c)) are proposals for the owner.
 
+- Later the same day, after reading what scBench-Long is (its paper, README and leaderboard,
+  no eval opened): the pre-registration is amended. scBench-Long is not the held-out set for
+  the scBench claim; Latch's withheld short evals are, and until then there is none (L170).
+  The owner agreed. The focus is scBench; SpatialBench's baseline is parked.
+
 ## Open
 
 - Read the slice when it finishes: `bench.py history`, `score.py runs/slice-2026-11`; a row in

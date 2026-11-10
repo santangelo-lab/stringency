@@ -254,6 +254,24 @@ in-sample and will be called that. scBench-Long's nine public evals are the held
 set: not pulled, their author notes and graders unread by anyone on this project, human or
 agent, until the engine, plugin, method and adapter tags are frozen; then run once.
 
+**Amendment, 2026-11-10 (the owner; before any held-out run, nothing pulled).** scBench-Long
+is not the held-out set for the scBench claim. The paragraph above named it from the October
+plan's table without anyone having looked at what it is. Read at the level of its paper,
+repository README and leaderboard, no eval opened: it is a different task (a scientific
+conclusion recovered from raw or near-raw multi-modal data with no prescribed method, a
+structured answer graded pass or fail, twenty-one or twenty-two evals over five studies, four
+of them public and not nine), which the scRNA-seq method mostly does not cover and on which
+the standard Opus 5.5 run scores 13.6% with Claude Code. The owner, 2026-11-10: "long seems
+like a different benchmark task."
+
+- The held-out set for the scBench claim is Latch's withheld short evals, the same task family
+  as the development six; it needs the Latch conversation (L92). Until then there is no
+  held-out public set for that claim, every public short eval is development, and any
+  write-up says so.
+- scBench-Long stays unpulled and unread, kept for a later, separate claim about long-horizon
+  analysis in open mode, with its own pre-registration.
+- Nothing else in this section changes.
+
 **What is not claimed from the first slice.** Two evals (PCA, DE01), three replicates an arm:
 enough to see whether the arms run and where holds land, not an interval.
 
