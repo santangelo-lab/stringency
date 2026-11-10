@@ -177,6 +177,72 @@ one SQLite file per study under `runs/` (never the testers' `eval.db`); the two 
 beta-CLI work. After Phase 2's adapter, which is what makes a project per replicate; about a
 day.
 
+## Pre-registration (2026-11-10, before the first stringency-arm run)
+
+Written and committed before any replicate of a stringency arm exists. The owner approved the
+design on 2026-11-10; the commit that adds this section is the record, and every stringency-arm
+`result.json` names it.
+
+**The baseline row it stands beside.** The model id is `claude-opus-5-5`, which is Opus 5.5
+(earlier text here says "Opus 5"). Latch's leaderboard (benchmarks.bio, data of 2026-11-08, the
+full 195 scBench evals, no intervals, no per-eval numbers) gives Opus 5.5 with Claude Code
+56.4%, Opus 5 with Claude Code 57.6%, Opus 4.8 with Claude Code 56.2%. Our 9/18 on the six
+public evals is 50%; six evals cannot separate 50% from 56%, and no per-eval Opus 5 pattern is
+published, so the Phase 0 exit is read as met: consistent with the published row, nothing
+sharper testable (the owner, 2026-11-10).
+
+**Two policies for the stringency arm.** No person is present, so a reviewer process outside
+the agent's session records every verdict (`stringency-benchmarks` `latch/policy.py`), relayed,
+under the session reference `policy:<policy>:<arm>/<eval>/rN`.
+
+- `observe`: every hold is accepted. The agent's first choice goes through and is graded.
+  Claim B is measured here.
+- `enforce`: a step with an open flag hold from a predicate that judges the choice is sent
+  back to the agent with the predicate's reason, at most twice per step; a third firing is
+  accepted and recorded. Confirm, egress, sign-off and routine holds are accepted. Claim A is
+  measured here.
+- Routine predicates, which fire on every proposal whatever it says and so are never rejected
+  and never counted in hold precision or recall: `param.agent_proposed`.
+- A hold on a judgment item is left open and the replicate is reported as unresolved, not as
+  a wrong answer.
+
+**Why two.** Under the owner's definition (of holds raised, the fraction on subtasks that
+scored below threshold), a hold that makes the agent fix its choice lands on a subtask that
+then passes, and a correct hold reads as a false alarm. Under `observe` the flagged choice is
+the graded one.
+
+**The numbers, fixed now.**
+
+1. Hold precision (Claim B, `observe`): of replicates with at least one judging hold (a flag
+   hold from a non-routine predicate), the fraction the grader failed. Reported beside the base
+   failure rate of the same replicates' arm, and per predicate.
+2. Hold recall (Claim B, `observe`): of replicates the grader failed, the fraction with at
+   least one judging hold. Abstentions (below) are counted separately, never as failures
+   without a hold.
+3. Where the grader scores fields separately, 1 and 2 are also given per graded field, the
+   hold assigned to the field its decision point maps to in `evals/eval_predicates.yml`
+   (written before the runs, from the Phase 1 table).
+4. Accuracy among submitted answers, and abstention rate (`answer --cannot`, or no answer
+   file), each arm; beside the benchmark's own score, which counts an abstention as zero.
+5. Paired score delta against the baseline per eval (Claim A, `enforce`), three replicates
+   an arm, Latch's t-interval over per-eval means.
+6. Cost: API-equivalent USD, turns, wall-clock, each arm.
+7. Refusals and timeouts, each arm, counted apart from wrong answers.
+
+**Protocol violations.** A `reviews` row whose session reference is not the policy's, an
+`eval_answer.json` value that no admissible `answers` row holds, or a graded value computed
+outside the engine (the trajectory shows it): each is counted, the replicate is kept in the
+score and excluded from 1 to 3, and both versions are reported.
+
+**Development set and held-out set.** The six public scBench evals are the development set:
+the method and the predicates were built from their author notes, and results on them are
+in-sample and will be called that. scBench-Long's nine public evals are the held-out public
+set: not pulled, their author notes and graders unread by anyone on this project, human or
+agent, until the engine, plugin, method and adapter tags are frozen; then run once.
+
+**What is not claimed from the first slice.** Two evals (PCA, DE01), three replicates an arm:
+enough to see whether the arms run and where holds land, not an interval.
+
 ## Open questions, with what is known now
 
 - Latch account tier for the public data: unknown until the owner logs in.
@@ -191,5 +257,4 @@ day.
   owner's question to answer in the write-up.
 - Budget: the published Claude Code runs cost $0.14 to $4.53 per trial on the six (mean about
   $1.06); Opus 5 on the subscription reports cost but does not bill per call.
-- The pre-registration of the two numbers (accuracy among submitted, abstention rate) goes in
-  this file before the first stringency-arm run.
+- The pre-registration: written 2026-11-10, the section above.
