@@ -32,8 +32,10 @@ methods change.
 - Two test replicates under the stringency arm, observe policy (`runs/dev-2026-11-10`):
   DE01 passed (1328, through open mode); PCA failed as the baseline does (depth correlation
   0.369, no flag).
-- The slice (`runs/slice-2026-11`): baseline rerun, method-as-prompt and stringency-observe,
-  three replicates on each eval, running at the time of writing. Enforce deferred (Open).
+- The slice (`runs/slice-2026-11`, finished 14:30): baseline 3/6, method as prompt 3/6,
+  stringency under observe 0/6 (PCA 0/3 with no flag, DE01 0/3 abstained after the block);
+  hold recall 0/3; 52 USD in all. `stringency-benchmarks/measurements.md` has the rows.
+  Enforce deferred (Open).
 - `declared-text-params.md` (81beeaa): the DE fixes as a plan, rows L163, L168, L169.
 - Benchmarking over time (`benchmark-plan.md` 4446f0f; `stringency-benchmarks` 9e707b3):
   `bench.py` with stacks, suites, studies, a ledger, `history`, `compare`, `due`;
@@ -76,8 +78,8 @@ methods change.
 
 ## Open
 
-- Read the slice when it finishes: `bench.py history`, `score.py runs/slice-2026-11`; a row in
-  `stringency-benchmarks/measurements.md`.
+- The slice is read and recorded. Next on scBench, in the owner's order: the PCA ceiling and
+  the DE fixes, then the same slice again (`bench.py compare`), then the other four evals.
 - The owner: the PCA ceiling (L165); `text: declared` (L163); `via: policy` (L162); whether
   SpatialBench's public evals are development or held-out; pushing the three branches.
 - After the first pass: `declared-text-params.md` items (a), (b), (e), then (c), (d); the
