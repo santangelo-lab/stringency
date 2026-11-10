@@ -10,7 +10,8 @@ it is the first thing a new session reads.
   measurement and must match a cited cell; a hyphenated identifier, a year and a count need no
   mark; `propose` and `call` refuse a reason whose only fault is a name written bare. DECISIONS
   2026-11-10. Waiting on the owner: whether it replaces PR 24. The skills must be republished.
-- (2026-11-09) 0.2.41 (`notes/2026-11-09-1700-numeral-labels.md`, branch `numeral-labels`): labels
+- (2026-11-09) 0.2.41, the first attempt (`notes/2026-11-09-1700-numeral-labels.md`, branch
+  `numeral-labels`, PR 24), replaced by the entry above before any release: labels
   are not measurements; `param.reason_unmatched@3` reads a proposal's reason by the answer's
   classifier with the cited rows' keys, the considered values, the parameters and the question;
   both checks gain `table`, `considered` and `id`; PLAN L157 done, DECISIONS 2026-11-09. Open
