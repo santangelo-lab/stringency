@@ -78,26 +78,53 @@ moves the news to before the confirm hold. Engine, DECISIONS-level. Row L168.
 - This makes the comparison declarable. It does not make the cell-type restriction, the
   mitochondrial prefix or `keep_column` declarable: those are (c).
 
-**(c) A third parameter form: text a person declares.** *design* (3.1, the predicate table's
-`param.locked_changed` row, 14.3 lint). Proposed form:
+**(c) A third parameter form: a name.** *design* (3.1, the predicate table's
+`param.locked_changed` row, 14.3 lint). A name is a text parameter whose right value depends
+only on how this dataset labels its own contents: a column (`factor`, `group_column`,
+`keep_column`, `batch_key`, `symbol_column`), a value within a column (`groups`, `keep_value`),
+or a labelling convention (`mt_prefix`). A method's own choices (an option list), a column the
+pipeline itself writes, and a unit resolved through the design are not names.
+
+The owner's decisions of 2026-11-10 on the five questions put to him:
+
+1. **Who may set a name: the agent too, under a hold** (option B; "the flexibility will be
+   important"). A name is open as a ranged parameter is: declared in `objective.yml` `params`
+   it is admitted with `param_source: declared` and no hold; proposed by the agent mid-run it
+   opens `param.agent_proposed`, whose packet shows the default, the proposal, and what the
+   name resolves to in the object (the column's values). This is what open mode already does
+   per question, so the two modes agree.
+2. **A name may be required.** A pipeline may give a name no default; an empty default stays
+   where empty means none (no cell-type restriction). Agreed as recommended. Read with
+   decision 1: an unset required name stops its step until it is declared or proposed (as
+   `organ: {default: unset}` does in the Xenium method), and `init` says so in the echo-back.
+   The recommendation as first written had `init` refuse; under option B a refusal would take
+   back the flexibility the owner asked for. *This reading is the drafter's, to be confirmed.*
+3. **What is checked.** The pipeline says what each name refers to, and the value is checked
+   against the object summary taken at `init`: the column exists; the value exists in it when
+   the summary holds the column's values (a categorical of fifty categories or fewer). Agreed
+   as recommended. A proposed name is checked the same way before the step, and a column or
+   value that does not exist blocks with the nearest ones named.
+4. **The comparison lives in `objective.contrasts` only** (item (b)); the name form is for
+   what the objective has no field for. Agreed as recommended.
+5. **Profiles: open.** The recommendation was "a declared name under every profile, an
+   agent's proposal under none"; the owner: it does not work with option B. Restated for his
+   answer: a declared name is admitted under every profile; an agent's proposal follows the
+   profile as a numeric parameter's does (`ranged` and `free`: a hold; `locked`, the strict
+   profile: refused).
+
+Proposed form, the kind after `text:` being what decision 3 checks:
 
 ```yaml
-group_column: {default: "", text: declared}
+group_column: {default: "", text: column}
+groups:       {default: "", text: {value_of: group_column}}
+mt_prefix:    {default: MT-, text: prefix}
+keep_column:  {text: column, required: true}      # no default: unset stops the step
 ```
 
-- A `text: declared` parameter may differ from its default only when its source is `declared`
-  (`objective.yml` `params`, so under the confirm hold and in the echo-back) or `person` (an
-  open-mode call with `--asked-by person`). An agent's proposal of one is blocked as a fixed
-  parameter is today. The agent never chooses a name; it may only carry one a person gave.
-- The value is checked against the module's `params.schema.json` at `init` (item (a) covers
-  when).
-- Optional, same change or later: the pipeline may say what the text names
-  (`names: obs_column`), and a plugin predicate at `init` blocks a column the bound object
-  lacks, as `init.column_missing` does for design columns.
-- `lint`: `text:` on a parameter with a range or options is an error; a `how: declared` entry
-  in a `.analyze.yml` whose parameter is fixed is a warning (finding 3).
-- Not proposed: free text for the agent under a hold. A name is a fact about the object, not
-  a choice with evidence.
+- `lint`: `text:` beside a range or options is an error; a `how: declared` or `how: proposed`
+  entry in a `.analyze.yml` whose parameter is fixed is a warning (finding 3).
+- A new pre-phase predicate for the existence check (a name that names nothing: block), with
+  must-fire and must-pass fixtures; `param.agent_proposed` covers the hold.
 
 **(d) The method uses (c).** `scrnaseq-de`: `group_column`, `groups`; all three pipelines:
 `mt_prefix`, `symbol_column`, `keep_column`, `keep_value`. The analysis skills' `decisions`
@@ -126,9 +153,10 @@ and (d), DE01 runs through the open-mode tool, as the test replicate did.
 
 ## 5. Verification
 
-- Engine tests, mock harness and local executor: a `text: declared` value from
-  `objective.params` is admitted with `param_source: declared` and opens no
-  `param.agent_proposed` hold; the same value proposed by the agent blocks; `init` refuses a
+- Engine tests, mock harness and local executor: a name declared in `objective.params` is
+  admitted with `param_source: declared` and opens no hold; the same name proposed by the
+  agent opens `param.agent_proposed`; a name that does not exist in the object blocks; an
+  unset required name stops its step; `init` refuses a
   declared fixed value and a declared out-of-range value with the step-time reason; lint's two
   new rules fire on fixtures.
 - Method: `stringency lint .` clean; `controls run` green, the renamed-column control
@@ -150,8 +178,9 @@ and (d), DE01 runs through the open-mode tool, as the test replicate did.
 
 ## 7. For the owner
 
-1. (c): the form (`text: declared`), and that an agent may never propose one. A design-text
-   change.
+1. (c), decision 5: how the profiles treat a name, as restated there; and the reading of
+   decision 2 (an unset required name stops its step, `init` does not refuse). Decisions 1 to 4
+   are made (2026-11-10).
 2. (d) against the `objective.domain` fallback, if (c) is declined.
 3. (e): whether a task's "exclude a donor with too few cells on either side" belongs in the
    method as an option, or is rightly session code with an `untested` label.
