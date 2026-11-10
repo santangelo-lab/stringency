@@ -159,10 +159,15 @@ whether you did; never compute from it), then `stringency propose <step> --set
 rests on, from the evidence the pipeline's `decision:` block names for that parameter, and list
 the candidates you weighed; the engine resolves each citation to its cell, prints them at the
 hold, and opens a hold of its own when a numeral in your reason matches no cited cell or when a
-decision point's evidence is cited nowhere. A label is not a measurement (engine 0.2.41): a row's
-key (`at 6` when you cite row 6 of the sweep, or any row of a table you cite), a value you listed
-under `--considered`, a value you set, a design level, a numeral of the question, or an
-identifier such as `6-2` is left unchecked and listed; a measurement must still be a cited cell. The proposal opens a hold the person answers by the
+decision point's evidence is cited nowhere. A name is written in backticks and a
+measurement bare (engine 0.2.41). A bare number is read as a measurement and must be a cell you
+cite. Anything else that carries a number goes in backticks, and must be something that exists:
+the key of a row you cite (``0.023 at `5` `` when you cite row 5 of the sweep; to name a row
+without quoting a cell, cite the row itself), a value you set or listed under `--considered`, a
+design level, or a numeral of the question. An identifier with a hyphen (`6-2`), a year, and a
+count of animals, punches or replicates need no backticks. A reason whose only fault is a name
+written bare is refused before anything is recorded, with the names to mark: mend the text and
+say it again. A marked name that names nothing, or a number from nowhere, opens a hold. The proposal opens a hold the person answers by the
 hold protocol: your reason is what they read, so it must be one they could check against the
 tables. You never proceed on your own proposal, never propose a value the evidence does not
 name, and never change a parameter nobody asked about. Then `run` again. This text is section 9 of the `stringency-operator` skill; the two must not drift.

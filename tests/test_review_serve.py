@@ -609,7 +609,7 @@ def test_inbox_groups_holds_by_ask_and_the_method_names_the_card(make_project: I
     assert ask_of(confirm, hold_context(confirm)) == "confirm"
     accept_hold(p.store, confirm["hold_id"])
     rc = open_or_resume(p)
-    propose(rc, "01_filter", {"min_value": 12}, rationale="12 is the floor here")
+    propose(rc, "01_filter", {"min_value": 12}, rationale="`12` is the floor here")
     h = queue(p)[0]
     ctx = hold_context(h)
     assert ask_of(h, ctx) == "parameters"

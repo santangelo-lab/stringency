@@ -920,22 +920,45 @@ def test_propose_cites_and_the_hold_shows_them(make_project: InitFn, tmp_path: P
 
 
 def test_reason_naming_the_proposed_value_is_not_flagged(make_project: InitFn) -> None:
-    """L93 (`param.reason_unmatched@2`): the proposal's own values match without a citation;
-    a number that is neither a proposed value nor a cited cell still is flagged."""
+    """L93, then L157 (`param.reason_unmatched@3`): the proposal's own value is a name and goes
+    in backticks; written bare, with nothing else wrong, the reason is refused before anything
+    is written; a number that is neither a name nor a cited cell is still flagged."""
+    import pytest
+
+    from stringency.exit_codes import RefusedError
+    from stringency.machine import step_status
     from stringency.review import queue
     from stringency.steps import propose
 
     p = confirmed(make_project, pipeline="toy-engine", execution="engine")
     rc = open_or_resume(p)
-    propose(rc, "01_filter", {"min_value": 12}, rationale="A floor of 12 keeps the real rows.")
+    # bare: refused, and the refusal leaves no trace of a proposal
+    with pytest.raises(RefusedError) as e:
+        propose(rc, "01_filter", {"min_value": 12}, rationale="A floor of 12 keeps the real rows.")
+    assert "12 (a parameter value of the cited step)" in str(e.value)
+    assert "write it in backticks (`12`); if it is a measurement, cite its cell" in str(e.value)
+    assert queue(p) == [] and step_status(p.store, rc.run_id, "01_filter") == "pending"
+    assert p.store.scalar("SELECT COUNT(*) FROM actions") == 0
+    # marked: the approval hold alone
+    propose(rc, "01_filter", {"min_value": 12}, rationale="A floor of `12` keeps the real rows.")
     kinds = sorted(h["reason"].split(":")[0] for h in queue(p))
     assert kinds == ["param.agent_proposed"]
+    # a number from nowhere beside the marked name: the flag names it alone
     p2 = confirmed(make_project, pipeline="toy-engine", execution="engine")
     rc2 = open_or_resume(p2)
-    propose(rc2, "01_filter", {"min_value": 12}, rationale="A floor of 12; 3 groups.")
+    propose(rc2, "01_filter", {"min_value": 12}, rationale="A floor of `12`; 3 groups.")
     by = {h["reason"].split(":")[0]: h["reason"] for h in queue(p2)}
     assert by["param.reason_unmatched"] == (
         "param.reason_unmatched: the reason carries numerals (3) and cites nothing"
+    )
+    # a bare name beside a number from nowhere is not refused: the flag carries both, and says
+    # of the name that it wants backticks
+    p3 = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    rc3 = open_or_resume(p3)
+    propose(rc3, "01_filter", {"min_value": 12}, rationale="A floor of 12; 3 groups.")
+    by = {h["reason"].split(":")[0]: h["reason"] for h in queue(p3)}
+    assert by["param.reason_unmatched"] == (
+        "param.reason_unmatched: the reason carries numerals (12, 3) and cites nothing"
     )
 
 

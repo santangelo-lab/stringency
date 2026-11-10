@@ -3,8 +3,13 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-11-09)
+## Current state (2026-11-10)
 
+- (2026-11-10) 0.2.41, the rule in place of the value rule (`notes/2026-11-10-1521-marked-names.md`, branch `marked-labels`, from
+  `numeral-labels`): a name is written in backticks and must resolve; a bare numeral is a
+  measurement and must match a cited cell; a hyphenated identifier, a year and a count need no
+  mark; `propose` and `call` refuse a reason whose only fault is a name written bare. DECISIONS
+  2026-11-10. Waiting on the owner: whether it replaces PR 24. The skills must be republished.
 - (2026-11-09) 0.2.41 (`notes/2026-11-09-1700-numeral-labels.md`, branch `numeral-labels`): labels
   are not measurements; `param.reason_unmatched@3` reads a proposal's reason by the answer's
   classifier with the cited rows' keys, the considered values, the parameters and the question;
@@ -415,6 +420,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-10-1521-marked-names.md` — 0.2.41: a name is marked, a measurement is bare, in place of PR 24's value rule; the refusal at `propose` and `call` for a name written bare; L142's and L93's bare exemptions withdrawn.
 - `2026-11-09-1700-numeral-labels.md` — 0.2.41: labels are not measurements; `param.reason_unmatched@3` and `ans.numeral_unmatched@3` with the `table`, `considered` and `id` classes; the Lyons Lung sweep and call that showed it; four open items for the owner.
 - `2026-11-05-1800-app-cli-0.2.40.md` — 0.2.40: a shallow method source in `clone_at`, an empty board for an empty projects directory, `flag --via app`.
 - `2026-11-05-1135-benchmark-run-record.md` — the beta's bundle and eval store as the benchmark's per-replicate trace record (Phases 2 to 4): what fits, what is not taken, three gaps as rows L154 to L156; an assessment, nothing built.
