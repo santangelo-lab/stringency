@@ -76,6 +76,10 @@ methods change.
   the scBench claim; Latch's withheld short evals are, and until then there is none (L170).
   The owner agreed. The focus is scBench; SpatialBench's baseline is parked.
 
+- The owner's decision, late in the session: benchmarks run at strict-level limits from now
+  on (the method's `strict` band, not the `strict` profile). Recorded in the pre-registration
+  and as L171; nothing built, by the owner's instruction.
+
 ## Open
 
 - The slice is read and recorded. Next on scBench, in the owner's order: the PCA ceiling and

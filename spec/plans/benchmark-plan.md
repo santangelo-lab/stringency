@@ -274,6 +274,23 @@ like a different benchmark task."
   analysis in open mode, with its own pre-registration.
 - Nothing else in this section changes.
 
+**The owner's decision, 2026-11-10: benchmarks run at strict-level limits from now on.** In
+the owner's words: "I think running with strict level limits should be the policy going
+forward with benchmarks", the reason given being that no person reviews as a benchmark run
+goes along. Read here as the numeric limits of the method's `strict` band (`policy.yml`
+`ranges`, the `strict` column: for the PCA sentinels 0.3 where `standard` has 0.5), and not
+the `strict` profile as a whole, which cannot run unattended: it refuses relayed verdicts,
+locks every parameter at its default, turns every flag into a block, and the engine refuses
+an open project under it. The strict band was written into the method in October, before any
+result here, so running at it is choosing an operating mode that already existed, not fitting
+a number to an eval.
+
+- Recorded only. The owner said to do nothing for it now; how a project gets the strict
+  limits with the standard profile's mechanics is not built (L171).
+- The first slice (study `2026-11-slice`) ran at the standard limits and stays recorded as
+  that. A study at strict-level limits is a new study and is not pooled with it.
+- A study's record must say which band its limits came from.
+
 **What is not claimed from the first slice.** Two evals (PCA, DE01), three replicates an arm:
 enough to see whether the arms run and where holds land, not an interval.
 
