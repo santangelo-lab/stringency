@@ -60,6 +60,20 @@ SDK can fetch the eval data. Rows L87 to L92 in `PLAN.md`.
   per-eval means), the smoke eval, and the arms as they are built. The engine repository holds
   the plan and the rows, never the runner.
 
+## Benchmarking over time (2026-11-10)
+
+The owner's ask of 2026-11-10: the benchmark will be run again after every improvement, so the
+runs must stay comparable. `stringency-benchmarks` now holds the system (`BENCHMARKING.md`
+there is the procedure, `bench.py` the tool): a *stack* file names the engine, plugin and
+method tags under test and `bench.py build` makes and verifies it inside the image, writing a
+lock with every commit and hash; a *suite* file lists evals with a status (development,
+held-out, unassigned); a *study* file is one run of a suite on a stack, checked before any
+agent session and recorded in a manifest; the ledger is one row per graded replicate over
+every study, and `history`, `compare` and `due` read it. `bench.py due`, after the
+repositories are pulled, names released tags no study has run. A held-out suite runs only on
+a frozen stack and every run of it is recorded as an exposure. The Phase 0 baseline and the
+November slice are its first two studies.
+
 ## The runner and the arms
 
 `run_eval.py --eval <json> --replicates 3 --model claude-opus-5-5 --image <sif> --out runs/baseline`
