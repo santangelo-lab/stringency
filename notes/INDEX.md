@@ -17,6 +17,13 @@ it is the first thing a new session reads.
   both checks gain `table`, `considered` and `id`; PLAN L157 done, DECISIONS 2026-11-09. Open
   from the same sessions: `wait --job` exit 10, one `propose` two holds, a person's file as a
   tool input, the open-mode skill's options-first habit.
+- (2026-11-10) Benchmark Phase 2 started (`notes/2026-11-10-1300-benchmark-phase-2-start.md`,
+  branch `benchmark-prereg`, docs only): the pre-registration is in `benchmark-plan.md`
+  (7d51af3); the stringency arm, the hold policy and the scorer are in `stringency-benchmarks`
+  (branch `phase2-adapter`), with `bench.py` and `BENCHMARKING.md` for benchmarking again as
+  versions change; the first slice (PCA, DE01) was running when the session ended. Findings as
+  rows L161 to L169; `declared-text-params.md` is the plan for the DE fixes. Waiting on the
+  owner: the PCA ceiling (L165), `text: declared` (L163), `via: policy` (L162).
 - (2026-11-05) 0.2.40 (`notes/2026-11-05-1800-app-cli-0.2.40.md`, branch `app-cli-0.2.40`): what
   the beta's desktop app asked of the engine: `clone_at` from a shallow method checkout (the
   beta's `init --method <prefix>/methods/toy@v0.3.1`), the console serves an empty projects
@@ -423,6 +430,7 @@ it is the first thing a new session reads.
 
 - `2026-11-10-1521-marked-names.md` — 0.2.41: a name is marked, a measurement is bare, in place of PR 24's value rule; the refusal at `propose` and `call` for a name written bare; L142's and L93's bare exemptions withdrawn.
 - `2026-11-09-1700-numeral-labels.md` — 0.2.41: labels are not measurements; `param.reason_unmatched@3` and `ans.numeral_unmatched@3` with the `table`, `considered` and `id` classes; the Lyons Lung sweep and call that showed it; four open items for the owner.
+- `2026-11-10-1300-benchmark-phase-2-start.md` — benchmark Phase 2: the pre-registration, the stringency arm end to end in Latch's image, the first slice (PCA, DE01), the DE fixes as a plan (`declared-text-params.md`), benchmarking over time (`bench.py` in `stringency-benchmarks`); rows L161 to L169.
 - `2026-11-05-1800-app-cli-0.2.40.md` — 0.2.40: a shallow method source in `clone_at`, an empty board for an empty projects directory, `flag --via app`.
 - `2026-11-05-1135-benchmark-run-record.md` — the beta's bundle and eval store as the benchmark's per-replicate trace record (Phases 2 to 4): what fits, what is not taken, three gaps as rows L154 to L156; an assessment, nothing built.
 - `2026-11-03-2230-beta-mac-rows.md` — L149 to L153 closed on `beta-mac-s1` (PR #18): bootstrap `--toy`, `run --deliver` after a final ticket, the console's next free port, the delegate's `reported.agent`, the method clone's git directory beside the tree; engine 0.2.38.

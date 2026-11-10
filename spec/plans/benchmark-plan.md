@@ -6,6 +6,8 @@ three claims, the arms, the metrics, the abstention risk and the "convincing res
 are the owner's and are not restated; this file holds what changed on contact with the code
 and the benchmarks, and the work rows. Not the spec.
 
+**Status 2026-11-10: Phase 2 started; the first slice measured.** The stringency arm runs end to end inside Latch's image (engine 0.2.40, plugin 0.10.3, method 0.1.12-rc1, the hold policy beside the agent; `stringency-benchmarks` `phase2-adapter`). On PCA and DE01, three replicates an arm, Claude Code 2.1.322: baseline 3/6, method as prompt 3/6, stringency under the observe policy 0/6 at three times the cost (`stringency-benchmarks/measurements.md`). PCA fails in every arm on the eval's own trap and no flag fires, the depth sentinel's standard ceiling being 0.5 against a measured 0.369 (L165); DE01 is blocked in pipeline mode by the method's fixed text parameters and the three replicates abstained (L163, `declared-text-params.md`). Hold recall 0/3, no judging hold raised, no protocol violation. Neither cause is in the gate's design; both are the method's settings, found on development evals. The enforce arm waits on the owner's reading of the ceiling. Benchmarking over time: `bench.py` there (the section below). The pre-registration and its amendment are below.
+
 **The method delivered under the engine, 2026-10-22, evening.** The third project (method v0.1.6, panels as a declared input, confirmation inherited from the second by the re-declared rule) ran all seven steps with one hold per decision and no companion flag, passed both PCA sentinels (depth correlation 0.23, top loading 0.28), clustered into four clusters that the declared panels assign to the three planted lineages with the exact planted counts, and delivered six files with summary, coverage and methods. Twenty-eight predicates evaluated over seven steps, five flags (the five proposals), no blocks. Along the way: method v0.1.1 to v0.1.7, plugin 0.8.2 to 0.8.4, engine fixes (JSON-key citations, `param.reason_unmatched@2`) and the console's plain block, colours, rendered echo-back and egress, QC figures on the floors hold. Plan rows L93 (done), L94 to L97.
 
 **First engine run of the method, 2026-10-22 (the owner accepted the confirm and egress holds).** `init` on the method at v0.1.0 with the planted fixture; `run --until 01_qc_metrics` ran the module inside Latch's image under the engine; the QC summary registered as an `analysis_summary` object the gate read; `propose 02_qc_cells` with five citations opened the `param.agent_proposed@2` hold with the decision table, the cited values and the candidates, and `present --hold` rendered the delivery skill's view (the distribution table over every cell and per sample, then the facts). Three findings: `param.reason_unmatched@1` flags the proposal's own values (200, 500, 5) as unmatched numerals beside the four data facts the reason quoted without citing (L93); a held step cannot be re-proposed, so the corrected proposal waits on the reviewer's verdict on the flag (L94); the hold view prints the table's floats unrounded, so the delivery skill wants a `format` per column (method, next tag). The run waits on the reviewer's two verdicts at 02_qc_cells.
@@ -59,6 +61,20 @@ SDK can fetch the eval data. Rows L87 to L92 in `PLAN.md`.
   repository): `latch/run_eval.py` (the runner and the summary with Latch's t-interval over
   per-eval means), the smoke eval, and the arms as they are built. The engine repository holds
   the plan and the rows, never the runner.
+
+## Benchmarking over time (2026-11-10)
+
+The owner's ask of 2026-11-10: the benchmark will be run again after every improvement, so the
+runs must stay comparable. `stringency-benchmarks` now holds the system (`BENCHMARKING.md`
+there is the procedure, `bench.py` the tool): a *stack* file names the engine, plugin and
+method tags under test and `bench.py build` makes and verifies it inside the image, writing a
+lock with every commit and hash; a *suite* file lists evals with a status (development,
+held-out, unassigned); a *study* file is one run of a suite on a stack, checked before any
+agent session and recorded in a manifest; the ledger is one row per graded replicate over
+every study, and `history`, `compare` and `due` read it. `bench.py due`, after the
+repositories are pulled, names released tags no study has run. A held-out suite runs only on
+a frozen stack and every run of it is recorded as an exposure. The Phase 0 baseline and the
+November slice are its first two studies.
 
 ## The runner and the arms
 
@@ -177,6 +193,107 @@ one SQLite file per study under `runs/` (never the testers' `eval.db`); the two 
 beta-CLI work. After Phase 2's adapter, which is what makes a project per replicate; about a
 day.
 
+## Pre-registration (2026-11-10, before the first stringency-arm run)
+
+Written and committed before any replicate of a stringency arm exists. The owner approved the
+design on 2026-11-10; the commit that adds this section is the record, and every stringency-arm
+`result.json` names it.
+
+**The baseline row it stands beside.** The model id is `claude-opus-5-5`, which is Opus 5.5
+(earlier text here says "Opus 5"). Latch's leaderboard (benchmarks.bio, data of 2026-11-08, the
+full 195 scBench evals, no intervals, no per-eval numbers) gives Opus 5.5 with Claude Code
+56.4%, Opus 5 with Claude Code 57.6%, Opus 4.8 with Claude Code 56.2%. Our 9/18 on the six
+public evals is 50%; six evals cannot separate 50% from 56%, and no per-eval Opus 5 pattern is
+published, so the Phase 0 exit is read as met: consistent with the published row, nothing
+sharper testable (the owner, 2026-11-10).
+
+**Two policies for the stringency arm.** No person is present, so a reviewer process outside
+the agent's session records every verdict (`stringency-benchmarks` `latch/policy.py`), relayed,
+under the session reference `policy:<policy>:<arm>/<eval>/rN`.
+
+- `observe`: every hold is accepted. The agent's first choice goes through and is graded.
+  Claim B is measured here.
+- `enforce`: a step with an open flag hold from a predicate that judges the choice is sent
+  back to the agent with the predicate's reason, at most twice per step; a third firing is
+  accepted and recorded. Confirm, egress, sign-off and routine holds are accepted. Claim A is
+  measured here.
+- Routine predicates, which fire on every proposal whatever it says and so are never rejected
+  and never counted in hold precision or recall: `param.agent_proposed`.
+- A hold on a judgment item is left open and the replicate is reported as unresolved, not as
+  a wrong answer.
+
+**Why two.** Under the owner's definition (of holds raised, the fraction on subtasks that
+scored below threshold), a hold that makes the agent fix its choice lands on a subtask that
+then passes, and a correct hold reads as a false alarm. Under `observe` the flagged choice is
+the graded one.
+
+**The numbers, fixed now.**
+
+1. Hold precision (Claim B, `observe`): of replicates with at least one judging hold (a flag
+   hold from a non-routine predicate), the fraction the grader failed. Reported beside the base
+   failure rate of the same replicates' arm, and per predicate.
+2. Hold recall (Claim B, `observe`): of replicates the grader failed, the fraction with at
+   least one judging hold. Abstentions (below) are counted separately, never as failures
+   without a hold.
+3. Where the grader scores fields separately, 1 and 2 are also given per graded field, the
+   hold assigned to the field its decision point maps to in `evals/eval_predicates.yml`
+   (written before the runs, from the Phase 1 table).
+4. Accuracy among submitted answers, and abstention rate (`answer --cannot`, or no answer
+   file), each arm; beside the benchmark's own score, which counts an abstention as zero.
+5. Paired score delta against the baseline per eval (Claim A, `enforce`), three replicates
+   an arm, Latch's t-interval over per-eval means.
+6. Cost: API-equivalent USD, turns, wall-clock, each arm.
+7. Refusals and timeouts, each arm, counted apart from wrong answers.
+
+**Protocol violations.** A `reviews` row whose session reference is not the policy's, an
+`eval_answer.json` value that no admissible `answers` row holds, or a graded value computed
+outside the engine (the trajectory shows it): each is counted, the replicate is kept in the
+score and excluded from 1 to 3, and both versions are reported.
+
+**Development set and held-out set.** The six public scBench evals are the development set:
+the method and the predicates were built from their author notes, and results on them are
+in-sample and will be called that. scBench-Long's nine public evals are the held-out public
+set: not pulled, their author notes and graders unread by anyone on this project, human or
+agent, until the engine, plugin, method and adapter tags are frozen; then run once.
+
+**Amendment, 2026-11-10 (the owner; before any held-out run, nothing pulled).** scBench-Long
+is not the held-out set for the scBench claim. The paragraph above named it from the October
+plan's table without anyone having looked at what it is. Read at the level of its paper,
+repository README and leaderboard, no eval opened: it is a different task (a scientific
+conclusion recovered from raw or near-raw multi-modal data with no prescribed method, a
+structured answer graded pass or fail, twenty-one or twenty-two evals over five studies, four
+of them public and not nine), which the scRNA-seq method mostly does not cover and on which
+the standard Opus 5.5 run scores 13.6% with Claude Code. The owner, 2026-11-10: "long seems
+like a different benchmark task."
+
+- The held-out set for the scBench claim is Latch's withheld short evals, the same task family
+  as the development six; it needs the Latch conversation (L92). Until then there is no
+  held-out public set for that claim, every public short eval is development, and any
+  write-up says so.
+- scBench-Long stays unpulled and unread, kept for a later, separate claim about long-horizon
+  analysis in open mode, with its own pre-registration.
+- Nothing else in this section changes.
+
+**The owner's decision, 2026-11-10: benchmarks run at strict-level limits from now on.** In
+the owner's words: "I think running with strict level limits should be the policy going
+forward with benchmarks", the reason given being that no person reviews as a benchmark run
+goes along. Read here as the numeric limits of the method's `strict` band (`policy.yml`
+`ranges`, the `strict` column: for the PCA sentinels 0.3 where `standard` has 0.5), and not
+the `strict` profile as a whole, which cannot run unattended: it refuses relayed verdicts,
+locks every parameter at its default, turns every flag into a block, and the engine refuses
+an open project under it. The strict band was written into the method in October, before any
+result here, so running at it is choosing an operating mode that already existed, not fitting
+a number to an eval.
+
+- Recorded only. The owner said to do nothing for it now; how a project gets the strict
+  limits with the standard profile's mechanics is not built (L171).
+- The first slice (study `2026-11-slice`) ran at the standard limits and stays recorded as
+  that. A study at strict-level limits is a new study and is not pooled with it.
+- A study's record must say which band its limits came from.
+
+**What is not claimed from the first slice.** Two evals (PCA, DE01), three replicates an arm:
+enough to see whether the arms run and where holds land, not an interval.
+
 ## Open questions, with what is known now
 
 - Latch account tier for the public data: unknown until the owner logs in.
@@ -191,5 +308,4 @@ day.
   owner's question to answer in the write-up.
 - Budget: the published Claude Code runs cost $0.14 to $4.53 per trial on the six (mean about
   $1.06); Opus 5 on the subscription reports cost but does not bill per call.
-- The pre-registration of the two numbers (accuracy among submitted, abstention rate) goes in
-  this file before the first stringency-arm run.
+- The pre-registration: written 2026-11-10, the section above.
