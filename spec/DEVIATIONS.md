@@ -19,9 +19,9 @@ defer. Acknowledged by Jim, 2026-10-21.
 
 ## Module contract 3.2: `egress` (2026-10-16, backlog L1)
 
-Proposed, not built. An optional field in the frozen manifest: `egress: {class: 0-4, hosts:
+Built in engine 0.2.28 (L46, done; proposed 2026-10-16). An optional field in the frozen manifest: `egress: {class: 0-4, hosts:
 [...], sends: "<one sentence>"}`, saying what the module's scripts send off the machine
-(`spec/plans/egress-and-remeasurement.md` part 1). Additive: a manifest without it parses as
+(`spec/archive/egress-and-remeasurement.md` part 1). Additive: a manifest without it parses as
 before; a manifest with it is refused by engines that predate it (the model forbids unknown keys),
 the intended failure for a method that relies on the declaration. Needed because the engine
 otherwise counts a module whose scripts reach the network as class 4 ("scanned, undeclared"), so

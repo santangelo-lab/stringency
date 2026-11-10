@@ -23,6 +23,13 @@ SDK can fetch the eval data. Rows L87 to L92 in `PLAN.md`.
 
 ## What changed since the plan was written
 
+Read with these corrections of 2026-11-10 (the text below is kept as it was written on
+2026-10-22): the model id `claude-opus-5-5` is Opus 5.5, called "Opus 5" throughout; Latch has
+since published Opus 5 family rows, quoted in the pre-registration, so "no Opus 5 row exists"
+no longer holds; SpatialBench's clone holds sixteen unique public evals, where this file says
+seventeen; and the owner's plan is now beside this file as `benchmark-plan-owner-2026-10-21.md`.
+
+
 - Phase 2's predicate items are built: L55 (`propose --cite`, `--considered`,
   `param.reason_unmatched`, `param.uncited`; 0.2.29), L54 (the seven downstream predicates;
   plugin 0.7.0), L56 (`must_cite`, `judg.required_evidence_uncited`; 0.2.33), and L57

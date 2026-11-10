@@ -1,3 +1,5 @@
+Archived 2026-11-10: built (engine 0.2.31), every row it stood behind closed (L5, L6, L67 to L69). The live text is design 2.7 and 7.2 to 7.4. One thing it built has never been used on the chain it was written for: no Lyons project names a `study:` (`spec/plans/PLAN.md` row L181).
+
 # Confirm once: the owner should not re-accept a design the engine has already seen them accept
 
 Working note, not the spec. Drafted 2026-10-06 at the end of the Lane F phase 0 session for a later

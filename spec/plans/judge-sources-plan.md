@@ -6,7 +6,7 @@ specification), and one evaluation. Items marked *design* change design text and
 owner's approval; the rest are DECISIONS-level. Section 6 lists the decisions the owner is asked
 to make; section 7 the order.
 
-**Status 2026-10-21.** Proposed, not started. The work is `PLAN.md` rows L34 (S1, S2 and the `command` adapter, with the Codex harness; waiting on the owner's go), L70 (S3), L71 (S4), L72 (S5) and L73 (S6); the decisions of section 6 are in its waiting table (decision 7 answered: the engine side). This note is the reasoning, not a work list. S2(b)'s answer key exists: `qc2_outliers_all` run `01M492CYVV7JBT69W85MXZY8AF` (2026-10-06), the owner's verdicts on the same six punches as September.
+**Status 2026-11-10.** Partly built: S1 (judge identity) and the `openai-compatible` and `command` adapters with the Codex harness (0.2.32), S3 (L70) and S5 (L72) are done; open are the Qwen3 evaluation in L34, the panel (L71) and a module's harness requirement (L73). As written 2026-10-21: proposed, not started. The work is `PLAN.md` rows L34 (S1, S2 and the `command` adapter, with the Codex harness; waiting on the owner's go), L70 (S3), L71 (S4), L72 (S5) and L73 (S6); the decisions of section 6 are in its waiting table (decision 7 answered: the engine side). This note is the reasoning, not a work list. S2(b)'s answer key exists: `qc2_outliers_all` run `01M492CYVV7JBT69W85MXZY8AF` (2026-10-06), the owner's verdicts on the same six punches as September.
 
 ## 1. The question
 

@@ -5,6 +5,10 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-10)
 
+- (2026-11-10) One work list again (`notes/2026-11-10-1633-work-list-housekeeping.md`, branch `plan-housekeeping`, docs only):
+  `benchmark-prereg` merged, the finished rows archived, rows L172 to L185 for what no row
+  tracked, State and "Next, in order" rewritten from `implementation-order-2026-11.md` (what
+  needs no input from the owner first). Next: wave 1, the name form, L168 with L161 first.
 - (2026-11-10) 0.2.41, the rule in place of the value rule (`notes/2026-11-10-1521-marked-names.md`, branch `marked-labels`, from
   `numeral-labels`): a name is written in backticks and must resolve; a bare numeral is a
   measurement and must match a cited cell; a hyphenated identifier, a year and a count need no
@@ -428,6 +432,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-10-1633-work-list-housekeeping.md` — the surveys of the backlogs and the plan documents; the order of work; the owner's answers; `PLAN.md` merged, pruned and rewritten; rows L172 to L185.
 - `2026-11-10-1521-marked-names.md` — 0.2.41: a name is marked, a measurement is bare, in place of PR 24's value rule; the refusal at `propose` and `call` for a name written bare; L142's and L93's bare exemptions withdrawn.
 - `2026-11-09-1700-numeral-labels.md` — 0.2.41: labels are not measurements; `param.reason_unmatched@3` and `ans.numeral_unmatched@3` with the `table`, `considered` and `id` classes; the Lyons Lung sweep and call that showed it; four open items for the owner.
 - `2026-11-10-1300-benchmark-phase-2-start.md` — benchmark Phase 2: the pre-registration, the stringency arm end to end in Latch's image, the first slice (PCA, DE01), the DE fixes as a plan (`declared-text-params.md`), benchmarking over time (`bench.py` in `stringency-benchmarks`); rows L161 to L169.
