@@ -98,7 +98,7 @@ The owner's decisions of 2026-11-10 on the five questions put to him:
    decision 1: an unset required name stops its step until it is declared or proposed (as
    `organ: {default: unset}` does in the Xenium method), and `init` says so in the echo-back.
    The recommendation as first written had `init` refuse; under option B a refusal would take
-   back the flexibility the owner asked for. *This reading is the drafter's, to be confirmed.*
+   back the flexibility the owner asked for. The owner agreed to this reading (2026-11-10).
 3. **What is checked.** The pipeline says what each name refers to, and the value is checked
    against the object summary taken at `init`: the column exists; the value exists in it when
    the summary holds the column's values (a categorical of fifty categories or fewer). Agreed
@@ -106,11 +106,11 @@ The owner's decisions of 2026-11-10 on the five questions put to him:
    value that does not exist blocks with the nearest ones named.
 4. **The comparison lives in `objective.contrasts` only** (item (b)); the name form is for
    what the objective has no field for. Agreed as recommended.
-5. **Profiles: open.** The recommendation was "a declared name under every profile, an
-   agent's proposal under none"; the owner: it does not work with option B. Restated for his
-   answer: a declared name is admitted under every profile; an agent's proposal follows the
-   profile as a numeric parameter's does (`ranged` and `free`: a hold; `locked`, the strict
-   profile: refused).
+5. **Profiles.** A declared name is admitted under every profile; an agent's proposal follows
+   the profile as a numeric parameter's does (`ranged` and `free`: a hold; `locked`, the
+   strict profile: refused). So a strict run names its columns in the declaration and nowhere
+   else. The first recommendation ("an agent's proposal under none") did not fit option B;
+   the owner agreed to this restatement (2026-11-10).
 
 Proposed form, the kind after `text:` being what decision 3 checks:
 
@@ -178,9 +178,8 @@ and (d), DE01 runs through the open-mode tool, as the test replicate did.
 
 ## 7. For the owner
 
-1. (c), decision 5: how the profiles treat a name, as restated there; and the reading of
-   decision 2 (an unset required name stops its step, `init` does not refuse). Decisions 1 to 4
-   are made (2026-11-10).
+1. (c): all five decisions are made (2026-11-10), with the reading of decision 2. What is
+   left on (c) is the design text itself, for the owner's approval when it is written.
 2. (d) against the `objective.domain` fallback, if (c) is declined.
 3. (e): whether a task's "exclude a donor with too few cells on either side" belongs in the
    method as an option, or is rightly session code with an `untested` label.
