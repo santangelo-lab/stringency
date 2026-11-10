@@ -187,7 +187,15 @@ delivery in pipeline mode. PCA will not change until L171 is taken up. A run cos
   numbers are wanted sooner.
 - **L159**: several holds from one proposal are handled in the skill: the operator relays
   every open hold before it waits. Text only; it joins wave 2 with L146 and L147.
-- Items 5 to 7 (L158, L129, L162) were explained to him the same day and wait on his answers.
+- **L158**: `wait --job` gets a new exit code for "still running" at its timeout. An addition
+  to design 14.2's frozen list, approved by him; a `DEVIATIONS.md` entry records it when it is
+  built. It joins wave 2.
+- **L129**: a decision left at `unset` with no proposal stops the run, which says the step and
+  its evidence; no hold opens. It joins wave 2, beside the name form's "an unset required name
+  stops its step".
+- **L162**: `via: policy` in the trace for a fixed policy's verdicts, approved (a change to
+  the trace schema, with its `DEVIATIONS.md` entry). It joins wave 1's engine half, before any
+  benchmark number is published.
 
 **One word each, and they unblock work already planned above:**
 
