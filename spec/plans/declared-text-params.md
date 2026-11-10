@@ -181,7 +181,6 @@ and (d), DE01 runs through the open-mode tool, as the test replicate did.
 1. (c): all five decisions are made (2026-11-10), with the reading of decision 2. What is
    left on (c) is the design text itself, for the owner's approval when it is written.
 2. (d) against the `objective.domain` fallback, if (c) is declined.
-3. (e): whether a task's "exclude a donor with too few cells on either side" belongs in the
-   method as an option, or is rightly session code with an `untested` label.
+3. (e): decided 2026-11-10: it is built into the method (`complete_units_only`).
 4. Whether the Xenium pipelines' `timepoint_factor: timepoint_h` moves to the same form once
    (c) exists, so that pipeline is not tied to one study's factor name.

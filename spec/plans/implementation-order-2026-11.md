@@ -174,6 +174,21 @@ delivery in pipeline mode. PCA will not change until L171 is taken up. A run cos
 
 ## 7. Waiting on the owner, ordered by what each answer unblocks
 
+**Answered 2026-11-10** (items 1 to 4 of the list below; they move into the waves):
+
+- #25 is merged (079b632) and #24 closed. Engine work branches from `main`.
+- **L169**: "leave out an incomplete replicate" is built into the DE module. It joins wave 1
+  beside (b).
+- **L171**: strict-level limits are used whenever a benchmark runs. Taken up, not parked. The
+  route is the engine's: a project chooses its limits band apart from its profile, the
+  benchmark's runner asks for the strict band, and the released method is what is tested
+  (design-level; the text is his to approve). It joins wave 1's engine half. The shortcut (a
+  method release candidate whose `standard` profile reads the strict band) stays available if
+  numbers are wanted sooner.
+- **L159**: several holds from one proposal are handled in the skill: the operator relays
+  every open hold before it waits. Text only; it joins wave 2 with L146 and L147.
+- Items 5 to 7 (L158, L129, L162) were explained to him the same day and wait on his answers.
+
 **One word each, and they unblock work already planned above:**
 
 1. Merge #25 and close #24. Everything in the engine stacks on it. With it, acknowledge the
