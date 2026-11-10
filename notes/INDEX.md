@@ -3,8 +3,15 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-11-05)
+## Current state (2026-11-10)
 
+- (2026-11-10) Benchmark Phase 2 started (`notes/2026-11-10-1300-benchmark-phase-2-start.md`,
+  branch `benchmark-prereg`, docs only): the pre-registration is in `benchmark-plan.md`
+  (7d51af3); the stringency arm, the hold policy and the scorer are in `stringency-benchmarks`
+  (branch `phase2-adapter`), with `bench.py` and `BENCHMARKING.md` for benchmarking again as
+  versions change; the first slice (PCA, DE01) was running when the session ended. Findings as
+  rows L161 to L169; `declared-text-params.md` is the plan for the DE fixes. Waiting on the
+  owner: the PCA ceiling (L165), `text: declared` (L163), `via: policy` (L162).
 - (2026-11-05) 0.2.40 (`notes/2026-11-05-1800-app-cli-0.2.40.md`, branch `app-cli-0.2.40`): what
   the beta's desktop app asked of the engine: `clone_at` from a shallow method checkout (the
   beta's `init --method <prefix>/methods/toy@v0.3.1`), the console serves an empty projects
@@ -409,6 +416,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-10-1300-benchmark-phase-2-start.md` — benchmark Phase 2: the pre-registration, the stringency arm end to end in Latch's image, the first slice (PCA, DE01), the DE fixes as a plan (`declared-text-params.md`), benchmarking over time (`bench.py` in `stringency-benchmarks`); rows L161 to L169.
 - `2026-11-05-1800-app-cli-0.2.40.md` — 0.2.40: a shallow method source in `clone_at`, an empty board for an empty projects directory, `flag --via app`.
 - `2026-11-05-1135-benchmark-run-record.md` — the beta's bundle and eval store as the benchmark's per-replicate trace record (Phases 2 to 4): what fits, what is not taken, three gaps as rows L154 to L156; an assessment, nothing built.
 - `2026-11-03-2230-beta-mac-rows.md` — L149 to L153 closed on `beta-mac-s1` (PR #18): bootstrap `--toy`, `run --deliver` after a final ticket, the console's next free port, the delegate's `reported.agent`, the method clone's git directory beside the tree; engine 0.2.38.
