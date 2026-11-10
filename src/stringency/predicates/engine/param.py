@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from stringency.predicates.context import Disposition, GateContext, Verdict
@@ -45,7 +46,35 @@ def _rationale(ctx: GateContext) -> dict[str, Any]:
         "text": str(r.get("text") or ""),
         "cited": list(r.get("cited") or []),
         "considered": list(r.get("considered") or []),
+        "question": str(r.get("question") or ""),
     }
+
+
+def reason_numerals(
+    design: Any, parameters: Mapping[str, Any], rationale: Mapping[str, Any]
+) -> dict[str, list[dict[str, str]]]:
+    """A proposal's reason read as an answer is read (`ans.classify_numerals`): each numeral a
+    cited cell, a name in backticks, or a failure. The names a mark may resolve to: the keys of
+    the rows the reason cites, the design's levels, the parameter values (numerals inside a
+    string value count: `cluster = 20`, `6,0,8,17`), the values the proposal considered, and
+    the question an on-demand step answers. Shared by `param.reason_unmatched` and by the
+    form check `propose` makes before it writes anything. Reads the cited cells' values from
+    the rationale; touches no file and no table."""
+    from stringency.citations import cited_values
+    from stringency.predicates.engine.ans import classify_numerals, numeral_sources
+
+    cited = list(rationale.get("cited") or [])
+    src = {
+        "key": [str(c["row"]) for c in cited if c.get("row") is not None and "missing" not in c],
+        "param": [str(v) for v in parameters.values() if isinstance(v, (int, float, str))],
+        "considered": [str(v) for v in rationale.get("considered") or []],
+        "question": str(rationale.get("question") or ""),
+    }
+    return classify_numerals(
+        str(rationale.get("text") or ""),
+        cited_values(cited),
+        numeral_sources(design, {"numeral_sources": src}),
+    )
 
 
 def _evidence_sources(points: dict[str, Any]) -> list[str]:
@@ -199,43 +228,53 @@ def agent_proposed(ctx: GateContext) -> Verdict:
 
 @predicate(
     id="param.reason_unmatched",
-    version=2,
+    version=3,
     scope=["*"],
     phase="pre",
     default=Disposition.FLAG,
     summary=(
-        "Every number in the operator's reason must appear in a cell the proposal cites or be "
-        "a value the proposal sets; this lists the numbers that do neither."
+        "Every bare number in the operator's reason must appear in a cell the proposal cites; "
+        "a name (a cited row's key, a design level, a value the proposal sets or considered, a "
+        "numeral of the question) is written in backticks. This lists the numbers that are "
+        "neither a cited measurement nor a name that resolves."
     ),
 )
 def reason_unmatched(ctx: GateContext) -> Verdict:
-    """A numeral in the proposal's reason matches no cited cell, or the reason carries numerals
-    and cites nothing (L55): the rationale is the object under test, never trusted (design 6.8),
+    """The reason of a proposal carries numerals that match no cited cell: values quoted from
+    evidence without `--cite`, or numbers invented (L55, backlog L61). A reason with numerals is
     checked as `ans.numeral_unmatched` checks an answer. Only an agent's proposal with a reason
-    is read. Version 2 (backlog L93, 2026-10-22): the proposal's own parameter values are not
-    claims about evidence and match without a citation, so "a floor of 200 genes" is not flagged
-    for 200 when 200 is the value proposed."""
-    from stringency.citations import cited_values
-    from stringency.predicates.engine.judg import _numeral_problems
-
+    is read. Version 2 (backlog L93, 2026-10-22): the proposal's own parameter values were not
+    claims about evidence and matched without a citation. Version 3 (L157, 2026-11-10): a name
+    is marked, a measurement is bare (`ans.classify_numerals`). In backticks a numeral must be
+    the key of a cited row, a design level, a parameter value (numerals inside a string value
+    count), a considered value or a numeral of the question a call answers; a hyphenated
+    identifier (`6-2`), a year and a count before a unit word need no mark; every other bare
+    numeral must match a cited cell, the proposal's own values included (in `a floor of 200
+    genes` the 200 goes in backticks). The reason says of each failing numeral whether it is a name to put in backticks
+    or a measurement to cite, and the evidence lists what was left unchecked (`not_checked`).
+    `propose` refuses a reason whose only failures are names written bare before it writes
+    anything, so this fires on what a mark would not mend."""
     if ctx.action.proposed_by != "agent":
         return Verdict(False)
     r = _rationale(ctx)
     if not r["text"].strip():
         return Verdict(False)
-    allowed = cited_values(r["cited"]) + [
-        v for v in ctx.action.parameters.values() if isinstance(v, (int, float, str))
-    ]
-    problems = _numeral_problems(r["text"], allowed, {"reason": True})
-    if not problems:
+    got = reason_numerals(ctx.design, ctx.action.parameters, r)
+    if not got["failed"]:
         return Verdict(False)
-    nums = ", ".join(p["numeral"] for p in problems)
+    nums = ", ".join(p["numeral"] for p in got["failed"])
+    evidence = {
+        "numerals": nums,
+        "problems": [{"reason": True, **p} for p in got["failed"]],
+        "not_checked": got["exempt"],
+    }
     if not r["cited"]:
-        return Verdict(
-            True, f"the reason carries numerals ({nums}) and cites nothing", {"numerals": nums}
-        )
+        return Verdict(True, f"the reason carries numerals ({nums}) and cites nothing", evidence)
     return Verdict(
-        True, f"a numeral in the reason matches no cited cell: {nums}", {"numerals": nums}
+        True,
+        "a numeral in the reason matches no cited cell: "
+        + ", ".join(f"{p['numeral']} (nearest: {p['nearest']})" for p in got["failed"]),
+        evidence,
     )
 
 

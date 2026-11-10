@@ -143,7 +143,8 @@ def test_engine_runner_script_failure(erc: RunContext) -> None:
 
 def test_propose_issues_ticket_and_job_spec(rc: RunContext) -> None:
     prop = admit(
-        rc, propose(rc, "01_filter", {"min_value": 30}, rationale="values below 30 are noise here")
+        rc,
+        propose(rc, "01_filter", {"min_value": 30}, rationale="values below `30` are noise here"),
     )
     assert prop.status == StepStatus.AWAITING_EXECUTION
     assert prop.ticket == prop.action.action_id
@@ -161,7 +162,7 @@ def test_propose_issues_ticket_and_job_spec(rc: RunContext) -> None:
         )
         == "agent"
     )
-    assert rc.store.message(prop.action.rationale_ref or "") == "values below 30 are noise here"
+    assert rc.store.message(prop.action.rationale_ref or "") == "values below `30` are noise here"
 
 
 def test_submit_completes_with_engine_extraction(rc: RunContext) -> None:

@@ -398,6 +398,19 @@ def propose_tool(
         inputs=bind_inputs(rc, module, bindings, record=bound),
         runner="engine",
     )
+    if source == "agent" and proposed and rationale:
+        # what `propose` will read the reason against (the schema's defaults under the values
+        # set), checked here so that a refusal leaves no on-demand step behind
+        defaults = {
+            n: sch["default"]
+            for n, sch in module.declared_params.items()
+            if isinstance(sch, dict) and "default" in sch
+        }
+        refuse_names_written_bare(
+            rc,
+            {**defaults, **proposed},
+            {"text": rationale, "question": _question_text(rc, question_id)},
+        )
     rc.create_on_demand_step(
         decl, "tool", module, question_id=question_id, binding=bound or None, gives=gives
     )
@@ -607,6 +620,49 @@ def propose_exec(
 # -- propose: action + pre-gate ----------------------------------------------------------
 
 
+def _question_text(rc: RunContext, question_id: str | None) -> str:
+    """The text of a question, or "" when there is none."""
+    if not question_id:
+        return ""
+    from stringency.questions import question
+
+    try:
+        return str(question(rc, str(question_id)).get("text") or "")
+    except ConfigError:
+        return ""
+
+
+def _question_of(rc: RunContext, step_id: str) -> str:
+    """The text of the question an on-demand step (`call`, `exec`) was proposed for, or ""."""
+    entry = rc.on_demand_entry(step_id)
+    return _question_text(rc, entry.get("question_id") if entry else None)
+
+
+def refuse_names_written_bare(
+    rc: RunContext, parameters: dict[str, Any], rationale: dict[str, Any]
+) -> None:
+    """Refuse (exit 16) an agent's reason whose only unmatched numerals are names written as
+    bare numbers: a cited row's key, a design level, a value the proposal sets or considered,
+    a numeral of the question (L157, 2026-11-10). The fix is the text's form (backticks), so
+    the operator mends it and proposes again, and no hold is opened for a person to read a
+    number that is only a name. Called before anything is written. A reason with any other
+    unmatched numeral goes on to the gate, where `param.reason_unmatched` flags it whole.
+    Reads the rationale's cited cells; writes nothing."""
+    from stringency.predicates.engine.ans import EXEMPT_CLASSES, unmarked_names
+    from stringency.predicates.engine.param import reason_numerals
+
+    if not str(rationale.get("text") or "").strip():
+        return
+    bare = unmarked_names(reason_numerals(rc.project.design, parameters, rationale)["failed"])
+    if bare:
+        listed = ", ".join(f"{b['numeral']} ({EXEMPT_CLASSES[b['unmarked']]})" for b in bare)
+        raise RefusedError(
+            f"a bare number in the reason matches no cited cell and equals a name: {listed}. "
+            f"If it is that name, write it in backticks (`{bare[0]['numeral']}`); if it is a "
+            "measurement, cite its cell. No proposal was recorded: say it again."
+        )
+
+
 def starting_params(rc: RunContext, step_id: str) -> dict[str, tuple[Any, str]] | None:
     """What a step's proposal starts from, below the operator's own values (design 2.5, 2.6):
     the objective's declared parameters for the step (`declared`), overlaid by what a fork's
@@ -643,6 +699,9 @@ def propose(
     The `proposed` step event carries `rendered`, the latest `present --step` mark of each step
     of the run so far (L134 a), when there is one.
 
+    An agent's reason whose only unmatched numerals are names written bare is refused before
+    anything is written (`refuse_names_written_bare`, L157).
+
     Writes: actions, messages (rationale), predicate_results, steps, step_events, holds.
     Reads: step_events (`rendered`).
     """
@@ -666,6 +725,7 @@ def propose(
     attempt = int(prev_attempt) + 1
     plan = plan_step(rc, step_id, attempt)
     rationale_ref = None
+    rationale_text: str | None = None
     record: dict[str, Any] | None = None
     if rationale or cites or considered:
         from stringency.citations import resolve_cites
@@ -675,6 +735,10 @@ def propose(
             "cited": resolve_cites(rc, list(cites or [])),
             "considered": list(considered or []),
         }
+        question = _question_of(rc, step_id)
+        if question:
+            # the question a call or exec answers (L157): its numerals are names, not claims
+            record["question"] = question
         text = (
             rationale
             if rationale and not cites and not considered
@@ -682,7 +746,7 @@ def propose(
         )
         assert text is not None
         rationale_ref = hashing.hash_text(text)
-        store.store_message(rationale_ref, text)
+        rationale_text = text
     action = build_action(
         run_id=rc.run_id,
         step=plan.step,
@@ -694,6 +758,12 @@ def propose(
         source_label=source,
         inherited=inherited,
     )
+    if record is not None and action.proposed_by == "agent" and not rc.on_demand_entry(step_id):
+        # a pipeline step's reason whose only fault is a name written bare is refused before
+        # anything is written (an on-demand step was checked before it was registered)
+        refuse_names_written_bare(rc, action.parameters, record)
+    if rationale_ref is not None and rationale_text is not None:
+        store.store_message(rationale_ref, rationale_text)
     if plan.runner == "operator":
         action = action.with_ticket(action.action_id)
     if record is not None:

@@ -194,8 +194,16 @@ def test_an_answer_cites_a_row_of_a_stratified_table_and_a_miss_says_the_key_for
     # a citation without a row takes every row, none lost
     out = json.loads(_answer(q, qid, "No numbers here.", aid, path=text).output)
     assert sorted(out["cells"][aid]) == ["1|domain_1", "1|domain_2", "9|domain_1", "9|domain_2"]
-    # the joined key resolves; the cluster id 9 is a key value, left unchecked and named
+    # the cluster id written bare is read as a measurement (L157): blocked, and told to mark it
     r = _answer(q, qid, "Cluster 9 is 36.68 percent.", f"{aid}:9|domain_2:pct", path=text)
+    assert r.exit_code == 12, r.output
+    blocked = next(b for b in json.loads(r.output)["blocked"] if "ans.numeral_unmatched" in b)
+    assert (
+        "9 (nearest: it equals a key value of a cited table; if it is that name, write it in backticks (`9`)"
+        in blocked
+    )
+    # the joined key resolves; the cluster id 9 in backticks is a name, left unchecked and listed
+    r = _answer(q, qid, "Cluster `9` is 36.68 percent.", f"{aid}:9|domain_2:pct", path=text)
     assert r.exit_code == 0, r.output
     out = json.loads(r.output)
     assert out["cells"] == {aid: {"9|domain_2": {"pct": 36.68}}}
@@ -313,45 +321,139 @@ def _numeral_ctx(project: Project, text: str, **sources: object) -> GateContext:
     return replace(ctx, design=design)
 
 
-# (class, must-pass text, must-fire text, sources)
-EXEMPTIONS: list[tuple[str, str, str, dict[str, object]]] = [
-    ("level", "At 24 hours it is 36.68.", "At 30 hours it is 36.68.", {}),
-    ("key", "Cluster 9 is 36.68.", "Cluster 8 is 36.68.", {"key": ["9", "domain_2"]}),
+# L157 (2026-11-10): a name is marked, a measurement is bare.
+# (class, the name in backticks: passes, the same name bare: fires, a wrong name in backticks:
+# fires, sources)
+NAMES: list[tuple[str, str, str, str, dict[str, object]]] = [
+    (
+        "level",
+        "At `24` hours it is 36.68.",
+        "At 24 hours it is 36.68.",
+        "At `30` hours it is 36.68.",
+        {},
+    ),
+    (
+        # the wrong row: `8` when only cluster 9's row is cited (L142's must-fire, kept)
+        "key",
+        "Cluster `9` is 36.68.",
+        "Cluster 9 is 36.68.",
+        "Cluster `8` is 36.68.",
+        {"key": ["9", "domain_2"]},
+    ),
     (
         "param",
-        "At FDR 0.05 over clusters 0,1 and 11 it is 36.68.",
-        "At FDR 0.01 it is 36.68.",
+        "At FDR `0.05` over clusters `0,1` and `11` it is 36.68.",
+        "At FDR 0.05 it is 36.68.",
+        "At FDR `0.01` it is 36.68.",
         {"param": ["0.05", "cluster in 0,1,9,11,14", "propeller,edger_ql"]},
     ),
     (
+        "considered",
+        "Against `4` and `7` it is 36.68.",
+        "Against 4 it is 36.68.",
+        "Against `3` it is 36.68.",
+        {"considered": [4, 7]},
+    ),
+    (
         "question",
+        "At `72` hours in ROSC it is 36.68.",
         "At 72 hours in ROSC it is 36.68.",
-        "At 96 hours in ROSC it is 36.68.",
+        "At `96` hours in ROSC it is 36.68.",
         {"question": "what does 72 hours in ROSC show?"},
     ),
-    ("year", "In the 2024 data it is 36.68.", "In the 2300 data it is 36.68.", {}),
-    ("count", "Over 2 animals it is 36.68.", "Over 2 cells it is 36.68.", {}),
 ]
 
 
-@pytest.mark.parametrize("cls,ok,bad,sources", EXEMPTIONS, ids=[e[0] for e in EXEMPTIONS])
-def test_each_exemption_class_must_pass_and_must_fire(
-    project: Project, cls: str, ok: str, bad: str, sources: dict[str, object]
+@pytest.mark.parametrize("cls,ok,bare,wrong,sources", NAMES, ids=[e[0] for e in NAMES])
+def test_a_name_passes_in_backticks_and_fires_bare_or_when_it_names_nothing(
+    project: Project, cls: str, ok: str, bare: str, wrong: str, sources: dict[str, object]
 ) -> None:
-    spec = registry.get("ans.numeral_unmatched")
-    assert spec is not None and spec.version == 2
-    assert spec.fn(_numeral_ctx(project, ok, **sources)).fired is False, ok
-    v = spec.fn(_numeral_ctx(project, bad, **sources))
-    assert v.fired is True, bad
-    assert "36.68" not in (v.reason or "")  # the measurement matched its cell
     from stringency.predicates.engine.ans import EXEMPT_CLASSES
 
+    spec = registry.get("ans.numeral_unmatched")
+    assert spec is not None and spec.version == 3
+    v = spec.fn(_numeral_ctx(project, ok, **sources))
+    assert v.fired is False, v.reason
+    # bare, the same numeral is read as a measurement; the reason says to mark it
+    v = spec.fn(_numeral_ctx(project, bare, **sources))
+    assert v.fired is True, bare
+    assert "36.68" not in (v.reason or "")  # the measurement matched its cell
+    assert (
+        f"(nearest: it equals {EXEMPT_CLASSES[cls]}; if it is that name, write it in backticks (`"
+        in (v.reason or "")
+    ), v.reason
+    assert all(p.get("unmarked") == cls for p in v.evidence["problems"])
+    # in backticks, a numeral that names nothing fires, and says what a name may be
+    v = spec.fn(_numeral_ctx(project, wrong, **sources))
+    assert v.fired is True, wrong
+    assert "in backticks it must name a cited row, a design level" in (v.reason or ""), v.reason
+
+
+# (class, must-pass text, must-fire text): what the text alone shows, no mark needed
+BY_THE_TEXT: list[tuple[str, str, str]] = [
+    ("year", "In the 2024 data it is 36.68.", "In the 2300 data it is 36.68."),
+    ("count", "Over 2 animals it is 36.68.", "Over 2 cells it is 36.68."),
+    ("id", "Animal 6-2 is 36.68.", "Animal 620 is 36.68."),
+]
+
+
+@pytest.mark.parametrize("cls,ok,bad", BY_THE_TEXT, ids=[e[0] for e in BY_THE_TEXT])
+def test_a_year_a_count_and_an_identifier_need_no_mark(
+    project: Project, cls: str, ok: str, bad: str
+) -> None:
+    spec = registry.get("ans.numeral_unmatched")
+    assert spec is not None
+    assert spec.fn(_numeral_ctx(project, ok)).fired is False, ok
+    v = spec.fn(_numeral_ctx(project, bad))
+    assert v.fired is True, bad
     want = {
         "year": "(nearest: a year (1900 to 2100))",
         "count": "cells is not a unit word of a count before a unit word (animals, punches, "
         "replicates)",
-    }.get(cls, f"(nearest: {EXEMPT_CLASSES[cls]}")
+        "id": "(nearest: a level of a design factor (48))",
+    }[cls]
     assert want in (v.reason or ""), v.reason
+
+
+def test_a_value_that_equals_a_name_is_still_a_measurement_when_bare(project: Project) -> None:
+    """The case the value rule let through (`the gain at 6 is 5`, where a row 5 exists): the
+    name is marked and passes, the bare number beside it must match a cited cell."""
+    spec = registry.get("ans.numeral_unmatched")
+    assert spec is not None
+    v = spec.fn(_numeral_ctx(project, "Cluster `9` is 9 percent.", key=["9", "domain_2"]))
+    assert v.fired is True
+    assert [p["numeral"] for p in v.evidence["problems"]] == ["9"]
+    assert v.evidence["not_checked"] == [{"numeral": "9", "class": "key"}]
+    # a design level bare beside a measurement: 24 is a level, and here it is a claim
+    v = spec.fn(_numeral_ctx(project, "At `24` hours it is 24."))
+    assert v.fired is True and [p["numeral"] for p in v.evidence["problems"]] == ["24"]
+
+
+def test_a_mark_never_costs_a_numeral_a_way_to_pass(project: Project) -> None:
+    """A measurement, an identifier, a year or a count written in backticks passes as it does
+    bare; and a marked name may name a row whose key holds the digits against a letter."""
+    spec = registry.get("ans.numeral_unmatched")
+    assert spec is not None
+    v = spec.fn(_numeral_ctx(project, "It is `36.68` for `6-2` in `2024` over `2` animals."))
+    assert v.fired is False, v.reason
+    v = spec.fn(_numeral_ctx(project, "`Donor 3` is 36.68.", key=["Donor3", "domain_2"]))
+    assert v.fired is False, v.reason
+    v = spec.fn(_numeral_ctx(project, "Donor 3 is 36.68.", key=["Donor3", "domain_2"]))
+    assert v.fired is True
+
+
+def test_a_story_is_read_without_marks() -> None:
+    """A person's own paragraph (`deliver --story`) keeps version 2's rule: a name class
+    excuses a numeral with or without backticks."""
+    from stringency.predicates.engine.ans import classify_numerals
+
+    src = {"key": ["9"], "level": ["24"]}
+    got = classify_numerals("Cluster 9 at 24 hours is 36.68.", [36.68], src, names_anywhere=True)
+    assert got["failed"] == []
+    assert got["exempt"] == [{"numeral": "9", "class": "key"}, {"numeral": "24", "class": "level"}]
+    assert [
+        f["numeral"] for f in classify_numerals("Cluster 9 is 36.68.", [36.68], src)["failed"]
+    ] == ["9"]
 
 
 def test_the_reason_names_the_nearest_class_and_a_measurement_still_blocks(
@@ -359,7 +461,7 @@ def test_the_reason_names_the_nearest_class_and_a_measurement_still_blocks(
 ) -> None:
     spec = registry.get("ans.numeral_unmatched")
     assert spec is not None
-    v = spec.fn(_numeral_ctx(project, "At 24 hours it is 36.7 against 52.040.", param=["0.05"]))
+    v = spec.fn(_numeral_ctx(project, "At `24` hours it is 36.7 against 52.040.", param=["0.05"]))
     assert v.fired is True
     assert v.reason == (
         "a numeral in the answer matches no cited cell: "
@@ -368,3 +470,16 @@ def test_the_reason_names_the_nearest_class_and_a_measurement_still_blocks(
     assert v.evidence["not_checked"] == [{"numeral": "24", "class": "level"}]
     v = spec.fn(_numeral_ctx(project, "Over 3 cells it is 36.68."))
     assert "(nearest: a level of a design factor (6); cells is not a unit word" in (v.reason or "")
+
+
+def test_identifiers_are_not_numerals_but_negative_numbers_are() -> None:
+    """L157: `6-2`, `24-1-Lung-A` and `ctrl-1` are names; `-0.64` after a space and `x = -2`
+    are numbers and are checked."""
+    from stringency.predicates.engine.ans import classify_numerals
+
+    got = classify_numerals(
+        "Punch 24-1-Lung-A of animal 6-2 and ctrl-1 give -0.64 and x = -2.", [], {}
+    )
+    assert [e["numeral"] for e in got["exempt"]] == ["24", "1", "6", "2", "1"]
+    assert all(e["class"] == "id" for e in got["exempt"])
+    assert [f["numeral"] for f in got["failed"]] == ["-0.64", "-2"]

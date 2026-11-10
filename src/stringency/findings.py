@@ -195,8 +195,12 @@ def story_numerals(
                 cells += list(row.values())
         src["param"] += [str(d.get("value")) for d in prov.get("decisions") or []]
         src["question"] += " " + str(a.get("question") or "")
+    # a story is the person's own paragraph: names need no backticks in it (L157, 2026-11-10)
     return classify_numerals(
-        text, cells, numeral_sources(rc.project.design, {"numeral_sources": src})
+        text,
+        cells,
+        numeral_sources(rc.project.design, {"numeral_sources": src}),
+        names_anywhere=True,
     )
 
 
