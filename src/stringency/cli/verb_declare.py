@@ -6,6 +6,7 @@ from pathlib import Path
 
 import typer
 
+from stringency import siteconfig
 from stringency.cli.common import emit, handle_errors
 from stringency.exit_codes import ConfigError
 from stringency.project import InitRequest, check_declarations
@@ -37,7 +38,11 @@ def declare(
     profile: str = typer.Option("standard", "--profile"),
     judgment_harness: str = typer.Option("subagent", "--judgment-harness"),
     execution: str = typer.Option("operator", "--execution"),
-    executor: str = typer.Option("apptainer", "--executor"),
+    executor: str | None = typer.Option(
+        None,
+        "--executor",
+        help="local or apptainer; default the site config's `executor`, else apptainer",
+    ),
     egress_max: int | None = typer.Option(
         None,
         "--egress-max",
@@ -81,7 +86,7 @@ def declare(
             profile=profile,
             judgment_harness=judgment_harness,
             execution=execution,
-            executor=executor,
+            executor=executor or siteconfig.executor() or "apptainer",
             egress_max=egress_max,
             operator_model=operator_model,
             from_delivery=from_delivery,

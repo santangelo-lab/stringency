@@ -3,6 +3,7 @@ H3): `declare --check`, `init --drafted-by --brief`, and `derived_from` on an in
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 
@@ -476,3 +477,34 @@ def test_declare_check_print_hashes_fills_missing_blake3(
     r = runner.invoke(app, [*_declare_args(decl_dir, method_repo), "--print-hashes"])
     assert r.exit_code == 0, r.output
     assert "declarations check out" in r.output
+
+
+def test_declare_check_reads_the_site_s_executor_as_init_does(
+    monkeypatch: pytest.MonkeyPatch, method_repo: MethodRepo, declarations: dict[str, Path]
+) -> None:
+    """L161 (2026-11-10, the engine inside the benchmark image): `declare --check` defaulted to
+    apptainer whatever the site said, so on a machine whose site config names `local` the dry
+    run failed its extractors while `init` on the same files succeeded. The order is `init`'s:
+    the flag, else the site config, else apptainer."""
+    from stringency import siteconfig
+    from stringency.cli import verb_declare
+    from stringency.project import check_declarations
+
+    seen: list[str] = []
+
+    def spy(req):  # type: ignore[no-untyped-def]
+        seen.append(req.executor)
+        return check_declarations(dataclasses.replace(req, executor="local"))
+
+    monkeypatch.setattr(verb_declare, "check_declarations", spy)
+    args = [a for a in _declare_args(declarations["design.yml"].parent, method_repo)]
+    bare = args[: args.index("--executor")]
+    assert runner.invoke(app, bare).exit_code == 0
+    cfg = siteconfig.config_path()
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text("executor: local\n")
+    assert runner.invoke(app, bare).exit_code == 0
+    assert runner.invoke(app, [*bare, "--executor", "apptainer"]).exit_code == 0
+    cfg.write_text("executor: apptainer\n")
+    assert runner.invoke(app, [*bare, "--executor", "local"]).exit_code == 0
+    assert seen == ["apptainer", "local", "apptainer", "local"]
