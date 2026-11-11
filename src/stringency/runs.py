@@ -732,6 +732,63 @@ def abandon(project: Project, run_id: str, reason: str) -> None:
     close_run(rc, "abandoned", reason)
 
 
+def abandon_step(
+    project: Project, step_id: str, reason: str, *, run_id: str | None = None
+) -> dict[str, Any]:
+    """Close one on-demand step of an open run (L114): a tool call or exec that is held or was
+    accepted and will not be carried out becomes `abandoned` (the edges `abandon` uses for a
+    whole run, design 7.1), its open holds are withdrawn with no review, and the run stays
+    open. Refused for a pipeline's step, whose run is abandoned or forked as a whole, and for
+    a step that is running or done. Reads: runs, steps, step_events, holds. Writes: steps,
+    step_events (`step_abandoned`, the transition), holds. Returns the event's payload."""
+    from stringency.machine import StepStatus, step_status, transition
+
+    if run_id is None:
+        row = project.store.one(
+            "SELECT run_id FROM runs WHERE kind = 'run' ORDER BY started DESC, rowid DESC LIMIT 1"
+        )
+        if row is None:
+            raise RefusedError("this project has no run")
+        run_id = str(row["run_id"])
+    rc = load_run(project, run_id)
+    if rc.run["status"] in CLOSED_STATUSES:
+        raise RefusedError(f"run {run_id} is already {rc.run['status']}")
+    if not rc.open_ended or rc.on_demand_entry(step_id) is None:
+        raise RefusedError(
+            f"{step_id} is not an on-demand step of an open run; a pipeline's step is closed "
+            "with its run (`abandon --run`) or replaced by a fork"
+        )
+    store = rc.store
+    was = step_status(store, run_id, step_id)
+    closable = (StepStatus.PROPOSED, StepStatus.HELD, StepStatus.ADMISSIBLE)
+    if was not in closable:
+        raise RefusedError(
+            f"step {step_id} is {was}; only a call that is proposed, held or accepted and not "
+            "yet run is closed this way"
+        )
+    open_ids = [
+        str(r["hold_id"])
+        for r in store.all(
+            "SELECT hold_id FROM holds WHERE run_id = ? AND step_id = ? AND "
+            "resolved_by_review IS NULL AND resolved_via IS NULL",
+            (run_id, step_id),
+        )
+    ]
+    payload: dict[str, Any] = {
+        "run_id": run_id,
+        "step_id": step_id,
+        "was": str(was),
+        "holds": open_ids,
+        "reason": reason,
+    }
+    with store.transaction():
+        store.step_event(run_id, step_id, "step_abandoned", payload)
+        if open_ids:
+            store.withdraw_holds(open_ids, f"step abandoned: {reason}")
+        transition(store, run_id, step_id, StepStatus.ABANDONED, payload={"reason": reason})
+    return payload
+
+
 def write_summary(rc: RunContext) -> None:
     """runs/<run_id>/summary.md at run close (design 2.1)."""
     run = rc.run
