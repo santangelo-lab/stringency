@@ -21,6 +21,9 @@ item hold not reaching the file the next module reads (L110).
   to `archive/backlog-done.md`; `PLAN.md` "Next, in order" and the order note's two tables.
 - The bundled toy method's two gates name `@3`.
 
+- L194 (the benchmark ledger's token columns) is built in `stringency-benchmarks` (its pull
+  request 2); its row here says so and closes when that merges.
+
 ## Learned
 
 - The Lyons block was mostly quotation: `24-2 and 48-2` and `1/5` were inside the cited
