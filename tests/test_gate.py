@@ -1004,7 +1004,7 @@ def test_numeric_claims_match_v2_checks_prose_against_cited_cells(project: Proje
         )
 
     pid = "judg.numeric_claims_match"
-    assert registry.get(pid).version == 2  # type: ignore[union-attr]
+    assert registry.get(pid).version == 3  # type: ignore[union-attr]
     a_mean = SUMMARY_TABLE.rows["A"]["mean_value"]
     a_sd = SUMMARY_TABLE.rows["A"]["sd_value"]
     prose = f"Group A averaged {a_mean} with a spread of {a_sd}."

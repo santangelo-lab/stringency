@@ -9,6 +9,12 @@ it is the first thing a new session reads.
   `propose-withdraw-and-recovery`): L94 (`propose <step> --withdraw`, the status `withdrawn`,
   the owner's choice) and L107 (`run` or a bare `propose <step>` evaluates the recorded
   Action again). Next: the operator skill's words for both at 0.2.43; the rest of L114.
+- (2026-11-11) A rationale's names, and a person's choice in the consensus file (`notes/2026-11-11-1500-rationale-names-and-choices.md`, branch
+  `rationale-names-and-choices`): L195 (`judg.numeric_claims_match@3` reads a rationale as an
+  answer is read; the Lyons outlier rationales pass) and L110 (`chosen_replicate` and
+  `correction` on each consensus item; a correction validated whole). No version bump. A method
+  gating `@2` by version names `@3` with its next engine floor. Next: L94 with L107; the Xenium
+  method's X4.
 - (2026-11-11) The work list after waves 0 and 1 (`notes/2026-11-11-1120-usage-measurement-in-the-plan.md`, branch
   `plan-usage-measurement`, docs only): State, "Next, in order" and the waiting table rewritten;
   rows L190 to L194 for measuring what a project costs in tokens, in the beta's bundle and eval
@@ -456,6 +462,7 @@ it is the first thing a new session reads.
 ## Notes
 
 - `2026-11-11-1700-withdraw-and-recover.md` — L94 (`propose --withdraw`: a proposal held on its pre-gate flags becomes `withdrawn`, its holds withdrawn with no review) and L107 (a step left `proposed` by an interruption is recovered from its recorded Action); the new status in 7.1.
+- `2026-11-11-1500-rationale-names-and-choices.md` — L195 (`judg.numeric_claims_match@3`: a rationale read by the answer's classifier, tested on the Lyons outlier rationales) and L110 (a person's chosen replicate and whole correction in the consensus output); the version move and what it asks of the methods.
 - `2026-11-11-1120-usage-measurement-in-the-plan.md` — where token usage is measured and why (the beta's bundle and eval store), rows L190 to L194 in wave 3, and the work list brought up to date after waves 0 and 1.
 - `2026-11-11-1057-answer-first-in-open-mode.md` — the owner's Lung finding made general: a specific question is answered before any path is offered, in the operator skill and the template.
 - `2026-11-10-2032-names-limits-policy.md` — names and `unset`, the limits band, a policy's verdict, exit code 22: design text and code together, for the owner's approval.

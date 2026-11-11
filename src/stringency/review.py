@@ -348,7 +348,9 @@ def _flag_correction(project: Project, h: Any, correction: dict[str, Any] | None
 
 
 def _validate_correction(project: Project, h: Any, correction: dict[str, Any]) -> None:
-    """A correction is validated against the module schema and vocabulary at entry (design 7.3)."""
+    """A correction is validated against the module schema and vocabulary at entry (design
+    7.3): the label, and every other field the person gave, the module's own included, so a
+    field the schema does not allow or a value of the wrong type is refused here (L110)."""
     module = project.modules.get(h["bound_module_version"]) if h["bound_module_version"] else None
     if module is None:
         raise ConfigError(f"module {h['bound_module_version']} is not in the method repo")
@@ -371,6 +373,8 @@ def _validate_correction(project: Project, h: Any, correction: dict[str, Any]) -
             "contradicting_evidence": [],
             "rationale": correction.get("rationale", "reviewer correction"),
         }
+        # the module's own fields (a fine label) are validated too, not dropped (L110)
+        probe.update({k: v for k, v in correction.items() if k not in probe})
         errors = validate(probe, schema)
         if errors:
             raise ConfigError("correction fails the module schema: " + "; ".join(errors))

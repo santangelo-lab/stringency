@@ -591,7 +591,7 @@ Domain-free, live in the engine, apply to every plugin.
 | `judg.vocabulary_resolves` | post | judgment | a label is not in the module's declared vocabulary | block |
 | `judg.confidence_consistent` | post | judgment | declared confidence exceeds what `confidence_criteria` allows for the evidence counts | flag |
 | `judg.required_evidence_uncited` | post | judgment | the module's `judgment.must_cite` names `<table>.<column>` cells and a valid replicate's item cites its cell in neither list (a judge may otherwise leave a contradicting cell uncited and keep `high`); 2026-10-22, L56 | flag |
-| `judg.numeric_claims_match` | post | judgment, report | a numeral in rationale or prose matches no `value` in the referenced evidence, after rounding to the written precision; `@2` (2026-10-22, L57): report prose that cites cells (an output of type `cited`) is checked against those cells only, and a cited cell that does not exist is a problem | block |
+| `judg.numeric_claims_match` | post | judgment, report | a numeral in rationale or prose matches no `value` in the referenced evidence, after rounding to the written precision; `@2` (2026-10-22, L57): report prose that cites cells (an output of type `cited`) is checked against those cells only, and a cited cell that does not exist is a problem; `@3` (2026-11-11, L195): a rationale is read as an answer is (`ans.numeral_unmatched`'s classifier), so part of a hyphenated identifier (`24-1-Liver`), a year, a count before a unit word, a level of a design factor, a numeral of the item's own id and a numeral quoted from a cited cell's text are not claims; every other numeral still matches a cited value | block |
 | `judg.replicates_below_min` | post | judgment | fewer valid replicates than the profile's `replicates_min` | block |
 | `judg.items_incomplete` | post | judgment | an item from `items_from` has no judgment in some replicate | block |
 | `judg.considered_set_missing` | post | judgment with `considered_set: true` | the output carries no denominator record | block |
@@ -699,7 +699,7 @@ Invalid replicates open one hold for the step (kind `run_disagreement`, no item)
 | Verdict | Requires | Effect |
 |---|---|---|
 | `accept` | a reason (flag) or a chosen replicate (item) | hold cleared; consensus takes the chosen label with `source: accepted` |
-| `override` | a correction, validated against schema and vocabulary at entry, and a reason | hold cleared; consensus takes the correction with `source: override` |
+| `override` | a correction, validated against schema and vocabulary at entry (every field given, the module's own included; 2026-11-11, L110), and a reason | hold cleared; consensus takes the correction with `source: override` |
 | `reject` | a reason | attempt closed; a new attempt requires a change to the method or a fork |
 | `defer` | nothing | hold stays; the deferral is recorded so the queue shows it was seen |
 
@@ -807,9 +807,13 @@ The consensus record per item:
   "source": "agreed",
   "replicate_labels": ["CD8-positive, alpha-beta T cell", "CD8-positive, alpha-beta T cell", "CD8-positive, alpha-beta T cell"],
   "replicate_confidence": ["high", "high", "medium"],
-  "review_id": null
+  "review_id": null,
+  "chosen_replicate": null,
+  "correction": null
 }
 ```
+
+`chosen_replicate` and `correction` say what a person chose at the item's hold (added 2026-11-11, L110), read from the review that `review_id` names: the replicate whose call an `accept` took, or the whole correction of an `override`, with every field the person gave, a module's own (a fine label) included. Both are null on an item no person reviewed. The module that applies the consensus reads them from the file and never from the trace.
 
 `source` is one of `agreed`, `accepted`, `override`, `unresolved`. Downstream modules consume consensus, never individual replicates. An `unresolved` item cannot exist in a completed step, because a step with open holds cannot complete.
 
