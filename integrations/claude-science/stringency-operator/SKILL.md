@@ -432,6 +432,15 @@ Say the
 paths, then the switch paragraph, and ask for the yes. The person may pick a path, ask something
 else, or stop; stopping is an answer.
 
+**When the person has already asked.** The paths are for a person who has not said what they
+want. When they have asked a specific question of the delivery (it names what to compare,
+count or measure), do not present paths first and do not interview them: say the switch
+paragraph, ask for the yes, and on the yes open the project (10.2), file their question in
+their words and answer it (10.3). Offer the paths after the answer, in the pinned form, or
+when they ask what else can be looked at. Once the open project exists every later question
+is answered the same way: at once, and paths only on request. This holds for every method; a
+method's own open-mode words may say what makes a question specific in its domain.
+
 ### 10.2 When it begins
 
 The switch is one relayed yes, not an inherited confirmation (owner's decision 4). On the yes:
@@ -573,8 +582,11 @@ A parameter the person settled in their own words is passed with `--set <param>=
 names it as person-set. A value you choose is `--set ... --reason "<why, citing a cell>"` without
 `--asked-by`, and opens a `param.agent_proposed` hold under standard, answered by section 6
 (after the accept, `stringency propose <step id>` continues the step). A tool's `asks` in the
-method's words tell you what to ask before calling it; ask them one at a time. Never set a
-parameter nobody asked about.
+method's words tell you what the call needs settled. What the person's question already states
+(the groups, the cell types, the distance, the animals) is settled: pass it as theirs, with
+their words as the reason, and do not ask it again. Ask only what the question leaves open,
+one at a time, and when an ask offers options say what each is for and which fits this
+design. Never set a parameter nobody asked about.
 
 ### 10.6 When `answer` blocks, and what never
 
