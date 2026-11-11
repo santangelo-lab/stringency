@@ -46,7 +46,7 @@ something else:
 params:
   group_column: {default: "", text: column}                    # a column of the object the step reads
   groups:       {default: "", text: {value_of: group_column}}  # a value in that column (or several, comma-separated)
-  symbol_column: {default: "", text: feature_column}           # a column of the object's feature table
+  symbol_column: {default: "", text: {listed_in: feature_columns}}  # an entry of a list in the object's summary
   mt_prefix:    {default: MT-, text: prefix}                   # a naming convention; not checked
   keep_column:  {text: column, required: true}                 # no default: the run stops and asks
 ```
@@ -54,7 +54,10 @@ params:
 A person declares a name in `objective.yml` `params`, and it is taken as given under every
 profile; the agent may propose one where the profile lets it propose, under a hold that shows
 what the name resolves to. The engine checks a column and a value against the object's summary
-and blocks a name that names nothing, with the nearest that exist. Fix a name (a bare value)
+and blocks a name that names nothing, with the nearest that exist. `listed_in` is the same
+check against any other list the summary carries under `fields` (the plugin's documentation
+says which its extractors write: for an h5ad, `feature_columns`, `layers`, `obsm`); a key no
+extractor writes is reported as not checked, so read the echo-back once. Fix a name (a bare value)
 only when the pipeline itself writes the column. A comparison is not a name: read the factor,
 its levels and the replicate unit from the job's `design` and `objective` (the declarations
 already carry them), and keep the parameters for what those files have no field for.

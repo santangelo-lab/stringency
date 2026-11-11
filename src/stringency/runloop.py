@@ -124,6 +124,7 @@ def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
             "fixed": decl.fixed if decl else True,
             "text": decl.name_kind if decl else None,
             "value_of": decl.value_of if decl else None,
+            "listed_in": decl.listed_in if decl and decl.name_kind == "listed" else None,
             "required": decl.required if decl else False,
             "decision_point": name in m.decision_points,
         }
@@ -200,15 +201,14 @@ def awaiting_proposal(rc: RunContext, step_id: str) -> Next | None:
                 entry["candidates"] = [str(x) for x in levels]
                 more = f", and {len(levels) - LISTED} more" if len(levels) > LISTED else ""
                 what += f": {', '.join(str(x) for x in levels[:LISTED])}{more}"
-        elif decl.name_kind == "feature_column":
-            from stringency.names import feature_columns_of
+        elif decl.name_kind == "listed":
+            from stringency.names import listed_of
 
-            feats = {n: sorted(c) for n, o in read.items() if (c := feature_columns_of(o))}
-            entry.update({"kind": "feature_column", "candidates": feats})
-            names = sorted({c for cs in feats.values() for c in cs})
-            what = "a column of the feature table" + (
-                f" ({', '.join(names[:LISTED])})" if names else ""
-            )
+            key = str(decl.listed_in)
+            lists = {n: sorted(c) for n, o in read.items() if (c := listed_of(o, key))}
+            entry.update({"kind": "listed", "listed_in": key, "candidates": lists})
+            names = sorted({c for cs in lists.values() for c in cs})
+            what = f"an entry of {key}" + (f" ({', '.join(names[:LISTED])})" if names else "")
         elif decl.name_kind == "prefix":
             entry["kind"] = "prefix"
             what = "a naming convention of the data"

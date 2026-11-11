@@ -151,7 +151,8 @@ UNSET = "unset"
 a method gives a decision point nothing may run on. `run` and `propose` stop at a step whose
 parameter is still `unset`; no step runs on it."""
 
-NAME_KINDS = ("column", "feature_column", "prefix")
+NAME_KINDS = ("column", "prefix")
+LIST_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class ValueOf(BaseModel):
@@ -162,9 +163,28 @@ class ValueOf(BaseModel):
     value_of: str
 
 
+class ListedIn(BaseModel):
+    """`text: {listed_in: <key>}`: an entry of a list the object's summary carries under
+    `fields.<key>` (3.1, 2026-11-11). Which lists exist is the plugin's: its extractors write
+    them, and the engine knows none of them by name but `columns`, which is `text: column`."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    listed_in: str
+
+    @model_validator(mode="after")
+    def _key(self) -> ListedIn:
+        if not LIST_KEY.match(self.listed_in):
+            raise ValueError(
+                f"listed_in names a key of the summary's `fields`; got {self.listed_in!r}"
+            )
+        if self.listed_in == "columns":
+            raise ValueError("`listed_in: columns` is written `text: column`")
+        return self
+
+
 class ParamDecl(BaseModel):
     """`{default, range}` or `{default, options}` (the agent may choose), `{default}` (fixed),
-    or a name, `{default, text: column | feature_column | prefix | {value_of: <parameter>}}`
+    or a name, `{default, text: column | prefix | {value_of: <parameter>} | {listed_in: <key>}}`
     (3.1, 2026-11-10, L163): a text value that depends only on how this dataset labels its own contents. A name
     may be `required` in place of a default, and is then `unset` until declared or proposed. A
     ranged parameter or a name may carry a `decision:` block saying how the agent's choice is
@@ -175,7 +195,7 @@ class ParamDecl(BaseModel):
     range: list[float] | None = None
     options: list[Any] | None = None
     decision: DecisionDecl | None = None
-    text: str | ValueOf | None = None
+    text: str | ValueOf | ListedIn | None = None
     required: bool = False
 
     @model_validator(mode="before")
@@ -200,8 +220,8 @@ class ParamDecl(BaseModel):
                 raise ValueError("a name (`text:`) declares no range and no options")
             if isinstance(self.text, str) and self.text not in NAME_KINDS:
                 raise ValueError(
-                    f"text is one of {', '.join(NAME_KINDS)} or {{value_of: <parameter>}}; "
-                    f"got {self.text!r}"
+                    f"text is one of {', '.join(NAME_KINDS)}, {{value_of: <parameter>}} or "
+                    f"{{listed_in: <key>}}; got {self.text!r}"
                 )
             if not isinstance(self.default, str):
                 raise ValueError("a name's default is text (an empty string for none)")
@@ -215,15 +235,24 @@ class ParamDecl(BaseModel):
 
     @property
     def name_kind(self) -> str | None:
-        """`column`, `feature_column`, `prefix` or `value`; None for a parameter that is not a
-        name."""
+        """`column`, `prefix`, `value` or `listed`; None for a parameter that is not a name."""
         if self.text is None:
             return None
-        return "value" if isinstance(self.text, ValueOf) else self.text
+        if isinstance(self.text, ValueOf):
+            return "value"
+        return "listed" if isinstance(self.text, ListedIn) else self.text
 
     @property
     def value_of(self) -> str | None:
         return self.text.value_of if isinstance(self.text, ValueOf) else None
+
+    @property
+    def listed_in(self) -> str | None:
+        """The key of the summary's `fields` the name must be an entry of: `columns` for
+        `text: column`, the named key for `text: {listed_in: ...}`, else None."""
+        if isinstance(self.text, ListedIn):
+            return self.text.listed_in
+        return "columns" if self.text == "column" else None
 
     @property
     def fixed(self) -> bool:

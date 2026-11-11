@@ -27,9 +27,11 @@ decisions they rest on were his, on 2026-11-10; the texts are mine.
 
 ## Added later the same night
 
-- **A fourth kind of name, `feature_column`**: a column of the object's feature table (the
-  scRNA-seq method's `symbol_column`), resolved against `fields.feature_columns`. Not in the
-  plan the owner read; DECISIONS has the entry.
+- **A fourth kind of name**, first built as `feature_column` and replaced on 2026-11-11, at
+  the owner's word, by `text: {listed_in: <key>}`: an entry of any list the object's summary
+  carries under `fields`, which the plugin's extractor writes and the engine does not know by
+  name (the scRNA-seq method's `symbol_column` is `listed_in: feature_columns`). DECISIONS has
+  both entries.
 - **Checked in the benchmark image with no agent** (`stringency-benchmarks` `measurements.md`):
   the scRNA-seq method at 0.1.13 through `scrnaseq-de` within one cell type, in pipeline mode,
   to delivery, with names declared, strict limits from the site configuration and the

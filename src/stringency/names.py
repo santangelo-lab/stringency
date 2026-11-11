@@ -2,12 +2,13 @@
 objects its step reads.
 
 A name is a text parameter whose right value depends only on how this dataset labels its own
-contents: a column, a value found in a column, a column of the object's feature table, a
-naming convention. The engine checks a column and a value against the summaries the extractors
-wrote (`fields.columns`, 4.2): the column exists; the value is one of the column's `levels`
-when the summary lists them. A feature column is checked against `fields.feature_columns`
-where an extractor writes it. A convention (`prefix`) is not checked. Nothing here reads a data object: a name is resolved against
-summaries already in the state, so the predicates that call this do no I/O.
+contents: a column, a value found in a column, an entry of some other list the object's
+summary carries, a naming convention. The engine checks a column and a value against the
+summaries the extractors wrote (`fields.columns`, 4.2): the column exists; the value is one of
+the column's `levels` when the summary lists them. `text: {listed_in: <key>}` is the same
+check against `fields.<key>`, a list the plugin's extractor writes and the engine does not
+know by name. A convention (`prefix`) is not checked. Nothing here reads a data object: a name
+is resolved against summaries already in the state, so the predicates that call this do no I/O.
 """
 
 from __future__ import annotations
@@ -32,11 +33,12 @@ class Resolution:
     empty string, the method's "none") or `unset`."""
 
     parameter: str
-    kind: str  # column | feature_column | value | prefix
+    kind: str  # column | listed | value | prefix
     value: str
     status: str
     where: str | None = None  # the object that holds the column
     column: str | None = None  # value: the column the value was looked for in
+    listed_in: str | None = None  # listed: the key of `fields` the name was looked for under
     detail: dict[str, Any] = field(default_factory=dict)  # dtype, n_unique, levels
     nearest: tuple[str, ...] = ()
     why: str | None = None
@@ -48,7 +50,7 @@ class Resolution:
             "value": self.value,
             "status": self.status,
         }
-        for key in ("where", "column", "why"):
+        for key in ("where", "column", "listed_in", "why"):
             if getattr(self, key) is not None:
                 out[key] = getattr(self, key)
         if self.detail:
@@ -66,6 +68,7 @@ class Resolution:
             status=str(d.get("status", "unchecked")),
             where=d.get("where"),
             column=d.get("column"),
+            listed_in=d.get("listed_in"),
             detail=dict(d.get("detail") or {}),
             nearest=tuple(str(x) for x in d.get("nearest") or ()),
             why=d.get("why"),
@@ -80,12 +83,11 @@ class Resolution:
         what = {
             "value": f"a value of {self.column or 'its column'}",
             "prefix": "a naming convention",
-            "feature_column": "a column of the feature table",
+            "listed": f"an entry of {self.listed_in or 'a list'}",
         }.get(self.kind, "a column")
         head = f"{self.parameter} = {self.value!r}, {what}"
         if self.status == "resolved":
-            where = f" of {self.where}" if self.where and self.kind == "column" else ""
-            where = f" in {self.where}" if self.where and self.kind == "feature_column" else where
+            where = f" of {self.where}" if self.where and self.kind in ("column", "listed") else ""
             return head + where + _detail_phrase(self.detail)
         if self.status == "missing":
             near = f"; nearest: {', '.join(self.nearest)}" if self.nearest else ""
@@ -104,27 +106,21 @@ def _detail_phrase(detail: Mapping[str, Any]) -> str:
     return ""
 
 
+def listed_of(obj: ObjectState, key: str) -> dict[str, dict[str, Any]] | None:
+    """The entries an object's summary lists under `fields.<key>`, each with what the extractor
+    said of it (for a column: `dtype`, `n_unique`, `levels`); a mapping gives its keys, a plain
+    list its items. None when the summary carries no such list."""
+    entries = obj.fields.get(key)
+    if isinstance(entries, dict):
+        return {str(k): dict(v) if isinstance(v, dict) else {} for k, v in entries.items()}
+    if isinstance(entries, list):
+        return {str(c): {} for c in entries}
+    return None
+
+
 def columns_of(obj: ObjectState) -> dict[str, dict[str, Any]] | None:
-    """The columns an object's summary lists (`fields.columns`), each with what the extractor
-    said of it (`dtype`, `n_unique`, `levels`); None when the summary lists none."""
-    cols = obj.fields.get("columns")
-    if isinstance(cols, dict):
-        return {str(k): dict(v) if isinstance(v, dict) else {} for k, v in cols.items()}
-    if isinstance(cols, list):
-        return {str(c): {} for c in cols}
-    return None
-
-
-def feature_columns_of(obj: ObjectState) -> dict[str, dict[str, Any]] | None:
-    """The columns of an object's feature table (`fields.feature_columns`: the table that has
-    one row per measured feature, where the object has one), as `columns_of`; None when the
-    summary lists none."""
-    cols = obj.fields.get("feature_columns")
-    if isinstance(cols, dict):
-        return {str(k): dict(v) if isinstance(v, dict) else {} for k, v in cols.items()}
-    if isinstance(cols, list):
-        return {str(c): {} for c in cols}
-    return None
+    """The columns an object's summary lists (`fields.columns`); None when it lists none."""
+    return listed_of(obj, "columns")
 
 
 def objects_read(
@@ -193,27 +189,43 @@ def resolve(
             "unchecked",
             why="a naming convention is not checked against the object",
         )
-    if kind in ("column", "feature_column"):
-        of = columns_of if kind == "column" else feature_columns_of
-        table = "columns" if kind == "column" else "feature columns"
-        found = {name: cols for name, obj in read.items() if (cols := of(obj)) is not None}
+    if kind in ("column", "listed"):
+        key = decl.listed_in or "columns"
+        named = key if kind == "listed" else None
+        found = {
+            name: got for name, obj in read.items() if (got := listed_of(obj, key)) is not None
+        }
         if not found:
             return Resolution(
                 parameter,
                 kind,
                 text,
                 "unchecked",
-                why=f"no object this step reads has its {table} summarised",
+                listed_in=named,
+                why=(
+                    "no object this step reads has its columns summarised"
+                    if kind == "column"
+                    else f"no object this step reads lists `{key}` in its summary"
+                ),
             )
-        for name, cols in found.items():
-            if text in cols:
-                return Resolution(parameter, kind, text, "resolved", where=name, detail=cols[text])
+        for name, got in found.items():
+            if text in got:
+                return Resolution(
+                    parameter,
+                    kind,
+                    text,
+                    "resolved",
+                    where=name,
+                    listed_in=named,
+                    detail=got[text],
+                )
         return Resolution(
             parameter,
             kind,
             text,
             "missing",
-            nearest=_nearest(text, [c for cols in found.values() for c in cols]),
+            listed_in=named,
+            nearest=_nearest(text, [c for got in found.values() for c in got]),
         )
     listed = {name: cols for name, obj in read.items() if (cols := columns_of(obj)) is not None}
     column = str(values.get(decl.value_of or "", "") or "")

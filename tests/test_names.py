@@ -119,7 +119,11 @@ def test_a_name_is_declared_with_text_and_is_not_fixed() -> None:
     for bad, why in [
         ({"default": "", "text": "column", "options": ["a"]}, "no range and no options"),
         ({"default": "", "text": "column", "range": [0, 1]}, "no range and no options"),
-        ({"default": "", "text": "label"}, "text is one of column, feature_column, prefix"),
+        ({"default": "", "text": "label"}, "text is one of column, prefix"),
+        ({"default": "", "text": "feature_column"}, "text is one of column, prefix"),
+        ({"default": "", "text": {"listed_in": "columns"}}, "is written `text: column`"),
+        ({"default": "", "text": {"listed_in": "obs columns"}}, "names a key of the summary"),
+        ({"default": 3, "text": {"listed_in": "layers"}}, "a name's default is text"),
         ({"default": 3, "text": "column"}, "a name's default is text"),
         ({"default": "x", "required": True, "text": "column"}, "declares no default"),
         ({"default": 3, "required": False, "range": [0, 5], "text": None}, None),
@@ -190,12 +194,19 @@ def test_a_column_and_a_value_resolve_against_the_summary() -> None:
     )
     prefix = ParamDecl(default="r", text="prefix")
     assert resolve("tag_prefix", prefix, "zz", {}, read).status == "unchecked"
-    # a column of the feature table: checked where an extractor lists it, else said unchecked
-    feat = ParamDecl(default="", text="feature_column")
-    r = resolve("symbol_column", feat, "gene_symbols", {}, read)
+    # an entry of another list the summary carries: the pipeline names the list, the plugin's
+    # extractor writes it, and the engine knows neither by name
+    listed = ParamDecl.model_validate({"default": "", "text": {"listed_in": "feature_columns"}})
+    assert (listed.name_kind, listed.listed_in, listed.fixed) == (
+        "listed",
+        "feature_columns",
+        False,
+    )
+    assert col.listed_in == "columns" and prefix.listed_in is None
+    r = resolve("symbol_column", listed, "gene_symbols", {}, read)
     assert (r.status, r.why) == (
         "unchecked",
-        "no object this step reads has its feature columns summarised",
+        "no object this step reads lists `feature_columns` in its summary",
     )
     matrix = ObjectState(
         type="frame",
@@ -203,15 +214,25 @@ def test_a_column_and_a_value_resolve_against_the_summary() -> None:
         summary={
             "fields": {
                 "columns": {"group": {}},
-                "feature_columns": {"gene_symbols": {"dtype": "object"}, "gene_ids": {}},
+                "feature_columns": {"gene_symbols": {"n_unique": 320}, "gene_ids": {}},
+                "layers": ["counts", "scaled"],
             }
         },
     )
-    r = resolve("symbol_column", feat, "gene_symbols", {}, {"m": matrix})
-    assert (r.status, r.where) == ("resolved", "m")
-    assert r.says() == "symbol_column = 'gene_symbols', a column of the feature table in m"
-    r = resolve("symbol_column", feat, "group", {}, {"m": matrix})  # an obs column is not one
+    r = resolve("symbol_column", listed, "gene_symbols", {}, {"m": matrix})
+    assert (r.status, r.where, r.listed_in) == ("resolved", "m", "feature_columns")
+    assert r.says() == (
+        "symbol_column = 'gene_symbols', an entry of feature_columns of m (320 distinct values)"
+    )
+    assert Resolution.from_json(r.to_json()) == r
+    r = resolve("symbol_column", listed, "group", {}, {"m": matrix})  # a column is not one
     assert r.status == "missing" and set(r.nearest) == {"gene_ids", "gene_symbols"}
+    assert "an entry of feature_columns that does not exist; nearest: " in r.says()
+    # a list written as a plain list of names, not a mapping
+    layer = ParamDecl.model_validate({"default": "", "text": {"listed_in": "layers"}})
+    assert resolve("layer", layer, "counts", {}, {"m": matrix}).status == "resolved"
+    r = resolve("layer", layer, "count", {}, {"m": matrix})
+    assert r.status == "missing" and r.nearest[0] == "counts"
 
 
 def test_a_step_s_names_are_looked_for_in_the_inputs_it_descends_from() -> None:
@@ -424,6 +445,31 @@ def test_a_required_name_stops_the_run_for_a_proposal_and_opens_no_hold(
     assert cli(p, "run", "--json", env=MOCK).exit_code == 0
     # declared, the run never stops for it
     q = _project(tmp_path, toy_data, repo, "given", {"01_filter": {"unit_column": "unit"}})
+    assert cli(q, "run", "--json", env=MOCK).exit_code == 0
+
+
+def test_a_name_listed_under_another_key_is_asked_for_and_said_unchecked_where_no_list_is(
+    tmp_path: Path, toy_data: Path, method_repo: MethodRepo
+) -> None:
+    """`text: {listed_in: <key>}`: the toy's extractor writes no `fields.sheets`, so the name
+    is asked for with no candidates, taken as declared, and reported as not checked; it never
+    blocks for want of a list."""
+    repo = _method(
+        method_repo, {**NAMES, "sheet": {"text": {"listed_in": "sheets"}, "required": True}}
+    )
+    p = _project(tmp_path, toy_data, repo, "listed", {})
+    out = json.loads(cli(p, "run", "--json", env=MOCK).output)
+    assert out["kind"] == "awaiting_proposal"
+    assert out["unset"] == [
+        {"parameter": "sheet", "kind": "listed", "listed_in": "sheets", "candidates": {}}
+    ]
+    assert out["plan"]["parameters"]["sheet"]["listed_in"] == "sheets"
+    q = _project(tmp_path, toy_data, repo, "listed-given", {"01_filter": {"sheet": "first"}})
+    echo = " ".join(q.echo_path().read_text().split())
+    assert (
+        "sheet = 'first', an entry of sheets, not checked (no object this step reads lists "
+        "`sheets` in its summary) (declared)" in echo
+    )
     assert cli(q, "run", "--json", env=MOCK).exit_code == 0
 
 
