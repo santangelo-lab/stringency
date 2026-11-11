@@ -60,8 +60,9 @@ design-level work (the name form, the limits band, `via: policy`, exit code 22) 
 - Wave 2's larger rows (L94 with L107, the rest of L114, L160, L110, L11, L175), L172, wave 3's
   L106, L80, L155, L37, L76, L173, and L100 (which wants a session with the owner: with the
   Xenium method's bridge predicate still gated it would open two holds for one decision).
-- For the owner: tag v0.2.41 at 73c4fb5 before merging this (it moves the version to 0.2.42),
-  or skip 0.2.41; republish the operator skill after the release.
+- `v0.2.41` was tagged at 73c4fb5 on 2026-11-11, at the owner's word, before this branch
+  (which moves the version to 0.2.42) is merged. For the owner: the install of 0.2.41, if
+  wanted before 0.2.42, and the operator skill republished after it.
 
 ## Verify
 

@@ -38,8 +38,8 @@ Nothing in it is built beyond what the State section says.
 
 ## State (2026-11-10)
 
-Engine 0.2.41 on `main` (73c4fb5, #25: a name is marked, a measurement is bare), untagged; the
-last tag is v0.2.40. Branch `fixes-2026-11` carries 0.2.42 (eight rows that need no design
+Engine 0.2.41 on `main` (73c4fb5, #25: a name is marked, a measurement is bare), tagged
+`v0.2.41` there on 2026-11-11. Branch `fixes-2026-11` carries 0.2.42 (eight rows that need no design
 text: L168, L161, L146, L147, L159, L145, L148, L174) and `names-limits-policy`, stacked on it,
 the design-level four (the name form with L129, L171, L162, L158), each waiting on the owner. Plugin singlecell 0.10.3. `0.2.40-sc0.10.3` is installed in the shared
 prefix on the lab workstation (`/data/lab/env/stringency/current`, 2026-11-05) and the console
