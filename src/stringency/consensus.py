@@ -31,6 +31,10 @@ class ItemConsensus:
     review_id: str | None = None
     hold_id: str | None = None
     notes: list[str] = field(default_factory=list)
+    # what a person chose at the item's hold (L110), from `reviews` by `review_id`: the
+    # replicate whose call was accepted, or the whole correction of an override
+    chosen_replicate: int | None = None
+    correction: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -43,6 +47,8 @@ class ItemConsensus:
             "review_id": self.review_id,
             "hold_id": self.hold_id,
             "notes": self.notes,
+            "chosen_replicate": self.chosen_replicate,
+            "correction": self.correction,
         }
 
 
@@ -164,6 +170,26 @@ def decide(
     return ic
 
 
+def review_choice(store: Store, review_id: str | None) -> tuple[int | None, dict[str, Any] | None]:
+    """What a person chose in a review of an item hold (L110): the replicate of an `accept`,
+    the whole correction of an `override` (every field the person gave, a module's own
+    included), else `(None, None)`. Reads: reviews."""
+    if not review_id:
+        return None, None
+    row = store.one(
+        "SELECT verdict, chosen_replicate, correction_json FROM reviews WHERE review_id = ?",
+        (review_id,),
+    )
+    if row is None:
+        return None, None
+    if row["verdict"] == "accept" and row["chosen_replicate"] is not None:
+        return int(row["chosen_replicate"]), None
+    if row["verdict"] == "override" and row["correction_json"]:
+        corr = json.loads(row["correction_json"])
+        return None, corr if isinstance(corr, dict) else None
+    return None, None
+
+
 def item_evidence_digest(tables: Mapping[str, EvidenceTable], item_id: str) -> str:
     rows = {name: t.rows.get(item_id) for name, t in tables.items()}
     return hashing.prefixed(hashing.hash_json(rows))
@@ -172,7 +198,8 @@ def item_evidence_digest(tables: Mapping[str, EvidenceTable], item_id: str) -> s
 def apply_review(
     store: Store, ic: ItemConsensus, review_id: str, replicates: list[Replicate]
 ) -> None:
-    """Take the label a prior or current review settled on (design 7.3)."""
+    """Take the label a prior or current review settled on (design 7.3), with the replicate
+    the person chose or their whole correction (L110). Reads: reviews."""
     row = store.one("SELECT * FROM reviews WHERE review_id = ?", (review_id,))
     if row is None:
         return
@@ -180,6 +207,7 @@ def apply_review(
     if row["verdict"] == "override" and row["correction_json"]:
         corr = json.loads(row["correction_json"])
         ic.label, ic.ontology_id, ic.source = corr.get("label"), corr.get("ontology_id"), "override"
+        ic.correction = corr if isinstance(corr, dict) else None
     elif row["verdict"] == "accept":
         chosen = row["chosen_replicate"]
         js = dict(item_judgments(replicates, ic.item_id))
@@ -190,6 +218,7 @@ def apply_review(
         )
         if j is not None:
             ic.label, ic.ontology_id = j.get("label"), j.get("ontology_id")
+        ic.chosen_replicate = int(chosen) if chosen is not None else None
         ic.source = "accepted"
     ic.hold_kind = None
 
@@ -276,7 +305,8 @@ def consensus_from_store(
     store: Store, run_id: str, step_id: str, items: list[str]
 ) -> list[ItemConsensus]:
     """The decided consensus of a step, one record per item in the judgment's item order (items
-    the table no longer lists come last). Reads: consensus, holds. This is what the consensus
+    the table no longer lists come last), each reviewed item with the replicate the person
+    chose or their whole correction (L110). Reads: consensus, holds, reviews. This is what the consensus
     output is rewritten from when the last item hold settles (design 8.4): the store's rows,
     never a replicate."""
     rows = {
@@ -308,5 +338,6 @@ def consensus_from_store(
         )
         if r["source"] in ("accepted", "override") and r["review_id"]:
             ic.notes.append(f"{r['source']} by review {r['review_id']}")
+            ic.chosen_replicate, ic.correction = review_choice(store, r["review_id"])
         out.append(ic)
     return out

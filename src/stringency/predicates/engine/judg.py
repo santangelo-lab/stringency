@@ -249,9 +249,31 @@ def _numeral_problems(text: str, allowed: list[Any], where: dict[str, Any]) -> l
     return out
 
 
+def rationale_numerals(
+    design: Any, item_id: str, rationale: str, cited: list[Any]
+) -> dict[str, list[dict[str, str]]]:
+    """A judgment's rationale read by the answer's classifier (`ans.classify_numerals`; L195):
+    each numeral a cited value, a numeral left unchecked with its class, or a failure. What
+    needs no citation: part of a hyphenated identifier (`24-1-Liver`, `ctrl-2`), a year, a
+    count before a unit word, a level of a design factor (`the 6 h and 72 h groups`) and a
+    numeral of the item's own id. A reviewer is not taught the operator's backticks, so a
+    level and the item's id are names with or without a mark (`names_anywhere`). A cited cell
+    that holds text gives the numerals written in it, so a rationale may quote a cited note
+    (`lower 1/5 of the punch out of focus`). Reads nothing but its arguments."""
+    from stringency.predicates.engine.ans import _numerals_of, classify_numerals, numeral_sources
+
+    quoted = _numerals_of(v for v in cited if isinstance(v, str))
+    return classify_numerals(
+        rationale,
+        [*cited, *quoted],
+        numeral_sources(design, {"numeral_sources": {"key": [item_id]}}),
+        names_anywhere=True,
+    )
+
+
 @predicate(
     id="judg.numeric_claims_match",
-    version=2,
+    version=3,
     scope=["kind:judgment", "kind:report"],
     phase="post",
     default=Disposition.BLOCK,
@@ -262,9 +284,16 @@ def numeric_claims_match(ctx: GateContext) -> Verdict:
     `cited`, `[{table, row, column, value}]`, read into `observed.cited`) is checked against
     those cells only, since a number that appears anywhere in a ten-thousand-cell table proves
     nothing; a cited cell that does not exist is itself a problem. A report with no citations is
-    checked against every cell, as before. Rounding to the written precision."""
+    checked against every cell, as before. Rounding to the written precision.
+    Version 3 (L195): a rationale is read as an answer is (`rationale_numerals`), so a numeral
+    that is not a measurement is no longer a claim: a hyphenated identifier, a year, a count
+    before a unit word, a design level, the item's own id, and a numeral quoted from a cited
+    cell's text. Every other numeral still matches a cited value; each failure carries
+    `nearest`, and the evidence lists what was left unchecked (`not_checked`). Report prose is
+    read as in version 2."""
     assert ctx.output is not None
     problems: list[dict[str, Any]] = []
+    not_checked: list[dict[str, Any]] = []
     for rep_no, rep in _valid_replicates(ctx):
         for item in _items(rep):
             cited = [
@@ -272,11 +301,12 @@ def numeric_claims_match(ctx: GateContext) -> Verdict:
                 for r in list(item.get("supporting_evidence", []))
                 + list(item.get("contradicting_evidence", []))
             ]
-            problems += _numeral_problems(
-                str(item.get("rationale", "")),
-                cited,
-                {"replicate": rep_no, "item": item.get("item_id")},
+            where = {"replicate": rep_no, "item": item.get("item_id")}
+            got = rationale_numerals(
+                ctx.design, str(item.get("item_id", "")), str(item.get("rationale", "")), cited
             )
+            problems += [{**where, **p} for p in got["failed"]]
+            not_checked += [{**where, **p} for p in got["exempt"]]
     if ctx.output.prose:
         cited_refs = ctx.output.observed.get("cited")
         if isinstance(cited_refs, list) and cited_refs:
@@ -302,9 +332,10 @@ def numeric_claims_match(ctx: GateContext) -> Verdict:
             ]
             problems += _numeral_problems(ctx.output.prose, cells, {"prose": True})
     if problems:
-        return Verdict(
-            True, "a numeral matches no value in the referenced evidence", {"problems": problems}
-        )
+        evidence: dict[str, Any] = {"problems": problems}
+        if not_checked:
+            evidence["not_checked"] = not_checked
+        return Verdict(True, "a numeral matches no value in the referenced evidence", evidence)
     return Verdict(False)
 
 
