@@ -95,6 +95,37 @@ def column_missing(ctx: GateContext) -> Verdict:
 
 
 @predicate(
+    id="init.name_unresolved", version=1, scope=SCOPE, phase="init", default=Disposition.BLOCK
+)
+def name_unresolved(ctx: GateContext) -> Verdict:
+    """A name declared in `objective.yml` `params` (a `text:` parameter, design 3.1, L163) that
+    is not a column, or not a value of its column, of any input the step descends from: the
+    confirm hold would cover a setup whose step `param.name_unresolved` will block. The same
+    resolution as that predicate, against the inputs' summaries from the extractor pass. An
+    empty value, a naming convention, and a name with no summary to check against do not fire."""
+    from stringency.names import resolve_step
+
+    pipeline = ctx.project.pipeline
+    names = [i.name for i in ctx.project.inputs.items]
+    missing: dict[str, list[dict[str, object]]] = {}
+    says: list[str] = []
+    for sid, values in (ctx.objective.params or {}).items():
+        if not pipeline.has_step(sid) or not isinstance(values, dict):
+            continue
+        for r in resolve_step(pipeline, sid, values, ctx.state.objects, names, only=list(values)):
+            if r.status == "missing":
+                missing.setdefault(sid, []).append(r.to_json())
+                says.append(f"step {sid}: {r.says()}")
+    if missing:
+        return Verdict(
+            True,
+            "a declared name names nothing in the input: " + "; ".join(says),
+            {"unresolved": missing},
+        )
+    return Verdict(False)
+
+
+@predicate(
     id="init.question_unsupported", version=1, scope=SCOPE, phase="init", default=Disposition.BLOCK
 )
 def question_unsupported(ctx: GateContext) -> Verdict:

@@ -362,6 +362,18 @@ A method's analysis skill lists which steps of its pipeline are proposed this wa
 evidence (`skills/<pipeline>.analyze.yml` `decisions:`); a parameter the person settles before
 the run is declared in `objective.yml` `params:` instead and is never proposed (section 8).
 
+When `run` stops with exit 16 and `kind: awaiting_proposal` (engine 0.2.42), a parameter of the
+next step is still `unset`: a name the pipeline requires (a column of this dataset, or a value
+found in one) or a decision point the method leaves unset until its evidence exists. Nothing
+has run and no hold is open. The payload's `unset` lists each such parameter with what it may
+take (`candidates`: the columns of the objects the step reads, or the values of its column) and
+`propose` is the command. For a decision point, read the evidence and propose as above. For a
+name, propose the one the person already gave, with their words as the reason; if they gave
+none, ask them, showing the candidates. Never pick a column because its spelling looks right.
+Then `run` again. A name the person gives before the run (a column, a value, a naming
+convention such as a gene-symbol prefix) belongs in `objective.yml` `params:` and is never
+proposed; under the strict profile that is the only way to give one.
+
 ## 10. Open mode: questions of a delivered dataset
 
 A delivered pipeline is the first half of the work. The second half, questions of the dataset

@@ -410,8 +410,26 @@ class Project:
             cached = self.scratch / "init-extract.json"
             if cached.exists():
                 counts = json.loads(cached.read_text())
+        from stringency.names import echo_lines
+
+        summaries = {
+            k: ObjectState(type="", digest="", summary=v)
+            for k, v in counts.items()
+            if isinstance(v, dict)
+        }
         return render_echo(
-            self.plugin, self.design, self.objective, self.inputs, counts, self.declaration_hashes()
+            self.plugin,
+            self.design,
+            self.objective,
+            self.inputs,
+            counts,
+            self.declaration_hashes(),
+            echo_lines(
+                self.pipeline,
+                self.objective.params,
+                summaries,
+                [i.name for i in self.inputs.items],
+            ),
         )
 
     @staticmethod

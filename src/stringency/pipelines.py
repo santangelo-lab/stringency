@@ -146,16 +146,48 @@ class DecisionDecl(BaseModel):
         return self
 
 
+UNSET = "unset"
+"""The word for "no value yet" (3.1, 2026-11-10): the default of a required name, and the value
+a method gives a decision point nothing may run on. `run` and `propose` stop at a step whose
+parameter is still `unset`; no step runs on it."""
+
+NAME_KINDS = ("column", "prefix")
+
+
+class ValueOf(BaseModel):
+    """`text: {value_of: <parameter>}`: a value found in the column another name of the same
+    step gives."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    value_of: str
+
+
 class ParamDecl(BaseModel):
-    """`{default, range}` or `{default, options}` or `{default}` (fixed), optionally with a
-    `decision:` block saying how the agent's choice is made (L61).
-    A bare literal in the pipeline file is normalised to `{default: literal}`."""
+    """`{default, range}` or `{default, options}` (the agent may choose), `{default}` (fixed),
+    or a name, `{default, text: column | prefix | {value_of: <parameter>}}` (3.1, 2026-11-10,
+    L163): a text value that depends only on how this dataset labels its own contents. A name
+    may be `required` in place of a default, and is then `unset` until declared or proposed. A
+    ranged parameter or a name may carry a `decision:` block saying how the agent's choice is
+    made (L61). A bare literal in the pipeline file is normalised to `{default: literal}`."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
     default: Any
     range: list[float] | None = None
     options: list[Any] | None = None
     decision: DecisionDecl | None = None
+    text: str | ValueOf | None = None
+    required: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _required_has_no_default(cls, data: Any) -> Any:
+        if isinstance(data, dict) and data.get("required") is True:
+            if "default" in data:
+                raise ValueError(
+                    "a required name declares no default: it is unset until declared or proposed"
+                )
+            return {**data, "default": UNSET}
+        return data
 
     @model_validator(mode="after")
     def _shape(self) -> ParamDecl:
@@ -163,11 +195,38 @@ class ParamDecl(BaseModel):
             raise ValueError("a parameter declares range or options, not both")
         if self.range is not None and len(self.range) != 2:
             raise ValueError("range is [low, high]")
+        if self.text is not None:
+            if self.range is not None or self.options is not None:
+                raise ValueError("a name (`text:`) declares no range and no options")
+            if isinstance(self.text, str) and self.text not in NAME_KINDS:
+                raise ValueError(
+                    f"text is one of {', '.join(NAME_KINDS)} or {{value_of: <parameter>}}; "
+                    f"got {self.text!r}"
+                )
+            if not isinstance(self.default, str):
+                raise ValueError("a name's default is text (an empty string for none)")
+        elif self.required:
+            raise ValueError("`required` is read only on a name (`text:`)")
         return self
 
     @property
+    def is_name(self) -> bool:
+        return self.text is not None
+
+    @property
+    def name_kind(self) -> str | None:
+        """`column`, `prefix` or `value`; None for a parameter that is not a name."""
+        if self.text is None:
+            return None
+        return "value" if isinstance(self.text, ValueOf) else self.text
+
+    @property
+    def value_of(self) -> str | None:
+        return self.text.value_of if isinstance(self.text, ValueOf) else None
+
+    @property
     def fixed(self) -> bool:
-        return self.range is None and self.options is None
+        return self.range is None and self.options is None and self.text is None
 
     def in_range(self, value: Any) -> bool:
         if self.range is not None:
@@ -177,6 +236,8 @@ class ParamDecl(BaseModel):
                 return False
         if self.options is not None:
             return value in self.options
+        if self.text is not None:
+            return isinstance(value, str)
         return bool(value == self.default)
 
 
@@ -235,7 +296,7 @@ class StepDecl(BaseModel):
         if isinstance(data, dict) and isinstance(data.get("params"), dict):
             out: dict[str, Any] = {}
             for k, v in data["params"].items():
-                if isinstance(v, dict) and "default" in v:
+                if isinstance(v, dict) and ("default" in v or "text" in v or "required" in v):
                     out[k] = v
                 else:
                     out[k] = {"default": v}
@@ -295,6 +356,17 @@ class Pipeline(BaseModel):
                 if pred not in known:
                     raise ValueError(f"step {s.id} references unknown step {pred}")
         self._order()  # raises on cycles
+        for s in self.steps:
+            for pname, decl in s.params.items():
+                target = decl.value_of
+                if target is None:
+                    continue
+                other = s.params.get(target)
+                if target == pname or other is None or other.name_kind != "column":
+                    raise ValueError(
+                        f"step {s.id} parameter {pname}: value_of names {target}, which is not "
+                        "a `text: column` parameter of the same step"
+                    )
         for s in self.steps:
             if s.when is None:
                 continue

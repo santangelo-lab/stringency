@@ -226,6 +226,13 @@ def _proposal_rule(f: Facts) -> list[str]:
                     f"{name}: default {_plain(p.get('default'))}, proposed "
                     f"{_plain(p.get('proposed'))}."
                 )
+                if isinstance(p.get("resolves"), Mapping):
+                    # a name (design 3.1, L163): what the proposed value names in the data
+                    from stringency.names import Resolution
+
+                    lines.append(
+                        "In the data: " + Resolution.from_json(p["resolves"]).says() + "."
+                    )
     sentence = _proposal_sentence({"evidence": dict(f.evidence)})
     if sentence:
         lines.append(sentence.split(". The decision table")[0].rstrip(".") + ".")

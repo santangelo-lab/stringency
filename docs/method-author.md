@@ -35,6 +35,29 @@ after the module and set by `entry:`; "Module scripts" below), the parameter sch
 changes, bump its version and the pin, and bump the pipeline's version too: a project records
 the pipeline and module versions it ran, so a change without a bump is invisible in provenance.
 
+A pipeline declares each parameter of a step one of four ways (design 3.1). A bare value is
+fixed: nobody may change it. `{default, range: [lo, hi]}` or `{default, options: [...]}` is a
+choice the agent proposes and a person approves. `{default, text: ...}` is a name (engine
+0.2.42): a text value that depends only on how the person's dataset labels its own contents.
+Use it for anything your fixture happens to call one thing and another dataset will call
+something else:
+
+```yaml
+params:
+  group_column: {default: "", text: column}                    # a column of the object the step reads
+  groups:       {default: "", text: {value_of: group_column}}  # a value in that column (or several, comma-separated)
+  mt_prefix:    {default: MT-, text: prefix}                   # a naming convention; not checked
+  keep_column:  {text: column, required: true}                 # no default: the run stops and asks
+```
+
+A person declares a name in `objective.yml` `params`, and it is taken as given under every
+profile; the agent may propose one where the profile lets it propose, under a hold that shows
+what the name resolves to. The engine checks a column and a value against the object's summary
+and blocks a name that names nothing, with the nearest that exist. Fix a name (a bare value)
+only when the pipeline itself writes the column. A comparison is not a name: read the factor,
+its levels and the replicate unit from the job's `design` and `objective` (the declarations
+already carry them), and keep the parameters for what those files have no field for.
+
 Shared code lives once, beside the modules (`modules/_rlib/` for R, `modules/_pylib/` for
 Python), and a module reaches it relative to its own script: the engine binds the whole method
 checkout read-only into every step's container (engine 0.2.20). A directory under `modules/`

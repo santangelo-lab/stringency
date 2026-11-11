@@ -34,6 +34,11 @@ def main(argv: list[str]) -> int:
         c: {"dtype": dtype([r[c] for r in rows]), "n_unique": len({r[c] for r in rows})}
         for c in columns
     }
+    for c, entry in fields.items():
+        # the values of a text column of few values, so a name that is a value of a column can
+        # be checked against the summary (design 3.1, 4.2)
+        if entry["dtype"] == "string" and entry["n_unique"] <= 50:
+            entry["levels"] = sorted({r[c] for r in rows})
     units = design.get("units", {})
     counts: dict[str, dict[str, dict[str, int]]] = {}
     for fname, fac in design.get("factors", {}).items():

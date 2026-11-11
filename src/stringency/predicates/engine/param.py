@@ -40,6 +40,21 @@ def _decision_points(ctx: GateContext) -> dict[str, Any]:
     return out
 
 
+def _names(ctx: GateContext, only: list[str] | None = None) -> list[Any]:
+    """The step's names (`text:` parameters) resolved against the summaries of what it reads
+    (`names.resolve_step`); empty for a step outside the pipeline. Reads the state only."""
+    from stringency.names import resolve_step
+
+    return resolve_step(
+        ctx.project.pipeline,
+        ctx.action.step_id,
+        ctx.action.parameters,
+        ctx.state.objects,
+        [i.name for i in ctx.project.inputs.items],
+        only,
+    )
+
+
 def _rationale(ctx: GateContext) -> dict[str, Any]:
     r = ctx.action.rationale or {}
     return {
@@ -118,9 +133,12 @@ def undeclared(ctx: GateContext) -> Verdict:
 
 
 @predicate(
-    id="param.locked_changed", version=1, scope=["*"], phase="pre", default=Disposition.BLOCK
+    id="param.locked_changed", version=2, scope=["*"], phase="pre", default=Disposition.BLOCK
 )
 def locked_changed(ctx: GateContext) -> Verdict:
+    """Version 2 (2026-11-10, L163): under `params: locked` a name the person declared in
+    `objective.yml` is admitted (it says how the data is labelled, and the confirm hold covered
+    it); a name from any other source is a change like any other."""
     if not ctx.project.pipeline.has_step(ctx.action.step_id):
         return Verdict(False)
     step = ctx.project.pipeline.step(ctx.action.step_id)
@@ -129,6 +147,8 @@ def locked_changed(ctx: GateContext) -> Verdict:
     for name, decl in step.params.items():
         value = ctx.action.parameters.get(name, decl.default)
         if value == decl.default:
+            continue
+        if decl.is_name and ctx.action.param_source.get(name) == "declared":
             continue
         if decl.fixed or locked_profile:
             changed[name] = {"default": decl.default, "proposed": value, "fixed": decl.fixed}
@@ -140,6 +160,39 @@ def locked_changed(ctx: GateContext) -> Verdict:
         )
         return Verdict(True, why, {"changed": changed})
     return Verdict(False)
+
+
+@predicate(
+    id="param.name_unresolved",
+    version=1,
+    scope=["*"],
+    phase="pre",
+    default=Disposition.BLOCK,
+    covers=[],
+    summary=(
+        "A parameter that names a column, or a value of a column, names nothing in the data "
+        "the step reads."
+    ),
+)
+def name_unresolved(ctx: GateContext) -> Verdict:
+    """A name (`text: column`, `text: {value_of: ...}`; design 3.1, L163) whose value is not a
+    column, or not a value of its column, of any object the step reads, whatever set it: the
+    declaration, the agent, or the pipeline's own default. An empty value means none and is not
+    checked; a naming convention (`prefix`) is not checked; a name with no summary to check
+    against is listed as not checked and does not fire. The step is not run on a name that
+    names nothing: propose the name again, with one of the nearest that exist."""
+    found = _names(ctx)
+    missing = [r for r in found if r.status == "missing"]
+    if not missing:
+        return Verdict(False)
+    return Verdict(
+        True,
+        "a name names nothing in the data the step reads: " + "; ".join(r.says() for r in missing),
+        {
+            "unresolved": [r.to_json() for r in missing],
+            "not_checked": [r.to_json() for r in found if r.status == "unchecked"],
+        },
+    )
 
 
 @predicate(
@@ -177,7 +230,7 @@ def out_of_range(ctx: GateContext) -> Verdict:
 
 @predicate(
     id="param.agent_proposed",
-    version=2,
+    version=3,
     scope=["*"],
     phase="pre",
     default=Disposition.FLAG,
@@ -192,7 +245,9 @@ def agent_proposed(ctx: GateContext) -> Verdict:
     always` opens it at the default too (L61, the owner's ask of 2026-10-07). The hold's
     evidence is the table the reviewer needs: parameter, default, proposed, and from version 2
     each parameter's declared evidence, the citations the proposal resolved and the candidates
-    it considered (L55); the reason opens with what kind of proposal this is. `log` under
+    it considered (L55), and from version 3, for a name (`text:`, L163), what the proposed
+    value resolves to in the objects the step reads (`resolves`: the column and its values);
+    the reason opens with what kind of proposal this is. `log` under
     `params: free` (policy), moot under `params: locked` where `param.locked_changed` blocks the
     change first."""
     points = _decision_points(ctx)
@@ -209,6 +264,9 @@ def agent_proposed(ctx: GateContext) -> Verdict:
         proposed[name] = entry
     if not proposed:
         return Verdict(False)
+    for r in _names(ctx, only=list(proposed)):
+        # version 3 (L163): what a proposed name resolves to in the objects the step reads
+        proposed[r.parameter]["resolves"] = r.to_json()
     names = ", ".join(sorted(proposed))
     r = _rationale(ctx)
     from stringency.citations import summary_line
