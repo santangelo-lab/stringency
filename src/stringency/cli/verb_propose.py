@@ -113,7 +113,7 @@ def propose(
             as_json,
             f"run {rc.run_id}\nthe proposal for {step} (attempt {done['attempt']}) was withdrawn; "
             f"{len(done['holds'])} hold(s) closed as withdrawn, no verdict recorded. "
-            f"The step is pending and can be proposed again.",
+            f"The step can be proposed again.",
         )
         return
     if bare and rc.step_status().get(step) == str(StepStatus.PROPOSED):

@@ -1037,8 +1037,8 @@ def withdraw_proposal(rc: RunContext, step_id: str, reason: str | None = None) -
     flags alone (a reason that quoted a number without citing it, a value a person signs off),
     and the operator would rather say it again than have a reviewer rule on a proposal it no
     longer stands behind. The attempt closes: its open holds are withdrawn (`resolved_via:
-    withdrawn`, no review, as when a run is abandoned), the step returns to `pending`, and the
-    next `propose` opens the next attempt. The Action, its predicate results, the holds and
+    withdrawn`, no review, as when a run is abandoned), the step is `withdrawn`, and the next
+    `propose` (the operator's, or `run`'s at the step's defaults) opens the next attempt. The Action, its predicate results, the holds and
     any verdict already given stay in the trace, so a reviewer sees both proposals.
 
     Refused unless every open hold of the step is a flag of the pre-phase: a hold on what a
@@ -1083,8 +1083,8 @@ def withdraw_proposal(rc: RunContext, step_id: str, reason: str | None = None) -
             store,
             rc.run_id,
             step_id,
-            StepStatus.PENDING,
-            payload={"withdrawn": action.action_id},
+            StepStatus.WITHDRAWN,
+            payload={"action_id": action.action_id, "holds": payload["holds"]},
         )
     rc.refresh_status()
     return payload

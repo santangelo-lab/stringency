@@ -16,7 +16,9 @@ to say it again (L94), and a crash between a proposal's commit and its gate leav
   `propose` so recovery runs the same code.
 - `steps.recover_proposed` and the run loop's `proposed` branch; a bare `propose <step>` on a
   `proposed` step does the same.
-- `steps.withdraw_proposal` and `propose --withdraw`; the edge `held -> pending`.
+- `steps.withdraw_proposal` and `propose --withdraw`; the status `withdrawn` with its two
+  edges (`held -> withdrawn`, `withdrawn -> proposed`). The first draft sent the step back to
+  `pending`; the owner chose a status of its own.
 - Design 7.1 (two rows), 7.2 (a paragraph), 14.1 (a clause); `DECISIONS.md` (the last entry);
   both rows archived.
 - `tests/test_propose_recovery.py`: six tests.
@@ -30,7 +32,8 @@ to say it again (L94), and a crash between a proposal's commit and its gate leav
 
 ## Altered
 
-- Design 7.1 gains an edge. The text is in this branch for the owner's approval.
+- Design 7.1 gains a status and two edges. The owner chose the status; the text is in this
+  branch.
 
 ## Open
 

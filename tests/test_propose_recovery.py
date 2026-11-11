@@ -200,13 +200,15 @@ def test_withdraw_a_held_proposal(make_project: InitFn) -> None:
     assert r.exit_code == 0, r.output
     out = json.loads(r.output)
     assert out["status"] == "withdrawn" and out["withdrawn"]["holds"] == held
-    assert status(p) == "pending" and open_hold_ids(p) == []
+    assert status(p) == "withdrawn" and open_hold_ids(p) == []
     rows = p.store.all("SELECT * FROM holds WHERE step_id = ?", (STEP,))
     assert {r["resolved_via"] for r in rows} == {"withdrawn"}
     assert all(r["resolved_by_review"] is None for r in rows)
     assert p.store.scalar("SELECT COUNT(*) FROM reviews") == 1  # the confirm hold's, no other
     ev = events(p)
-    assert ev.index("proposal_withdrawn") < ev.index("hold_withdrawn") < ev.index("status:pending")
+    assert (
+        ev.index("proposal_withdrawn") < ev.index("hold_withdrawn") < ev.index("status:withdrawn")
+    )
     # a withdrawn hold takes no verdict
     assert (
         cli(p, "review", "--hold", held[0], "--verdict", "accept", "--reason", "x").exit_code != 0
@@ -222,6 +224,20 @@ def test_withdraw_a_held_proposal(make_project: InitFn) -> None:
     ]
     assert attempts == [1, 2] and status(p) == "held"
     assert open_hold_ids(p) and set(open_hold_ids(p)).isdisjoint(held)
+
+
+def test_run_after_a_withdrawal_proposes_the_step_again(make_project: InitFn) -> None:
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    r = cli(p, "propose", STEP, "--set", "min_value=12", "--reason", "twelve", "--new", "--json")
+    assert r.exit_code == 10, r.output
+    assert cli(p, "propose", STEP, "--withdraw").exit_code == 0
+    nx = json.loads(cli(p, "next", "--json").output)
+    assert nx["kind"] == "runnable" and nx["step_id"] == STEP
+    # the run is not blocked or held by a withdrawn step; `run` proposes it at its defaults
+    assert p.store.scalar("SELECT status FROM runs ORDER BY rowid DESC LIMIT 1") == "running"
+    r = cli(p, "run", "--until", STEP, "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    assert status(p) == "completed"
 
 
 def test_withdraw_refuses_what_is_not_a_held_proposal(make_project: InitFn) -> None:
