@@ -262,3 +262,106 @@ Filed by wave 0 and left: the low finds of its table; region import from QuPath 
 Explorer and an H&E hook (the questions catalog); the landscape survey's recommendations (a
 preprint, three conversations, an audit-trail export), which are the owner's to raise. The
 beta repository's open list and its app backlog have no ids and are that repository's own.
+
+## 9. Where each wave stands, and the measurement half of wave 3 (2026-11-11)
+
+Written after one night and a morning of work on waves 0 to 3. The sections above are the plan
+as it was made; this one is what happened to it. `PLAN.md` "Next, in order" is the live list.
+
+| wave | done | left |
+|---|---|---|
+| 0 | all of it (#26; the Xenium, plugin and scRNA-seq shares in their own repositories) | |
+| 1 | L168, L161, L164, L169, L162, and with them L129 and L158; L163 (b), (c), (d) and L171 built (engine 0.2.42, plugin 0.10.4, method 0.1.12 and 0.1.13) | the method's tags and the slice run again close L163 and L171; L167 needs the owner's choice |
+| 2 | L95, L146, L147, L159, L174; the first half of L114 | L94 with L107, the rest of L114, L160, L110, L11, L175 |
+| 3, correctness | L145, L148 | L172, L106, L80, L37, K3, K4 |
+| 3, measurement | nothing | L194, L193, L190, L155 with L191, L154 with L192, L156; L76, L173 |
+| 4 | nothing | all of it |
+| 5 | nothing | L100, in a session with the owner |
+
+Outside the waves, found while testing and fixed: a control took the hosting project's
+declared parameters; `init.column_missing` did not name the column; the plugin's CI had been
+red since 0.9.0; the scRNA-seq DE module's controls failed in a project named unlike its
+fixture; open mode interviewed a person who had already asked (#29). Filed and left: L186 to
+L189.
+
+**The measurement half of wave 3.** The owner asked on 2026-11-11 whether the total token
+usage of a project can be measured, for evaluating the tool in general. It cannot: the
+operator's session is outside the trace, the judges' counts are per call and absent under the
+subagent harness, and only a benchmark replicate's `result.json` has a total. He agreed it
+belongs in the beta's bundle and eval store, where the transcript and the trace already meet
+and where the benchmark's run record (L154 to L156, already in this wave) was going. So the
+wave's second half is one piece of work, in this order:
+
+1. **L194** (S, `stringency-benchmarks`): token columns in the ledger, tokens per arm in
+   `compare`. Before the slice is run again, since the data is already in every `result.json`
+   and the overhead should be reported with the result.
+2. **L193** (S, engine): the coverage report sums the judges' tokens and counts the calls that
+   reported none.
+3. **L190** (S, a check): what each harness keeps of a session. It decides whether the owner's
+   own sessions can be measured or only Claude Code and benchmark runs, so it comes before
+   any code in the beta.
+4. **L155 with L191** (M, beta CLI): the bundle takes a transcript by path and reads usage per
+   turn from it, a subagent's turns attributed to the judgment they answered.
+5. **L154 with L192** (M, beta eval store): the usage table and its views (tokens per project,
+   step, hold and arm), beside the benchmark's `benchmark_runs`.
+6. **L156**, then **L76** and **L173**, which are write-ups from traces that exist.
+
+Steps 1 and 2 need nothing from the owner. Step 3 needs a look at what Claude Science keeps,
+which is his application's state and is read, never changed. Steps 4 and 5 are about a week
+for one person and are what Phase 3 of the benchmark needs anyway.
+
+Releases after this section: engine 0.2.43 carries wave 2's remainder, #29 and L193; the
+plugin's next is 0.10.5 and the method's 0.1.14 (wave 4), since 0.10.4 and 0.1.13 were used by
+wave 1.
+
+## 10. The Xenium method's wave, and how every wave sits beside the others (2026-11-11)
+
+The owner, reading the list: the Xenium method's backlog was barely on it; he wants general
+work on the method to reduce the debt it carries before a second study is run through it,
+nothing specific to that study yet; and the organs and the delivery step are to be expanded
+from how the lab did them before stringency. A first draft of this section was a track for
+one study and borrowed rows from two waves, which made the waves harder to read. This is the
+plain form: the method has a wave of its own, X, and each wave is one repository's work.
+
+**Every wave, by repository.** A wave is the engine's unless it says otherwise; a method's or
+a plugin's share is what follows the engine row beside it.
+
+| wave | engine | Xenium method | elsewhere | state |
+|---|---|---|---|---|
+| 0 housekeeping | one work list | stale comment, pointers | plugin README, scRNA-seq backlog | done |
+| 1 names, the benchmark path | names, limits band, `via: policy`, exit 22 | | plugin 0.10.4; scRNA-seq 0.1.12, 0.1.13; benchmarks | built; the owner's tags and the rerun left |
+| 2 hold and proposal friction | L110, L195, L94 with L107, the rest of L114, L160, L11, L175 | follows in X4 | | half done |
+| 3 correctness, measurement | L172, L106, L80, L37, K3, K4; L193 | | benchmarks L194; beta L190 to L192, L154 to L156 | two rows done |
+| X the Xenium method's debt | | X1 to X6 below | plugin: L186, the organs' vocabulary, the delivery step's types | not started |
+| 4 lineage assignment | L98, L99, L117, L119, L120, L176 | | plugin 0.10.5; scRNA-seq M1 to M12 | not started |
+| 5 the gate review's first item | L100, with the owner | follows in X4 | | not started |
+
+**Wave X, in order.**
+
+| item | what | waits on | size |
+|---|---|---|---|
+| X1 | The method verified under engine 0.2.42 and plugin 0.10.4: both synthetic studies, the open-tools check. The engine now stops `run` at a step whose decision is `unset` and asks for the proposal; the pipeline headers and the skill still describe the hold it replaced, and `sc.decision_unreviewed` no longer sees those steps. `requires.engine` moves | nothing | S |
+| X2 | QC revised without re-splitting: `punch_bundles` delivered, a `xenium-qc-cells` pipeline over them (the method's 3.3). Every threshold change re-split eight regions on Lyons | nothing | M |
+| X3 | The time-point factor declared, not fixed: `timepoint_factor` on the engine's name form or read from the design, in the four steps and the modules that take "the first multi-level factor" (L178) | the plugin's Seurat extractor listing an object's columns (L186) | M |
+| X4 | The method's side of three engine rows: `apply-labels` reads a person's chosen replicate and whole correction (its 3.18, after L110); the outlier prompt's wording once a rationale may name a time point or a punch (1.10, after L195); the decision blocks sign off once under `run` and the bridge predicate leaves the gates (3.4, after L100) | L110, L195, L100 | S each |
+| X5 | Eleven organs (L197). The pre-stringency analysis ran brain, heart, kidney, lymph node, large intestine, skin and female reproductive tract beside the four the method knows: `analysis/upstream/tissue_configs.yaml` has each one's thresholds, dimensions and resolution, and each tissue's `run_annotation_<Tissue>.R` the labels a person settled on. Per organ: the option, the defaults, the labels mapped to ontology ids with markers on the panel, the guide's section | the owner's reading of each organ's list | L in all; an organ at a time |
+| X6 | The delivery step (L198), rebuilt from the pre-stringency seventh module: per-cell protein intensity from an aligned immunofluorescence image, a threshold from the design's control level per slide and tissue, two transcript probes at count thresholds; the delivered fraction per replicate, cell type and domain; protein against transcript. Under the gate: the image and alignment as declared inputs, the threshold's control recorded, the per-cell join guarded, controls with a planted positive population | nothing to start; the plugin's object types and operations with it | L |
+| X7 | The method's small debts: the stale `selected_by` and `MODULE` strings (kept for identical outputs), the confidence-flag hold's wording (8.4), a tool's sources as a `cites:` key once the template takes one (7.6, L175) | L175 for the last | S |
+
+**What X5 and X6 take from the earlier work, and what they do not.** The thresholds, the
+label lists, the three readouts and the threshold rule are a person's settled choices and are
+the starting point. The code is not carried over as it stands: the earlier project's first
+version joined cell areas wrongly and its review found five more defects, which is why the
+method has `sc.area_join_unverified`; each piece comes in as a module with a control on
+planted truth. The old labels are evidence of what a person called a cluster, read again by
+the owner organ by organ.
+
+**The order across waves.** Nothing in X1, X2, X5 or X6 waits on the engine, so wave X starts
+now, beside wave 2. In wave 2 the two rows the method waits on come first (L110, L195). The
+plugin's L186 is small and comes before X3. Wave 3's one early piece is the ledger's token
+columns (L194), before any benchmark is run again. Wave 5 needs a session with the owner, and
+X4's last part follows it. Wave 4 is the scRNA-seq method's and waits on none of this.
+
+**Not in wave X**, and left where they are in the method's plan: the Python 3.12 image (7.13),
+BANKSY and LIANA+ (7.12), local Moran's I (7.26), a morphology tool, the tag clean-up (4.1),
+and everything that waits on the owner's answers there (3.5, 3.19, 8.6, 8.13, 8.18, 8.19).

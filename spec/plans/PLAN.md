@@ -36,59 +36,78 @@ Nothing in it is built beyond what the State section says.
 - `spec/README.md` maps the directory and `notes/INDEX.md` is the session map; both change in
   the same commit as what they describe.
 
-## State (2026-11-10)
+## State (2026-11-11)
 
-Engine 0.2.41 on `main` (73c4fb5, #25: a name is marked, a measurement is bare), tagged
-`v0.2.41` there on 2026-11-11. Branch `fixes-2026-11` carries 0.2.42 (eight rows that need no design
-text: L168, L161, L146, L147, L159, L145, L148, L174) and `names-limits-policy`, stacked on it,
-the design-level four (the name form with L129, L171, L162, L158), each waiting on the owner. Plugin singlecell 0.10.3. `0.2.40-sc0.10.3` is installed in the shared
-prefix on the lab workstation (`/data/lab/env/stringency/current`, 2026-11-05) and the console
-runs from it. `stringency-xenium-method` at `v0.6.0-rc26` (its branch `open-mode-lung-findings`
-two commits past the tag); `stringency-scrnaseq-scanpy-method` at `v0.1.11`, with 0.1.12 (the
-`scrnaseq-pca` pipeline) on a branch, untagged; the toy method at `v0.3.1`. The operator skill
-changed for 0.2.41 (names in backticks) and must be republished with the release; the Xenium
-skills still name rc25.
+Engine `v0.2.42` (974b022: names and `unset`, a project's limits band, `via: policy`, exit code
+22, and the fixes of #27); `main` is one text change past it (#29: open mode answers a
+specific question first, in every method). Plugin singlecell `v0.10.4` (an h5ad's columns
+where the engine reads them). `0.2.40-sc0.10.3` is still what is installed in the shared
+prefix on the lab workstation (`/data/lab/env/stringency/current`), and the console runs from
+it: the install of 0.2.42 with 0.10.4 and the republish of the operator skill are the owner's.
+`stringency-scrnaseq-scanpy-method` is 0.1.13 on `main` (0.1.12: the comparison from the
+declarations; 0.1.13: its names on the engine's form), the last tag `v0.1.11`.
+`stringency-xenium-method` is at `v0.6.0-rc26`, with the rc26.1 candidate open as its pull
+request 3 (the open-mode intro, the skills at their tag). The toy method at `v0.3.1`.
 
-The benchmark: Phase 2 started 2026-11-10 (`benchmark-plan.md`). On PCA and DE01 the baseline
-passes 3 of 6, the method as prompt 3 of 6 and the stringency arm under the observe policy 0 of
-6, for two causes in the method's settings (L163, L171). `stringency-benchmarks` holds the
-adapter, the scorer and `bench.py`, which reruns a study on each new stack and compares.
+The benchmark: the first slice of Phase 2 (2026-11-10, engine 0.2.40, standard limits) had the
+baseline at 3 of 6, the method as prompt at 3 of 6 and the stringency arm under the observe
+policy at 0 of 6, for two causes that are now built out (L163, L171). Checked in the image
+with no agent on a development stack: the DE pipeline runs within one cell type in pipeline
+mode, and the slice's PCA declarations raise `sc.pca_depth_confounded` at the strict ceiling
+(`stringency-benchmarks` `measurements.md`). The slice again, with the enforce arm, is study
+`2026-11-slice-2-dev`: proposed, not run.
 
 ## Next, in order
 
-Rewritten 2026-11-10 from `implementation-order-2026-11.md`, by the owner's rule that what needs
-no input from him to start comes first. He merges and tags; "waits on nothing" means the
-decisions a row rests on are made. That note has the sizes, the releases and the reasoning.
+Rewritten 2026-11-11 after waves 0 and 1 landed, by the owner's rule that what needs no input
+from him to start comes first. He merges and tags. `implementation-order-2026-11.md` has the
+sizes and the reasoning, and its section 9 says what each wave has left.
 
-0. **Housekeeping** (this commit and the two after it): one work list again, the finished rows
-   archived, rows L172 to L185 for what no row tracked, the documents that said what was no
-   longer so. Still to do in the other repositories: the scRNA-seq method's unlisted items into
-   its `BACKLOG.md`; the stale comment in the Xenium `policy.yml`; the plugin README's status
-   table.
-1. **Names** (`declared-text-params.md`; every decision made 2026-11-10). L168 with L161
-   (`init` and `declare --check` refuse a declared value the step would block; `declare` reads
-   the site's executor); L163 (b) and L169 in the method (the DE module reads the comparison
-   from the declarations and may leave out an incomplete replicate); L164 (the benchmark
-   commentary out of the method) and L167 by the method route (the PCA sentinels as a table);
-   L163 (c), the name form, with L171 (a project's limits band apart from its profile) and
-   L162 (`via: policy`), the three design texts his to approve; L163 (d), the method using the
-   form. Engine 0.2.42, method 0.1.12 then 0.1.13. Then the November slice again
-   (`bench.py compare`).
-2. **Hold and proposal friction from the owner's sessions.** L94 with L107 (a held step can be
-   re-proposed; a step stranded in `proposed` recovers); L114 (an accepted hold on an open-mode
-   tool step completes); L129 (a decision left `unset` stops the run for a proposal); L158 (a
-   new exit code for "still running"); L95 (a hold view for the engine's own proposal checks);
-   L160 (a person's file as a tool input); L110; L11. The skills: L146 with L147, L159 (relay
-   every open hold), L174, L175. Engine 0.2.43.
-3. **Small correctness, and what was never measured.** L145, L148, L172, L106, L80, L155, L37,
-   K3, K4; L76 and L173 (the console and open-mode measurements written from the traces that
-   exist). They ride with 1 and 2.
+0. **Housekeeping.** Done (#26, and the other repositories' share in their own pull requests).
+1. **Names.** Built: engine 0.2.42 and plugin 0.10.4 are tagged; method 0.1.12 and 0.1.13
+   are on its `main`, untagged.
+   Left, all the owner's: the method's two tags; Xenium rc26.1; the install and the skills
+   republished; the slice run again (`2026-11-slice-2-dev`). L163 and L171 close with the
+   tags and the run; L167 waits on his choice (an answer cites a delivered cell, or
+   `reduce-pca` as an open tool).
+X. **The Xenium method's debt** (the owner, 2026-11-11; L196; section 10 of the order note).
+   General work on the method, nothing specific to a study. It is the method's own wave and
+   runs beside waves 2 and 3: four of its items need nothing from the engine, three follow an
+   engine row.
+   - *Needs nothing:* X1, the method verified under engine 0.2.42 and plugin 0.10.4, and its
+     instructions brought up to what `run` now does at an `unset` decision; X2, QC revised
+     without re-splitting every region (the method's 3.3); X5, eleven organs from the
+     pre-stringency tissue configuration and annotation (L197), each list the owner's to read;
+     X6, the delivery step rebuilt under the gate (L198).
+   - *Follows the plugin:* X3, the time-point factor declared, not fixed at `timepoint_h`
+     (L178), once the Seurat extractor lists an object's columns (L186).
+   - *Follows the engine:* X4, `apply-labels` reads a person's choice (the method's 3.18,
+     after L110); the outlier prompt (1.10, after L195); the decision blocks sign off once
+     and the bridge predicate leaves the gates (3.4, after L100).
+2. **Hold and proposal friction from the owner's sessions.** Done: L129, L158, L95, L146,
+   L147, L159, L174, and the first half of L114. Left, in this order: L110 and L195 (a
+   judgment's rationale may name a time point or a punch), which the Xenium method waits on;
+   L94 with L107; the rest of L114; L160 (a person's file as a tool input); L11; L175. Engine
+   0.2.43, which also carries #29.
+3. **Small correctness, and measurement.** Two halves.
+   - *Correctness.* Done: L145, L148. Left: L172, L106, L80, L37, K3, K4.
+   - *Measurement: the run record, and what a project costs in tokens* (the owner,
+     2026-11-11; it belongs in the beta's bundle and eval store). In order: L194 (token
+     columns in the benchmark ledger, before the slice is run again, so the overhead is
+     reported with it); L193 (the coverage report sums the judges' tokens); L190 (what each
+     harness keeps of a session, which decides how much of the rest can be had); L155 with
+     L191 (the bundle reads usage from the transcript); L154 with L192 (the eval store's
+     usage table, tokens per project, step, hold and arm); L156. L76 and L173 (the console
+     and open-mode measurements written from the traces that exist) ride with it.
 4. **Lineage assignment, and the QC predicates that wait on nothing.** L98 with the method's
    M1, M5; L185's flags with M6 and M4; L99 with M2 (the interpretation judgment); M10, M11,
-   M12, M3; L117, L119, L120, L176. Plugin 0.10.4, method 0.1.13.
+   M12, M3; L117, L119, L120, L176. Plugin 0.10.5, method 0.1.14.
 5. **The gate review's first item.** L100: `decision.hold: always` opens under `run`. The
-   Xenium method's decision blocks and the menu keys (L63 to L66) wait on it; the rest of the
-   review (L103 to L109, L101, L102) waits on the owner's design choices.
+   Xenium method's X4 follows it. To be
+   done in a session with the owner: while the Xenium method still gates
+   `sc.decision_unreviewed`, it would open two holds for one decision. The menu keys (L63 to
+   L66) wait on it; the rest of the review (L103 to L109, L101, L102) waits on his design
+   choices.
 
 Not scheduled, and why, is section 8 of that note: what the owner deferred (the decision menus,
 structured claims, the judge panel, trace integrity beyond T2, staged objectives, the console
@@ -132,6 +151,7 @@ of L184.
 | L82 | the unanimous-but-wrong rate of a judgment module is unmeasured: replicates of one model with one prompt are unanimous on the errors the model makes consistently, and sampling-based detectors miss them (the literature check of 2026-10-21) | in positive controls, report accuracy on unanimous items separately from held items, per module version; the `judgments` and `consensus` tables hold the data; one line on the controls report. The owner, 2026-10-21: not yet, too few runs to measure | engine, low; deferred by the owner; `notes/2026-10-21-1300-judgment-replicates-evidence.md` proposal 1 |
 | L172 | under `batching: per_item` each per-item request is numbered as its own replicate (`judgment.py`: the counter runs over replicates times items): six items by three replicates gave eighteen replicates, `judg.items_incomplete` fired and every item was held invalid (the Xenium method, 2026-10-27); `choose-fine-label` and `label-domains` use `all_items` to avoid it | a request carries its replicate and its item apart; the replicate count is the module's; a test with several items per replicate | engine; found in a session, never filed | the Xenium method's `docs/open-tools-v2-plan.md` section 6; the document survey of 2026-11-10 (`implementation-order-2026-11.md`) |
 | L180 | two of design 17's deferred items have met their stated trigger: judgment tools on demand in open mode ("when the first real open project has run": 2026-10-29) and the `reason_code` enum ("roughly fifty reviews") | the owner schedules each or leaves it; a row each when scheduled | engine design; the owner | `stringency-design.md` section 17; the document survey of 2026-11-10 (`implementation-order-2026-11.md`) |
+| L195 | `judg.numeric_claims_match@2` reads every numeral of a judgment's rationale as a claim and blocks one that matches no cited value, with none of the answer check's exemptions: a time point (`the 6 h and 72 h groups`), a punch or animal id with a hyphen (`24-1-Liver`, `ctrl-2-Spleen`), a slide number, a count of punches. The Lyons outlier judgment was rejected for it (`qc2_outliers_all`), and the method's remedy is to tell the reviewers to write numbers in words (its item 1.10) | the rationale read by the answer's classifier (`ans.classify_numerals`): a hyphenated identifier, a year and a count before a unit word need no citation; a design level and an item's own id are names; every other numeral still matches a cited value. `@3`, must-fire and must-pass on the Lyons rationale. The method's prompt wording then matters less | engine, below the contract; DECISIONS | found for the Lyons outlier judgment; any study's groups and punches carry numbers, so it comes before a second one is run (`implementation-order-2026-11.md` section 10) |
 
 ### Engine: delivery, trace and inputs
 
@@ -202,6 +222,9 @@ It does not carry F11 and F12 (the reports and the retrospective), which are L17
 | L125 | a fold, tear or detachment in a punch shows only as scattered QC failures | plugin: `spatial.regional_artifact@1` (post, flag, `qc_cells`); the Xenium `qc-cells` writes Moran's I of the fail indicator per punch | plugin predicate; Xenium method | `qc-failure-modes.md` 3.3 |
 | L126 | ambient RNA is neither estimated nor corrected in the scRNA-seq method | method: an ambient estimate (DecontX without the raw matrix, SoupX or CellBender with it) and a `BACKLOG.md` row; plugin: `sc.ambient_high@1` (post, flag) and `sc.correction_count_integrity@1` (post, block, invariant) | scRNA-seq method module first, then plugin predicates | `qc-failure-modes.md` 3.2 |
 | L127 | doublets are not looked for (method `BACKLOG.md` M9) | plugin: `sc.doublet_rate_high@1` (post, flag, `detect_doublets`) as M9 designs it, against the rate expected for the cells recovered; the per-cluster doublet fraction feeds L118 | plugin predicate; after the method's `detect-doublets` | method `BACKLOG.md` M9; `qc-failure-modes.md` 3.2 |
+| L196 | the Xenium method carries one study's assumptions and a backlog of its own that this list barely named: it was written on the Lyons data, has run nothing else, and a second study would meet the Lyons friction again at a larger size | the method's wave (X) of `implementation-order-2026-11.md` section 10, general to any study and in its order: the method verified under engine 0.2.42; QC revised without re-splitting (the method's 3.3); the time-point factor declared (L178, L186); the method's side of the engine rows it waits on (its 3.18 after L110, 1.10 after L195, 3.4 after L100); eleven organs (L197); a delivery step (L198); its small debts | method, plugin; engine rows named there | the owner, 2026-11-11: general work on the method to reduce the debt before a second study is run through it; nothing specific to that study yet |
+| L197 | the Xenium method knows four organs (liver, lung, small intestine, spleen: the `organ` options of `xenium-upstream`, the annotation guide's sections, the vocabulary's expected organs, the tissue defaults). The lab's pre-stringency analysis ran eleven: its `analysis/upstream/tissue_configs.yaml` holds QC thresholds, dimensions and resolution for brain, heart, kidney, lymph node, large intestine, skin and female reproductive tract too, and each tissue's `annotation/run_annotation_<Tissue>.R` the labels a person settled on | the seven organs added from those two sources, not from scratch: per organ the `organ` option; the thresholds and grid into `docs/tissue-defaults.md`; the labels of the old annotation mapped to Cell Ontology ids with markers on the panel, into `cell_types_mouse` and the plugin's vocabulary; the guide's section. Each organ's list is a draft until the owner has read it (the method's 3.6), and the old labels are evidence of what a person called a cluster, not truth: the earlier project's defect register applies | method and plugin vocabulary; the owner reads each organ | L196; the owner, 2026-11-11: expanded "based on how we did it pre-stringency" |
+| L198 | the method has no delivery step. The pre-stringency analysis's seventh module asked where a delivered cargo went, by three readouts per cell: protein, from an immunofluorescence image sampled inside each cell's polygon (`pyMFI`, an OME-TIFF and a 3 by 3 alignment matrix per slide), called delivered above the 95th percentile of an untreated control of the same slide and tissue (another tissue's control as a flagged fallback); and two transcript probes at count thresholds. It summarised the delivered fraction per punch, per cell type and per domain, and compared protein with transcript. In the method only `reporter_zone_summary()` in `_rlib/de_utils.R` survives, called by nothing | the step rebuilt under the gate, general to any reporter: the image and its alignment as declared, hashed inputs (object types in the plugin); a module that measures per-cell intensity; a module that sets each threshold from the design's control level and records which control it used; the per-cell call joined by the guarded key (`sc.area_join_unverified`'s lesson); summaries per replicate, cell type and domain as tables an answer can cite; an open tool for the comparisons between levels; controls with a planted positive population and a negative with shuffled intensities; a predicate for a threshold taken from a fallback control | method (modules, a pipeline or steps of one, a tool, controls), plugin (object types, operations, a predicate) | L196; the owner, 2026-11-11: the cargo-delivery step tailored to how it was done before. The earlier module's inputs sit on the departmental share and its join was the one the first project got wrong |
 
 ### Skills, documents and onboarding
 
@@ -250,6 +273,23 @@ holds land where a reviewer's attention is needed. Claude Code with Opus 5 is th
 | L171 | the owner's policy of 2026-11-10 is that benchmarks run at strict-level limits (the method's `strict` band of `ranges`), since nobody reviews as a run goes along; the engine ties the band to the profile (`qc_ranges` per profile, three fixed profile names), and the `strict` profile itself cannot run unattended (relayed verdicts refused, parameters locked, flags remapped to blocks, open mode refused) | one of: a project chooses its band apart from its profile (engine, design-level: recorded in `stringency.yml` and the trace); or, for the benchmark only, a method release candidate whose `standard` profile reads the strict band, named as that in the stack file. Then `stringency-benchmarks` records the band in a study. Not started: the owner said to do nothing for it yet. Taken up 2026-11-10 (the owner: strict-level limits whenever a benchmark runs): the engine route, the benchmark's runner asking for the strict band, the design text his to approve. Engine half built 2026-11-10 on branch `names-limits-policy` (`init --limits`, the site configuration's `limits`, `Policy.with_limits`, design 6.4); open: his reading of the text, and `stringency-benchmarks` setting `limits: strict` in its engine's `config.yml` and recording the band per study `stringency-benchmarks` half built 2026-11-10 (its PR 1): a stack's `limits: strict` goes into the engine root's `config.yml` and the lock | engine design or method; the owner | `benchmark-plan.md`, Pre-registration, the owner's decision |
 | L183 | parts of the owner's benchmark plan of 2026-10-21 that no row carries: SpatialBench-Long's public evals; Latch's own Xenium skill as the method-as-prompt arm for SpatialBench; a glossary line on the grader's vocabulary before the Latch conversation; and whether SpatialBench's public evals are a development set or held out (`stringency-benchmarks` holds them `unassigned`, baseline arm only) | after scBench (the owner, 2026-11-10: scBench first); his word on the status before any harnessed arm runs on them | benchmark; the owner | `benchmark-plan-owner-2026-10-21.md`; `stringency-benchmarks/BENCHMARKING.md` |
 
+### Measurement: what a project costs
+
+The owner, 2026-11-11: "do we have a way to measure total token usage across a project", for
+evaluating the tool in general and not only the benchmark. Not today. A project spends tokens
+in the operator's session, which the trace cannot see, and in its judges, which the trace has
+columns for and mostly no numbers. The total belongs where the transcript and the trace already
+meet: the beta's bundle and its eval store (`stringency-beta`), which the benchmark's run
+record (L154 to L156) uses too. The engine records what only it can see and supplies the join.
+
+| id | item | what closes it | level | reasoning |
+|---|---|---|---|---|
+| L190 | nobody knows what each harness keeps of a session: Claude Code writes a transcript with usage per assistant message, its subagents' turns included; whether Claude Science keeps one, where, and whether the bundle may read it is unchecked, as is Codex | the check, written down per harness (the file, the fields, whether a subagent's usage is in the parent's transcript, what redaction it needs); it decides whether the owner's own sessions can be measured or only Claude Code and benchmark runs | beta CLI; a check before L191 | the bundle finds a Claude Code transcript by the session reference the engine records; for any other harness nothing is known |
+| L191 | the bundle reads a transcript for its text and tool calls and drops the usage beside them | `bundle` writes usage per assistant turn (input, cache read, cache creation, output, thinking; the model) and per session, with a subagent's turns attributed to the judgment request they answered (the nonce in the prompt); numbers only, so redaction is unaffected; a benchmark replicate's `trajectory.jsonl` read the same way (L155's `--transcript`) | beta CLI (`bundle.py`); after L190, with L155 | the judges under the subagent harness report no usage of their own (0 of 39 invocations in thirteen Lyons v2 projects), and the parent's transcript has it |
+| L192 | the eval store has no usage: no total per project, none per step or per hold, no overhead of the gate against a baseline | a `usage` table (bundle, session, source operator or judge, turn, step), each turn attributed to the step whose events bracket it in the trace; views for tokens per project, per step, per hold from open to verdict, and per arm beside `benchmark_runs` (L154) | beta eval store; after L191, with L154 | tokens per hold is the price of directing a person's attention, which is the claim the benchmark makes |
+| L193 | the engine totals nothing it does record: `invocations.tokens_in` and `tokens_out` are per call, and no report sums them or says how many calls reported none | the coverage report's judgment block carries tokens in and out per step and for the run, with the count of calls that reported none; no operator figure, which the engine cannot see | engine, small | so the store (L192) and the coverage report agree on the judges, and a missing count is visible as missing |
+| L194 | the benchmark ledger keeps cost, turns and minutes per replicate and not the token counts each `result.json` holds | token columns in `ledger/replicates.csv` (input, cache read, cache creation, output, thinking) and tokens per arm in `bench.py compare` | `stringency-benchmarks`, small; before the slice is run again | the owner's benchmark plan asks for tokens per task and arm, "honesty about overhead"; the first slice reported cost only |
+
 ### Operations, integration and site
 
 | id | item | what closes it | level | reasoning |
@@ -269,12 +309,17 @@ holds land where a reviewer's attention is needed. Claude Code with Opus 5 is th
 One table of everything that moves only on the owner's word, so nothing waits in a section
 nobody reads. The row id says where the work is filed; "where" says where the text to read is.
 Rewritten 2026-11-10, ordered by what each answer unblocks; his answers of that day (L129,
-L158, L159, L162, L169, L171, #25) are in the rows.
+L158, L159, L162, L169, L171, #25) are in the rows. The first five rows are of 2026-11-11,
+after waves 0 and 1 landed and the design texts of wave 1 were read and merged (#28).
 
 | what | row | where | since |
 |---|---|---|---|
-| tag engine v0.2.41 and install it; republish the operator skill (names in backticks; its engine line, L146) and the declare and wrap skills; tag Xenium `v0.6.0-rc26.1` (rc26's skills name rc25) and republish its two skills; tag the scRNA-seq method when 0.1.12 is ready | L146, L113; method 8.21 | `docs/release.md`, `integrations/claude-science/publish-skills.md` | 2026-11-02 |
-| the design texts of wave 1 when they are written: the name form (decisions made), a project's limits band apart from its profile (taken up), `via: policy` in the trace (approved), the new exit code (approved); and the two `DEVIATIONS.md` entries that have waited since October (`must_cite`, `outputs.key`) | L163, L171, L162, L158 | `declared-text-params.md`; `DEVIATIONS.md` | 2026-11-10 |
+| the Xenium method's new organs: his reading of each organ's cell-type list as it is drafted from the pre-stringency annotation (seven organs); and for the delivery step, where its image inputs are to live, since the earlier module read them from the departmental share | L197, L198 | `implementation-order-2026-11.md` section 10 | 2026-11-11 |
+| install engine 0.2.42 with plugin 0.10.4 in the shared prefix (both tagged 2026-11-11; `0.2.40-sc0.10.3` is installed) and republish the operator, declare and wrap skills; tag the scRNA-seq method `v0.1.12` and `v0.1.13` (both on its `main`) and republish its three skills; merge and tag Xenium `v0.6.0-rc26.1` (its pull request 3) and republish its two skills, before the next engine tag (0.2.43 changes the skill template, and the Xenium CI then fails on the committed skills until they are rendered again) | L146, L163; the Xenium method's `PLAN.md` 8.21, 9.1 | `docs/release.md`; `integrations/claude-science/publish-skills.md` | 2026-11-11 |
+| the slice run again with the enforce arm (`2026-11-slice-2-dev`: 18 replicates, about 75 USD by the first slice's costs), on the development stack now or on a frozen one after the tags above | L89, L163, L171 | `stringency-benchmarks` `studies/`, `measurements.md` | 2026-11-11 |
+| how an answer cites the PCA sentinels after delivery: the engine lets an answer cite a cell of a bound delivered table, or the method lists `reduce-pca` as an open tool | L167 | this file | 2026-11-11 |
+| this repository is public and its benchmark plan and notes say what the public evals ask and expect; the commentary taken out of the scRNA-seq method went to the private `stringency-benchmarks` instead: leave what is here, or move it | L164 (closed), L88 | `benchmark-plan.md` | 2026-11-11 |
+| a session for L100 (`hold: always` under `run`): with the Xenium method still gating `sc.decision_unreviewed` it opens two holds for one decision, so the engine change and the method's next tag go together | L100 | `gate-soundness.md` 1 | 2026-11-11 |
 | the gate review's design choices: the rebind binding in 7.2 (L103), evaluation status with its DEVIATIONS entry for contract 6.1 (L104), the evidence obligation at every decision point (L101), whether admission and completion name their evidence (L108), purity as a contract on trusted code or enforced at runtime (L109) | L101, L103, L104, L108, L109 | `gate-soundness.md` | 2026-10-22 |
 | D1, where a dataset's species and tissue are declared for the mitochondrial bound; D2, flag or block for a high mitochondrial fraction; D3, the bound's values | L115, L118 | `qc-failure-modes.md` 4 | 2026-10-26 |
 | the annotation's remaining choices: the state programmes and their call; the `pct_diff` floor; the written reading of gut cluster 9 for the negative control | L111; method items 3.15, 3.16, 3.19 | `annotation-controls.md` | 2026-10-23 |
@@ -285,7 +330,7 @@ L158, L159, L162, L169, L171, #25) are in the rows.
 | the Xenium `timepoint_factor` to the name form, after wave 1 | L178 | `declared-text-params.md` 7 | 2026-11-10 |
 | the Latch conversation: the withheld short evals are the only held-out set for the scBench claim | L88, L92, L170 | `benchmark-plan.md`, the amendment | 2026-10-21 |
 | SpatialBench's public evals, development or held out; the rest of his benchmark plan that waits on scBench | L183 | `stringency-benchmarks/BENCHMARKING.md` | 2026-11-10 |
-| a benchmark run costs money and is proposed each time (about 35 USD for the quick study): his word starts each | L89, L90 | `stringency-benchmarks/BENCHMARKING.md` | 2026-11-10 |
+| a benchmark run costs money and is proposed each time (about 35 USD for the first quick study; the second row above is the one now proposed): his word starts each | L89, L90 | `stringency-benchmarks/BENCHMARKING.md` | 2026-11-10 |
 | the tester for the acceptance runs (the owner, 2026-10-21: not yet); the definition of "competent" for the Qwen3 evaluation; the hand pass over the baseline's trajectories | L79, L77, L34, L156 | this file; `judge-sources-plan.md` 6 (3) | 2026-10-14 |
 | `study: lyons_clp` on the Lyons projects, which are his | L181 | this file | 2026-11-10 |
 | the three docs commits on `lane-e` and `track-1h-text`: land or drop; the finished briefs, walkthroughs and hand-offs loose beside the checkouts, to an archive; the OmicsBench paragraph offered for the README | L182 | `omicsbench-assessment.md` 8 | 2026-11-10 |
