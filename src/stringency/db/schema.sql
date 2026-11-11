@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS reviews (                    -- append-only
     item_id                     TEXT,
     reviewer                    TEXT NOT NULL,
     host                        TEXT NOT NULL,
-    via                         TEXT NOT NULL,           -- tty | relayed | web | rebind | inherited
+    via                         TEXT NOT NULL,           -- tty | relayed | web | rebind | inherited | policy (a fixed policy's verdict, 2026-11-10)
     operator_session_ref        TEXT,
     ts                          TEXT NOT NULL,
     verdict                     TEXT NOT NULL,           -- accept | override | reject | defer

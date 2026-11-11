@@ -295,7 +295,9 @@ def _lint_decisions(
         for name, decl in step.params.items():
             at = f"step {step.id} parameter {name}"
             if decl.decision is None:
-                if not decl.fixed:
+                # a name's evidence is the object itself (what the name resolves to is shown at
+                # the hold), so it needs no block; it may carry one
+                if not decl.fixed and not decl.is_name:
                     msg = (
                         f"{at}: a decision point with no `decision:` block (what evidence a person "
                         "judges the proposal by); declare one, or `evidence: none` with `because:`"
@@ -584,6 +586,7 @@ def lint_path(path: Path, *, design: Design | None = None) -> LintReport:
                 policy=policy,
             )
     _lint_view_columns(path, report)
+    _lint_analyze_decisions(path, report)
     return report
 
 
@@ -628,6 +631,44 @@ def _lint_analyze_open(path: Path, report: LintReport) -> None:
                 str(skills / name),
                 f"open.words_of names {target}, whose file points on; the pointer is followed once",
             )
+
+
+def _lint_analyze_decisions(path: Path, report: LintReport) -> None:
+    """`skills/*.analyze.yml` `decisions` (L163, 2026-11-10): an entry that says a parameter is
+    `declared` or `proposed` while the pipeline fixes it asks a person, or the agent, for a
+    value that has nowhere to go: `param.locked_changed` blocks it. A warning; the remedy is a
+    range, options or `text:` on the parameter, or dropping the entry."""
+    skills = path / "skills"
+    if not skills.is_dir():
+        return
+    for f in sorted(skills.glob("*.analyze.yml")):
+        try:
+            data = yaml.safe_load(f.read_text())
+        except (OSError, yaml.YAMLError):
+            continue  # the renderer's `--check` reports a malformed file
+        if not isinstance(data, dict) or not isinstance(data.get("decisions"), list):
+            continue
+        pfile = path / "pipelines" / f"{data.get('pipeline')}.yml"
+        if not pfile.exists():
+            continue
+        try:
+            pipeline = load_pipeline(pfile)
+        except Exception:  # noqa: BLE001 - the pipeline's own lint reports it
+            continue
+        for d in data["decisions"]:
+            if not isinstance(d, dict) or d.get("how") not in ("declared", "proposed"):
+                continue
+            sid, name = str(d.get("step")), str(d.get("param"))
+            if not pipeline.has_step(sid):
+                continue
+            decl = pipeline.step(sid).params.get(name)
+            if decl is not None and decl.fixed:
+                report.warn(
+                    str(f),
+                    f"decisions: {sid}.{name} is `how: {d['how']}`, but the pipeline fixes it "
+                    f"at {decl.default!r}: any other value is blocked (param.locked_changed). "
+                    "Give the parameter a range, options or `text:`, or drop the entry",
+                )
 
 
 VIEW_KEYS = ("hold_view", "step_view", "after_delivery")

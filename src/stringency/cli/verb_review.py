@@ -65,6 +65,12 @@ def review(
     attest: bool = typer.Option(
         False, "--attest", help="relayed: the person confirmed in the conversation"
     ),
+    policy: str | None = typer.Option(
+        None,
+        "--policy",
+        help="the verdict is a fixed policy's, not a person's: recorded `via: policy` under "
+        "this name, with --reason the rule that decided; needs STRINGENCY_SESSION_REF",
+    ),
     as_json: bool = typer.Option(False, "--json"),
     serve: bool = typer.Option(
         False,
@@ -163,7 +169,14 @@ def review(
         raise ConfigError("--verdict needs --hold <id>")
     corr = parse_correction(correction)
     result = record_review(
-        project, hold, verdict, reason=reason, correction=corr, replicate=replicate, attest=attest
+        project,
+        hold,
+        verdict,
+        reason=reason,
+        correction=corr,
+        replicate=replicate,
+        attest=attest,
+        policy=policy,
     )
     refresh_if_present(project.root)
     notify_after(project)

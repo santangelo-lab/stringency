@@ -11,6 +11,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import shlex
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -29,7 +30,7 @@ from stringency.holds import HoldOutcome, HoldRequest, open_hold
 from stringency.ids import new_id
 from stringency.machine import RETRYABLE, StepStatus, step_status, transition
 from stringency.modules import IOSpec, Module, ModuleManifest
-from stringency.pipelines import Ref, StepDecl
+from stringency.pipelines import UNSET, Ref, StepDecl
 from stringency.predicates import registry
 from stringency.predicates.context import EvidenceTable, OutputBundle, OutputInfo
 from stringency.resources import Allocation
@@ -663,6 +664,20 @@ def refuse_names_written_bare(
         )
 
 
+def unset_parameters(step: StepDecl, values: Mapping[str, Any]) -> list[str]:
+    """The step's open parameters (ranged, with options, or a name) whose value is still the
+    word `unset` (design 3.1, 2026-11-10; L129, L163): a required name nobody has given, or a
+    decision point whose method default is `unset` because no value is right before its
+    evidence is read. No step runs on `unset`: `run` stops for the proposal and `propose`
+    refuses one that leaves it. `values` is what the step would start from; a parameter absent
+    from it is read at its default. Pure."""
+    return [
+        name
+        for name, decl in step.params.items()
+        if not decl.fixed and values.get(name, decl.default) == UNSET
+    ]
+
+
 def starting_params(rc: RunContext, step_id: str) -> dict[str, tuple[Any, str]] | None:
     """What a step's proposal starts from, below the operator's own values (design 2.5, 2.6):
     the objective's declared parameters for the step (`declared`), overlaid by what a fork's
@@ -763,6 +778,12 @@ def propose(
         source_label=source,
         inherited=inherited,
     )
+    waiting = unset_parameters(plan.step, action.parameters)
+    if waiting:
+        raise RefusedError(
+            f"step {step_id} cannot be proposed with {', '.join(waiting)} unset: no step runs "
+            "on `unset`. Give each a value with --set (and a --reason). No proposal was recorded."
+        )
     if record is not None and action.proposed_by == "agent" and not rc.on_demand_entry(step_id):
         # a pipeline step's reason whose only fault is a name written bare is refused before
         # anything is written (an on-demand step was checked before it was registered)

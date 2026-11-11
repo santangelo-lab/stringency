@@ -326,6 +326,7 @@ def synthetic_pipeline(
                     default=v,
                     range=prior.range if prior else None,
                     options=prior.options if prior else None,
+                    text=prior.text if prior else None,
                 )
             update["params"] = merged
         steps.append(s.model_copy(update=update))

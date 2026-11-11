@@ -3,8 +3,10 @@
 
 Blocks until the hold is resolved or withdrawn, or the run changes (exit 0), or the timeout
 passes (exit 10). With no option it waits on the latest run. `--job` (L134) waits for a verb
-started with `--detach` to exit and then prints what it printed, with its exit code. Reads the
-trace and the job's files only; needs no plugin, so it works from any install.
+started with `--detach` to exit and then prints what it printed, with its exit code; while the
+job is still running at the timeout it exits 22 (L158: it was 10, which is also what the verb
+itself returns at a hold). Reads the trace and the job's files only; needs no plugin, so it
+works from any install.
 """
 
 from __future__ import annotations
@@ -65,7 +67,7 @@ def wait(
 
 def _wait_job(job: str, timeout: float | None, as_json: bool) -> None:
     """Print the job's saved output (its stdout to stdout, its stderr to stderr) and exit with
-    its exit code; at the timeout print the job's state (`running`, exit 10)."""
+    its exit code; at the timeout print the job's state (`running`, exit 22)."""
     res = wait_job(_project_root(), job, timeout=timeout, poll=min(POLL_SECONDS, 1.0))
     if res.state == "exited":
         if res.stdout:

@@ -17,17 +17,19 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
     sentences: list[str] = []
     plugin_version = captured_plugins(store, rc.run_id).get(project.plugin.name)
     with_plugin = f" (plugin {project.plugin.name} {plugin_version})" if plugin_version else ""
+    # a project judged at a band of limits other than its profile's says so (L171)
+    at_limits = f" at the policy's {project.config.limits} limits" if project.config.limits else ""
     if rc.open_ended:
         tools = ", ".join(m.ref for m in project.tools()) or "none"
         sentences.append(
             f"Questions were answered with stringency {__version__}{with_plugin} in open mode using the "
             f"tools of method {project.config.method.tag} ({tools}; commit {run['git_sha'][:7]}) under the "
-            f"{project.config.profile} profile and policy {run['policy_version']}."
+            f"{project.config.profile} profile{at_limits} and policy {run['policy_version']}."
         )
     else:
         sentences.append(
             f"Analysis was run with stringency {__version__}{with_plugin} using the {project.pipeline.name} pipeline "
-            f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile "
+            f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile{at_limits} "
             f"and policy {run['policy_version']}."
         )
     for item in project.inputs.items:
@@ -81,7 +83,7 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
             )
             models = ", ".join(sorted(i["model_resolved"] for i in invs)) or "unknown"
             reviewers = store.all(
-                "SELECT DISTINCT r.reviewer FROM reviews r JOIN holds h ON h.hold_id=r.hold_id WHERE h.run_id=? AND h.step_id=? AND r.verdict IN ('accept','override')",
+                "SELECT DISTINCT r.reviewer, r.via, r.operator_harness FROM reviews r JOIN holds h ON h.hold_id=r.hold_id WHERE h.run_id=? AND h.step_id=? AND r.verdict IN ('accept','override')",
                 (rc.run_id, step.id),
             )
             if j:
@@ -91,8 +93,20 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
                 )
                 resolved = j["accepted"] + j["override"]
                 if resolved:
-                    who = ", ".join(sorted(r["reviewer"] for r in reviewers)) or "the reviewer"
-                    text += f" and {resolved} were resolved by reviewer {who} ({j['accepted']} accepted, {j['override']} corrected)"
+                    from stringency.review import policy_of
+
+                    people = sorted({r["reviewer"] for r in reviewers if r["via"] != "policy"})
+                    policies = sorted(
+                        {str(policy_of(r)) for r in reviewers if r["via"] == "policy"}
+                    )
+                    by = [f"reviewer {', '.join(people)}"] if people else []
+                    if policies:
+                        # a fixed policy's verdict is never worded as a person's (L162)
+                        by.append(
+                            f"the fixed policy {', '.join(policies)}, with no person's review"
+                        )
+                    who = " and ".join(by) or "the reviewer"
+                    text += f" and {resolved} were resolved by {who} ({j['accepted']} accepted, {j['override']} corrected)"
         described.append(text)
     if described:
         joined = "; ".join(described)

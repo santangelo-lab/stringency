@@ -15,6 +15,7 @@ from stringency import __version__
 from stringency.egress import CLASS_NAMES
 from stringency.gate import in_scope_specs
 from stringency.predicates import registry
+from stringency.review import policy_of
 from stringency.runs import RunContext, captured_egress, captured_plugins, captured_upstream_lineage
 from stringency.when import skip_reason
 
@@ -218,8 +219,19 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
                 "date": rev["ts"][:10] if rev else None,
                 "via": h["resolved_via"] or (rev["via"] if rev else None),
                 "reason": rev["reason"] if rev else None,
+                "policy": policy_of(rev),
             }
         )
+    # verdicts a fixed policy recorded, on any hold of the run or of the project (L162)
+    by_policy = store.all(
+        "SELECT r.operator_harness, r.via FROM reviews r JOIN holds h ON h.hold_id = r.hold_id "
+        "WHERE r.via = 'policy' AND (h.run_id = ? OR h.run_id IS NULL OR h.run_id = 'init')",
+        (rc.run_id,),
+    )
+    policy_verdicts = {
+        "n": len(by_policy),
+        "policies": sorted({str(policy_of(r)) for r in by_policy}),
+    }
     uncovered, ungated = decision_point_coverage(rc)
 
     judgment: list[dict[str, Any]] = []
@@ -371,6 +383,8 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
         else None,
         "mode": project.config.mode,
         "profile": project.config.profile,
+        "limits": project.policy.band_for(project.config.profile),
+        "limits_chosen": project.config.limits is not None,
         "policy_version": run["policy_version"],
         "policy_digest": run["policy_digest"],
         "stringency_version": __version__,
@@ -396,6 +410,7 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "evaluated": len(evaluated_ids),
             "fired": {k: fired.get(k, 0) for k in ("block", "flag", "log")},
             "flags": flags,
+            "policy_verdicts": policy_verdicts,
             "uncovered_decision_points": uncovered,
             "ungated_steps": ungated,
         },
@@ -485,7 +500,8 @@ def render_coverage(d: dict[str, Any]) -> str:
     g, s, e, r = d["gate"], d["steps"], d["execution"], d["reproducibility"]
     lines = [
         "stringency coverage report",
-        f"run {d['run_id']} | project {d['project_id']} | pipeline {d['pipeline']} | mode {d['mode']} | profile {d['profile']}",
+        f"run {d['run_id']} | project {d['project_id']} | pipeline {d['pipeline']} | mode {d['mode']} | profile {d['profile']}"
+        + (f" | limits {d['limits']} (chosen for this project)" if d.get("limits_chosen") else ""),
         f"policy {d['policy_version']} (blake3:{d['policy_digest'][:12]}) | stringency {d['stringency_version']}"
         + (
             " with " + ", ".join(f"{k} {v}" for k, v in sorted(d["plugins"].items()))
@@ -501,6 +517,12 @@ def render_coverage(d: dict[str, Any]) -> str:
         f"gate: {g['registered']} predicates registered; {g['in_scope']} in scope for this pipeline; {g['evaluated']} evaluated over {s['declared']} steps, both phases",
         f"  fired: {g['fired']['block']} block, {g['fired']['flag']} flag, {g['fired']['log']} log",
     ]
+    pv = g.get("policy_verdicts") or {}
+    if pv.get("n"):
+        lines.append(
+            f"  verdicts recorded by a fixed policy, not by a person: {pv['n']} "
+            f"({', '.join(pv['policies'])})"
+        )
     if g["flags"]:
         lines.append("  flags:")
         for f in g["flags"]:

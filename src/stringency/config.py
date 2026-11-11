@@ -98,6 +98,9 @@ class StringencyConfig(Strict):
     # the study this project opts into (confirm once, L67): siblings naming the same study
     # under the same parent directory share one design acceptance and one parameter acceptance
     study: str | None = None
+    # the band of the policy's `ranges` this project is judged at, when it is not its profile's
+    # (design 2.2, 6.4, 2026-11-10, L171): `strict` limits with the `standard` profile's review
+    limits: str | None = None
 
     @model_validator(mode="after")
     def _refuse_open_strict(self) -> StringencyConfig:

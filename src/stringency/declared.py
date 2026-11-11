@@ -49,6 +49,9 @@ def values_the_gate_would_block(
             where = f"step {sid}, parameter {name}"
             decl = step.params.get(name)
             changed = decl is not None and value != decl.default
+            # a declared name is admitted under every profile (param.locked_changed@2, L163)
+            if decl is not None and decl.is_name:
+                changed = False
             if decl is not None and changed and (decl.fixed or locked_profile) and locked_blocks:
                 why = (
                     "parameters are locked under this profile"

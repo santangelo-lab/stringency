@@ -101,6 +101,7 @@ class InitRequest:
     brief: Path | None = None  # the person's own words, kept beside the declarations
     check_only: bool = False  # `declare --check`: every init check, no project record
     study: str | None = None  # the study the project opts into (confirm once, L67)
+    limits: str | None = None  # the band of the policy's ranges, apart from the profile (L171)
     siblings_root: Path | None = None  # where siblings are looked for (default: the parent)
     # open mode (open_mode_plan.md 2.1): derive the declarations from a delivery directory
     from_delivery: Path | None = None
@@ -148,7 +149,9 @@ class Project:
             assert self.config.pipeline is not None
             self.pipeline = load_pipeline(find_pipeline(self.method_root, self.config.pipeline))
         self.plugin: Plugin = require_plugin(self.pipeline.domain)
-        self.policy: Policy = load_policy(self.root / self.config.policy)
+        self.policy: Policy = load_policy(self.root / self.config.policy).with_limits(
+            self.config.limits
+        )
         self._store: Store | None = None
         self.siblings_root: Path | None = None  # confirm once: where siblings are (the parent)
 
@@ -410,9 +413,41 @@ class Project:
             cached = self.scratch / "init-extract.json"
             if cached.exists():
                 counts = json.loads(cached.read_text())
+        from stringency.names import echo_lines
+
+        summaries = {
+            k: ObjectState(type="", digest="", summary=v)
+            for k, v in counts.items()
+            if isinstance(v, dict)
+        }
         return render_echo(
-            self.plugin, self.design, self.objective, self.inputs, counts, self.declaration_hashes()
+            self.plugin,
+            self.design,
+            self.objective,
+            self.inputs,
+            counts,
+            self.declaration_hashes(),
+            self.limits_lines()
+            + echo_lines(
+                self.pipeline,
+                self.objective.params,
+                summaries,
+                [i.name for i in self.inputs.items],
+            ),
         )
+
+    def limits_lines(self) -> list[str]:
+        """The echo-back's line on the limits band, when the project chose one apart from its
+        profile (design 2.7, 6.4, L171); empty otherwise."""
+        band = self.config.limits
+        if not band:
+            return []
+        own = self.policy.profile(self.config.profile).qc_ranges
+        return [
+            f"Limits: checks that read a range from the method's policy are judged at its "
+            f"`{band}` band, chosen for this project; the `{self.config.profile}` profile's "
+            f"own band is `{own}`. Everything else about the profile is unchanged."
+        ]
 
     @staticmethod
     def _major(tag: str) -> str | None:
@@ -457,6 +492,8 @@ class Project:
             return None, "no inputs are bound"
         if self.objective.params:
             return None, "the objective declares parameters this owner must see"
+        if self.config.limits:
+            return None, "the project chooses its limits band, which this owner must see"
         my_design = hashing.hash_file(self.root / "design.yml")
         my_major = self._major(self.config.method.tag)
         if my_major is None:
@@ -1227,6 +1264,7 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         problems = check_requires(method_policy.requires, __version__, installed_plugin_versions())
         if problems:
             raise ConfigError("the method's policy requires: " + "; ".join(problems))
+    method_policy.with_limits(req.limits)  # refuses a band the policy's ranges do not declare
     if objective.params:
         from stringency.declared import values_the_gate_would_block
 
@@ -1285,6 +1323,7 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         plugins=installed_plugin_versions(),
         egress=_egress_setting(req),
         study=req.study,
+        limits=req.limits,
     )
     dump_yaml(cfg.model_dump(mode="json"), root / "stringency.yml")
 

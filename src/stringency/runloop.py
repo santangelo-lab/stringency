@@ -36,7 +36,9 @@ from stringency.when import skip_decision
 
 @dataclass
 class Next:
-    kind: str  # runnable | held | blocked | rejected | failed | awaiting_execution | dispatching | completed
+    # runnable | held | blocked | rejected | failed | awaiting_execution | dispatching |
+    # completed | awaiting_proposal (a parameter still `unset`, 2026-11-10)
+    kind: str
     step_id: str | None = None
     detail: dict[str, Any] = field(default_factory=dict)
     exit_code: int = 0
@@ -120,6 +122,10 @@ def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
             "range": decl.range if decl else None,
             "options": decl.options if decl else None,
             "fixed": decl.fixed if decl else True,
+            "text": decl.name_kind if decl else None,
+            "value_of": decl.value_of if decl else None,
+            "listed_in": decl.listed_in if decl and decl.name_kind == "listed" else None,
+            "required": decl.required if decl else False,
             "decision_point": name in m.decision_points,
         }
     vocab = list(rc.project.plugin.vocabulary(m.vocabulary) or ()) if m.vocabulary else None
@@ -143,6 +149,93 @@ def plan_template(rc: RunContext, step_id: str) -> dict[str, Any]:
         "profile": rc.project.config.profile,
         "params_policy": rc.project.policy.profile(rc.project.config.profile).params,
     }
+
+
+def awaiting_proposal(rc: RunContext, step_id: str) -> Next | None:
+    """A pending step one of whose open parameters is still `unset` (a required name nobody
+    gave, a decision point the method leaves unset until its evidence is read): the run stops
+    here for the proposal, and no hold opens (design 7.1, 2026-11-10; L129, L163). The detail
+    says, per parameter, what it is, the evidence its decision names, and for a name the
+    columns or values it may take. None when the step can be proposed as it stands.
+    Reads: actions (a fork's parent), state_snapshots."""
+    from stringency.names import LISTED, columns_of, objects_read
+    from stringency.steps import unset_parameters
+
+    step = rc.pipeline.step(step_id)
+    values = {k: v for k, (v, _) in (starting_params(rc, step_id) or {}).items()}
+    values.update(rc.delta_for(step_id) or {})
+    waiting = unset_parameters(step, values)
+    if not waiting:
+        return None
+    merged = {**step.defaults(), **values}
+    read = objects_read(
+        rc.pipeline,
+        step_id,
+        rc.current_state().objects,
+        [i.name for i in rc.project.inputs.items],
+    )
+    listed = {n: c for n, o in read.items() if (c := columns_of(o)) is not None}
+    entries: list[dict[str, Any]] = []
+    lines: list[str] = []
+    for name in waiting:
+        decl = step.params[name]
+        entry: dict[str, Any] = {"parameter": name}
+        if decl.decision is not None:
+            entry["evidence"] = decl.decision.evidence.describe()
+        if decl.name_kind == "column":
+            entry["kind"] = "column"
+            entry["candidates"] = {n: sorted(c) for n, c in listed.items()}
+            cols = sorted({c for cs in listed.values() for c in cs})
+            what = "a column of " + (", ".join(listed) or "the object the step reads")
+            if cols:
+                more = f", and {len(cols) - LISTED} more" if len(cols) > LISTED else ""
+                what += f" ({', '.join(cols[:LISTED])}{more})"
+        elif decl.name_kind == "value":
+            column = str(merged.get(decl.value_of or "", "") or "")
+            entry.update({"kind": "value", "value_of": decl.value_of, "column": column})
+            levels = next((c[column].get("levels") for c in listed.values() if column in c), None)
+            what = f"a value of {decl.value_of}" + (
+                f" ({column})" if column not in ("", "unset") else ""
+            )
+            if isinstance(levels, list):
+                entry["candidates"] = [str(x) for x in levels]
+                more = f", and {len(levels) - LISTED} more" if len(levels) > LISTED else ""
+                what += f": {', '.join(str(x) for x in levels[:LISTED])}{more}"
+        elif decl.name_kind == "listed":
+            from stringency.names import listed_of
+
+            key = str(decl.listed_in)
+            lists = {n: sorted(c) for n, o in read.items() if (c := listed_of(o, key))}
+            entry.update({"kind": "listed", "listed_in": key, "candidates": lists})
+            names = sorted({c for cs in lists.values() for c in cs})
+            what = f"an entry of {key}" + (f" ({', '.join(names[:LISTED])})" if names else "")
+        elif decl.name_kind == "prefix":
+            entry["kind"] = "prefix"
+            what = "a naming convention of the data"
+        elif decl.options is not None:
+            entry.update({"kind": "options", "options": decl.options})
+            what = "one of " + ", ".join(str(o) for o in decl.options if o != "unset")
+        else:
+            entry.update({"kind": "range", "range": decl.range})
+            what = f"a value in {decl.range}"
+        entries.append(entry)
+        ev = f"; evidence: {entry['evidence']}" if "evidence" in entry else ""
+        lines.append(f"  {name}: {what}{ev}")
+    command = f"stringency propose {step_id} " + " ".join(f"--set {n}=<value>" for n in waiting)
+    return Next(
+        "awaiting_proposal",
+        step_id,
+        {
+            "title": rc.pipeline.title(step_id),
+            "unset": entries,
+            "propose": command + ' --reason "<why, citing the evidence>"',
+            "plan": plan_template(rc, step_id),
+        },
+        int(Exit.REFUSED),
+        f"awaiting a proposal: {step_id} cannot run with {', '.join(waiting)} unset\n"
+        + "\n".join(lines)
+        + f'\npropose, then run again: {command} --reason "..."',
+    )
 
 
 def next_step(rc: RunContext) -> Next:
@@ -253,6 +346,10 @@ def next_step(rc: RunContext) -> Next:
                         0,
                         f"next: {sid} ({skip['reason']})",
                     )
+                if st == StepStatus.PENDING:
+                    waiting = awaiting_proposal(rc, sid)
+                    if waiting is not None:
+                        return waiting
                 return Next(
                     "runnable",
                     sid,

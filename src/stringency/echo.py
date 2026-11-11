@@ -99,10 +99,15 @@ def render_echo(
     inputs: InputsManifest,
     counts: Mapping[str, Any],
     hashes: Mapping[str, str],
+    names: list[str] | None = None,
 ) -> str:
+    """`names`: the lines on what each `text:` parameter names in the inputs
+    (`names.echo_lines`, design 2.7, L163), after the declarations' own reading."""
     domain = plugin.echo(design, objective, inputs, counts).strip()
     body = generic_echo(design, objective, inputs, counts)
     text = domain + "\n\n" + body if domain else body
+    if names:
+        text += "\n\n" + "\n".join(names)
     bound = "\n".join(f"  {k}: {v}" for k, v in sorted(hashes.items()))
     head = (
         "This is the engine's reading of the declarations. Accept it with `stringency review`"

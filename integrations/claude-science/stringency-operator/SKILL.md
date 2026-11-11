@@ -110,7 +110,7 @@ session id and version, set only `STRINGENCY_OPERATOR=claude-code` or nothing at
    `exec` (section 10), never in your sandbox on the delivered files.
 4. Report every exit code to yourself and act on it. 0 ok; 10 held; 11 blocked before
    execution; 12 rejected after; 13 failed; 14 dirty tree; 15 configuration error; 16 refused;
-   20 judgment dispatched; 21 ticket issued. To the person, relay the `plain` sentences from
+   20 judgment dispatched; 21 ticket issued; 22 a detached verb is still running. To the person, relay the `plain` sentences from
    `run --json` or `status --json`; show a code, an id, or a path only when they ask.
 5. The hold message tells the owner what to do. Do not look for another way past it.
 6. The `intent=` string of every `call_command` is a sentence from the table in section 4. It
@@ -159,9 +159,11 @@ invocation, which the person may raise or lower within the cap in the policy (`r
 **A session with a command limit** (mode B's `call_command` ends a command after 60 seconds;
 engine 0.2.35). Start `run`, `call`, `exec`, `deliver` and `controls run` with `--detach`: the
 verb prints `{job_id, pid, log}` and returns at once while the work goes on. Then, each in a
-fresh command, `stringency wait --job <job_id> --for 50 --json`: `state: running` (exit 10)
-means wait again the same way; otherwise it prints what the verb printed, with its exit code,
-and you act on that as on the verb itself. Read a long payload with `--out <file>` on `run`,
+fresh command, `stringency wait --job <job_id> --for 50 --json`: exit 22 with `state: running`
+means the verb is still at work, so wait again the same way (engine 0.2.42; an older engine
+returns 10 here, so on one of those read `state`). Any other code is the verb's own: the
+command prints what the verb printed, and you act on that as on the verb itself, 10 being a
+hold. Read a long payload with `--out <file>` on `run`,
 `deliver` and `present` and read the file in parts; at a dispatch, `run --json
 --print-requests` (or `stringency judgments --dispatch --print --json`) carries every request
 inline, so no request file is fetched.
@@ -375,6 +377,18 @@ name, and never change a parameter nobody asked about. Then `run` again. This te
 A method's analysis skill lists which steps of its pipeline are proposed this way and from which
 evidence (`skills/<pipeline>.analyze.yml` `decisions:`); a parameter the person settles before
 the run is declared in `objective.yml` `params:` instead and is never proposed (section 8).
+
+When `run` stops with exit 16 and `kind: awaiting_proposal` (engine 0.2.42), a parameter of the
+next step is still `unset`: a name the pipeline requires (a column of this dataset, or a value
+found in one) or a decision point the method leaves unset until its evidence exists. Nothing
+has run and no hold is open. The payload's `unset` lists each such parameter with what it may
+take (`candidates`: the columns of the objects the step reads, or the values of its column) and
+`propose` is the command. For a decision point, read the evidence and propose as above. For a
+name, propose the one the person already gave, with their words as the reason; if they gave
+none, ask them, showing the candidates. Never pick a column because its spelling looks right.
+Then `run` again. A name the person gives before the run (a column, a value, a naming
+convention such as a gene-symbol prefix) belongs in `objective.yml` `params:` and is never
+proposed; under the strict profile that is the only way to give one.
 
 ## 10. Open mode: questions of a delivered dataset
 

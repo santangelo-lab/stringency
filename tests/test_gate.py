@@ -606,7 +606,7 @@ def test_agent_proposed_fires_at_the_default_under_hold_always(project: Project)
     assert v.reason.startswith(
         "cites nothing from `02_summarize/table`; the agent chose correction"
     )
-    assert registry.get("param.agent_proposed").version == 2  # type: ignore[union-attr]
+    assert registry.get("param.agent_proposed").version == 3  # type: ignore[union-attr]
     p2 = with_decision(project, "04_compare", "correction", {"evidence": "02_summarize/table"})
     assert (
         not registry.get("param.agent_proposed")
@@ -652,11 +652,13 @@ def test_every_registered_predicate_has_a_case() -> None:
     # repro.seed_unset and judg.considered_set_missing are covered below with a synthetic module;
     # prov.egress_exceeds_ceiling in tests/test_egress.py
     # prov.trace_inconsistent in tests/test_audit.py
+    # param.name_unresolved in tests/test_names.py (the toy pipeline declares no name)
     assert missing <= {
         "repro.seed_unset",
         "judg.considered_set_missing",
         "prov.egress_exceeds_ceiling",
         "prov.trace_inconsistent",
+        "param.name_unresolved",
     }, missing
 
 

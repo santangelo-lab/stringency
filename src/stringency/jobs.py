@@ -212,7 +212,7 @@ def wait_job(
         if timeout is not None and waited >= timeout:
             return JobResult(
                 "running",
-                int(Exit.HELD),
+                int(Exit.RUNNING),
                 detail={
                     "job_id": job_id,
                     "pid": pid,

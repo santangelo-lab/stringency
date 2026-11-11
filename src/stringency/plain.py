@@ -64,6 +64,13 @@ def stop_sentence(
         return f"Stopped: {title} failed to run."
     if kind == "awaiting_execution":
         return f"Stopped: {title} is ready for the operator to run and hand back."
+    if kind == "awaiting_proposal":
+        names = [str(u.get("parameter")) for u in detail.get("unset") or []]
+        what = _join(names) or "a value"
+        return (
+            f"Stopped: {title} needs {what} chosen before it can run; the operator proposes "
+            "it from the evidence."
+        )
     if kind == "dispatching":
         n = int(detail.get("requests") or 0)
         noun = "judgment" if n == 1 else "judgments"

@@ -57,6 +57,9 @@ def declare(
     study: str | None = typer.Option(
         None, "--study", help="the study the project would opt into (confirm once)"
     ),
+    limits: str | None = typer.Option(
+        None, "--limits", help="the band of the policy's `ranges` the project would be judged at"
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     if not check:
@@ -92,6 +95,7 @@ def declare(
             from_delivery=from_delivery,
             upstream=upstream,
             study=study,
+            limits=limits or siteconfig.limits(),
             siblings_root=directory.resolve().parent,
         )
     )

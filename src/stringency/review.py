@@ -10,6 +10,7 @@ from __future__ import annotations
 import getpass
 import json
 import os
+import re
 import socket
 import sys
 from dataclasses import dataclass
@@ -127,6 +128,17 @@ def show(project: Project, h: Any) -> HoldView:
     return render(project, h)
 
 
+POLICY_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
+
+
+def policy_of(row: Any) -> str | None:
+    """The name of the fixed policy that recorded a review row (`via: policy`), or None."""
+    if row is None or row["via"] != "policy":
+        return None
+    harness = str(row["operator_harness"] or "")
+    return harness.removeprefix("policy:") or "unnamed"
+
+
 @dataclass
 class ReviewResult:
     review_id: str
@@ -151,10 +163,16 @@ def record_review(
     attest: bool = False,
     via_override: str | None = None,
     reason_code: str | None = None,
+    policy: str | None = None,
 ) -> ReviewResult:
     """Record one verdict and apply its effect (design 7.3, 7.5). Writes: reviews (with
     `operator_session_ref` and `operator_harness` from the environment), holds, consensus, steps,
-    step_events, artifacts, run_events."""
+    step_events, artifacts, run_events.
+
+    `policy` (design 7.5, 2026-11-10, L162): the verdict is a fixed policy's, not a person's (a
+    benchmark's hold policy, a batch rule). It is recorded `via: policy` with
+    `operator_harness: policy:<name>` and the process's session reference, so no report can
+    read it as a person's review; the reason is the rule that decided."""
     if verdict not in VERDICTS:
         raise ConfigError(f"verdict must be one of {', '.join(VERDICTS)}")
     h = get_hold(project, hold_id)
@@ -163,7 +181,31 @@ def record_review(
     if h["resolved_via"] is not None:
         raise RefusedError(f"hold {hold_id} was withdrawn when its attempt closed")
     profile = project.policy.profile(project.config.profile)
-    via = via_override or ("relayed" if attest else detect_via())
+    if policy is not None:
+        if attest or via_override:
+            raise ConfigError(
+                "--policy is a verdict no person gave; it is not combined with --attest"
+            )
+        if not POLICY_NAME.match(policy):
+            raise ConfigError(
+                "--policy names the policy in letters, digits, `.`, `_`, `:` or `-` "
+                f"(at most 64); got {policy!r}"
+            )
+        if not profile.relayed_review:
+            raise RefusedError(
+                f"profile {project.config.profile} takes a verdict from a person at a terminal "
+                "or on the review page only; a fixed policy's verdict (--policy) is refused"
+            )
+        if not operator_env()["session_ref"]:
+            raise RefusedError(
+                "--policy needs STRINGENCY_SESSION_REF set to the policy process's own "
+                "reference; a policy's verdict names the process it came from (design 7.5)"
+            )
+        if not reason:
+            raise ConfigError("a policy's verdict needs --reason: the rule that decided")
+    via = (
+        "policy" if policy is not None else via_override or ("relayed" if attest else detect_via())
+    )
     if via is None:
         raise RefusedError(
             "review needs a terminal, or --attest after the person confirmed in the conversation"
@@ -244,7 +286,9 @@ def record_review(
                 "host": socket.gethostname(),
                 "via": via,
                 "operator_session_ref": operator_env()["session_ref"],
-                "operator_harness": operator_env()["harness"],
+                "operator_harness": (
+                    f"policy:{policy}" if policy is not None else operator_env()["harness"]
+                ),
                 "ts": now_iso(),
                 "verdict": verdict,
                 "correction_json": correction,

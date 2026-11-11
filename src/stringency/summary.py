@@ -153,6 +153,13 @@ def what_was_checked(rc: RunContext, cov: dict[str, Any]) -> list[str]:
             lines.append(f"- {f['predicate']} on {title}: open, not yet decided.")
             continue
         reason = f' "{f["reason"]}"' if f["reason"] else ""
+        if f.get("policy"):
+            # a fixed policy's verdict is never worded as a person's (L162)
+            lines.append(
+                f"- {f['predicate']} on {title}: {f['verdict']} by the fixed policy "
+                f"`{f['policy']}` on {f['date']}{reason}; no person reviewed it."
+            )
+            continue
         lines.append(
             f"- {f['predicate']} on {title}: {f['verdict']} by {f['reviewer']} via {f['via']} on {f['date']}{reason}."
         )
@@ -230,7 +237,9 @@ def render_summary(rc: RunContext, cov: dict[str, Any], files: list[dict[str, An
         f"# Summary of run {rc.run_id}",
         "",
         f"Project {project.config.project_id}; pipeline {project.pipeline.name} {project.pipeline.version}; "
-        f"profile {project.config.profile}.",
+        f"profile {project.config.profile}"
+        + (f", at the policy's {project.config.limits} limits" if project.config.limits else "")
+        + ".",
         "",
         "## What was analyzed",
         "",

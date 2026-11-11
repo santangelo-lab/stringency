@@ -78,3 +78,29 @@ list and warns on `key` declared on an input. Whether a declared key is unique i
 (an output exists only after a run); a declared key that repeats numbers each repeat `#<n>`.
 The module contract document (`spec/module-contract.md`, the `outputs` row) says so. Awaiting
 acknowledgement by Jim; built in engine 0.2.35 as `must_cite` was.
+
+## Trace schema 9.4: `reviews.via: policy` (2026-11-10, PLAN L162)
+
+A sixth value of `reviews.via`, beside `tty`, `relayed`, `web`, `rebind` and `inherited`: a
+verdict recorded by a fixed policy and not by a person, with `operator_harness` holding
+`policy:<name>` and `operator_session_ref` the policy process's own reference. Additive: the
+column carries no constraint, no migration is needed, and every row written before reads as it
+did. Needed because the benchmark's hold policy recorded its verdicts with `--attest`, so the
+trace called them relayed reviews by the reviewer's own account and only the session
+reference told them from a person's; a benchmark number that counts holds "reviewed" must not
+rest on that. Readers that word a review as a person's (the coverage report, the summary, the
+methods paragraph) now ask the row first. The value is refused under a profile that refuses
+relayed review. Approved in principle by Jim, 2026-11-10; this entry is the written form.
+
+## CLI 14.2: exit code 22, running (2026-11-10, PLAN L158)
+
+An eleventh exit code on the frozen list: 22, returned by `wait --job --for <s>` when the
+detached verb is still running at the timeout. It returned 10, which is also what the detached
+verb itself returns when it stops at a hold, so an operator reading the code alone could not
+tell "still at work" from "stopped for a person" (the owner's operator lost twenty-five minutes
+to it on 2026-11-09). No other verb returns 22 and no existing code changes meaning: `wait
+--hold` and `wait --run` still return 10 at their timeout, since the hold they wait on is
+still open. A harness written for the old behaviour that waits again on 10 with `state:
+running` must now do so on 22; the operator skill says to read `state` on an older engine.
+Decided by Jim, 2026-11-10 ("add a new exit code"); this entry is the written form.
+

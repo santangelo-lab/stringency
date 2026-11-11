@@ -116,7 +116,12 @@ pipeline is a consumer, not the list of what exists, and a report step's outputs
 the organ of an upstream project; name the step id and the parameter as the pipeline or the
 module declares them (`declare --check` refuses any other). The echo-back lists it and the
 confirm covers it; the step then takes it as given, and no proposal hold opens for it. Never
-write a value the person did not give.
+write a value the person did not give. A pipeline may declare names (`text:` on a parameter in
+the pipeline file, engine 0.2.42): a column of the object, a value found in a column, a naming
+convention. Write under `params` each name the person gave or the manifest shows;
+`declare --check` refuses a column or a value that does not exist and names the nearest, and
+the echo-back says what each name resolves to. Leave out a name nobody gave, even one the
+pipeline requires: the run stops at its step and asks.
 
 Ambiguities to ask about rather than resolve: "compare A, B, and C" (pairwise or one omnibus
 contrast); whether replicate means sample or a grouping of samples; whether a column is biology
