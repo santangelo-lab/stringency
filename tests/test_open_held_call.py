@@ -94,8 +94,9 @@ def _held_call(q: Project, monkeypatch: pytest.MonkeyPatch) -> tuple[str, str]:
     assert r.exit_code == 10, r.output + str(r.stderr)
     payload = json.loads(r.output)
     # the held report names the one command that carries the step out once accepted
-    assert payload["next"]["after_accept"] == f"stringency propose {payload['step_id']}"
-    hold = queue(q)[0]
+    mine = [h for h in payload["next"]["holds"] if h["step_id"] == payload["step_id"]]
+    assert [h["after_accept"] for h in mine] == [f"stringency propose {payload['step_id']}"]
+    hold = next(h for h in queue(q) if h["step_id"] == payload["step_id"])
     return str(hold["step_id"]), str(hold["hold_id"])
 
 
@@ -165,8 +166,38 @@ def test_a_call_nobody_wants_is_closed(
     assert cli(q, "propose", step2, "--json").exit_code == 16
     assert cli(q, "abandon", "--step", step2, "--reason", "again", "--json").exit_code == 16
     assert q.store.scalar("SELECT status FROM runs WHERE kind = 'run'") != "abandoned"
-    # a completed step, and a step that is not an on-demand step, are refused
+    # a step that is not an on-demand step of this run is refused
     assert cli(q, "abandon", "--step", "no_such_step", "--reason", "x", "--json").exit_code == 16
+
+
+def test_abandon_step_closes_only_its_own_call_and_never_one_that_ran(
+    questions: Project,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The review of #33: closing one held call leaves another call's hold open; a completed
+    call, and a call held on what it produced, are refused (their artifacts exist and the
+    post-run hold is a person's)."""
+    q = questions
+    step_a, hold_a = _held_call(q, monkeypatch)
+    step_b, hold_b = _held_call(q, monkeypatch)
+    assert step_a != step_b
+    r = cli(q, "abandon", "--step", step_a, "--reason", "not wanted", "--json")
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    assert json.loads(r.output)["holds"] == [hold_a]
+    assert [h["hold_id"] for h in queue(q)] == [hold_b] and _run_step(q, step_b) == "held"
+    # completed: refused
+    record_review(q, hold_b, "accept", reason="fine")
+    assert cli(q, "propose", step_b, "--json").exit_code == 0
+    assert _run_step(q, step_b) == "completed"
+    r = cli(q, "abandon", "--step", step_b, "--reason", "x", "--json")
+    assert r.exit_code == 16, r.output + str(r.stderr)
+    assert _run_step(q, step_b) == "completed"
+    # held after it ran (as a post-phase or item hold leaves it): refused, nothing changes
+    run_id = str(q.store.scalar("SELECT run_id FROM runs WHERE kind = 'run'"))
+    q.store.set_step_status(run_id, step_b, "held", {"from": "produced"})
+    r = cli(q, "abandon", "--step", step_b, "--reason", "x", "--json")
+    assert r.exit_code == 16, r.output + str(r.stderr)
+    assert "has run" in str(r.stderr) + r.output and _run_step(q, step_b) == "held"
 
 
 def test_the_console_shows_the_one_command_for_a_held_call(

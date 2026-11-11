@@ -110,26 +110,37 @@ def add(project: Project, name: str, path: Path, type_: str, source: str) -> dic
     if not src.exists():
         raise ConfigError(f"{src} does not exist")
     src = src.resolve()
+    if src.is_dir() and project.root.resolve().is_relative_to(src):
+        raise ConfigError(
+            f"{src} contains this project; a directory is copied whole, so name the file or "
+            "the folder within it that the person means"
+        )
     rel = ADDED_DIR / name / src.name
     dest = project.root / rel
     if dest.parent.exists():
-        raise ConfigError(f"{dest.parent} already exists; nothing was added")
+        # no event names it (the name is new): what an interrupted earlier add left behind
+        shutil.rmtree(dest.parent)
     rc = open_for_questions(project)
-    dest.parent.mkdir(parents=True)
-    if src.is_dir():
-        shutil.copytree(src, dest)
-    else:
-        shutil.copy2(src, dest)
-    payload: dict[str, Any] = {
-        "name": name,
-        "type": type_,
-        "path": str(rel),
-        "from": str(src),
-        "blake3": hashing.hash_path(dest),
-        "size": hashing.path_size(dest),
-        "source": words,
-        "operator": operator_env(),
-    }
-    project.store.run_event(rc.run_id, EVENT, payload)
+    try:
+        dest.parent.mkdir(parents=True)
+        if src.is_dir():
+            shutil.copytree(src, dest)
+        else:
+            shutil.copy2(src, dest)
+        payload: dict[str, Any] = {
+            "name": name,
+            "type": type_,
+            "path": str(rel),
+            "from": str(src),
+            "blake3": hashing.hash_path(dest),
+            "size": hashing.path_size(dest),
+            "source": words,
+            "operator": operator_env(),
+        }
+        project.store.run_event(rc.run_id, EVENT, payload)
+    except BaseException:
+        # nothing is recorded, so nothing of the copy is kept
+        shutil.rmtree(dest.parent, ignore_errors=True)
+        raise
     include(project)
     return {**payload, "run_id": rc.run_id, "ref": f"$inputs.{name}"}

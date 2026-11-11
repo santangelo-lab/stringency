@@ -622,7 +622,8 @@ run yet: carry out the same step with `stringency propose <step id>` (the held p
 same). Never `call` the tool again, which starts a second step and leaves the accepted one
 waiting. `next --json` lists any accepted call not yet run under `to_carry_out`. If the person
 no longer wants it, close that one step (an engine newer than 0.2.42) with `stringency abandon
---step <step id> --reason "<their words>"`; the run stays open.
+--step <step id> --reason "<their words>"`; the run stays open. A call that has already run and
+is held on what it produced is the person's to resolve; the engine refuses to close it.
 
 ### 10.6 When `answer` blocks, and what never
 

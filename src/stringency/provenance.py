@@ -225,18 +225,47 @@ def _step_fact(rc: RunContext, step_id: str) -> StepFact:
     return fact
 
 
+def bound_input_item(rc: RunContext, step_id: str, name: str, digest: str) -> Any | None:
+    """The project input a step bound as its input `name`, whose digest is `digest` (bare
+    hex): found through the step's own reference (`$inputs.<name>`, or a glob) first, so that
+    two inputs with the same bytes (a person's added file identical to a delivered one, L160)
+    are told apart by which one was bound. None when the step's reference is a step output, or
+    when no input has the digest. A step with no readable declaration falls back to the digest
+    alone, a declared input before an added one. Reads the run's topology (step_events)."""
+    import fnmatch
+
+    items = list(rc.project.inputs.items)
+    try:
+        refs = rc.decl(step_id).refs().get(name, [])
+    except ConfigError:
+        refs = []
+    if refs:
+        named = [
+            i
+            for r in refs
+            if r.kind == "inputs"
+            for i in items
+            if (fnmatch.fnmatchcase(i.name, r.name) if r.pattern else i.name == r.name)
+        ]
+        hit = next((i for i in named if i.blake3 == digest), None)
+        if hit is not None or not named:
+            return hit
+    added = rc.project.added_inputs
+    ordered = [i for i in items if i.name not in added] + [i for i in items if i.name in added]
+    return next((i for i in ordered if i.blake3 == digest), None)
+
+
 def lineage(rc: RunContext, artifact_id: str) -> list[StepFact]:
     """Every step between the declared inputs and `artifact_id`, nearest first, then the
     inputs it rests on as `input` facts. An artifact's step's latest action names its inputs
-    by digest; a digest that is a declared input is a root, one that is a produced artifact of
-    this run is walked. An exec fact carries `drawing_check` as `drawn` (L140). Reads:
+    by digest; an input the step's reference names with that digest is a root
+    (`bound_input_item`), one that is a produced artifact of this run is walked. An exec fact carries `drawing_check` as `drawn` (L140). Reads:
     artifacts, steps, actions, executions, holds, reviews, predicate_results, controls_runs,
     and what `drawing_check` reads."""
     store = rc.store
     art = _artifact(store, rc.run_id, artifact_id)
     if art is None:
         raise ConfigError(f"no artifact {artifact_id} in run {rc.run_id}")
-    inputs_by_digest = {i.blake3: i for i in rc.project.inputs.items}
     facts: list[StepFact] = []
     seen_steps: set[str] = set()
     seen_inputs: set[str] = set()
@@ -256,9 +285,9 @@ def lineage(rc: RunContext, artifact_id: str) -> list[StepFact]:
         )
         if action is None:
             continue
-        for digest in json.loads(action["inputs_json"] or "{}").values():
+        for in_name, digest in json.loads(action["inputs_json"] or "{}").items():
             bare = str(digest).removeprefix("blake3:")
-            item = inputs_by_digest.get(bare)
+            item = bound_input_item(rc, sid, str(in_name), bare)
             if item is not None:
                 if item.name not in seen_inputs:
                     seen_inputs.add(item.name)
@@ -371,11 +400,10 @@ def _bound_inputs(rc: RunContext, step_id: str) -> list[dict[str, Any]] | None:
     )
     if action is None:
         return None
-    by_digest = {i.blake3: i for i in rc.project.inputs.items}
     out: list[dict[str, Any]] = []
     for name, digest in json.loads(action["inputs_json"] or "{}").items():
         bare = str(digest).removeprefix("blake3:")
-        item = by_digest.get(bare)
+        item = bound_input_item(rc, step_id, str(name), bare)
         if item is not None:
             p = Path(item.path)
             out.append(

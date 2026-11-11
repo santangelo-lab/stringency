@@ -157,3 +157,19 @@ def test_the_reference_form() -> None:
         Ref.parse("$parent.04_cluster")
     with pytest.raises(ConfigError, match="a glob binds"):
         Ref.parse("$parent.04_*.x")
+
+
+def test_a_parent_step_not_completed_binds_nothing(make_project: InitFn) -> None:
+    """The review of #33: a parent step held on what it produced (or abandoned while held) has
+    artifacts nobody admitted; `$parent` binds only a completed step's output."""
+    p = confirmed(make_project, pipeline="toy-engine", execution="engine")
+    with_parent_input(p)
+    parent = run_json(p)["run_id"]
+    r = cli(p, "fork", "--from", parent, "--at", "04_compare", "--reason", "again", "--json")
+    assert r.exit_code == 0, r.output
+    child = json.loads(r.output)["run_id"]
+    # the parent's comparison as a post-phase hold leaves it: produced, not admitted
+    p.store.set_step_status(parent, "04_compare", "held", {"from": "produced"})
+    out = run_json(p)
+    assert out["run_id"] == child
+    assert set(report_inputs(p, child)) == {"comparison", "labels"}

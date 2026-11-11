@@ -259,9 +259,13 @@ def next_step(rc: RunContext) -> Next:
             "held",
             holds[0]["step_id"],
             {
-                "holds": [dict(h) for h in holds],
+                # an on-demand step is carried out by name once its hold is accepted (L114):
+                # each hold names its own step's command, the top level the first hold's
+                "holds": [
+                    {**dict(h), "after_accept": carry_out_command(rc, str(h["step_id"]))}
+                    for h in holds
+                ],
                 **while_held(holds[0]["hold_id"]),
-                # an on-demand step is carried out by name once its hold is accepted (L114)
                 "after_accept": carry_out_command(rc, str(holds[0]["step_id"])),
             },
             int(Exit.HELD),

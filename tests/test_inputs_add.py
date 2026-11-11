@@ -8,6 +8,8 @@ import csv
 import json
 from pathlib import Path
 
+import pytest
+
 from stringency.project import Project
 from tests.conftest import InitFn
 from tests.test_open_answers import questions  # noqa: F401
@@ -163,3 +165,82 @@ def test_a_directory_is_copied_and_hashed_whole(
     assert r.exit_code == 0, r.output + str(r.stderr)
     out = json.loads(r.output)
     assert sorted(p.name for p in (q.root / out["path"]).iterdir()) == ["a.csv", "b.txt"]
+
+
+def test_a_file_identical_to_the_delivery_does_not_take_its_place(
+    questions: Project,  # noqa: F811
+    tmp_path: Path,
+) -> None:
+    """The review of #33: lineage follows the input a step bound, not the digest alone. A
+    person's copy of the delivered frame, added under another name, is named in the
+    qualifier only when a call binds it."""
+    q = questions
+    delivered = next(i for i in q.inputs.items if i.type == "frame" and not i.upstream_input)
+    copy = tmp_path / "same.csv"
+    copy.write_bytes(Path(delivered.path).read_bytes())
+    r = cli(q, "inputs", "add", "dup", str(copy), "--type", "frame", "--source", WORDS)
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    asked = json.loads(cli(q, "ask", "Which group is higher?", "--json").output)
+
+    def answer(*ins: str) -> dict:
+        r = cli(q, "call", "compare-groups", "--question", asked["question_id"], *ins, "--json")
+        assert r.exit_code == 0, r.output + str(r.stderr)
+        art = json.loads(r.output)["artifacts"][0]
+        diff = _cell(art["path"], "A_vs_B", "diff")
+        text = tmp_path / f"a{len(ins)}.md"
+        text.write_text(f"A is higher than B by {diff}.")
+        r = cli(
+            q,
+            "answer",
+            "--question",
+            asked["question_id"],
+            "--text",
+            str(text),
+            "--cite",
+            f"{art['artifact_id']}:A_vs_B",
+            "--json",
+        )
+        assert r.exit_code == 0, r.output + str(r.stderr)
+        return json.loads(r.output)
+
+    bound_by_type = answer()
+    assert "person-supplied inputs: none" in bound_by_type["qualifier"]
+    assert "upstream: verified" in bound_by_type["qualifier"]
+    named = answer("--in", "object=$inputs.dup")
+    assert f'person-supplied inputs: dup ("{WORDS}")' in named["qualifier"]
+
+
+def test_a_failed_copy_leaves_nothing_and_the_name_stays_free(
+    questions: Project,  # noqa: F811
+    tmp_path: Path,
+    toy_data: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    q = questions
+    theirs = _their_file(tmp_path, toy_data)
+    ok = ["--type", "frame", "--source", WORDS]
+
+    def broken(*a: object, **k: object) -> None:
+        raise OSError("disk full")
+
+    with monkeypatch.context() as m:
+        m.setattr("stringency.added_inputs.shutil.copy2", broken)
+        r = cli(q, "inputs", "add", "mine", str(theirs), *ok)
+        assert r.exit_code != 0
+    assert not (q.root / "inputs" / "added" / "mine").exists()
+    r = cli(q, "inputs", "add", "mine", str(theirs), *ok)
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    # a directory an interrupted add left under a name no event records is replaced
+    (q.root / "inputs" / "added" / "left" / "junk").mkdir(parents=True)
+    r = cli(q, "inputs", "add", "left", str(theirs), *ok, "--json")
+    assert r.exit_code == 0, r.output + str(r.stderr)
+    assert sorted(p.name for p in (q.root / "inputs" / "added" / "left").iterdir()) == [theirs.name]
+
+
+def test_a_directory_that_holds_the_project_is_refused(
+    questions: Project,  # noqa: F811
+) -> None:
+    q = questions
+    r = cli(q, "inputs", "add", "all", str(q.root.parent), "--type", "frame", "--source", WORDS)
+    assert r.exit_code == 15 and "contains this project" in str(r.stderr) + r.output
+    assert not (q.root / "inputs" / "added" / "all").exists()

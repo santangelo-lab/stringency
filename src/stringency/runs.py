@@ -745,7 +745,8 @@ def abandon_step(
     accepted and will not be carried out becomes `abandoned` (the edges `abandon` uses for a
     whole run, design 7.1), its open holds are withdrawn with no review, and the run stays
     open. Refused for a pipeline's step, whose run is abandoned or forked as a whole, and for
-    a step that is running or done. Reads: runs, steps, step_events, holds. Writes: steps,
+    a step that has run (running, done, or held on what it produced), whose artifacts exist
+    and whose post-run hold is a person's. Reads: runs, steps, step_events, holds. Writes: steps,
     step_events (`step_abandoned`, the transition), holds. Returns the event's payload."""
     from stringency.machine import StepStatus, step_status, transition
 
@@ -771,6 +772,22 @@ def abandon_step(
         raise RefusedError(
             f"step {step_id} is {was}; only a call that is proposed, held or accepted and not "
             "yet run is closed this way"
+        )
+    # a step held on what it produced (an output, item or sign-off hold) has artifacts a later
+    # call could bind; that hold is a person's to resolve, never closed by the operator
+    ran = store.scalar(
+        "SELECT COUNT(*) FROM step_events WHERE run_id = ? AND step_id = ? AND event IN "
+        "('status:running', 'status:dispatching', 'status:produced', "
+        "'status:awaiting_execution')",
+        (run_id, step_id),
+    ) or store.scalar(
+        "SELECT COUNT(*) FROM artifacts WHERE run_id = ? AND step_id = ?", (run_id, step_id)
+    )
+    if ran:
+        raise RefusedError(
+            f"step {step_id} has run and is held on what it produced; that hold is a person's "
+            "to resolve (`stringency review`), and abandon --step closes only a call that has "
+            "not run"
         )
     open_ids = [
         str(r["hold_id"])

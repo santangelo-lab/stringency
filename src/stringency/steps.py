@@ -144,15 +144,16 @@ def runner_for(rc: RunContext, step: StepDecl, module: Module) -> str:
 def parent_output(rc: RunContext, step_id: str, output: str) -> Any | None:
     """`$parent.<step>.<output>` (L11): the artifact row of that output in the run this run was
     forked from, which for a step the parent inherited is the row the fork copied. None when
-    this run is not a fork, or when the parent skipped the step or did not produce the output
-    (it stopped before the step, or the step failed). Reads: runs, steps, artifacts."""
+    this run is not a fork, or when the parent's step is not `completed` (skipped, failed,
+    still held on what it produced, abandoned while held): an output nobody admitted is never
+    bound. Reads: runs, steps, artifacts."""
     parent = rc.run["parent_run_id"]
     if not parent:
         return None
     status = rc.store.scalar(
         "SELECT status FROM steps WHERE run_id = ? AND step_id = ?", (str(parent), step_id)
     )
-    if status == str(StepStatus.SKIPPED):
+    if status != str(StepStatus.COMPLETED):
         return None
     return step_outputs(rc.store, str(parent), step_id).get(output)
 
