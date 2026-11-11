@@ -212,3 +212,40 @@ def test_sampled_sign_off_is_predicted_by_check_and_validated(make_project: Init
     )
     with pytest.raises(ConfigError, match="read only with"):
         Project.load(p3.root).modules.require("label-groups@0.1.1")
+
+
+def test_a_persons_choice_reaches_the_consensus_file(make_project: InitFn) -> None:
+    """L110: the consensus output names the replicate a person accepted and carries the whole
+    correction of an override, a module's own field included; the correction is validated
+    against the module schema with every field the person gave."""
+    p = signed_project(make_project, LABELS)
+    schema = p.method_root / "modules" / "label-groups" / "schema.json"
+    doc = json.loads(schema.read_text())
+    doc["properties"]["fine_label"] = {"type": "string"}
+    schema.write_text(json.dumps(doc))
+    git.commit_all(p.method_root, "a field of the module's own")
+    p = Project.load(p.root)
+    r = cli(p, "run", env=MOCK)
+    assert r.exit_code == 10, r.output
+    holds = item_holds(p)
+    c = holds["C"]
+    # the module's own field is read against the schema, not dropped
+    with pytest.raises(ConfigError, match="fails the module schema"):
+        record_review(
+            p,
+            c["hold_id"],
+            "override",
+            reason="x",
+            correction={"label": "uniform", "fine_label": 3},
+        )
+    whole = {"label": "uniform", "ontology_id": "X:1", "fine_label": "tight"}
+    record_review(p, c["hold_id"], "override", reason="mine", correction=whole)
+    for item in ("A", "B"):
+        record_review(p, holds[item]["hold_id"], "accept", reason="agreed", replicate=2)
+    assert p.store.scalar("SELECT status FROM steps WHERE step_id = '03_label'") == "completed"
+    out = json.loads(next((p.root / "runs").rglob("03_label/consensus.json")).read_text())
+    by = {i["item_id"]: i for i in out["items"]}
+    assert by["C"]["correction"] == whole and by["C"]["chosen_replicate"] is None
+    assert by["C"]["ontology_id"] == "X:1" and by["C"]["source"] == "override"
+    assert by["A"]["chosen_replicate"] == 2 and by["A"]["correction"] is None
+    assert by["A"]["source"] == "accepted"
