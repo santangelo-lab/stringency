@@ -70,10 +70,29 @@ sizes and the reasoning, and its section 9 says what each wave has left.
    republished; the slice run again (`2026-11-slice-2-dev`). L163 and L171 close with the
    tags and the run; L167 waits on his choice (an answer cites a delivered cell, or
    `reduce-pca` as an open tool).
+R. **Ready for a ROSC run** (the owner, 2026-11-11; L196; section 10 of the order note). It
+   comes before the rest of wave 2 and pulls four of its rows forward. In order:
+   - *R0, verify.* The Xenium method under engine 0.2.42 and plugin 0.10.4: both synthetic
+     studies and the open-tools check; what the engine's changes moved (a step at `unset` now
+     stops for a proposal) put right in the pipeline headers, the skill and `requires`.
+   - *R1, declare.* The ROSC declarations drafted from its manifest for the owner to read:
+     the factors (route, time point, control), the replicate unit, the study name for confirm
+     once, which organs first, which segmentation, which copy of the raw data.
+   - *R2, the factor.* The time-point factor is declared, not fixed at `timepoint_h` (L178),
+     with the Seurat extractor listing an object's columns (L186).
+   - *R3, QC at scale.* QC revised without re-splitting every region (the method's 3.3).
+   - *R4, judgments.* A rationale may name a time point or a punch (L195).
+   - *R5, holds.* A person's choice reaches the consensus (L110, the method's 3.18); a held
+     step can be re-proposed (L94 with L107); a sign-off on every decision opens under `run`
+     and the bridge predicate retires (L100, the method's 3.4), in a session with the owner.
+   - *R6, rehearse.* One organ end to end (liver, the smallest) from raw to an open question;
+     what it finds is fixed before the other ten.
+   - Beside these, not gating the first run: the seven organs the method does not know
+     (L197), read organ by organ; the cargo tool (L198), before the first question.
 2. **Hold and proposal friction from the owner's sessions.** Done: L129, L158, L95, L146,
-   L147, L159, L174, and the first half of L114. Left: L94 with L107 (a held step can be
-   re-proposed; a step stranded in `proposed` recovers); the rest of L114; L160 (a person's
-   file as a tool input); L110; L11; L175. Engine 0.2.43, which also carries #29.
+   L147, L159, L174, and the first half of L114. Taken by track R: L94 with L107, L110.
+   Left here: the rest of L114; L160 (a person's file as a tool input); L11; L175. Engine
+   0.2.43, which also carries #29 and track R's engine rows.
 3. **Small correctness, and measurement.** Two halves.
    - *Correctness.* Done: L145, L148. Left: L172, L106, L80, L37, K3, K4.
    - *Measurement: the run record, and what a project costs in tokens* (the owner,
@@ -87,7 +106,8 @@ sizes and the reasoning, and its section 9 says what each wave has left.
 4. **Lineage assignment, and the QC predicates that wait on nothing.** L98 with the method's
    M1, M5; L185's flags with M6 and M4; L99 with M2 (the interpretation judgment); M10, M11,
    M12, M3; L117, L119, L120, L176. Plugin 0.10.5, method 0.1.14.
-5. **The gate review's first item.** L100: `decision.hold: always` opens under `run`. To be
+5. **The gate review's first item.** L100: `decision.hold: always` opens under `run`. Taken
+   by track R (R5), since a ROSC run should sign off each decision once. To be
    done in a session with the owner: while the Xenium method still gates
    `sc.decision_unreviewed`, it would open two holds for one decision. The menu keys (L63 to
    L66) wait on it; the rest of the review (L103 to L109, L101, L102) waits on his design
@@ -135,6 +155,7 @@ of L184.
 | L82 | the unanimous-but-wrong rate of a judgment module is unmeasured: replicates of one model with one prompt are unanimous on the errors the model makes consistently, and sampling-based detectors miss them (the literature check of 2026-10-21) | in positive controls, report accuracy on unanimous items separately from held items, per module version; the `judgments` and `consensus` tables hold the data; one line on the controls report. The owner, 2026-10-21: not yet, too few runs to measure | engine, low; deferred by the owner; `notes/2026-10-21-1300-judgment-replicates-evidence.md` proposal 1 |
 | L172 | under `batching: per_item` each per-item request is numbered as its own replicate (`judgment.py`: the counter runs over replicates times items): six items by three replicates gave eighteen replicates, `judg.items_incomplete` fired and every item was held invalid (the Xenium method, 2026-10-27); `choose-fine-label` and `label-domains` use `all_items` to avoid it | a request carries its replicate and its item apart; the replicate count is the module's; a test with several items per replicate | engine; found in a session, never filed | the Xenium method's `docs/open-tools-v2-plan.md` section 6; the document survey of 2026-11-10 (`implementation-order-2026-11.md`) |
 | L180 | two of design 17's deferred items have met their stated trigger: judgment tools on demand in open mode ("when the first real open project has run": 2026-10-29) and the `reason_code` enum ("roughly fifty reviews") | the owner schedules each or leaves it; a row each when scheduled | engine design; the owner | `stringency-design.md` section 17; the document survey of 2026-11-10 (`implementation-order-2026-11.md`) |
+| L195 | `judg.numeric_claims_match@2` reads every numeral of a judgment's rationale as a claim and blocks one that matches no cited value, with none of the answer check's exemptions: a time point (`the 6 h and 72 h groups`), a punch or animal id with a hyphen (`24-1-Liver`, `ctrl-2-Spleen`), a slide number, a count of punches. The Lyons outlier judgment was rejected for it (`qc2_outliers_all`), and the method's remedy is to tell the reviewers to write numbers in words (its item 1.10) | the rationale read by the answer's classifier (`ans.classify_numerals`): a hyphenated identifier, a year and a count before a unit word need no citation; a design level and an item's own id are names; every other numeral still matches a cited value. `@3`, must-fire and must-pass on the Lyons rationale. The method's prompt wording then matters less | engine, below the contract; DECISIONS | found for the Lyons outlier judgment; every ROSC group and punch carries a number, so it comes before a second study is run (`implementation-order-2026-11.md` section 10) |
 
 ### Engine: delivery, trace and inputs
 
@@ -205,6 +226,9 @@ It does not carry F11 and F12 (the reports and the retrospective), which are L17
 | L125 | a fold, tear or detachment in a punch shows only as scattered QC failures | plugin: `spatial.regional_artifact@1` (post, flag, `qc_cells`); the Xenium `qc-cells` writes Moran's I of the fail indicator per punch | plugin predicate; Xenium method | `qc-failure-modes.md` 3.3 |
 | L126 | ambient RNA is neither estimated nor corrected in the scRNA-seq method | method: an ambient estimate (DecontX without the raw matrix, SoupX or CellBender with it) and a `BACKLOG.md` row; plugin: `sc.ambient_high@1` (post, flag) and `sc.correction_count_integrity@1` (post, block, invariant) | scRNA-seq method module first, then plugin predicates | `qc-failure-modes.md` 3.2 |
 | L127 | doublets are not looked for (method `BACKLOG.md` M9) | plugin: `sc.doublet_rate_high@1` (post, flag, `detect_doublets`) as M9 designs it, against the rate expected for the cells recovered; the per-cluster doublet fraction feeds L118 | plugin predicate; after the method's `detect-doublets` | method `BACKLOG.md` M9; `qc-failure-modes.md` 3.2 |
+| L196 | no second study has been run through the Xenium method. The owner wants the lab's ROSC study next (retro-orbital against subcutaneous LNP delivery: 132 punches, 104 included, eleven tissues, six TMAs, route by time point with untreated controls, Proseg and 10x segmentation, 183 GB in the local archive copy), and the method carries one study's assumptions | the readiness track of `implementation-order-2026-11.md` section 10, in its order: the method verified under engine 0.2.42; the ROSC declarations drafted and read; the time-point factor declared (L178, L186); QC without re-splitting (the method's 3.3); judgment rationales and digits (L195); the hold friction (L94, L107, L110, L100); then one organ end to end as a rehearsal before the rest | method, plugin, engine; the owner's decisions named there | the owner, 2026-11-11: "I want to soon try re-running all of the ROSC data through a stringency pipeline for the first time. I want to address some of the backlog we experienced in the Lyons dataset first" |
+| L197 | the Xenium method knows four organs (liver, lung, small intestine, spleen: the `organ` options of `xenium-upstream`, the organ sections of the annotation guide, the vocabulary's expected organs, the tissue defaults); ROSC has seven more (brain, heart, kidney, lymph node, large intestine, skin, female reproductive tract) | per organ: the option, the vocabulary's cell types with their markers on the panel and Cell Ontology ids, the guide's section, QC thresholds and the resolution grid in the tissue defaults; the vocabulary stays a draft until the owner has read that organ's list (the method's 3.6). The four known organs run first; the rest in batches as each list is read | method and plugin vocabulary; the owner reads each organ | L196; seven of ROSC's eleven tissues cannot be annotated until this lands |
+| L198 | no tool answers the ROSC study's own question, where the cargo went: the share of cells positive for each reporter probe and its mean, per cell type, domain, route and time point. `_rlib/de_utils.R` has `reporter_zone_summary()` from the earlier analysis and nothing calls it; the pipeline only keeps the reporter probes out of the variable features | an open tool (`reporter-delivery`): per replicate and stratum the positive fraction and mean of each named probe, tested between the design's levels on the replicate, with a control on a fixture with a planted reporter; its words in the analysis skill | method (a tool, a control, the skill); the plugin's operation | L196; not needed to run the pipeline, needed before the study's first question is asked of a delivery |
 
 ### Skills, documents and onboarding
 
@@ -294,6 +318,7 @@ after waves 0 and 1 landed and the design texts of wave 1 were read and merged (
 
 | what | row | where | since |
 |---|---|---|---|
+| the ROSC run's declarations, which only he can settle (a draft comes to him from the manifest): one group factor or route and time as two; whether the replicate is the punch or the animal; which organs first; the archived Proseg output or a new segmentation; the study name; and his reading of each new organ's cell-type list as it is drafted | L196, L197 | `implementation-order-2026-11.md` section 10 | 2026-11-11 |
 | install engine 0.2.42 with plugin 0.10.4 in the shared prefix (both tagged 2026-11-11; `0.2.40-sc0.10.3` is installed) and republish the operator, declare and wrap skills; tag the scRNA-seq method `v0.1.12` and `v0.1.13` (both on its `main`) and republish its three skills; merge and tag Xenium `v0.6.0-rc26.1` (its pull request 3) and republish its two skills, before the next engine tag (0.2.43 changes the skill template, and the Xenium CI then fails on the committed skills until they are rendered again) | L146, L163; the Xenium method's `PLAN.md` 8.21, 9.1 | `docs/release.md`; `integrations/claude-science/publish-skills.md` | 2026-11-11 |
 | the slice run again with the enforce arm (`2026-11-slice-2-dev`: 18 replicates, about 75 USD by the first slice's costs), on the development stack now or on a frozen one after the tags above | L89, L163, L171 | `stringency-benchmarks` `studies/`, `measurements.md` | 2026-11-11 |
 | how an answer cites the PCA sentinels after delivery: the engine lets an answer cite a cell of a bound delivered table, or the method lists `reduce-pca` as an open tool | L167 | this file | 2026-11-11 |

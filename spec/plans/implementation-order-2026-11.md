@@ -314,3 +314,61 @@ Releases after this section: engine 0.2.43 carries wave 2's remainder, #29 and L
 plugin's next is 0.10.5 and the method's 0.1.14 (wave 4), since 0.10.4 and 0.1.13 were used by
 wave 1.
 
+## 10. Ready for a ROSC run (2026-11-11)
+
+The owner: "I want to soon try re-running all of the ROSC data through a stringency pipeline
+for the first time. I want to address some of the backlog we experienced in the Lyons dataset
+first." This section is that work as one track, R, ordered by what would stop or spoil the
+run. It goes ahead of the rest of wave 2 and takes four of its rows and wave 5's with it.
+
+**What ROSC is, against what the method has run.** Retro-orbital against subcutaneous delivery
+of an LNP Cre cargo in Ai14 reporter mice (`/lab/archive/bmeseq/Projects/ROSC_MTA2`; raw
+regions under `/lab/archive/bmeseq/Xenium/prime/ROSC_MTA`, 183 GB, the copy the owner named
+for Lyons v2). The manifest lists 132 punches, 104 included, on six TMAs.
+
+| | Lyons CLP v2 | ROSC |
+|---|---|---|
+| tissues | four (liver, lung, small intestine, spleen) | eleven: those four and brain, heart, kidney, lymph node, large intestine, skin, female reproductive tract |
+| design | one factor, the time point (control, 6, 24, 48 h) | route (RO, SC) by time (D1, D3), with untreated controls: five groups |
+| replicates | two animals a time point, two punches each | two punches a group in most tissues |
+| segmentation | Proseg and 10x | Proseg for 96 punches, 10x for 36 |
+| the study's own question | what changes with time after CLP | where the cargo went: the reporter probes by cell type, zone, route and time |
+
+The method was written on Lyons and carries three of its assumptions: the time-point factor is
+named `timepoint_h`; an organ is one of four; nothing asks about a reporter.
+
+**The track.**
+
+| step | what | where | needs | size |
+|---|---|---|---|---|
+| R0 | The method verified under engine 0.2.42 and plugin 0.10.4: both synthetic studies, the open-tools check. The engine now stops `run` at a step whose decision is `unset` and asks for a proposal; the pipeline headers and the skill still describe the hold it replaced, and `sc.decision_unreviewed` no longer sees those steps. `requires.engine` moves | method | nothing | S |
+| R1 | The ROSC declarations drafted from its manifest (`inputs.yml`, `design.yml`, the layout and exclusions per TMA), with the choices only the owner can make laid out: one group factor or two; punch or animal as the replicate; which organs first; the archived Proseg output or a new segmentation; the study name for confirm once | a draft for the owner | his reading | S |
+| R2 | The time-point factor declared, not fixed: `timepoint_factor` on the engine's name form or read from the design, in the four steps and the modules that take "the first multi-level factor"; the Seurat extractor lists an object's columns so the name is checked (L178, L186) | method, plugin | R1's factor choice | M |
+| R3 | QC revised without re-splitting: `punch_bundles` delivered, a `xenium-qc-cells` pipeline over them (the method's 3.3). Lyons re-split eight regions at every threshold change; ROSC has six TMAs | method | nothing | M |
+| R4 | A judgment's rationale may name a time point, a punch or a slide: `judg.numeric_claims_match@3` reads it by the answer's rules (L195). Then the method's prompt wording (its 1.10) is a refinement, checked when a judge is next run | engine | nothing | S to M |
+| R5 | The hold friction of the Lyons sessions that a larger study multiplies: a person's label and chosen replicate reach `consensus.json` and `apply-labels` (L110, the method's 3.18); a held step can be re-proposed and a stranded one recovers (L94, L107); every decision point opens one sign-off under `run` and the bridge predicate retires (L100, the method's 3.4) | engine, then method | a session with the owner for L100 | M each |
+| R6 | A rehearsal: ROSC liver (the smallest, and already the annotation fixture) from the raw regions through QC, upstream and the layers to one open question, on the installed engine. What it finds is fixed before the other organs start | a project | the install of 0.2.42; R0 to R4 | a few days |
+
+**Beside the track, not gating the first run.**
+
+- **L197, the other seven organs.** Each needs its vocabulary, guide section and tissue
+  defaults, and the vocabulary is the owner's to read (the method's 3.6). The four known
+  organs (39 of the 104 included punches) run first; the rest follow in batches.
+- **L198, the cargo tool.** The pipeline runs without it; the study's first question cannot
+  be answered by a tested tool without it.
+- **The owner's standing questions in the method's plan** that a second study makes sharper:
+  the batch rule's thresholds (3.5), whether the per-domain pseudobulk is delivered (8.6),
+  whether an animal's punches are summed before the sample filter (8.18).
+- **Practice, no work:** every ROSC project names one `study:` so one confirmation covers
+  the design (built, never used on Lyons: L181); the raw regions are bound from the archive
+  copy, read and never changed.
+
+**Not needed for ROSC**, and left where they are: the Python 3.12 image (the method's 7.13),
+BANKSY and LIANA+ (7.12), local Moran's I (7.26), a morphology tool, the tag clean-up (4.1).
+
+**How it sits with the waves.** R0, R3 and R4 wait on nothing and start now. R1 is a draft that
+waits on a reading. R2 follows R1. R5's first two rows are wave 2's and are done here; L100 is
+wave 5's and is done here, with the owner. The rest of wave 2 (the rest of L114, L160, L11,
+L175), wave 3 and wave 4 follow the rehearsal. The measurement half of wave 3 keeps its one
+early piece: the ledger's token columns (L194), before any benchmark is run again.
+

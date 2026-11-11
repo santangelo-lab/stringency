@@ -24,6 +24,22 @@ into the existing plan.
 - `implementation-order-2026-11.md` section 9: each wave's standing in one table, and the
   measurement half of wave 3 in order.
 
+## Added the same day: ready for a ROSC run
+
+The owner, before merging: the Xenium method's backlog was barely on the list, and he wants
+to run the lab's ROSC study through the method soon, with the Lyons friction addressed first.
+Read for it: the ROSC manifest and overview in the archive copy (132 punches, eleven tissues,
+route by time with controls), the method's pipelines (four organs; `timepoint_factor` fixed
+at `timepoint_h`), and `judg.numeric_claims_match`, which blocks a rationale that names a
+time point or a hyphenated punch id.
+
+- `implementation-order-2026-11.md` section 10: track R, seven steps in order (verify the
+  method under 0.2.42; draft the declarations; the factor declared; QC without re-splitting;
+  rationales and digits; the hold friction; a rehearsal on liver), and what runs beside it.
+- `PLAN.md`: track R in "Next, in order", ahead of the rest of wave 2; rows L195 (the
+  judgment numeral check), L196 (the run), L197 (seven more organs), L198 (a cargo tool); a
+  waiting row for the declarations only the owner can settle.
+
 ## What was found on the way to the question
 
 - The engine records judge tokens per invocation and sums them nowhere. Under the subagent
