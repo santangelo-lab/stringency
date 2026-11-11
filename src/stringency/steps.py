@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from stringency import hashing
-from stringency.actions import Action, build_action, write_action
+from stringency.actions import Action, build_action, rationale_record, write_action
 from stringency.active import executing
 from stringency.artifacts import record_output, step_outputs
 from stringency.clock import now_iso
@@ -26,7 +26,7 @@ from stringency.executor.local import interpreter_for
 from stringency.exit_codes import BlockedError, ConfigError, RefusedError
 from stringency.extract import extract_object
 from stringency.gate import GateResult, evaluate
-from stringency.holds import HoldOutcome, HoldRequest, open_hold
+from stringency.holds import HoldOutcome, HoldRequest, open_hold, open_holds
 from stringency.ids import new_id
 from stringency.machine import RETRYABLE, StepStatus, step_status, transition
 from stringency.modules import IOSpec, Module, ModuleManifest
@@ -729,6 +729,12 @@ def propose(
     if not rc.pipeline.has_step(step_id):
         raise ConfigError(f"no step {step_id} in pipeline {rc.pipeline.name}")
     current = step_status(store, rc.run_id, step_id)
+    if current == StepStatus.PROPOSED:
+        raise RefusedError(
+            f"step {step_id} has a proposal whose gate did not finish (the engine was "
+            f"interrupted). `stringency propose {step_id}` with nothing else, or `stringency "
+            "run`, finishes that gate; no new proposal was recorded."
+        )
     if current not in RETRYABLE:
         raise RefusedError(f"step {step_id} is {current}; it cannot be proposed now")
     skip = skip_decision(store, rc.pipeline, rc.run_id, step_id)
@@ -811,6 +817,20 @@ def propose(
             attempt=attempt,
             payload=proposed_payload,
         )
+    return _settle_pre_gate(rc, action, plan)
+
+
+def _settle_pre_gate(rc: RunContext, action: Action, plan: StepPlan) -> Proposal:
+    """Evaluate the pre-gate over a recorded Action whose step is `proposed`, and settle the
+    step as blocked, held or admissible (an operator-run step then awaits execution). Shared by
+    `propose` and by `recover_proposed`, which calls it a second time for the same Action after
+    an interruption: a flag whose hold is already open for this Action (same predicate, same
+    parameters) keeps that hold, so no hold is opened twice (L107).
+
+    Writes: predicate_results, holds, steps, step_events. Reads: holds.
+    """
+    store = rc.store
+    step_id = action.step_id
     state = rc.current_state()
     ctx = rc.gate_context("pre", action, state)
     gate = evaluate(
@@ -822,6 +842,11 @@ def propose(
         runner=plan.runner,
     )
     holds: list[HoldOutcome] = []
+    already = {
+        str(json.loads(h["context_json"] or "{}").get("predicate")): h
+        for h in open_holds(store, rc.run_id, step_id)
+        if h["kind"] == "flag" and h["bound_params_hash"] == action.params_hash
+    }
     if gate.blocked:
         transition(
             store,
@@ -834,6 +859,10 @@ def propose(
         return Proposal(action, plan, gate, StepStatus.BLOCKED)
     if gate.flagged:
         for r in gate.flagged:
+            if r.spec.ref in already:
+                # opened before the interruption (L107): the same hold, not a second one
+                holds.append(HoldOutcome(str(already[r.spec.ref]["hold_id"]), False, None))
+                continue
             holds.append(
                 open_hold(
                     store,
@@ -938,6 +967,127 @@ def inherit_flag_acceptance(rc: RunContext, h: HoldOutcome, plan: StepPlan) -> H
     )
     store.resolve_hold(h.hold_id, review_id, "inherited")
     return HoldOutcome(h.hold_id, True, review_id)
+
+
+def _latest_action(rc: RunContext, step_id: str) -> Action:
+    """The Action of the step's latest attempt, with the rationale record behind its
+    `rationale_ref` attached as `propose` attaches it in memory. Reads: actions, messages."""
+    row = rc.store.one(
+        "SELECT * FROM actions WHERE run_id = ? AND step_id = ? ORDER BY attempt DESC, rowid DESC LIMIT 1",
+        (rc.run_id, step_id),
+    )
+    if row is None:
+        raise ConfigError(f"no action for {step_id}")
+    action = action_from_row(row)
+    if action.rationale_ref:
+        text = rc.store.message(action.rationale_ref)
+        try:
+            doc = json.loads(text) if text else None
+        except ValueError:
+            doc = None
+        record = doc if isinstance(doc, dict) and "text" in doc else rationale_record(text)
+        if record is not None:
+            action = Action(**{**action.__dict__, "rationale": record})
+    return action
+
+
+def recover_proposed(rc: RunContext, step_id: str) -> Proposal:
+    """A step left `proposed` (L107, gate-soundness 6): `propose` commits the Action and the
+    `proposed` transition together and the gate, the holds and the settling transition follow
+    in separate writes, so an engine interrupted between them leaves the step `proposed` with
+    its Action recorded and its gate unfinished. Nothing has executed. Recovery evaluates the
+    pre-gate again over the same recorded Action (same parameters, same reason, same attempt)
+    and settles the step as `propose` would have.
+
+    The `gate_recovered` step event says how many `predicate_results` rows the interrupted pass
+    left for the Action: those rows precede the event and are not an assessment; the complete
+    one is the pass written after it, followed by the settling transition. A hold the
+    interrupted pass opened is kept, not opened again (`_settle_pre_gate`).
+
+    Reads: steps, actions, messages, predicate_results, holds.
+    Writes: step_events (`gate_recovered`), then as `_settle_pre_gate`.
+    """
+    store = rc.store
+    current = step_status(store, rc.run_id, step_id)
+    if current != StepStatus.PROPOSED:
+        raise RefusedError(f"step {step_id} is {current}; there is no unfinished gate to recover")
+    action = _latest_action(rc, step_id)
+    plan = plan_step(rc, step_id, action.attempt)
+    left = store.scalar(
+        "SELECT COUNT(*) FROM predicate_results WHERE action_id = ? AND phase = 'pre'",
+        (action.action_id,),
+    )
+    store.step_event(
+        rc.run_id,
+        step_id,
+        "gate_recovered",
+        {
+            "action_id": action.action_id,
+            "attempt": action.attempt,
+            "phase": "pre",
+            "interrupted_results": int(left or 0),
+            "open_holds": [str(h["hold_id"]) for h in open_holds(store, rc.run_id, step_id)],
+        },
+    )
+    return _settle_pre_gate(rc, action, plan)
+
+
+def withdraw_proposal(rc: RunContext, step_id: str, reason: str | None = None) -> dict[str, Any]:
+    """The operator takes back a held proposal (L94): the step is `held` on the pre-gate's
+    flags alone (a reason that quoted a number without citing it, a value a person signs off),
+    and the operator would rather say it again than have a reviewer rule on a proposal it no
+    longer stands behind. The attempt closes: its open holds are withdrawn (`resolved_via:
+    withdrawn`, no review, as when a run is abandoned), the step is `withdrawn`, and the next
+    `propose` (the operator's, or `run`'s at the step's defaults) opens the next attempt. The Action, its predicate results, the holds and
+    any verdict already given stay in the trace, so a reviewer sees both proposals.
+
+    Refused unless every open hold of the step is a flag of the pre-phase: a hold on what a
+    step produced, an item hold or a sign-off is a person's to decide, and no proposal takes
+    it back.
+
+    Reads: steps, actions, holds. Writes: step_events (`proposal_withdrawn`, `hold_withdrawn`,
+    the transition), holds, steps. Returns the event's payload.
+    """
+    store = rc.store
+    current = step_status(store, rc.run_id, step_id)
+    if current != StepStatus.HELD:
+        raise RefusedError(f"step {step_id} is {current}; there is no held proposal to withdraw")
+    held = open_holds(store, rc.run_id, step_id)
+    not_proposal = [
+        h
+        for h in held
+        if h["kind"] != "flag"
+        or h["item_id"] is not None
+        or json.loads(h["context_json"] or "{}").get("phase") != "pre"
+    ]
+    if not held or not_proposal:
+        raise RefusedError(
+            f"step {step_id} is held on what it produced, not on its proposal; "
+            "those holds wait for the person they name"
+        )
+    action = _latest_action(rc, step_id)
+    from stringency.operator_id import operator_env
+
+    payload: dict[str, Any] = {
+        "action_id": action.action_id,
+        "attempt": action.attempt,
+        "holds": [str(h["hold_id"]) for h in held],
+        "reason": reason or "",
+        "operator_session_ref": operator_env()["session_ref"],
+        "operator_harness": operator_env()["harness"],
+    }
+    with store.transaction():
+        store.step_event(rc.run_id, step_id, "proposal_withdrawn", payload)
+        store.withdraw_holds(payload["holds"], "the operator withdrew the proposal")
+        transition(
+            store,
+            rc.run_id,
+            step_id,
+            StepStatus.WITHDRAWN,
+            payload={"action_id": action.action_id, "holds": payload["holds"]},
+        )
+    rc.refresh_status()
+    return payload
 
 
 def resume_after_hold(rc: RunContext, step_id: str) -> Proposal:

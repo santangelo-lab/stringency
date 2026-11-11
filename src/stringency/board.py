@@ -81,6 +81,7 @@ def _titles(root: Path, cfg: StringencyConfig) -> tuple[dict[str, str], str | No
 # idle (L132)
 UNDER_WAY = (
     "pending",
+    "withdrawn",
     "proposed",
     "admissible",
     "running",

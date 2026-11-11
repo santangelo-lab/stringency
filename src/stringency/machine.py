@@ -28,6 +28,8 @@ class StepStatus(StrEnum):
     FAILED = "failed"
     ABANDONED = "abandoned"  # the run was abandoned while the step was open (added 2026-09-23)
     SKIPPED = "skipped"  # its `when` was false when it was reached (L13, added 2026-10-07)
+    # the operator took back a proposal held on its pre-gate flags (L94, added 2026-11-11)
+    WITHDRAWN = "withdrawn"
 
 
 S = StepStatus
@@ -53,6 +55,10 @@ EDGES: frozenset[tuple[StepStatus, StepStatus]] = frozenset(
         (S.HELD, S.COMPLETED),
         (S.HELD, S.BLOCKED),
         (S.HELD, S.REJECTED),
+        # the operator withdraws a proposal held on its pre-gate flags; the attempt is closed
+        # and the step can be proposed again (7.1, L94 2026-11-11)
+        (S.HELD, S.WITHDRAWN),
+        (S.WITHDRAWN, S.PROPOSED),
         (S.BLOCKED, S.PROPOSED),
         (S.REJECTED, S.PROPOSED),
         (S.FAILED, S.PROPOSED),
@@ -69,7 +75,7 @@ EDGES: frozenset[tuple[StepStatus, StepStatus]] = frozenset(
     }
 )
 
-TERMINAL_FOR_ATTEMPT = frozenset({S.BLOCKED, S.REJECTED, S.FAILED})
+TERMINAL_FOR_ATTEMPT = frozenset({S.BLOCKED, S.REJECTED, S.FAILED, S.WITHDRAWN})
 OPEN_STEP = frozenset(
     {S.PROPOSED, S.ADMISSIBLE, S.HELD, S.RUNNING, S.AWAITING_EXECUTION, S.DISPATCHING, S.PRODUCED}
 )

@@ -28,6 +28,7 @@ from stringency.steps import (
     execute_engine,
     plan_step,
     propose,
+    recover_proposed,
     resume_after_hold,
     starting_params,
 )
@@ -324,6 +325,7 @@ def next_step(rc: RunContext) -> Next:
             )
         if st in (
             StepStatus.PENDING,
+            StepStatus.WITHDRAWN,
             StepStatus.ADMISSIBLE,
             StepStatus.HELD,
             StepStatus.PROPOSED,
@@ -346,7 +348,7 @@ def next_step(rc: RunContext) -> Next:
                         0,
                         f"next: {sid} ({skip['reason']})",
                     )
-                if st == StepStatus.PENDING:
+                if st in (StepStatus.PENDING, StepStatus.WITHDRAWN):
                     waiting = awaiting_proposal(rc, sid)
                     if waiting is not None:
                         return waiting
@@ -511,7 +513,8 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
             if until is not None and sid == until:
                 return _done(Next("completed", sid, {"until": until}, 0, f"stopped after {until}"))
             continue
-        if st == StepStatus.PENDING:
+        if st in (StepStatus.PENDING, StepStatus.WITHDRAWN):
+            # a withdrawn proposal (L94) left the step to be proposed again, as a pending one is
             delta = rc.delta_for(sid)
             # a fork's --set values are a person's decision, recorded with a reason on the run;
             # every other parameter starts from the objective's declared value or what a fork's
@@ -525,6 +528,9 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
             )
         elif st == StepStatus.ADMISSIBLE:
             proposal = resume_after_hold(rc, sid)
+        elif st == StepStatus.PROPOSED:
+            # the engine was interrupted between the proposal's commit and its gate (L107)
+            proposal = recover_proposed(rc, sid)
         else:
             return _done(
                 Next(str(st), sid, {}, int(Exit.INTERNAL), f"step {sid} is {st}; cannot continue")
