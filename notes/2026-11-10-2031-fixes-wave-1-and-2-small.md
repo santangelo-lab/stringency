@@ -24,6 +24,20 @@ design-level work (the name form, the limits band, `via: policy`, exit code 22) 
 - **L174**: `render_skill.py --check` fails a committed `SKILL.md` that differs from a fresh
   rendering.
 
+## Added later the same night
+
+- **L95**: a `param.reason_unmatched` hold shows the operator's reason, the cited cells with the
+  values the engine read and the numbers that matched none; a `param.uncited` hold the evidence
+  the method names beside what was cited (`present.proposal_check_sections`).
+- **L114, first half**: `propose <step>` with nothing else carries out an admissible step's
+  accepted Action. In open mode an accepted hold on a tool call left the step stuck.
+- **A control runs with its own parameters.** `steps.starting_params` reads nothing from
+  `objective.params` in a run of kind `control` (found running the scRNA-seq method's controls
+  in a project that declared names).
+- **`init.column_missing@2`** names the input, the columns it lacks and the columns it has.
+- `PLAN.md`: L164 and L169 archived (the method's work), L163, L165, L167 and L171 amended, rows
+  L186 to L189 filed.
+
 ## Decided
 
 - DECISIONS 2026-11-10, "A declared value the step would block is refused at init": a
@@ -43,8 +57,9 @@ design-level work (the name form, the limits band, `via: policy`, exit code 22) 
 
 ## Open
 
-- Wave 2's larger rows (L94 with L107, L114, L95, L160, L110, L11, L175), wave 3's L106, L80,
-  L155, L37, L76, L173, and L100.
+- Wave 2's larger rows (L94 with L107, the rest of L114, L160, L110, L11, L175), L172, wave 3's
+  L106, L80, L155, L37, L76, L173, and L100 (which wants a session with the owner: with the
+  Xenium method's bridge predicate still gated it would open two holds for one decision).
 - For the owner: tag v0.2.41 at 73c4fb5 before merging this (it moves the version to 0.2.42),
   or skip 0.2.41; republish the operator skill after the release.
 
