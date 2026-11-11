@@ -284,6 +284,81 @@ def _artifacts(conn: sqlite3.Connection, out: list[Finding]) -> None:
             )
 
 
+def _has_table(conn: sqlite3.Connection, name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (name,)
+    ).fetchone()
+    return row is not None
+
+
+def _flags(conn: sqlite3.Connection, out: list[Finding]) -> None:
+    """A person's flag on a delivered result (`flags`, migration 8) against its `flagged` run
+    event, each way (L148): a row deleted by direct SQL leaves its event, and a row inserted
+    by hand has none. The table is append-only by trigger; this is what finds a trace whose
+    trigger was dropped and put back."""
+    if not _has_table(conn, "flags"):
+        return
+    rows = {r["flag_id"]: r["run_id"] for r in conn.execute("SELECT flag_id, run_id FROM flags")}
+    seen: set[str] = set()
+    for ev in conn.execute(
+        "SELECT run_id, seq, payload_json FROM run_events WHERE event = 'flagged' ORDER BY seq"
+    ):
+        fid = str(_payload(ev).get("flag_id") or "")
+        seen.add(fid)
+        if fid not in rows:
+            out.append(
+                Finding(
+                    "flags",
+                    fid or "(unnamed)",
+                    "absent",
+                    "a flagged event",
+                    ev["seq"],
+                    "a flag the run's events record has no row",
+                )
+            )
+    for fid in sorted(set(rows) - seen):
+        out.append(
+            Finding(
+                "flags", fid, "present", "no flagged event", None, "a flag row without its event"
+            )
+        )
+
+
+def _marks(conn: sqlite3.Connection, out: list[Finding]) -> None:
+    """The marks and unmarks of an open run's findings (`findings`, migration 6) against their
+    `finding_marked` and `finding_unmarked` run events, counted per answer and action (L148):
+    the events name the answer, not the row."""
+    if not _has_table(conn, "findings"):
+        return
+    have: dict[tuple[str, str, str], int] = {}
+    for r in conn.execute(
+        "SELECT run_id, answer_id, action, COUNT(*) AS n FROM findings "
+        "GROUP BY run_id, answer_id, action"
+    ):
+        have[(r["run_id"], r["answer_id"], r["action"])] = int(r["n"])
+    said: dict[tuple[str, str, str], int] = {}
+    for ev in conn.execute(
+        "SELECT run_id, event, payload_json FROM run_events "
+        "WHERE event IN ('finding_marked', 'finding_unmarked')"
+    ):
+        action = "mark" if ev["event"] == "finding_marked" else "unmark"
+        key = (ev["run_id"], str(_payload(ev).get("answer_id") or ""), action)
+        said[key] = said.get(key, 0) + 1
+    for key in sorted(set(have) | set(said)):
+        rows, events = have.get(key, 0), said.get(key, 0)
+        if rows != events:
+            out.append(
+                Finding(
+                    "findings",
+                    f"{key[1]} ({key[2]})",
+                    f"{rows} row(s)",
+                    f"{events} event(s)",
+                    None,
+                    "the findings table and the run's events disagree on an answer's marks",
+                )
+            )
+
+
 def _sequences(conn: sqlite3.Connection, out: list[Finding]) -> None:
     for r in conn.execute(
         "SELECT run_id, COUNT(*) AS n, MIN(seq) AS lo, MAX(seq) AS hi FROM run_events GROUP BY run_id"
@@ -332,12 +407,22 @@ def _triggers(conn: sqlite3.Connection, out: list[Finding]) -> None:
 
 def audit(store: Store) -> list[Finding]:
     """Reads, read-only, in one transaction: steps, runs, holds, reviews, consensus, artifacts,
-    run_events, step_events, sqlite_master. Writes nothing."""
+    flags, findings, run_events, step_events, sqlite_master. Writes nothing."""
     conn = store.reader()
     out: list[Finding] = []
     conn.execute("BEGIN")
     try:
-        for check in (_steps, _runs, _holds, _consensus, _artifacts, _sequences, _triggers):
+        for check in (
+            _steps,
+            _runs,
+            _holds,
+            _consensus,
+            _artifacts,
+            _flags,
+            _marks,
+            _sequences,
+            _triggers,
+        ):
             check(conn, out)
     finally:
         conn.execute("ROLLBACK")

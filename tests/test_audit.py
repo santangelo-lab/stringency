@@ -93,6 +93,18 @@ def test_a_hold_resolved_without_its_review_is_found(store: Store) -> None:
     assert any("does not exist" in n for n in notes) and any("no event" in n for n in notes)
 
 
+def test_a_finding_s_marks_are_counted_against_their_events(store: Store) -> None:
+    """L148: a mark recorded in the run's events with no row in `findings` (the row deleted
+    behind the trigger) is found; the events name the answer, so the count is per answer."""
+    run_id = _seed_project_and_run(store)
+    assert [f for f in audit(store) if f.table == "findings"] == []
+    store.run_event(run_id, "finding_marked", {"answer_id": "A1", "question_id": "Q1"})
+    found = [f for f in audit(store) if f.table == "findings"]
+    assert [(f.key, f.current, f.recorded) for f in found] == [
+        ("A1 (mark)", "0 row(s)", "1 event(s)")
+    ]
+
+
 def test_predicate_fires_on_findings_and_passes_without(project) -> None:  # type: ignore[no-untyped-def]
     ctx = make_ctx(project, "01_filter")
     assert trace_inconsistent(ctx) == Verdict(False)

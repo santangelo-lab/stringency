@@ -343,7 +343,11 @@ def _matches_any(written: str, values: list[float]) -> bool:
     the value rounded to the precision written); `values` sorted, searched near `written`."""
     fw = float(written)
     if "e" in written.lower():
-        width = abs(fw) * 1e-5 + 1e-12
+        # the mantissa's written precision as a share of the value: 1.33e-75 looks within
+        # one hundredth of itself, wide enough for every value that rounds to it (L145)
+        mantissa = written.lower().split("e", 1)[0]
+        digits = len(mantissa.split(".", 1)[1]) if "." in mantissa else 0
+        width = abs(fw) * 10.0**-digits
     else:
         decimals = len(written.split(".", 1)[1]) if "." in written else 0
         width = 10.0**-decimals
