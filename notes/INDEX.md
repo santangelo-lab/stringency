@@ -8,8 +8,8 @@ it is the first thing a new session reads.
 - (2026-11-11) The work list after waves 0 and 1 (`notes/2026-11-11-1120-usage-measurement-in-the-plan.md`, branch
   `plan-usage-measurement`, docs only): State, "Next, in order" and the waiting table rewritten;
   rows L190 to L194 for measuring what a project costs in tokens, in the beta's bundle and eval
-  store, as the second half of wave 3; track R, ready for a ROSC run (L195 to L198; the order
-  note's section 10), ahead of the rest of wave 2. Next: R0, R3, R4 and the R1 draft.
+  store, as the second half of wave 3; wave X, the Xenium method's debt (L195 to L198; the order
+  note's section 10), beside waves 2 and 3. Next: X1 and X2, L110 and L195, L194.
 - (2026-11-11) Answer first, in every method's open mode (`notes/2026-11-11-1057-answer-first-in-open-mode.md`, branch
   `open-mode-answer-first`, text only): the operator skill's 10.1 and 10.5 and the analysis-skill
   template's section 8 say that a specific question is answered at once and the paths offered

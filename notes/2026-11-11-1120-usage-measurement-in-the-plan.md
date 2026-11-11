@@ -24,21 +24,22 @@ into the existing plan.
 - `implementation-order-2026-11.md` section 9: each wave's standing in one table, and the
   measurement half of wave 3 in order.
 
-## Added the same day: ready for a ROSC run
+## Added the same day: the Xenium method's wave
 
-The owner, before merging: the Xenium method's backlog was barely on the list, and he wants
-to run the lab's ROSC study through the method soon, with the Lyons friction addressed first.
-Read for it: the ROSC manifest and overview in the archive copy (132 punches, eleven tissues,
-route by time with controls), the method's pipelines (four organs; `timepoint_factor` fixed
-at `timepoint_h`), and `judg.numeric_claims_match`, which blocks a rationale that names a
-time point or a hyphenated punch id.
+The owner, before merging: the Xenium method's backlog was barely on the list. A first draft
+answered with a track for one study (ROSC); he asked for general work on the method instead,
+nothing study-specific, with the organs and the delivery step expanded from how the lab did
+them before stringency, and said the track's fit with the waves was unclear.
 
-- `implementation-order-2026-11.md` section 10: track R, seven steps in order (verify the
-  method under 0.2.42; draft the declarations; the factor declared; QC without re-splitting;
-  rationales and digits; the hold friction; a rehearsal on liver), and what runs beside it.
-- `PLAN.md`: track R in "Next, in order", ahead of the rest of wave 2; rows L195 (the
-  judgment numeral check), L196 (the run), L197 (seven more organs), L198 (a cargo tool); a
-  waiting row for the declarations only the owner can settle.
+- `implementation-order-2026-11.md` section 10: every wave by repository in one table; wave X,
+  the Xenium method's debt, seven items in order (verified under 0.2.42; QC without
+  re-splitting; the factor declared; its side of three engine rows; eleven organs; the
+  delivery step; small debts).
+- `PLAN.md`: wave X in "Next, in order"; L195 (a rationale may name a time point or a punch);
+  L196 (the wave); L197 and L198 written from the pre-stringency analysis in the archive copy
+  (`ROSC_MTA2/analysis`: `upstream/tissue_configs.yaml`, each tissue's annotation script, the
+  seventh downstream module and `cargo_delivery_utils.R`).
+- Read for it, and not changed: the archive copy of that project.
 
 ## What was found on the way to the question
 

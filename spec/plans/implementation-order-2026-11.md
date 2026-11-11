@@ -314,61 +314,54 @@ Releases after this section: engine 0.2.43 carries wave 2's remainder, #29 and L
 plugin's next is 0.10.5 and the method's 0.1.14 (wave 4), since 0.10.4 and 0.1.13 were used by
 wave 1.
 
-## 10. Ready for a ROSC run (2026-11-11)
+## 10. The Xenium method's wave, and how every wave sits beside the others (2026-11-11)
 
-The owner: "I want to soon try re-running all of the ROSC data through a stringency pipeline
-for the first time. I want to address some of the backlog we experienced in the Lyons dataset
-first." This section is that work as one track, R, ordered by what would stop or spoil the
-run. It goes ahead of the rest of wave 2 and takes four of its rows and wave 5's with it.
+The owner, reading the list: the Xenium method's backlog was barely on it; he wants general
+work on the method to reduce the debt it carries before a second study is run through it,
+nothing specific to that study yet; and the organs and the delivery step are to be expanded
+from how the lab did them before stringency. A first draft of this section was a track for
+one study and borrowed rows from two waves, which made the waves harder to read. This is the
+plain form: the method has a wave of its own, X, and each wave is one repository's work.
 
-**What ROSC is, against what the method has run.** Retro-orbital against subcutaneous delivery
-of an LNP Cre cargo in Ai14 reporter mice (`/lab/archive/bmeseq/Projects/ROSC_MTA2`; raw
-regions under `/lab/archive/bmeseq/Xenium/prime/ROSC_MTA`, 183 GB, the copy the owner named
-for Lyons v2). The manifest lists 132 punches, 104 included, on six TMAs.
+**Every wave, by repository.** A wave is the engine's unless it says otherwise; a method's or
+a plugin's share is what follows the engine row beside it.
 
-| | Lyons CLP v2 | ROSC |
-|---|---|---|
-| tissues | four (liver, lung, small intestine, spleen) | eleven: those four and brain, heart, kidney, lymph node, large intestine, skin, female reproductive tract |
-| design | one factor, the time point (control, 6, 24, 48 h) | route (RO, SC) by time (D1, D3), with untreated controls: five groups |
-| replicates | two animals a time point, two punches each | two punches a group in most tissues |
-| segmentation | Proseg and 10x | Proseg for 96 punches, 10x for 36 |
-| the study's own question | what changes with time after CLP | where the cargo went: the reporter probes by cell type, zone, route and time |
-
-The method was written on Lyons and carries three of its assumptions: the time-point factor is
-named `timepoint_h`; an organ is one of four; nothing asks about a reporter.
-
-**The track.**
-
-| step | what | where | needs | size |
+| wave | engine | Xenium method | elsewhere | state |
 |---|---|---|---|---|
-| R0 | The method verified under engine 0.2.42 and plugin 0.10.4: both synthetic studies, the open-tools check. The engine now stops `run` at a step whose decision is `unset` and asks for a proposal; the pipeline headers and the skill still describe the hold it replaced, and `sc.decision_unreviewed` no longer sees those steps. `requires.engine` moves | method | nothing | S |
-| R1 | The ROSC declarations drafted from its manifest (`inputs.yml`, `design.yml`, the layout and exclusions per TMA), with the choices only the owner can make laid out: one group factor or two; punch or animal as the replicate; which organs first; the archived Proseg output or a new segmentation; the study name for confirm once | a draft for the owner | his reading | S |
-| R2 | The time-point factor declared, not fixed: `timepoint_factor` on the engine's name form or read from the design, in the four steps and the modules that take "the first multi-level factor"; the Seurat extractor lists an object's columns so the name is checked (L178, L186) | method, plugin | R1's factor choice | M |
-| R3 | QC revised without re-splitting: `punch_bundles` delivered, a `xenium-qc-cells` pipeline over them (the method's 3.3). Lyons re-split eight regions at every threshold change; ROSC has six TMAs | method | nothing | M |
-| R4 | A judgment's rationale may name a time point, a punch or a slide: `judg.numeric_claims_match@3` reads it by the answer's rules (L195). Then the method's prompt wording (its 1.10) is a refinement, checked when a judge is next run | engine | nothing | S to M |
-| R5 | The hold friction of the Lyons sessions that a larger study multiplies: a person's label and chosen replicate reach `consensus.json` and `apply-labels` (L110, the method's 3.18); a held step can be re-proposed and a stranded one recovers (L94, L107); every decision point opens one sign-off under `run` and the bridge predicate retires (L100, the method's 3.4) | engine, then method | a session with the owner for L100 | M each |
-| R6 | A rehearsal: ROSC liver (the smallest, and already the annotation fixture) from the raw regions through QC, upstream and the layers to one open question, on the installed engine. What it finds is fixed before the other organs start | a project | the install of 0.2.42; R0 to R4 | a few days |
+| 0 housekeeping | one work list | stale comment, pointers | plugin README, scRNA-seq backlog | done |
+| 1 names, the benchmark path | names, limits band, `via: policy`, exit 22 | | plugin 0.10.4; scRNA-seq 0.1.12, 0.1.13; benchmarks | built; the owner's tags and the rerun left |
+| 2 hold and proposal friction | L110, L195, L94 with L107, the rest of L114, L160, L11, L175 | follows in X4 | | half done |
+| 3 correctness, measurement | L172, L106, L80, L37, K3, K4; L193 | | benchmarks L194; beta L190 to L192, L154 to L156 | two rows done |
+| X the Xenium method's debt | | X1 to X6 below | plugin: L186, the organs' vocabulary, the delivery step's types | not started |
+| 4 lineage assignment | L98, L99, L117, L119, L120, L176 | | plugin 0.10.5; scRNA-seq M1 to M12 | not started |
+| 5 the gate review's first item | L100, with the owner | follows in X4 | | not started |
 
-**Beside the track, not gating the first run.**
+**Wave X, in order.**
 
-- **L197, the other seven organs.** Each needs its vocabulary, guide section and tissue
-  defaults, and the vocabulary is the owner's to read (the method's 3.6). The four known
-  organs (39 of the 104 included punches) run first; the rest follow in batches.
-- **L198, the cargo tool.** The pipeline runs without it; the study's first question cannot
-  be answered by a tested tool without it.
-- **The owner's standing questions in the method's plan** that a second study makes sharper:
-  the batch rule's thresholds (3.5), whether the per-domain pseudobulk is delivered (8.6),
-  whether an animal's punches are summed before the sample filter (8.18).
-- **Practice, no work:** every ROSC project names one `study:` so one confirmation covers
-  the design (built, never used on Lyons: L181); the raw regions are bound from the archive
-  copy, read and never changed.
+| item | what | waits on | size |
+|---|---|---|---|
+| X1 | The method verified under engine 0.2.42 and plugin 0.10.4: both synthetic studies, the open-tools check. The engine now stops `run` at a step whose decision is `unset` and asks for the proposal; the pipeline headers and the skill still describe the hold it replaced, and `sc.decision_unreviewed` no longer sees those steps. `requires.engine` moves | nothing | S |
+| X2 | QC revised without re-splitting: `punch_bundles` delivered, a `xenium-qc-cells` pipeline over them (the method's 3.3). Every threshold change re-split eight regions on Lyons | nothing | M |
+| X3 | The time-point factor declared, not fixed: `timepoint_factor` on the engine's name form or read from the design, in the four steps and the modules that take "the first multi-level factor" (L178) | the plugin's Seurat extractor listing an object's columns (L186) | M |
+| X4 | The method's side of three engine rows: `apply-labels` reads a person's chosen replicate and whole correction (its 3.18, after L110); the outlier prompt's wording once a rationale may name a time point or a punch (1.10, after L195); the decision blocks sign off once under `run` and the bridge predicate leaves the gates (3.4, after L100) | L110, L195, L100 | S each |
+| X5 | Eleven organs (L197). The pre-stringency analysis ran brain, heart, kidney, lymph node, large intestine, skin and female reproductive tract beside the four the method knows: `analysis/upstream/tissue_configs.yaml` has each one's thresholds, dimensions and resolution, and each tissue's `run_annotation_<Tissue>.R` the labels a person settled on. Per organ: the option, the defaults, the labels mapped to ontology ids with markers on the panel, the guide's section | the owner's reading of each organ's list | L in all; an organ at a time |
+| X6 | The delivery step (L198), rebuilt from the pre-stringency seventh module: per-cell protein intensity from an aligned immunofluorescence image, a threshold from the design's control level per slide and tissue, two transcript probes at count thresholds; the delivered fraction per replicate, cell type and domain; protein against transcript. Under the gate: the image and alignment as declared inputs, the threshold's control recorded, the per-cell join guarded, controls with a planted positive population | nothing to start; the plugin's object types and operations with it | L |
+| X7 | The method's small debts: the stale `selected_by` and `MODULE` strings (kept for identical outputs), the confidence-flag hold's wording (8.4), a tool's sources as a `cites:` key once the template takes one (7.6, L175) | L175 for the last | S |
 
-**Not needed for ROSC**, and left where they are: the Python 3.12 image (the method's 7.13),
-BANKSY and LIANA+ (7.12), local Moran's I (7.26), a morphology tool, the tag clean-up (4.1).
+**What X5 and X6 take from the earlier work, and what they do not.** The thresholds, the
+label lists, the three readouts and the threshold rule are a person's settled choices and are
+the starting point. The code is not carried over as it stands: the earlier project's first
+version joined cell areas wrongly and its review found five more defects, which is why the
+method has `sc.area_join_unverified`; each piece comes in as a module with a control on
+planted truth. The old labels are evidence of what a person called a cluster, read again by
+the owner organ by organ.
 
-**How it sits with the waves.** R0, R3 and R4 wait on nothing and start now. R1 is a draft that
-waits on a reading. R2 follows R1. R5's first two rows are wave 2's and are done here; L100 is
-wave 5's and is done here, with the owner. The rest of wave 2 (the rest of L114, L160, L11,
-L175), wave 3 and wave 4 follow the rehearsal. The measurement half of wave 3 keeps its one
-early piece: the ledger's token columns (L194), before any benchmark is run again.
+**The order across waves.** Nothing in X1, X2, X5 or X6 waits on the engine, so wave X starts
+now, beside wave 2. In wave 2 the two rows the method waits on come first (L110, L195). The
+plugin's L186 is small and comes before X3. Wave 3's one early piece is the ledger's token
+columns (L194), before any benchmark is run again. Wave 5 needs a session with the owner, and
+X4's last part follows it. Wave 4 is the scRNA-seq method's and waits on none of this.
 
+**Not in wave X**, and left where they are in the method's plan: the Python 3.12 image (7.13),
+BANKSY and LIANA+ (7.12), local Moran's I (7.26), a morphology tool, the tag clean-up (4.1),
+and everything that waits on the owner's answers there (3.5, 3.19, 8.6, 8.13, 8.18, 8.19).
