@@ -650,6 +650,7 @@ Predicates do not read the agent's rationale as evidence for admissibility. The 
 | proposed | pre-gate: nothing fired, or only `log` | admissible |
 | proposed | pre-gate: `flag` fired | held (kind `flag`) |
 | proposed | pre-gate: `block` fired | blocked |
+| proposed | the engine was interrupted before the pre-gate settled the step (no other edge was taken) | the same recorded Action is evaluated again by `run`, or by `propose <step>` with nothing else, and the step settles by one of the three rows above; a `gate_recovered` step event says how many `predicate_results` rows the interrupted pass left, and a hold it had opened is kept, not opened again (added 2026-11-11, L107) |
 | admissible | engine runner starts the executor, or direct judgment calls begin | running |
 | admissible | operator runner: ticket issued, job spec printed; `run` exits 21 | awaiting_execution |
 | awaiting_execution | `submit <ticket>` with all declared outputs present | running (evidence parsing, extraction) |
@@ -663,6 +664,7 @@ Predicates do not read the agent's rationale as evidence for admissibility. The 
 | held | every hold reviewed `accept` or `override` | admissible (pre-phase hold) or completed (post-phase hold) |
 | held | the last item hold of a judgment step reviewed `accept` or `override` | the consensus output is rewritten from the decided consensus and the post-phase gate is evaluated on it: nothing fires, completed; a flag fires, held (the flag holds open now); a block fires, rejected |
 | held | any hold reviewed `reject` | blocked (pre) or rejected (post); attempt closed |
+| held, on pre-phase flag holds only | the operator withdraws the proposal (`propose <step> --withdraw`) | pending; the attempt is closed, its open holds are withdrawn with no review, and the next proposal opens the next attempt (added 2026-11-11, L94) |
 | blocked, rejected, failed | new attempt after a commit or a fork | proposed |
 | proposed, admissible, held, running, awaiting_execution, dispatching, produced | the run is abandoned | abandoned (the step closes with the run; its open holds are withdrawn; added 2026-09-23) |
 | awaiting_execution | `submit <ticket> --failed --reason` (the operator reports the external run failed) | running, then failed; the executions row carries the reported exit code (added 2026-09-23) |
@@ -684,6 +686,8 @@ Run status is derived: `held` if any step is held; `blocked` or `failed` if the 
 Every hold records the reviewer role it waits on. `status` shows who is waited on. `run` cannot clear any hold.
 
 A hold whose attempt closes before anyone reviews it (a post-phase block or a reject on a sibling hold of the same step, an abandoned run) is withdrawn by the engine: `resolved_via = withdrawn`, `resolved_by_review` stays null, and a `hold_withdrawn` event names the reason. Withdrawn holds leave the queue and cannot be reviewed; the next attempt opens its own (added 2026-09-23).
+
+An operator may withdraw its own proposal while the step is held on the pre-gate's flags and nothing else (added 2026-11-11, L94): a reason that quoted a number it did not cite, or a value it no longer stands behind, is said again instead of being put to a reviewer. `propose <step> --withdraw [--reason]` writes a `proposal_withdrawn` step event (the Action, the attempt, the holds, the operator's session and reason), withdraws the open holds as above and returns the step to `pending`. Nothing is removed: the Action, its predicate results, the holds and any verdict already given on one of them stay, so a reviewer sees both proposals, and the new proposal passes the same gate. A step held on what it produced, on an item or on a sign-off cannot be withdrawn; those holds are a person's. The message `run` prints at a hold does not mention the verb (14.2).
 
 Invalid replicates open one hold for the step (kind `run_disagreement`, no item), not one per item; the items are decided from the valid replicates and note the invalid ones, and `judg.replicates_below_min` blocks when too few remain. The first real judgment opened forty-two item holds for one bad replicate (2026-09-18; changed 2026-09-23).
 
@@ -1179,7 +1183,7 @@ Lint runs as a pre-commit hook in every method repo and again at `init`.
 | `policy show` | `[--profile]` | prints resolved dispositions | none | none |
 | `plugins list` | | | | |
 
-`run` remains the loop: it calls `next`, and for operator-run steps it stops at `propose` (exit 21) and resumes after `submit`. `propose` and `submit` are exposed as verbs because the agent needs to call them individually; `fork`, `abandon` and `wait` are small enough not to count against the five-verb budget; `trace` stays a flag on `status` until someone needs more.
+`run` remains the loop: it calls `next`, and for operator-run steps it stops at `propose` (exit 21) and resumes after `submit`. `propose` and `submit` are exposed as verbs because the agent needs to call them individually (`propose <step>` with nothing else carries out an accepted proposal or finishes a gate the engine was interrupted in; `propose <step> --withdraw` takes back a held proposal, 7.1); `fork`, `abandon` and `wait` are small enough not to count against the five-verb budget; `trace` stays a flag on `status` until someone needs more.
 
 ### 14.2 Exit codes
 

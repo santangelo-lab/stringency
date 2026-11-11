@@ -53,6 +53,8 @@ EDGES: frozenset[tuple[StepStatus, StepStatus]] = frozenset(
         (S.HELD, S.COMPLETED),
         (S.HELD, S.BLOCKED),
         (S.HELD, S.REJECTED),
+        # the operator withdraws a proposal held on its pre-gate flags (7.1, L94 2026-11-11)
+        (S.HELD, S.PENDING),
         (S.BLOCKED, S.PROPOSED),
         (S.REJECTED, S.PROPOSED),
         (S.FAILED, S.PROPOSED),

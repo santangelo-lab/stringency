@@ -1,4 +1,6 @@
-"""`stringency propose <step> [--set k=v]... [--reason]` (design 3.4, 14.1)."""
+"""`stringency propose <step> [--set k=v]... [--reason]` (design 3.4, 14.1); `--withdraw`
+takes back a held proposal (L94); with nothing else it finishes an interrupted gate (L107) or
+carries out an accepted proposal (L114)."""
 
 from __future__ import annotations
 
@@ -16,7 +18,13 @@ from stringency.operator_exec.tickets import job_spec, render_job_spec
 from stringency.project import Project
 from stringency.runloop import next_step
 from stringency.runs import open_or_resume
-from stringency.steps import execute_engine, resume_after_hold, starting_params
+from stringency.steps import (
+    execute_engine,
+    recover_proposed,
+    resume_after_hold,
+    starting_params,
+    withdraw_proposal,
+)
 from stringency.steps import propose as do_propose
 
 
@@ -62,6 +70,12 @@ def propose(
     considered: str | None = typer.Option(
         None, "--considered", help="the candidate values weighed, comma-separated"
     ),
+    withdraw: bool = typer.Option(
+        False,
+        "--withdraw",
+        help="take back this step's held proposal: its open holds close as withdrawn and the "
+        "step can be proposed again; only for a step held on its proposal, before it ran",
+    ),
     as_json: bool = typer.Option(False, "--json"),
     new: bool = typer.Option(
         False,
@@ -79,7 +93,34 @@ def propose(
 
     weighed = [coerce_value(v) for v in considered.split(",") if v.strip()] if considered else []
     bare = not (sets or reason or cites or considered)
-    if bare and rc.step_status().get(step) == str(StepStatus.ADMISSIBLE):
+    if withdraw:
+        if sets or cites or considered:
+            raise ConfigError(
+                "--withdraw takes back the held proposal and nothing else (a --reason says "
+                "why); propose the step again afterwards"
+            )
+        done = withdraw_proposal(rc, step, reason)
+        nx = next_step(rc)
+        refresh_if_present(project.root)
+        emit(
+            {
+                "schema": "stringency.propose/1",
+                "run_id": rc.run_id,
+                "status": "withdrawn",
+                "withdrawn": done,
+                "next": nx.to_json(),
+            },
+            as_json,
+            f"run {rc.run_id}\nthe proposal for {step} (attempt {done['attempt']}) was withdrawn; "
+            f"{len(done['holds'])} hold(s) closed as withdrawn, no verdict recorded. "
+            f"The step is pending and can be proposed again.",
+        )
+        return
+    if bare and rc.step_status().get(step) == str(StepStatus.PROPOSED):
+        # the engine was interrupted between this proposal's commit and its gate (L107): the
+        # recorded Action is evaluated again, unchanged
+        prop = recover_proposed(rc, step)
+    elif bare and rc.step_status().get(step) == str(StepStatus.ADMISSIBLE):
         # the proposal's hold was accepted and nothing has carried it out (L114): in an open
         # project `run` is not a verb, a second `call` makes a second step, and the accepted
         # step stayed admissible for good. `propose <step>` with nothing else is "carry out

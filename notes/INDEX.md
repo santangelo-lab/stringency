@@ -5,6 +5,10 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-11)
 
+- (2026-11-11) A held proposal withdrawn, a step left `proposed` recovered (`notes/2026-11-11-1700-withdraw-and-recover.md`, branch
+  `propose-withdraw-and-recovery`): L94 (`propose <step> --withdraw`, the edge `held -> pending`,
+  design text for the owner) and L107 (`run` or a bare `propose <step>` evaluates the recorded
+  Action again). Next: the operator skill's words for both at 0.2.43; the rest of L114.
 - (2026-11-11) The work list after waves 0 and 1 (`notes/2026-11-11-1120-usage-measurement-in-the-plan.md`, branch
   `plan-usage-measurement`, docs only): State, "Next, in order" and the waiting table rewritten;
   rows L190 to L194 for measuring what a project costs in tokens, in the beta's bundle and eval
@@ -451,6 +455,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-11-1700-withdraw-and-recover.md` — L94 (`propose --withdraw`: a proposal held on its pre-gate flags goes back to `pending`, its holds withdrawn with no review) and L107 (a step left `proposed` by an interruption is recovered from its recorded Action); the new edge in 7.1.
 - `2026-11-11-1120-usage-measurement-in-the-plan.md` — where token usage is measured and why (the beta's bundle and eval store), rows L190 to L194 in wave 3, and the work list brought up to date after waves 0 and 1.
 - `2026-11-11-1057-answer-first-in-open-mode.md` — the owner's Lung finding made general: a specific question is answered before any path is offered, in the operator skill and the template.
 - `2026-11-10-2032-names-limits-policy.md` — names and `unset`, the limits band, a policy's verdict, exit code 22: design text and code together, for the owner's approval.

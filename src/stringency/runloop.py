@@ -28,6 +28,7 @@ from stringency.steps import (
     execute_engine,
     plan_step,
     propose,
+    recover_proposed,
     resume_after_hold,
     starting_params,
 )
@@ -525,6 +526,9 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
             )
         elif st == StepStatus.ADMISSIBLE:
             proposal = resume_after_hold(rc, sid)
+        elif st == StepStatus.PROPOSED:
+            # the engine was interrupted between the proposal's commit and its gate (L107)
+            proposal = recover_proposed(rc, sid)
         else:
             return _done(
                 Next(str(st), sid, {}, int(Exit.INTERNAL), f"step {sid} is {st}; cannot continue")
