@@ -535,3 +535,42 @@ def test_coverage_and_summary_name_the_fork_sweep(cproject: Project) -> None:
     # the parent sees the same sweep, at its own value and undelivered
     pd = coverage_data(load_run(cproject, parent))
     assert pd["forks"][0]["this_run"] == "bh" and pd["forks"][0]["delivered"] is False
+
+
+def test_a_control_runs_with_its_own_parameters_not_the_hosting_project_s_declared_ones(
+    make_project: InitFn, tmp_path: Path, toy_data: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A control tests the module against planted truth (design 11). A module that is not an
+    open tool is controlled inside its pipeline's steps, under their own ids, so what the
+    hosting project's objective declared for those steps reached the control: a project that
+    declared a floor ran its label module's controls on rows filtered at that floor (found
+    2026-11-10 on a project that declared a column the control's fixture does not have)."""
+    from tests.conftest import write_declarations
+    from tests.test_declared_params import OBJECTIVE
+
+    monkeypatch.setenv("STRINGENCY_MOCK_FIXTURE", str(HARNESS / "unanimous.yml"))
+    monkeypatch.setenv("STRINGENCY_MOCK_FAMILY", "direct")
+    decl = write_declarations(
+        tmp_path / "decl-ctrl",
+        toy_data,
+        objective={**OBJECTIVE, "params": {"01_filter": {"min_value": 12}}},
+    )
+    p = make_project(pipeline="toy-engine", execution="engine", objective=decl["objective.yml"])
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+    run_controls(p, "label-groups", allow_mock=True)
+    rows = p.store.all(
+        "SELECT a.params_json, a.param_source_json FROM actions a JOIN runs r "
+        "ON r.run_id = a.run_id WHERE r.kind = 'control' AND a.step_id = '01_filter'"
+    )
+    assert rows, "the label module's control runs its ancestors, 01_filter among them"
+    for row in rows:
+        assert json.loads(row["params_json"]) == {"min_value": 10}
+        assert json.loads(row["param_source_json"]) == {"min_value": "default"}
+    # the project's own run still takes the declared floor
+    r = cli(p, "run", "--json", env=MOCK)
+    assert r.exit_code == 0, r.output
+    own = p.store.one(
+        "SELECT a.params_json FROM actions a JOIN runs r ON r.run_id = a.run_id "
+        "WHERE r.kind = 'run' AND a.step_id = '01_filter'"
+    )
+    assert json.loads(own["params_json"]) == {"min_value": 12}
