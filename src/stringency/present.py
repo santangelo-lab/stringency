@@ -873,6 +873,110 @@ def decision_sections(
     return sections
 
 
+def proposal_check_sections(
+    project: Site, h: Any, ctx: dict[str, Any], pred_id: str
+) -> list[dict[str, Any]]:
+    """The default view of a hold the engine's own proposal checks opened (L95; the owner,
+    2026-10-22: the page showed the unmatched numerals and not the cited cells they were
+    compared with). `param.reason_unmatched`: the operator's reason, every cell it cited with
+    the value the engine resolved, the numerals that matched none of them with what each is
+    nearest to, and the numerals left unchecked with their class. `param.uncited`: the
+    evidence the method names for each decision beside the sources the proposal did cite.
+    Reads: actions, messages (the rationale record)."""
+    from stringency.actions import rationale_record
+
+    raw = ctx.get("evidence")
+    ev: dict[str, Any] = raw if isinstance(raw, dict) else {}
+    a = project.store.one(
+        "SELECT rationale_ref FROM actions WHERE run_id=? AND step_id=? "
+        "ORDER BY attempt DESC, rowid DESC LIMIT 1",
+        (h["run_id"], h["step_id"]),
+    )
+    record = (
+        rationale_record(project.store.message(a["rationale_ref"]))
+        if a is not None and a["rationale_ref"]
+        else None
+    ) or {}
+    cited = [c for c in record.get("cited") or [] if isinstance(c, dict)]
+    sections: list[dict[str, Any]] = []
+    if str(record.get("text") or "").strip():
+        sections.append(
+            {"title": "The operator's reason", "kind": "text", "text": str(record["text"])}
+        )
+    cited_rows = [
+        {
+            "source": c.get("source"),
+            "row": c.get("row"),
+            "column": c.get("column"),
+            "value": "(no such cell)" if "missing" in c else c.get("value"),
+        }
+        for c in cited
+    ]
+    if pred_id == "param.reason_unmatched":
+        sections.append(
+            {
+                "title": "What the reason cited, with the value the engine read",
+                "kind": "table",
+                **_table(cited_rows, ["source", "row", "column", "value"], {}),
+            }
+            if cited_rows
+            else {
+                "title": "What the reason cited",
+                "kind": "text",
+                "text": "Nothing: the proposal carried no citation.",
+            }
+        )
+        problems = [p for p in ev.get("problems") or [] if isinstance(p, dict)]
+        if problems:
+            rows = [{"numeral": p.get("numeral"), "nearest": p.get("nearest")} for p in problems]
+            sections.append(
+                {
+                    "title": "Numbers in the reason that match no cited cell",
+                    "kind": "table",
+                    **_table(rows, ["numeral", "nearest"], {}),
+                }
+            )
+        unchecked = [p for p in ev.get("not_checked") or [] if isinstance(p, dict)]
+        if unchecked:
+            rows = [{"numeral": p.get("numeral"), "read as": p.get("class")} for p in unchecked]
+            sections.append(
+                {
+                    "title": "Numbers not checked, and what each was read as",
+                    "kind": "table",
+                    **_table(rows, ["numeral", "read as"], {}),
+                }
+            )
+        return sections
+    # param.uncited: the method's evidence for each decision, beside what was cited
+    named = [str(x) for x in ev.get("uncited") or []]
+    rows = []
+    for entry in named:
+        name, _, src = entry.partition(" (")
+        rows.append({"decision": name, "the method names": src.rstrip(")")})
+    if rows:
+        sections.append(
+            {
+                "title": "The evidence the method names, which the proposal did not cite",
+                "kind": "table",
+                **_table(rows, ["decision", "the method names"], {}),
+            }
+        )
+    sections.append(
+        {
+            "title": "What the proposal cited",
+            "kind": "table",
+            **_table(cited_rows, ["source", "row", "column", "value"], {}),
+        }
+        if cited_rows
+        else {
+            "title": "What the proposal cited",
+            "kind": "text",
+            "text": "Nothing: the proposal carried no citation.",
+        }
+    )
+    return sections
+
+
 def present_hold(
     project: Site, hold_id: str | None, skills_dir: Path | None = None
 ) -> dict[str, Any]:
@@ -1008,7 +1112,14 @@ def present_hold(
         payload["sections"] += _figures_once(sections)
         ns = skill.get("never_show")
         payload["never_show"] = [str(x) for x in ns] if isinstance(ns, list) else []
-    if h["run_id"] and h["step_id"] and not payload["sections"] and pred_id.startswith("param."):
+    if h["run_id"] and h["step_id"] and pred_id in ("param.reason_unmatched", "param.uncited"):
+        # the engine's own proposal checks carry a view of their own (L95): what the reason
+        # cited beside what it could not match; a method's `hold_view` for the predicate adds
+        # to it, after
+        payload["sections"] = (
+            proposal_check_sections(project, h, ctx, pred_id) + payload["sections"]
+        )
+    elif h["run_id"] and h["step_id"] and not payload["sections"] and pred_id.startswith("param."):
         # a parameter hold with no view from the method's skill (backlog L61): the declared
         # evidence, then the parameter table
         ev = ctx.get("evidence") or {}
