@@ -25,6 +25,19 @@ decisions they rest on were his, on 2026-11-10; the texts are mine.
 - **Exit code 22 (L158).** `wait --job --for` while the detached verb still runs. Design 14.1,
   14.2, DEVIATIONS.
 
+## Added later the same night
+
+- **A fourth kind of name, `feature_column`**: a column of the object's feature table (the
+  scRNA-seq method's `symbol_column`), resolved against `fields.feature_columns`. Not in the
+  plan the owner read; DECISIONS has the entry.
+- **Checked in the benchmark image with no agent** (`stringency-benchmarks` `measurements.md`):
+  the scRNA-seq method at 0.1.13 through `scrnaseq-de` within one cell type, in pipeline mode,
+  to delivery, with names declared, strict limits from the site configuration and the
+  benchmark policy's verdicts recorded `via: policy`; and the first slice's PCA declarations
+  replayed, where `sc.pca_depth_confounded` now flags 0.369 against the strict ceiling of 0.3.
+- Merged from `fixes-2026-11` as it grew: L95, the first half of L114, the control fix,
+  `init.column_missing@2`.
+
 ## Decided (DECISIONS 2026-11-10, three entries)
 
 The points the owner's decisions left to the code are listed there. The ones he should look
