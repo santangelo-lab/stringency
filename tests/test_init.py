@@ -331,3 +331,32 @@ def test_column_missing_skips_reference_inputs(project: Project) -> None:
     ref = ctx.project.inputs.model_copy(update={"items": items})
     ctx2 = dataclasses.replace(ctx, project=dataclasses.replace(ctx.project, inputs=ref))
     assert not column_missing(ctx2).fired, "a reference input is not read against the design"
+
+
+def test_column_missing_names_the_input_the_columns_it_lacks_and_those_it_has(
+    tmp_path: Path, toy_data: Path, make_project: InitFn
+) -> None:
+    """Version 2 (2026-11-10): the refusal a drafter reads at `declare --check` said only that
+    some column was absent. It now names the input, what it lacks and what it has, so a unit
+    written as a sentence where its column's name belongs can be mended from the message."""
+    from stringency.exit_codes import ConfigError
+
+    decl = write_declarations(
+        tmp_path / "prose",
+        toy_data,
+        design={
+            "design": 1,
+            "units": {"observation": "row", "sample": "one animal, in the column unit"},
+            "factors": {"group": {"column": "group", "levels": ["A", "B", "C"]}},
+            "batch": [],
+            "replication_unit": "sample",
+            "holdout": [],
+        },
+    )
+    with pytest.raises(ConfigError) as e:
+        make_project(design=decl["design.yml"], objective=decl["objective.yml"])
+    said = str(e.value)
+    assert "init.column_missing@2" in said
+    assert "groups lacks 'one animal, in the column unit'" in said
+    assert "(it has group, row_id, unit, value)" in said
+    assert "names a column of the input" in said
