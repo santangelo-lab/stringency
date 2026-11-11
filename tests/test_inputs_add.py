@@ -106,6 +106,8 @@ def test_a_persons_file_is_added_bound_by_name_and_named_in_the_qualifier(
     # data with a source, not code: the label stays trusted, the qualifier says whose file
     assert ans["label"] == "trusted"
     assert f'person-supplied inputs: mine ("{WORDS}")' in ans["qualifier"]
+    methods = (q.root / "deliver" / out["run_id"] / "methods.md").read_text()
+    assert f'Input mine was supplied by a person after the project was opened ("{WORDS}"' in methods
     # the copy is hashed again like any input: changed, the next call is blocked
     copy.write_text(copy.read_text() + "r99,A,u1,1.0\n")
     r = cli(q, "call", "compare-groups", "--in", "object=$inputs.mine", "--json")

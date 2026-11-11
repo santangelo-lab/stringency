@@ -242,6 +242,21 @@ def _words(
     return words, open_block, notes, followed
 
 
+def tool_sources(site: Site) -> dict[str, list[str]]:
+    """Each tool's `cites` from the method's analyze files (L175), by module name: the papers or
+    resources the tool's method is taken from, in the method's words. Tools that cite nothing
+    are absent. Reads the skill files only; malformed files give nothing."""
+    words, _, _, _ = _words(site)
+    out: dict[str, list[str]] = {}
+    for name, w in words.items():
+        cites = w.get("cites")
+        if isinstance(cites, list):
+            kept = [str(c).strip() for c in cites if isinstance(c, str) and c.strip()]
+            if kept:
+                out[name] = kept
+    return out
+
+
 def _tool_entry(
     site: Site, module: Module, candidates: list[dict[str, Any]], words: dict[str, Any] | None
 ) -> dict[str, Any]:
@@ -403,6 +418,8 @@ def render_tools(payload: dict[str, Any]) -> str:
             lines.append(f"  use when: {w['use_when']}")
         if w.get("not_for"):
             lines.append(f"  not for: {w['not_for']}")
+        if isinstance(w.get("cites"), list) and w["cites"]:
+            lines.append("  sources: " + "; ".join(str(c) for c in w["cites"]))
         for name, spec in t["inputs"].items():
             cands = ", ".join(
                 str(c.get("ref") or c.get("delivered"))
@@ -439,6 +456,11 @@ def render_tools(payload: dict[str, Any]) -> str:
                 lines.append(
                     f"  {p.get('answers')}: {by}"
                     + (f"; needs {p['needs']}" if p.get("needs") else "")
+                    + (
+                        "; sources: " + "; ".join(str(c) for c in p["cites"])
+                        if isinstance(p.get("cites"), list) and p["cites"]
+                        else ""
+                    )
                 )
     ctx = payload.get("context")
     if ctx:

@@ -331,6 +331,9 @@ The tools this method ships for questions, in the method's words:
 {% if t.not_for %}
   - not for {{ t.not_for }}.
 {% endif %}
+{% if t.cites %}
+  - Sources: {{ t.cites | join('; ') }}.
+{% endif %}
 {% for a in t.asks %}
   - Ask before calling it: {{ a.ask }} (`{{ a.param }}`; pass it with `--set {{ a.param }}=<value> --asked-by person --reason "<their words>"`).
 {% endfor %}
@@ -347,12 +350,15 @@ The paths the method suggests, each said in the pinned form:
 
 {% for p in open_paths %}
 - {{ p.answers }}: {% if p.tool %}{{ p.title }} (`{{ p.tool }}`), a tool, labelled trusted{% else %}no tool ships for this, so code, labelled untested{% endif %}{% if p.needs %}; needs {{ p.needs | join(', ') }} delivered{% endif %}{% if p.asks %}; needs from the person: {{ p.asks }}{% endif %}.
+{% if p.cites %}
+  - Sources: {{ p.cites | join('; ') }}.
+{% endif %}
 {% endfor %}
 
 {% endif %}
 The pinned sentences, said as written except the label sentences and the qualifier line, which
 are the engine's record, printed by `stringency answer` and said in plain words in your reply
-(the engine fills `{tools}`, `{data}`, `{tables}`, `{why}`, `{matched}`, `{total}` and the qualifier's seven
+(the engine fills `{tools}`, `{data}`, `{tables}`, `{why}`, `{matched}`, `{total}` and the qualifier's eight
 fields, each `none` when empty; `{numerals}` lists the numerals the engine did not check because
 they are not measurements: a design level, a row's key, a parameter value, a number from the
 question, a year, a count of animals, punches or replicates):

@@ -1675,7 +1675,30 @@ def render_chat(payload: dict[str, Any]) -> str:
     if chat["figures"] or payload.get("figures"):
         out.append("")
     out.append(payload["label_sentence"] or "")
+    out += source_lines(payload.get("sources") or [])
     return "\n".join(out) + "\n"
+
+
+def answer_sources(project: Site, tools: list[str]) -> list[dict[str, Any]]:
+    """The sources the method names for each tool on an answer's path (L175): `{tool, title,
+    cites}` per tool whose analyze-file entry has `cites`, in path order. Reads the method's
+    skill files only."""
+    from stringency.tools import tool_sources
+
+    if not tools:
+        return []
+    cites = tool_sources(project)
+    out: list[dict[str, Any]] = []
+    for ref in dict.fromkeys(tools):
+        name = ref.split("@")[0]
+        if name in cites:
+            out.append({"tool": ref, "cites": cites[name]})
+    return out
+
+
+def source_lines(sources: list[dict[str, Any]]) -> list[str]:
+    """`Sources the method names for <tool>: a; b.`, one line per tool."""
+    return [f"Sources the method names for {s['tool']}: {'; '.join(s['cites'])}." for s in sources]
 
 
 def present_answer(
@@ -1727,6 +1750,8 @@ def present_answer(
         "qualifier": prov.get("qualifier_line"),
         "route": prov.get("route"),
         "tools": tools,
+        # what the method says each tool on the path is taken from (L175)
+        "sources": answer_sources(project, tools),
         "text": text,
         # the question's wants beside the cited steps' gives (L139); None before 0.2.35
         "fit": prov.get("fit"),
@@ -2330,6 +2355,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
             out.append(str(f.get("label_line") or ""))
         out.append("")
         out.append(payload["label_sentence"] or "")
+        out += source_lines(payload.get("sources") or [])
         out += _settled_lines(payload["decisions"])
     if payload["kind"] == "answer" and payload["details"]:
         out.append("")

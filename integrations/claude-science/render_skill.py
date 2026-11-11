@@ -242,8 +242,10 @@ def _check_words_of(root: Path, pipeline: str, target: str, problems: Problems) 
 def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
     """`tools`: the words a method writes for each tool a person may ask for after delivery
     (open mode, 2026-10-16): `{module, title, use_when, not_for, asks: {param: question},
-    proposed: [{param, evidence, ask}], defaults_to_say: {param: phrase}}`. `not_for`
-    (optional, L139) says which questions the tool's output is near but does not answer. The
+    proposed: [{param, evidence, ask}], defaults_to_say: {param: phrase}, cites: [source]}`.
+    `not_for` (optional, L139) says which questions the tool's output is near but does not
+    answer; `cites` (optional, L175) names the papers or resources the tool's method is taken
+    from, rendered as a Sources line and shown by `present --answer` and `methods.md`. The
     engine reads `module.yml` for what a tool is; this is what the skill says about it."""
     if value is None:
         return []
@@ -266,6 +268,7 @@ def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
                 "asks",
                 "proposed",
                 "defaults_to_say",
+                "cites",
             ):
                 problems.add(f"{where}: unknown key `{key}`")
         module = t.get("module")
@@ -313,6 +316,7 @@ def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
                 problems.add(f"{pw}: `ask` must be the question in the person's words")
                 continue
             proposed.append({"param": p["param"].strip(), "evidence": evidence, "ask": ask.strip()})
+        cites = _str_list(t["cites"], f"{where}.cites", problems) if "cites" in t else []
         out.append(
             {
                 "module": module,
@@ -322,13 +326,14 @@ def _tools(value: Any, problems: Problems) -> list[dict[str, Any]]:
                 "asks": [{"param": k, "ask": v} for k, v in asks.items()],
                 "proposed": proposed,
                 "defaults_to_say": [{"key": k, "say": v} for k, v in defaults.items()],
+                "cites": cites,
             }
         )
     return out
 
 
 def _open(value: Any, tools: list[dict[str, Any]], problems: Problems) -> dict[str, Any]:
-    """`open`: `{intro, paths: [{answers, tool | code, needs, asks}]}`, the method's suggested
+    """`open`: `{intro, paths: [{answers, tool | code, needs, asks, cites}]}`, the method's suggested
     paths forward in its own words (open mode, 2026-10-16). A path names a listed tool or says
     `code: true`, never both; `needs` names the pipeline outputs it needs delivered. Or
     `{words_of: <pipeline>}` (L136, 2026-10-29): this pipeline's delivery is opened with that
@@ -373,7 +378,7 @@ def _open(value: Any, tools: list[dict[str, Any]], problems: Problems) -> dict[s
             problems.add(f"{where}: must be a mapping")
             continue
         for key in p:
-            if key not in ("answers", "tool", "code", "needs", "asks"):
+            if key not in ("answers", "tool", "code", "needs", "asks", "cites"):
                 problems.add(f"{where}: unknown key `{key}`")
         answers = p.get("answers")
         if not isinstance(answers, str) or not answers.strip():
@@ -390,6 +395,7 @@ def _open(value: Any, tools: list[dict[str, Any]], problems: Problems) -> dict[s
             problems.add(f"{where}: tool `{tool}` is not in `tools`")
             continue
         needs = _str_list(p.get("needs"), f"{where}.needs", problems) if "needs" in p else []
+        cites = _str_list(p.get("cites"), f"{where}.cites", problems) if "cites" in p else []
         asks = p.get("asks")
         if asks is not None and (not isinstance(asks, str) or not asks.strip()):
             problems.add(f"{where}: `asks` must be a sentence")
@@ -401,6 +407,7 @@ def _open(value: Any, tools: list[dict[str, Any]], problems: Problems) -> dict[s
                 "code": code,
                 "needs": needs,
                 "asks": (asks or "").strip(),
+                "cites": cites,
                 "title": next((t["title"] for t in tools if t["module"] == tool), None),
             }
         )

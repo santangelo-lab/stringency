@@ -643,7 +643,7 @@ answer`, written into every delivered answer file, and the source of the trust s
 reply (10.3), which says them in plain words. The rest are said as written. The engine fills `{tools}` with the tools on the
 answer's path, `{data}` with what the path rests on, `{tables}` with the trusted tables a drawing's
 numbers match, `{why}` with the condition of trusted a
-tool missed, `{matched}` and `{total}` with the numeral counts, and the qualifier's seven fields,
+tool missed, `{matched}` and `{total}` with the numeral counts, and the qualifier's eight fields,
 each `none` when empty; `{numerals}` lists the numerals the engine did not check because they
 are not measurements (a design level, a row's key, a parameter value of the cited step, a number
 from the question, a year, a count of animals, punches or replicates), and `{total}` counts only

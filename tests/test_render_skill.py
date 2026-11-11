@@ -587,3 +587,33 @@ def test_check_fails_a_committed_rendering_left_behind_its_source(tmp_path):
         text=True,
     )
     assert r.returncode == 0, r.stderr
+
+
+def test_a_tool_and_a_path_name_their_sources():
+    """L175: `cites` on a tool and on a path is a list of sources, rendered as a Sources line;
+    an empty list or a non-string is refused."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        repo = _toy_repo(Path(d))
+        data = {**_toy_analyze(), **_toy_tools()}
+        data["tools"][0]["cites"] = [
+            "Benjamini and Hochberg 1995, doi:10.1111/j.2517-6161.1995.tb02031.x"
+        ]
+        data["open"]["paths"][1]["cites"] = ["the method's own figure style"]
+        src = repo / "skills" / "toy-engine.analyze.yml"
+        src.write_text(yaml.safe_dump(data))
+        ctx, problems = rs.validate(yaml.safe_load(src.read_text()), src, repo)
+        assert not problems, problems
+        out = rs.render(ctx)
+        assert (
+            "  - Sources: Benjamini and Hochberg 1995, doi:10.1111/j.2517-6161.1995.tb02031.x."
+            in out
+        )
+        assert "  - Sources: the method's own figure style." in out
+        data["tools"][0]["cites"] = []
+        data["open"]["paths"][1]["cites"] = [3]
+        _, problems = rs.validate(data, src, repo)
+        text = "\n".join(sorted(problems))
+        assert "tools[1].cites: a non-empty list of sentences is required" in text
+        assert "open.paths[2].cites[1]: must be a non-empty string" in text
