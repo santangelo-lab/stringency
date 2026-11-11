@@ -5,6 +5,11 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-10)
 
+- (2026-11-10) The four design-level changes (`notes/2026-11-10-2032-names-limits-policy.md`, branch `names-limits-policy` on
+  `fixes-2026-11`), each waiting on the owner's reading of its text: the name form with the word
+  `unset` (L163 c, L129), a project's limits band apart from its profile (L171), `via: policy`
+  (L162), exit code 22 (L158). Next: the method uses the form (L163 d); the benchmark's runner
+  sets `limits: strict` and passes `--policy`.
 - (2026-11-10) The fixes that need no design text (`notes/2026-11-10-2031-fixes-wave-1-and-2-small.md`, branch `fixes-2026-11`): L168 and L161
   (`init` refuses a declared value the step would block; `declare` reads the site's executor), L146,
   L147 and L159 (the operator skill), L145 (no absolute tolerance on a numeral), L148 (`audit` reads
@@ -437,6 +442,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-10-2032-names-limits-policy.md` — names and `unset`, the limits band, a policy's verdict, exit code 22: design text and code together, for the owner's approval.
 - `2026-11-10-2031-fixes-wave-1-and-2-small.md` — eight rows that need no design text, on one branch for one pull request; version 0.2.42; what the new renderer check found in the methods.
 - `2026-11-10-1633-work-list-housekeeping.md` — the surveys of the backlogs and the plan documents; the order of work; the owner's answers; `PLAN.md` merged, pruned and rewritten; rows L172 to L185.
 - `2026-11-10-1521-marked-names.md` — 0.2.41: a name is marked, a measurement is bare, in place of PR 24's value rule; the refusal at `propose` and `call` for a name written bare; L142's and L93's bare exemptions withdrawn.
