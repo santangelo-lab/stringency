@@ -5,6 +5,11 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-10)
 
+- (2026-11-10) The fixes that need no design text (`notes/2026-11-10-2031-fixes-wave-1-and-2-small.md`, branch `fixes-2026-11`): L168 and L161
+  (`init` refuses a declared value the step would block; `declare` reads the site's executor), L146,
+  L147 and L159 (the operator skill), L145 (no absolute tolerance on a numeral), L148 (`audit` reads
+  flags and findings), L174 (the renderer's stale check); version 0.2.42. Next: the design-level
+  branch `names-limits-policy`, then wave 2's larger rows.
 - (2026-11-10) One work list again (`notes/2026-11-10-1633-work-list-housekeeping.md`, branch `plan-housekeeping`, docs only):
   `benchmark-prereg` merged, the finished rows archived, rows L172 to L185 for what no row
   tracked, State and "Next, in order" rewritten from `implementation-order-2026-11.md` (what
@@ -432,6 +437,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-10-2031-fixes-wave-1-and-2-small.md` — eight rows that need no design text, on one branch for one pull request; version 0.2.42; what the new renderer check found in the methods.
 - `2026-11-10-1633-work-list-housekeeping.md` — the surveys of the backlogs and the plan documents; the order of work; the owner's answers; `PLAN.md` merged, pruned and rewritten; rows L172 to L185.
 - `2026-11-10-1521-marked-names.md` — 0.2.41: a name is marked, a measurement is bare, in place of PR 24's value rule; the refusal at `propose` and `call` for a name written bare; L142's and L93's bare exemptions withdrawn.
 - `2026-11-09-1700-numeral-labels.md` — 0.2.41: labels are not measurements; `param.reason_unmatched@3` and `ans.numeral_unmatched@3` with the `table`, `considered` and `id` classes; the Lyons Lung sweep and call that showed it; four open items for the owner.
