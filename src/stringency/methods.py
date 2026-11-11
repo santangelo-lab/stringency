@@ -83,7 +83,7 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
             )
             models = ", ".join(sorted(i["model_resolved"] for i in invs)) or "unknown"
             reviewers = store.all(
-                "SELECT DISTINCT r.reviewer FROM reviews r JOIN holds h ON h.hold_id=r.hold_id WHERE h.run_id=? AND h.step_id=? AND r.verdict IN ('accept','override')",
+                "SELECT DISTINCT r.reviewer, r.via, r.operator_harness FROM reviews r JOIN holds h ON h.hold_id=r.hold_id WHERE h.run_id=? AND h.step_id=? AND r.verdict IN ('accept','override')",
                 (rc.run_id, step.id),
             )
             if j:
@@ -93,8 +93,20 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
                 )
                 resolved = j["accepted"] + j["override"]
                 if resolved:
-                    who = ", ".join(sorted(r["reviewer"] for r in reviewers)) or "the reviewer"
-                    text += f" and {resolved} were resolved by reviewer {who} ({j['accepted']} accepted, {j['override']} corrected)"
+                    from stringency.review import policy_of
+
+                    people = sorted({r["reviewer"] for r in reviewers if r["via"] != "policy"})
+                    policies = sorted(
+                        {str(policy_of(r)) for r in reviewers if r["via"] == "policy"}
+                    )
+                    by = [f"reviewer {', '.join(people)}"] if people else []
+                    if policies:
+                        # a fixed policy's verdict is never worded as a person's (L162)
+                        by.append(
+                            f"the fixed policy {', '.join(policies)}, with no person's review"
+                        )
+                    who = " and ".join(by) or "the reviewer"
+                    text += f" and {resolved} were resolved by {who} ({j['accepted']} accepted, {j['override']} corrected)"
         described.append(text)
     if described:
         joined = "; ".join(described)

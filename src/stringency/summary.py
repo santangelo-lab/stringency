@@ -153,6 +153,13 @@ def what_was_checked(rc: RunContext, cov: dict[str, Any]) -> list[str]:
             lines.append(f"- {f['predicate']} on {title}: open, not yet decided.")
             continue
         reason = f' "{f["reason"]}"' if f["reason"] else ""
+        if f.get("policy"):
+            # a fixed policy's verdict is never worded as a person's (L162)
+            lines.append(
+                f"- {f['predicate']} on {title}: {f['verdict']} by the fixed policy "
+                f"`{f['policy']}` on {f['date']}{reason}; no person reviewed it."
+            )
+            continue
         lines.append(
             f"- {f['predicate']} on {title}: {f['verdict']} by {f['reviewer']} via {f['via']} on {f['date']}{reason}."
         )

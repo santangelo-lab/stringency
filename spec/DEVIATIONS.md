@@ -78,3 +78,17 @@ list and warns on `key` declared on an input. Whether a declared key is unique i
 (an output exists only after a run); a declared key that repeats numbers each repeat `#<n>`.
 The module contract document (`spec/module-contract.md`, the `outputs` row) says so. Awaiting
 acknowledgement by Jim; built in engine 0.2.35 as `must_cite` was.
+
+## Trace schema 9.4: `reviews.via: policy` (2026-11-10, PLAN L162)
+
+A sixth value of `reviews.via`, beside `tty`, `relayed`, `web`, `rebind` and `inherited`: a
+verdict recorded by a fixed policy and not by a person, with `operator_harness` holding
+`policy:<name>` and `operator_session_ref` the policy process's own reference. Additive: the
+column carries no constraint, no migration is needed, and every row written before reads as it
+did. Needed because the benchmark's hold policy recorded its verdicts with `--attest`, so the
+trace called them relayed reviews by the reviewer's own account and only the session
+reference told them from a person's; a benchmark number that counts holds "reviewed" must not
+rest on that. Readers that word a review as a person's (the coverage report, the summary, the
+methods paragraph) now ask the row first. The value is refused under a profile that refuses
+relayed review. Approved in principle by Jim, 2026-11-10; this entry is the written form.
+

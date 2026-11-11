@@ -15,6 +15,7 @@ from stringency import __version__
 from stringency.egress import CLASS_NAMES
 from stringency.gate import in_scope_specs
 from stringency.predicates import registry
+from stringency.review import policy_of
 from stringency.runs import RunContext, captured_egress, captured_plugins, captured_upstream_lineage
 from stringency.when import skip_reason
 
@@ -218,8 +219,19 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
                 "date": rev["ts"][:10] if rev else None,
                 "via": h["resolved_via"] or (rev["via"] if rev else None),
                 "reason": rev["reason"] if rev else None,
+                "policy": policy_of(rev),
             }
         )
+    # verdicts a fixed policy recorded, on any hold of the run or of the project (L162)
+    by_policy = store.all(
+        "SELECT r.operator_harness, r.via FROM reviews r JOIN holds h ON h.hold_id = r.hold_id "
+        "WHERE r.via = 'policy' AND (h.run_id = ? OR h.run_id IS NULL OR h.run_id = 'init')",
+        (rc.run_id,),
+    )
+    policy_verdicts = {
+        "n": len(by_policy),
+        "policies": sorted({str(policy_of(r)) for r in by_policy}),
+    }
     uncovered, ungated = decision_point_coverage(rc)
 
     judgment: list[dict[str, Any]] = []
@@ -398,6 +410,7 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "evaluated": len(evaluated_ids),
             "fired": {k: fired.get(k, 0) for k in ("block", "flag", "log")},
             "flags": flags,
+            "policy_verdicts": policy_verdicts,
             "uncovered_decision_points": uncovered,
             "ungated_steps": ungated,
         },
@@ -504,6 +517,12 @@ def render_coverage(d: dict[str, Any]) -> str:
         f"gate: {g['registered']} predicates registered; {g['in_scope']} in scope for this pipeline; {g['evaluated']} evaluated over {s['declared']} steps, both phases",
         f"  fired: {g['fired']['block']} block, {g['fired']['flag']} flag, {g['fired']['log']} log",
     ]
+    pv = g.get("policy_verdicts") or {}
+    if pv.get("n"):
+        lines.append(
+            f"  verdicts recorded by a fixed policy, not by a person: {pv['n']} "
+            f"({', '.join(pv['policies'])})"
+        )
     if g["flags"]:
         lines.append("  flags:")
         for f in g["flags"]:
