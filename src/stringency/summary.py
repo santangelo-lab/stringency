@@ -230,7 +230,9 @@ def render_summary(rc: RunContext, cov: dict[str, Any], files: list[dict[str, An
         f"# Summary of run {rc.run_id}",
         "",
         f"Project {project.config.project_id}; pipeline {project.pipeline.name} {project.pipeline.version}; "
-        f"profile {project.config.profile}.",
+        f"profile {project.config.profile}"
+        + (f", at the policy's {project.config.limits} limits" if project.config.limits else "")
+        + ".",
         "",
         "## What was analyzed",
         "",

@@ -82,6 +82,13 @@ def init(
         help="the study this project opts into: siblings naming the same study under the same "
         "parent directory share one design acceptance and one parameter acceptance",
     ),
+    limits: str | None = typer.Option(
+        None,
+        "--limits",
+        help="the band of the method policy's `ranges` this project is judged at, when it is "
+        "not its profile's own (for example `strict` limits under the `standard` profile); "
+        "default the site config's `limits`, else the profile's band",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     project = init_project(
@@ -109,6 +116,7 @@ def init(
             from_delivery=from_delivery,
             upstream=upstream,
             study=study,
+            limits=limits or siteconfig.limits(),
         )
     )
     hold = project.confirm_hold()

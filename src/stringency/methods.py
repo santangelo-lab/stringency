@@ -17,17 +17,19 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
     sentences: list[str] = []
     plugin_version = captured_plugins(store, rc.run_id).get(project.plugin.name)
     with_plugin = f" (plugin {project.plugin.name} {plugin_version})" if plugin_version else ""
+    # a project judged at a band of limits other than its profile's says so (L171)
+    at_limits = f" at the policy's {project.config.limits} limits" if project.config.limits else ""
     if rc.open_ended:
         tools = ", ".join(m.ref for m in project.tools()) or "none"
         sentences.append(
             f"Questions were answered with stringency {__version__}{with_plugin} in open mode using the "
             f"tools of method {project.config.method.tag} ({tools}; commit {run['git_sha'][:7]}) under the "
-            f"{project.config.profile} profile and policy {run['policy_version']}."
+            f"{project.config.profile} profile{at_limits} and policy {run['policy_version']}."
         )
     else:
         sentences.append(
             f"Analysis was run with stringency {__version__}{with_plugin} using the {project.pipeline.name} pipeline "
-            f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile "
+            f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile{at_limits} "
             f"and policy {run['policy_version']}."
         )
     for item in project.inputs.items:

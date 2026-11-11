@@ -371,6 +371,8 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
         else None,
         "mode": project.config.mode,
         "profile": project.config.profile,
+        "limits": project.policy.band_for(project.config.profile),
+        "limits_chosen": project.config.limits is not None,
         "policy_version": run["policy_version"],
         "policy_digest": run["policy_digest"],
         "stringency_version": __version__,
@@ -485,7 +487,8 @@ def render_coverage(d: dict[str, Any]) -> str:
     g, s, e, r = d["gate"], d["steps"], d["execution"], d["reproducibility"]
     lines = [
         "stringency coverage report",
-        f"run {d['run_id']} | project {d['project_id']} | pipeline {d['pipeline']} | mode {d['mode']} | profile {d['profile']}",
+        f"run {d['run_id']} | project {d['project_id']} | pipeline {d['pipeline']} | mode {d['mode']} | profile {d['profile']}"
+        + (f" | limits {d['limits']} (chosen for this project)" if d.get("limits_chosen") else ""),
         f"policy {d['policy_version']} (blake3:{d['policy_digest'][:12]}) | stringency {d['stringency_version']}"
         + (
             " with " + ", ".join(f"{k} {v}" for k, v in sorted(d["plugins"].items()))

@@ -109,6 +109,9 @@ class Policy(BaseModel):
     requires: Requires | None = None  # the engine and plugin versions this method needs (L28)
     resources: ResourceCap | None = None  # the machine's cap on an allocation (L130)
     raw: dict[str, Any] = Field(default_factory=dict, exclude=True)
+    # the band of `ranges` a project chose apart from its profile (design 6.4, 2026-11-10,
+    # L171); never a key of policy.yml: `load_policy` refuses it there, `with_limits` sets it
+    limits: str | None = Field(default=None, exclude=True)
 
     @model_validator(mode="after")
     def _check(self) -> Policy:
@@ -152,8 +155,31 @@ class Policy(BaseModel):
         remapped = self.profile(profile).remap.get(str(d))
         return Disposition(remapped) if remapped else d
 
+    def bands(self) -> list[str]:
+        """Every band name some entry of `ranges` declares, sorted."""
+        return sorted({band for entry in self.ranges.values() for band in entry})
+
+    def with_limits(self, band: str | None) -> Policy:
+        """This policy read at the band a project chose (design 6.4, L171): `range_for` returns
+        that band's limits whatever the profile's `qc_ranges`, and the digest says so. None
+        returns the policy unchanged. Nothing else of the profile moves: its remap, its
+        `params`, its review rule stay the profile's."""
+        if band is None:
+            return self
+        if band not in self.bands():
+            have = ", ".join(self.bands()) or "none"
+            raise ConfigError(
+                f"limits band {band!r} is not one the method's policy declares under `ranges` "
+                f"({have})"
+            )
+        return self.model_copy(update={"limits": band})
+
+    def band_for(self, profile: str) -> str:
+        """The band `range_for` reads under this profile: the project's own, else the profile's."""
+        return self.limits or self.profile(profile).qc_ranges
+
     def range_for(self, key: str, profile: str) -> list[float] | None:
-        band = self.profile(profile).qc_ranges
+        band = self.band_for(profile)
         entry = self.ranges.get(key)
         if entry is None:
             return None
@@ -167,8 +193,12 @@ class Policy(BaseModel):
         return rule
 
     def digest(self, registry: Registry) -> str:
-        """blake3(policy.yml contents || sorted id@version of every registered predicate)."""
-        text = hashing.canonical_json(self.raw) + "\n" + "\n".join(sorted(registry.refs()))
+        """blake3(policy.yml contents || sorted id@version of every registered predicate). A
+        project that chose its limits band (L171) adds `limits: <band>` between the two, so
+        runs judged at different limits never share a digest; without one the digest is as it
+        always was."""
+        chosen = f"\nlimits: {self.limits}" if self.limits else ""
+        text = hashing.canonical_json(self.raw) + chosen + "\n" + "\n".join(sorted(registry.refs()))
         return hashing.hash_text(text)
 
 
@@ -176,6 +206,11 @@ def load_policy(path: Path) -> Policy:
     data = load_yaml(path)
     if not isinstance(data, dict):
         raise ConfigError(f"{path}: expected a mapping")
+    if "limits" in data:
+        raise ConfigError(
+            f"{path}: `limits` is a project's choice (`init --limits <band>`), not a key of the "
+            "policy file; a profile's own band is its `qc_ranges`"
+        )
     try:
         pol = Policy.model_validate({**data, "raw": data})
     except ValueError as e:

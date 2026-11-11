@@ -1,9 +1,12 @@
 """The per-user site configuration, `~/.config/stringency/config.yml` (`$XDG_CONFIG_HOME`
 honoured; beside `notify.yml`): settings that belong to a machine and a user rather than to a
-project. Two keys: `images_root`, the directory container images are resolved in when a
-method's environment manifest names an image by file name (design 10.3, backlog L31), and
+project. Three keys: `images_root`, the directory container images are resolved in when a
+method's environment manifest names an image by file name (design 10.3, backlog L31);
 `executor`, the executor `init` uses when `--executor` is not given (`local` on a machine with
-no container runtime, a tester's Mac; the beta-tester package, 2026-11-03). Reads only.
+no container runtime, a tester's Mac; the beta-tester package, 2026-11-03); and `limits`, the
+band of a method policy's `ranges` `init` binds when `--limits` is not given (design 6.4,
+2026-11-10, L171: a site where nobody reviews as a run goes along, a benchmark's container,
+says `limits: strict` once). Reads only.
 
 A second file sits beside the install, `<prefix>/config.yml` above the `versions/` directory
 install.sh lays out (2026-11-04): what the install sets for everyone who runs it, read under the
@@ -71,6 +74,16 @@ def executor() -> str | None:
     if kind not in ("local", "apptainer"):
         raise ConfigError(f"{config_path()}: executor must be local or apptainer, not {kind!r}")
     return str(kind)
+
+
+def limits() -> str | None:
+    """The site's default limits band (design 6.4, L171), or None when the file sets none."""
+    band = load().get("limits")
+    if band is None:
+        return None
+    if not isinstance(band, str) or not band.strip():
+        raise ConfigError(f"{config_path()}: limits must be the name of a band, not {band!r}")
+    return band.strip()
 
 
 def images_root() -> Path | None:

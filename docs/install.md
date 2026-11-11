@@ -59,6 +59,10 @@ Install one of those unless you are developing.
   but not the user's config directory still finds it); `init` then creates projects for the
   local executor unless `--executor` says otherwise, and `probe --method` checks each
   environment's lockfile instead of its image.
+- Optional, for a site where nobody reviews as a run goes along (an unattended batch, a
+  benchmark's container): `limits: strict` in either `config.yml`. `init` then binds every
+  project to the method policy's `strict` band of `ranges` whatever its profile (design 6.4),
+  unless `--limits` names another; the echo-back and the coverage report say so.
 - Disk for container images (a few GB each) and for projects.
 - A group that every user of the machine belongs to, so projects and the install are readable by
   all of them.
