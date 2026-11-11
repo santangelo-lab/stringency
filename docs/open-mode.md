@@ -35,6 +35,9 @@ before it ran. Not a judgment ("is this good", "should we exclude these"): that 
 person's call. Not something neither the delivery nor the inputs hold: the assistant says what
 would answer it. The
 assistant proposes three to five paths before the switch, so the first question can be a pick.
+When you have already asked a specific question, it skips the paths and answers: it asks once
+whether to open the results for questions, files your question in your words, and answers
+it; the paths are offered afterwards, or when you ask what else can be looked at.
 
 ## How an answer reads
 

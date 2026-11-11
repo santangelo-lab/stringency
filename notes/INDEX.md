@@ -5,6 +5,10 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-10)
 
+- (2026-11-11) Answer first, in every method's open mode (`notes/2026-11-11-1057-answer-first-in-open-mode.md`, branch
+  `open-mode-answer-first`, text only): the operator skill's 10.1 and 10.5 and the analysis-skill
+  template's section 8 say that a specific question is answered at once and the paths offered
+  after. Every method's rendered skill is behind the template until rendered again.
 - (2026-11-10) The four design-level changes (`notes/2026-11-10-2032-names-limits-policy.md`, branch `names-limits-policy` on
   `fixes-2026-11`), each waiting on the owner's reading of its text: the name form with the word
   `unset` (L163 c, L129), a project's limits band apart from its profile (L171), `via: policy`
@@ -442,6 +446,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-11-1057-answer-first-in-open-mode.md` — the owner's Lung finding made general: a specific question is answered before any path is offered, in the operator skill and the template.
 - `2026-11-10-2032-names-limits-policy.md` — names and `unset`, the limits band, a policy's verdict, exit code 22: design text and code together, for the owner's approval.
 - `2026-11-10-2031-fixes-wave-1-and-2-small.md` — eight rows that need no design text, on one branch for one pull request; version 0.2.42; what the new renderer check found in the methods.
 - `2026-11-10-1633-work-list-housekeeping.md` — the surveys of the backlogs and the plan documents; the order of work; the owner's answers; `PLAN.md` merged, pruned and rewritten; rows L172 to L185.
