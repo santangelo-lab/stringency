@@ -15,6 +15,9 @@ class Exit(IntEnum):
     REFUSED = 16
     DISPATCHING = 20
     AWAITING_EXECUTION = 21
+    # a detached verb is still running when `wait --job --for <s>` returns (added 2026-11-10,
+    # L158, the owner's decision; DEVIATIONS): it was 10, the code a verb returns at a hold
+    RUNNING = 22
 
 
 class StringencyError(Exception):

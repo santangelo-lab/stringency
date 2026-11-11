@@ -92,3 +92,15 @@ rest on that. Readers that word a review as a person's (the coverage report, the
 methods paragraph) now ask the row first. The value is refused under a profile that refuses
 relayed review. Approved in principle by Jim, 2026-11-10; this entry is the written form.
 
+## CLI 14.2: exit code 22, running (2026-11-10, PLAN L158)
+
+An eleventh exit code on the frozen list: 22, returned by `wait --job --for <s>` when the
+detached verb is still running at the timeout. It returned 10, which is also what the detached
+verb itself returns when it stops at a hold, so an operator reading the code alone could not
+tell "still at work" from "stopped for a person" (the owner's operator lost twenty-five minutes
+to it on 2026-11-09). No other verb returns 22 and no existing code changes meaning: `wait
+--hold` and `wait --run` still return 10 at their timeout, since the hold they wait on is
+still open. A harness written for the old behaviour that waits again on 10 with `state:
+running` must now do so on 22; the operator skill says to read `state` on an older engine.
+Decided by Jim, 2026-11-10 ("add a new exit code"); this entry is the written form.
+

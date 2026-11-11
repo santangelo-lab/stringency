@@ -172,7 +172,6 @@ L100 and L101 (decision points), L102 (method and plugin) and L103 (holds).
 |---|---|---|---|---|
 | L34 | **one operator harness, one subscription-funded judge route** (as it stood 2026-10-14; the owner: open Codex as a harness and build in as much flexibility on the harness side as possible). H1 to H3 built 2026-10-21 (engine 0.2.32): the survey (`integrations/codex/README.md`), Codex recognised by `operator_id`, `render_skill.py --harness`, the `openai-compatible` and `command` adapters, L36 conformance | what remains: the Qwen3 evaluation (`judge-sources-plan.md` S2) as sibling projects under both harnesses, which needs a local model served on the GPU and the Lyons re-judgment; the owner defines "competent" (decision 3) first; design 10.1 and 10.2 carry the dated text | method and owner; `judge-sources-plan.md` 6 (3) |
 
-| L158 | `wait --job --for <s>` returns `running` with exit 10, the code a held verb returns when it lands: an operator reading the code alone cannot tell "still running" from "stopped at a hold" (the owner's operator lost 25 minutes on it, 2026-11-09; skill section 5 says to read `state`) | the owner's call: a distinct code (`22 running`) against design 14.2's frozen list, or exit 0 with `state: running` at the timeout and the verb's own code only once it has exited; the skill's section 5 updated either way. The owner, 2026-11-10: a new exit code for "still running"; an addition to 14.2's frozen list with its `DEVIATIONS.md` entry | harnesses | an exit code that means two things is not a signal |
 
 ### Method and plugin
 

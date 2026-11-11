@@ -211,7 +211,8 @@ def test_detach_returns_at_once_and_wait_job_prints_what_the_verb_printed(
     assert json.loads((d / "job.json").read_text())["argv"] == ["stringency", "run", "--json"]
     # the step sleeps three seconds: a short wait says the job is still running
     w = _engine(p.root, "wait", "--job", job["job_id"], "--for", "0.5", "--json")
-    assert w.returncode == 10, (w.stdout, w.stderr)
+    # 22, not 10 (L158): 10 is what the verb itself returns at a hold, two lines below
+    assert w.returncode == 22, (w.stdout, w.stderr)
     assert json.loads(w.stdout)["state"] == "running", (w.stdout, w.stderr)
     w = _engine(p.root, "wait", "--job", job["job_id"])
     assert w.returncode == 10, w.stdout + w.stderr  # the run's own exit: held
