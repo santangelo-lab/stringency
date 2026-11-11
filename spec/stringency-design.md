@@ -608,7 +608,7 @@ Domain-free, live in the engine, apply to every plugin.
 | `init.contrast_undeclared` | init | project | a contrast names a factor not in the design | block |
 | `init.level_undeclared` | init | project | a contrast names a level the design does not list for that factor | block |
 | `init.replication_unit_undeclared` | init | project | the objective's replication unit is not a declared design unit | block |
-| `init.column_missing` | init | project | a design column is absent from the raw input, per one extractor pass at init | block |
+| `init.column_missing` | init | project | a design column is absent from the raw input, per one extractor pass at init; `@2` (2026-11-10): the reason names each input, the columns it lacks and the columns it has | block |
 | `init.name_unresolved` | init | project | a name declared in `objective.yml` `params` names nothing in the inputs its step descends from (the resolution of `param.name_unresolved`, against the same extractor pass); 2026-11-10, L163 | block |
 | `init.question_unsupported` | init | project | the bound pipeline does not declare the objective's question | block |
 | `init.deliverable_unproduced` | init | project | a declared deliverable is produced by no step | block |
