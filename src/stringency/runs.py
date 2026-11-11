@@ -379,6 +379,9 @@ def captured_script_blobs(store: Store, run_id: str) -> dict[str, str]:
 
 
 def _context_for(project: Project, run_row: Any, *, executor_kind: str | None = None) -> RunContext:
+    from stringency.added_inputs import include
+
+    include(project)  # a person's files added to an open project (L160)
     executor = project.executor(executor_kind)
     env_digests = {e: _digest_or_none(executor, e) for e in project.env_names()}
     return RunContext(
@@ -553,6 +556,9 @@ def open_run(
     env_digests = {e: _digest_or_none(executor, e) for e in project.env_names()}
     policy_digest = project.policy_digest()
     script_blobs = module_script_blobs(project)
+    from stringency.added_inputs import include
+
+    include(project)  # a person's files added to an open project (L160)
     rc = RunContext(
         project=project,
         run_id=run_id,

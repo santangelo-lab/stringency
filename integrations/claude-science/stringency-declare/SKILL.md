@@ -181,3 +181,6 @@ reading `echo.md` and `prov/egress.md`.
 4. Never accept, override, reject, or defer a hold.
 5. Report every exit code; 15 from `declare --check` is a normal part of the loop, not a failure
    to hide.
+6. Never edit `inputs.yml` after `init`; its hash is part of what the person confirmed. A file
+   the person brings later to an open project (a gene-set table for a tool) goes in with
+   `stringency inputs add`, which the operator skill's section 10.5 describes.

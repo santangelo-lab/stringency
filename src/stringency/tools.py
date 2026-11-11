@@ -88,6 +88,21 @@ def _candidates(site: Site) -> list[dict[str, Any]]:
                 c["upstream_input"] = i.upstream_input.input
                 c["binds_by_name"] = True
             out.append(c)
+        # a person's files added after init (L160): bound only when named
+        from stringency.added_inputs import item_of, recorded
+
+        for payload in recorded(site.store).values():
+            item = item_of(site.root, payload)
+            out.append(
+                {
+                    "ref": f"$inputs.{item.name}",
+                    "name": item.name,
+                    "type": item.type,
+                    "path": item.path,
+                    "added_by_person": item.source,
+                    "binds_by_name": True,
+                }
+            )
         run = site.store.one(
             "SELECT run_id FROM runs WHERE kind='run' ORDER BY started DESC, rowid DESC LIMIT 1"
         )

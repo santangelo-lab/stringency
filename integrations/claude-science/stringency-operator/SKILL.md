@@ -220,6 +220,14 @@ stop its background task by id if you must. A resolved hold shows how it was res
 review --hold <id> --json` carries `resolution` (verdict, reason, replicate, and the item's label).
 Then `stringency run --json` again.
 
+**A step left `proposed`** (an engine newer than 0.2.42). If the engine was stopped between
+recording a proposal and finishing its checks (a crash, a closed session, a command limit), the
+step stays `proposed`. `stringency run --json` takes it up: it checks the recorded proposal
+again and goes on, opening any hold the checks call for (a hold already open is kept, not
+opened twice). In an open project, or to finish only that step, `stringency propose <step>`
+with nothing else does the same. Do not propose new values for it and do not abandon the run
+for it.
+
 **Anything else.** Stop and report the `plain` sentence, then the message.
 
 The run is complete when `run --json` reports `kind: completed` with `run_status: completed`.
@@ -389,6 +397,16 @@ none, ask them, showing the candidates. Never pick a column because its spelling
 Then `run` again. A name the person gives before the run (a column, a value, a naming
 convention such as a gene-symbol prefix) belongs in `objective.yml` `params:` and is never
 proposed; under the strict profile that is the only way to give one.
+
+**Taking your own proposal back** (an engine newer than 0.2.42). When the step is held only on
+the engine's checks of your proposal (a number in your reason that no cited cell carries, a
+name it cannot find, a value you no longer stand behind), you may say it again instead of
+putting it to the person: `stringency propose <step> --withdraw --reason "<what was wrong>"`,
+then propose again with the corrected reason and citations. Tell the person in one sentence
+that you withdrew it and why. The step reads `withdrawn` until the new proposal; the first one,
+its holds and any verdict already given stay in the record. A hold on what a step produced, on
+an item or on a sign-off is the person's, and the engine refuses to withdraw it. Leave a
+proposal the person has started answering to them as well.
 
 ## 10. Open mode: questions of a delivered dataset
 
@@ -581,12 +599,30 @@ A parameter the person settled in their own words is passed with `--set <param>=
 --asked-by person --reason "<their words>"`: it opens no approval hold and the qualifier line
 names it as person-set. A value you choose is `--set ... --reason "<why, citing a cell>"` without
 `--asked-by`, and opens a `param.agent_proposed` hold under standard, answered by section 6
-(after the accept, `stringency propose <step id>` continues the step). A tool's `asks` in the
+(after the accept, `stringency propose <step id>` continues the step; see "A held call" below). A tool's `asks` in the
 method's words tell you what the call needs settled. What the person's question already states
 (the groups, the cell types, the distance, the animals) is settled: pass it as theirs, with
 their words as the reason, and do not ask it again. Ask only what the question leaves open,
 one at a time, and when an ask offers options say what each is for and which fits this
 design. Never set a parameter nobody asked about.
+
+**A file the person brings** (an engine newer than 0.2.42), such as a collaborator's gene-set
+table for a tool's optional input. Never write it into the project yourself and never copy it
+in with `exec`. Bring it in once with `stringency inputs add <name> <path> --type <type>
+--source "<the person's words: what the file is and where it came from>" --json`; the engine
+copies and hashes it and records their words. `--type` is one of the input types the tools
+take (`tools list` shows them). Then bind it by name, `call <tool> --in
+<input>=$inputs.<name>`: a person's file never binds by type alone. The answer's qualifier
+names it under `person-supplied inputs` with those words. In a pipeline project the verb is
+refused; there a new file means a new project.
+
+**A held call, after the verdict.** When a call holds and the person accepts, the tool has not
+run yet: carry out the same step with `stringency propose <step id>` (the held payload's
+`after_accept` names it; on an engine newer than 0.2.42, `call --step <step id>` does the
+same). Never `call` the tool again, which starts a second step and leaves the accepted one
+waiting. `next --json` lists any accepted call not yet run under `to_carry_out`. If the person
+no longer wants it, close that one step (an engine newer than 0.2.42) with `stringency abandon
+--step <step id> --reason "<their words>"`; the run stays open.
 
 ### 10.6 When `answer` blocks, and what never
 
@@ -628,7 +664,7 @@ same text; a test keeps the copies identical.
 - label, untested: "Label: untested. Produced by code written for this question, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, drawn: "Label: trusted data, drawn by session code. The numbers are {tables}, trusted; the drawing is code written in this session, which nothing has checked. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, untested tool: "Label: untested. Produced by {tools}, a tool shipped with the method, run by the engine on {data}; {why}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
-- qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested} | numerals not checked: {numerals}"
+- qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | person-supplied inputs: {added} | upstream: {upstream} | controls: {controls} | untested inputs: {untested} | numerals not checked: {numerals}"
 - what trusted means, when first relevant or asked: "Trusted means the engine ran a tool the method ships, in a verified environment, with a passing control on record, on the delivered data; the words around the numbers are still mine."
 - what untested means, when first relevant or asked: "Untested means the engine ran code I wrote in this session and recorded it, but nothing has checked that the code computes what it claims; or it ran a tool the method ships that missed a condition of trusted, which the label names."
 - who labels, when asked: "The engine labels from what ran; I cannot change a label, and I am not allowed to write one."

@@ -10,7 +10,7 @@ its outputs are figures and one `figure_drawn` table, and every numeric cell of
 `figure_drawn` matches a cell of one of its tabular inputs (`drawing_check`). Anything else,
 any other exec included, is `untested`. One fixed-structure qualifier line beside the label
 names what the words would hide: flags accepted on the path, parameters outside their range,
-parameters the person set, the upstream delivery's environment status, the state of the
+parameters the person set, the files a person added after init (L160), the upstream delivery's environment status, the state of the
 tools' controls, the untested inputs (a drawing exec named with its script), and the numerals
 not checked.
 
@@ -123,7 +123,8 @@ FINDINGS_SENTENCE = (
 )
 QUALIFIER_LINE = (
     "flags accepted on the path: {flags} | parameters outside range: {ranges} | "
-    "person-set parameters: {person} | upstream: {upstream} | controls: {controls} | "
+    "person-set parameters: {person} | person-supplied inputs: {added} | "
+    "upstream: {upstream} | controls: {controls} | "
     "untested inputs: {untested} | numerals not checked: {numerals}"
 )
 SWITCH = OPEN_SWITCH
@@ -149,6 +150,7 @@ class StepFact:
     derived_from: dict[str, Any] | None = None
     upstream_input: dict[str, Any] | None = None  # kind input: an input of the upstream pipeline
     drawn: dict[str, Any] | None = None  # kind exec: `drawing_check` (L140)
+    added: dict[str, Any] | None = None  # kind input: a person's file added after init (L160)
 
     def to_json(self) -> dict[str, Any]:
         return {k: v for k, v in self.__dict__.items() if v not in (None, [], {})}
@@ -271,6 +273,7 @@ def lineage(rc: RunContext, artifact_id: str) -> list[StepFact]:
                             upstream_input=item.upstream_input.model_dump()
                             if item.upstream_input
                             else None,
+                            added=_added_fact(rc, item.name),
                         )
                     )
                 continue
@@ -563,9 +566,18 @@ def _read_upstream(project: Path, run_id: str) -> str:
     return ",".join(sorted({r["step_id"] for r in rows if r["env_status"] != "verified"}))
 
 
+def _added_fact(rc: RunContext, name: str) -> dict[str, Any] | None:
+    """A person-supplied input's name, words and hash (L160), or None for a declared input."""
+    p = rc.project.added_inputs.get(name)
+    if p is None:
+        return None
+    return {"name": name, "source": p.get("source"), "blake3": p.get("blake3")}
+
+
 def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
-    """The six path fields of the qualifier line, each `none` when empty; an answer adds the
-    seventh, `numerals` (L142)."""
+    """The seven path fields of the qualifier line, each `none` when empty; an answer adds the
+    eighth, `numerals` (L142). `added` names each person-supplied input on the path with the
+    person's words (L160)."""
     flags = [
         f"{f.step_id}:{(h.get('predicate') or h.get('kind') or '').split('@')[0]}"
         for f in facts
@@ -595,10 +607,16 @@ def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
         for f in facts
         if f.kind == "exec"
     ]
+    added = [
+        f'{f.added["name"]} ("{f.added.get("source") or ""}")'
+        for f in facts
+        if f.kind == "input" and f.added
+    ]
     return {
         "flags": ", ".join(flags) or "none",
         "ranges": ", ".join(ranges) or "none",
         "person": ", ".join(person) or "none",
+        "added": ", ".join(added) or "none",
         "upstream": upstream_status(rc, facts),
         "controls": controls,
         "untested": ", ".join(untested) or "none",
@@ -608,7 +626,7 @@ def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
 def render_qualifier(fields: dict[str, str]) -> str:
     """The qualifier line of an answer; `numerals` (L142) is the numerals the check left
     unchecked as not measurements, `none` when the fields carry none."""
-    return QUALIFIER_LINE.format(**{"numerals": "none", **fields})
+    return QUALIFIER_LINE.format(**{"numerals": "none", "added": "none", **fields})
 
 
 def drawn_tables(facts: list[StepFact]) -> str:

@@ -333,11 +333,13 @@ def bind_inputs(
     for name, spec in module.manifest.inputs.items():
         if name in out:
             continue
-        # the upstream pipeline's own inputs bind only when named: a tool reads the delivery
+        # the upstream pipeline's own inputs, and a person's file added after init (L160),
+        # bind only when named: a tool reads the delivery
+        added = rc.project.added_inputs
         candidates: list[str] = [
             f"$inputs.{n}"
             for n, item in sorted(inputs_by_name.items())
-            if item.type == spec.type and item.upstream_input is None
+            if item.type == spec.type and item.upstream_input is None and n not in added
         ]
         produced = [
             f"$steps.{r['step_id']}.{r['name']}"
@@ -373,7 +375,7 @@ def bind_inputs(
             upstream = [
                 f"$inputs.{n}"
                 for n, item in sorted(inputs_by_name.items())
-                if item.type == spec.type and item.upstream_input is not None
+                if item.type == spec.type and (item.upstream_input is not None or n in added)
             ]
             forms = " or ".join(f"--in {name}={c}" for c in candidates + upstream)
             if len(candidates) > 1:
@@ -387,7 +389,7 @@ def bind_inputs(
                 f"input {name} ({spec.type}) of {module.manifest.name} is unbound: {why}; "
                 + (f"name one with {forms}" if forms else f"name it with --in {name}=<ref>")
                 + (
-                    " (an upstream input binds only by name)"
+                    " (an upstream input or a person's added file binds only by name)"
                     if upstream and len(candidates) <= 1
                     else ""
                 )

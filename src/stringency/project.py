@@ -154,6 +154,9 @@ class Project:
         )
         self._store: Store | None = None
         self.siblings_root: Path | None = None  # confirm once: where siblings are (the parent)
+        # a person's files brought into an open project after init (L160), by name: the
+        # `input_added` event payloads; merged into `inputs` by `added_inputs.include`
+        self.added_inputs: dict[str, dict[str, Any]] = {}
 
     # -- tools (open mode) -----------------------------------------------------------
 
