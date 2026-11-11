@@ -2,10 +2,11 @@
 objects its step reads.
 
 A name is a text parameter whose right value depends only on how this dataset labels its own
-contents: a column, a value found in a column, a naming convention. The engine checks a column
-and a value against the summaries the extractors wrote (`fields.columns`, 4.2): the column
-exists; the value is one of the column's `levels` when the summary lists them. A convention
-(`prefix`) is not checked. Nothing here reads a data object: a name is resolved against
+contents: a column, a value found in a column, a column of the object's feature table, a
+naming convention. The engine checks a column and a value against the summaries the extractors
+wrote (`fields.columns`, 4.2): the column exists; the value is one of the column's `levels`
+when the summary lists them. A feature column is checked against `fields.feature_columns`
+where an extractor writes it. A convention (`prefix`) is not checked. Nothing here reads a data object: a name is resolved against
 summaries already in the state, so the predicates that call this do no I/O.
 """
 
@@ -31,7 +32,7 @@ class Resolution:
     empty string, the method's "none") or `unset`."""
 
     parameter: str
-    kind: str  # column | value | prefix
+    kind: str  # column | feature_column | value | prefix
     value: str
     status: str
     where: str | None = None  # the object that holds the column
@@ -76,16 +77,15 @@ class Resolution:
             return f"{self.parameter} is unset"
         if self.status == "empty":
             return f"{self.parameter} is empty (none)"
-        what = (
-            f"a value of {self.column or 'its column'}"
-            if self.kind == "value"
-            else "a naming convention"
-            if self.kind == "prefix"
-            else "a column"
-        )
+        what = {
+            "value": f"a value of {self.column or 'its column'}",
+            "prefix": "a naming convention",
+            "feature_column": "a column of the feature table",
+        }.get(self.kind, "a column")
         head = f"{self.parameter} = {self.value!r}, {what}"
         if self.status == "resolved":
             where = f" of {self.where}" if self.where and self.kind == "column" else ""
+            where = f" in {self.where}" if self.where and self.kind == "feature_column" else where
             return head + where + _detail_phrase(self.detail)
         if self.status == "missing":
             near = f"; nearest: {', '.join(self.nearest)}" if self.nearest else ""
@@ -108,6 +108,18 @@ def columns_of(obj: ObjectState) -> dict[str, dict[str, Any]] | None:
     """The columns an object's summary lists (`fields.columns`), each with what the extractor
     said of it (`dtype`, `n_unique`, `levels`); None when the summary lists none."""
     cols = obj.fields.get("columns")
+    if isinstance(cols, dict):
+        return {str(k): dict(v) if isinstance(v, dict) else {} for k, v in cols.items()}
+    if isinstance(cols, list):
+        return {str(c): {} for c in cols}
+    return None
+
+
+def feature_columns_of(obj: ObjectState) -> dict[str, dict[str, Any]] | None:
+    """The columns of an object's feature table (`fields.feature_columns`: the table that has
+    one row per measured feature, where the object has one), as `columns_of`; None when the
+    summary lists none."""
+    cols = obj.fields.get("feature_columns")
     if isinstance(cols, dict):
         return {str(k): dict(v) if isinstance(v, dict) else {} for k, v in cols.items()}
     if isinstance(cols, list):
@@ -181,17 +193,19 @@ def resolve(
             "unchecked",
             why="a naming convention is not checked against the object",
         )
-    listed = {name: cols for name, obj in read.items() if (cols := columns_of(obj)) is not None}
-    if kind == "column":
-        if not listed:
+    if kind in ("column", "feature_column"):
+        of = columns_of if kind == "column" else feature_columns_of
+        table = "columns" if kind == "column" else "feature columns"
+        found = {name: cols for name, obj in read.items() if (cols := of(obj)) is not None}
+        if not found:
             return Resolution(
                 parameter,
                 kind,
                 text,
                 "unchecked",
-                why="no object this step reads has its columns summarised",
+                why=f"no object this step reads has its {table} summarised",
             )
-        for name, cols in listed.items():
+        for name, cols in found.items():
             if text in cols:
                 return Resolution(parameter, kind, text, "resolved", where=name, detail=cols[text])
         return Resolution(
@@ -199,8 +213,9 @@ def resolve(
             kind,
             text,
             "missing",
-            nearest=_nearest(text, [c for cols in listed.values() for c in cols]),
+            nearest=_nearest(text, [c for cols in found.values() for c in cols]),
         )
+    listed = {name: cols for name, obj in read.items() if (cols := columns_of(obj)) is not None}
     column = str(values.get(decl.value_of or "", "") or "")
     if column in ("", UNSET):
         return Resolution(

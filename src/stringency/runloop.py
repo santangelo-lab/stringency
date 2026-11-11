@@ -200,6 +200,15 @@ def awaiting_proposal(rc: RunContext, step_id: str) -> Next | None:
                 entry["candidates"] = [str(x) for x in levels]
                 more = f", and {len(levels) - LISTED} more" if len(levels) > LISTED else ""
                 what += f": {', '.join(str(x) for x in levels[:LISTED])}{more}"
+        elif decl.name_kind == "feature_column":
+            from stringency.names import feature_columns_of
+
+            feats = {n: sorted(c) for n, o in read.items() if (c := feature_columns_of(o))}
+            entry.update({"kind": "feature_column", "candidates": feats})
+            names = sorted({c for cs in feats.values() for c in cs})
+            what = "a column of the feature table" + (
+                f" ({', '.join(names[:LISTED])})" if names else ""
+            )
         elif decl.name_kind == "prefix":
             entry["kind"] = "prefix"
             what = "a naming convention of the data"

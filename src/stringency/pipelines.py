@@ -151,7 +151,7 @@ UNSET = "unset"
 a method gives a decision point nothing may run on. `run` and `propose` stop at a step whose
 parameter is still `unset`; no step runs on it."""
 
-NAME_KINDS = ("column", "prefix")
+NAME_KINDS = ("column", "feature_column", "prefix")
 
 
 class ValueOf(BaseModel):
@@ -164,8 +164,8 @@ class ValueOf(BaseModel):
 
 class ParamDecl(BaseModel):
     """`{default, range}` or `{default, options}` (the agent may choose), `{default}` (fixed),
-    or a name, `{default, text: column | prefix | {value_of: <parameter>}}` (3.1, 2026-11-10,
-    L163): a text value that depends only on how this dataset labels its own contents. A name
+    or a name, `{default, text: column | feature_column | prefix | {value_of: <parameter>}}`
+    (3.1, 2026-11-10, L163): a text value that depends only on how this dataset labels its own contents. A name
     may be `required` in place of a default, and is then `unset` until declared or proposed. A
     ranged parameter or a name may carry a `decision:` block saying how the agent's choice is
     made (L61). A bare literal in the pipeline file is normalised to `{default: literal}`."""
@@ -215,7 +215,8 @@ class ParamDecl(BaseModel):
 
     @property
     def name_kind(self) -> str | None:
-        """`column`, `prefix` or `value`; None for a parameter that is not a name."""
+        """`column`, `feature_column`, `prefix` or `value`; None for a parameter that is not a
+        name."""
         if self.text is None:
             return None
         return "value" if isinstance(self.text, ValueOf) else self.text

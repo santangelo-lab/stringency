@@ -46,6 +46,7 @@ something else:
 params:
   group_column: {default: "", text: column}                    # a column of the object the step reads
   groups:       {default: "", text: {value_of: group_column}}  # a value in that column (or several, comma-separated)
+  symbol_column: {default: "", text: feature_column}           # a column of the object's feature table
   mt_prefix:    {default: MT-, text: prefix}                   # a naming convention; not checked
   keep_column:  {text: column, required: true}                 # no default: the run stops and asks
 ```

@@ -119,7 +119,7 @@ def test_a_name_is_declared_with_text_and_is_not_fixed() -> None:
     for bad, why in [
         ({"default": "", "text": "column", "options": ["a"]}, "no range and no options"),
         ({"default": "", "text": "column", "range": [0, 1]}, "no range and no options"),
-        ({"default": "", "text": "label"}, "text is one of column, prefix"),
+        ({"default": "", "text": "label"}, "text is one of column, feature_column, prefix"),
         ({"default": 3, "text": "column"}, "a name's default is text"),
         ({"default": "x", "required": True, "text": "column"}, "declares no default"),
         ({"default": 3, "required": False, "range": [0, 5], "text": None}, None),
@@ -190,6 +190,28 @@ def test_a_column_and_a_value_resolve_against_the_summary() -> None:
     )
     prefix = ParamDecl(default="r", text="prefix")
     assert resolve("tag_prefix", prefix, "zz", {}, read).status == "unchecked"
+    # a column of the feature table: checked where an extractor lists it, else said unchecked
+    feat = ParamDecl(default="", text="feature_column")
+    r = resolve("symbol_column", feat, "gene_symbols", {}, read)
+    assert (r.status, r.why) == (
+        "unchecked",
+        "no object this step reads has its feature columns summarised",
+    )
+    matrix = ObjectState(
+        type="frame",
+        digest="b3:2",
+        summary={
+            "fields": {
+                "columns": {"group": {}},
+                "feature_columns": {"gene_symbols": {"dtype": "object"}, "gene_ids": {}},
+            }
+        },
+    )
+    r = resolve("symbol_column", feat, "gene_symbols", {}, {"m": matrix})
+    assert (r.status, r.where) == ("resolved", "m")
+    assert r.says() == "symbol_column = 'gene_symbols', a column of the feature table in m"
+    r = resolve("symbol_column", feat, "group", {}, {"m": matrix})  # an obs column is not one
+    assert r.status == "missing" and set(r.nearest) == {"gene_ids", "gene_symbols"}
 
 
 def test_a_step_s_names_are_looked_for_in_the_inputs_it_descends_from() -> None:
