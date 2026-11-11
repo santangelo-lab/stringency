@@ -3,8 +3,12 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-11-10)
+## Current state (2026-11-11)
 
+- (2026-11-11) The work list after waves 0 and 1 (`notes/2026-11-11-1120-usage-measurement-in-the-plan.md`, branch
+  `plan-usage-measurement`, docs only): State, "Next, in order" and the waiting table rewritten;
+  rows L190 to L194 for measuring what a project costs in tokens, in the beta's bundle and eval
+  store, as the second half of wave 3. Next: L194 and L193, then the rest of wave 2.
 - (2026-11-11) Answer first, in every method's open mode (`notes/2026-11-11-1057-answer-first-in-open-mode.md`, branch
   `open-mode-answer-first`, text only): the operator skill's 10.1 and 10.5 and the analysis-skill
   template's section 8 say that a specific question is answered at once and the paths offered
@@ -446,6 +450,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-11-1120-usage-measurement-in-the-plan.md` — where token usage is measured and why (the beta's bundle and eval store), rows L190 to L194 in wave 3, and the work list brought up to date after waves 0 and 1.
 - `2026-11-11-1057-answer-first-in-open-mode.md` — the owner's Lung finding made general: a specific question is answered before any path is offered, in the operator skill and the template.
 - `2026-11-10-2032-names-limits-policy.md` — names and `unset`, the limits band, a policy's verdict, exit code 22: design text and code together, for the owner's approval.
 - `2026-11-10-2031-fixes-wave-1-and-2-small.md` — eight rows that need no design text, on one branch for one pull request; version 0.2.42; what the new renderer check found in the methods.

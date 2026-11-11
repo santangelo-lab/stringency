@@ -262,3 +262,55 @@ Filed by wave 0 and left: the low finds of its table; region import from QuPath 
 Explorer and an H&E hook (the questions catalog); the landscape survey's recommendations (a
 preprint, three conversations, an audit-trail export), which are the owner's to raise. The
 beta repository's open list and its app backlog have no ids and are that repository's own.
+
+## 9. Where each wave stands, and the measurement half of wave 3 (2026-11-11)
+
+Written after one night and a morning of work on waves 0 to 3. The sections above are the plan
+as it was made; this one is what happened to it. `PLAN.md` "Next, in order" is the live list.
+
+| wave | done | left |
+|---|---|---|
+| 0 | all of it (#26; the Xenium, plugin and scRNA-seq shares in their own repositories) | |
+| 1 | L168, L161, L164, L169, L162, and with them L129 and L158; L163 (b), (c), (d) and L171 built (engine 0.2.42, plugin 0.10.4, method 0.1.12 and 0.1.13) | the method's tags and the slice run again close L163 and L171; L167 needs the owner's choice |
+| 2 | L95, L146, L147, L159, L174; the first half of L114 | L94 with L107, the rest of L114, L160, L110, L11, L175 |
+| 3, correctness | L145, L148 | L172, L106, L80, L37, K3, K4 |
+| 3, measurement | nothing | L194, L193, L190, L155 with L191, L154 with L192, L156; L76, L173 |
+| 4 | nothing | all of it |
+| 5 | nothing | L100, in a session with the owner |
+
+Outside the waves, found while testing and fixed: a control took the hosting project's
+declared parameters; `init.column_missing` did not name the column; the plugin's CI had been
+red since 0.9.0; the scRNA-seq DE module's controls failed in a project named unlike its
+fixture; open mode interviewed a person who had already asked (#29). Filed and left: L186 to
+L189.
+
+**The measurement half of wave 3.** The owner asked on 2026-11-11 whether the total token
+usage of a project can be measured, for evaluating the tool in general. It cannot: the
+operator's session is outside the trace, the judges' counts are per call and absent under the
+subagent harness, and only a benchmark replicate's `result.json` has a total. He agreed it
+belongs in the beta's bundle and eval store, where the transcript and the trace already meet
+and where the benchmark's run record (L154 to L156, already in this wave) was going. So the
+wave's second half is one piece of work, in this order:
+
+1. **L194** (S, `stringency-benchmarks`): token columns in the ledger, tokens per arm in
+   `compare`. Before the slice is run again, since the data is already in every `result.json`
+   and the overhead should be reported with the result.
+2. **L193** (S, engine): the coverage report sums the judges' tokens and counts the calls that
+   reported none.
+3. **L190** (S, a check): what each harness keeps of a session. It decides whether the owner's
+   own sessions can be measured or only Claude Code and benchmark runs, so it comes before
+   any code in the beta.
+4. **L155 with L191** (M, beta CLI): the bundle takes a transcript by path and reads usage per
+   turn from it, a subagent's turns attributed to the judgment they answered.
+5. **L154 with L192** (M, beta eval store): the usage table and its views (tokens per project,
+   step, hold and arm), beside the benchmark's `benchmark_runs`.
+6. **L156**, then **L76** and **L173**, which are write-ups from traces that exist.
+
+Steps 1 and 2 need nothing from the owner. Step 3 needs a look at what Claude Science keeps,
+which is his application's state and is read, never changed. Steps 4 and 5 are about a week
+for one person and are what Phase 3 of the benchmark needs anyway.
+
+Releases after this section: engine 0.2.43 carries wave 2's remainder, #29 and L193; the
+plugin's next is 0.10.5 and the method's 0.1.14 (wave 4), since 0.10.4 and 0.1.13 were used by
+wave 1.
+
