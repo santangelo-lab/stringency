@@ -39,24 +39,30 @@ def values_equal(a: Any, b: Any) -> bool:
 
 
 def numeral_matches(written: str, value: Any) -> bool:
-    """`written` matches `value` after rounding the value to the precision written."""
+    """`written` matches `value` after rounding the value to the precision written: to the
+    decimals written, or for exponent form to the significant digits of the mantissa
+    (`1.33e-75` is 1.33 times ten to the minus 75, at two decimals of the mantissa).
+
+    No absolute tolerance (L145, 2026-10-30): until 2026-11-10 two values within 1e-12 of each
+    other matched whatever was written, so `1.33e-75` matched a cell of 4.44e-76 and every
+    pair of small p values matched each other. One rule now serves the gate
+    (`ans.numeral_unmatched`, `param.reason_unmatched`, `judg.numeric_claims_match`), the chat
+    block's cell marks and the provenance lookup."""
     try:
         fv = float(value)
     except (TypeError, ValueError):
         return str(value) == written
-    if "e" in written.lower():
-        try:
-            fw = float(written)
-        except ValueError:
-            return False
-        return fw == fv or abs(fw - fv) <= abs(fv) * 1e-6 + 1e-12
-    decimals = len(written.split(".", 1)[1]) if "." in written else 0
     try:
         fw = float(written)
     except ValueError:
         return False
-    if abs(fw - fv) < 1e-12:
+    if fw == fv:
         return True
+    if "e" in written.lower():
+        mantissa = written.lower().split("e", 1)[0]
+        digits = len(mantissa.split(".", 1)[1]) if "." in mantissa else 0
+        return f"{fv:.{digits}e}" == f"{fw:.{digits}e}"
+    decimals = len(written.split(".", 1)[1]) if "." in written else 0
     return f"{fv:.{decimals}f}" == f"{fw:.{decimals}f}"
 
 

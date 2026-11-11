@@ -1425,18 +1425,11 @@ def answer_sections(
 
 
 def _said(written: str, value: Any) -> bool:
-    """`written` is `value` as the text says it: the gate's rule (`numeral_matches`), except a
-    numeral in exponent form, which matches at its written significant digits only (the gate's
-    absolute tolerance would match any two values below 1e-12, every p value of a table)."""
-    if "e" not in written.lower():
-        return numeral_matches(written, value)
-    try:
-        fw, fv = float(written), float(value)
-    except (TypeError, ValueError):
-        return False
-    mantissa = written.lower().split("e", 1)[0]
-    d = len(mantissa.split(".", 1)[1]) if "." in mantissa else 0
-    return f"{fv:.{d}e}" == f"{fw:.{d}e}"
+    """`written` is `value` as the text says it: the gate's rule (`numeral_matches`). The chat
+    block had a rule of its own for exponent form while the gate's absolute tolerance matched
+    any two values below 1e-12; the gate took this rule on 2026-11-10 (L145) and the two are
+    one."""
+    return numeral_matches(written, value)
 
 
 def _design_levels(project: Site) -> set[str]:

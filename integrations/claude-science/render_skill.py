@@ -724,13 +724,39 @@ def locate(source: Path, pipeline: str | None) -> tuple[Path, Path | None]:
     return found[0], source
 
 
+def rendering_is_stale(ctx: dict[str, Any], root: Path | None) -> str | None:
+    """`--check` (L174): the committed `skills/<skill>/SKILL.md` must be what this source and
+    this engine's template render, in the Claude Science form `--write` commits. A rendering
+    left behind its source, or behind the engine's template, passed `--check` until
+    2026-11-10 and was published as it stood. None when the file is current, when the source
+    is outside a method repository, or when no rendering has been committed yet."""
+    if root is None:
+        return None
+    out = root / "skills" / ctx["skill_name"] / "SKILL.md"
+    if not out.exists():
+        return None
+    fresh = render({**ctx, "harness": "claude-science"})
+    if out.read_text() == fresh:
+        return None
+    return (
+        f"{out}: differs from a fresh rendering of its source: the file is behind the "
+        "`.analyze.yml`, the pipeline's titles, or this engine's template. Render it again "
+        "with --write and commit it"
+    )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     ap.add_argument("source", help="method repository, or a skills/<pipeline>.analyze.yml file")
     ap.add_argument("--pipeline", help="which analyze file, when the repository has several")
-    ap.add_argument("--check", action="store_true", help="validate only; exit 1 with the problems")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="validate only; exit 1 with the problems, or when the committed SKILL.md differs "
+        "from a fresh rendering",
+    )
     ap.add_argument(
         "--write", action="store_true", help="write skills/stringency-analyze-<name>/SKILL.md"
     )
@@ -757,6 +783,10 @@ def main() -> None:
         sys.exit(1)
     ctx["harness"] = args.harness
     if args.check:
+        stale = rendering_is_stale(ctx, root)
+        if stale:
+            print(stale, file=sys.stderr)
+            sys.exit(1)
         print(f"{yml}: ok ({ctx['skill_name']})")
         return
     text = render(ctx)

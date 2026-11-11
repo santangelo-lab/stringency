@@ -74,7 +74,7 @@ any other way and do not reimplement any of its behavior in Python.
 The container runtime is `apptainer` or `singularity`; the engine finds either, and `probe`
 reports which and whether every image the project's method names is present and readable.
 
-**Which text of this skill to follow.** This text is for engine 0.2.29. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.42. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -287,6 +287,14 @@ when it returns you call `run --json` again. If the person answers here and you 
 verdict, the wait returns too; that is the same verdict, not a second one. Relay the verdict and reason from the `wait` payload
 verbatim; do not restate them in your words.
 
+**Several holds at one stop.** One stop can leave more than one hold open: `init` opens a
+confirm hold and an egress hold, and one proposal can open two in the same second (the choice
+itself, and a number in its reason that no cited cell carries). The `holds` list of the held
+payload is the whole set, in the engine's order. Relay every one of them, each by steps 1 to 4
+(or the console sentence), before you wait, and arm one wait per hold. When one is answered,
+say which are still open. Never record a verdict on one hold and wait on another the person
+has not been shown: a stop the person was not shown never happened to them.
+
 **Console mode** (owner's decision 7, 2026-10-07). On when the person says they are using the
 console, when the held payload's `console_url` or `review_page` is set (engine 0.2.35 and 0.2.11
 or later), or when `~/.config/stringency/notify.yml` has a `page_url` (the console's address;
@@ -318,6 +326,12 @@ mean in `skills/<pipeline>.yml`; the engine renders it. The operator relays, nev
   titled tables as tables, then the "Files to send" list (send each file). Do not add a narration
   of what the tools printed, and do not quote run ids, hashes, checksums, or command lines; the
   footer names what the method asked not to show.
+- When the person says a delivered table, figure or number is wrong: record it, in their words,
+  with `stringency flag --object <the delivered file> --reason "<their words>"` (add `--step
+  <id>` when they name the step and not a file; engine 0.2.37), and say in one sentence that it
+  was recorded against that file. A flag changes no result and reopens nothing; it is the
+  record that a person disputed it, which the coverage report and the next reader see. Do not
+  argue the result, re-run anything or promise a fix unless they ask for one.
 - When a run stops at a hold: run `stringency present --hold <id>` and relay it before asking for
   the review (section 6): for a flag, the question, the rule with its facts, the tables the method
   attached to that predicate (scoped to the hold's items when the view says `scope: item`), and
