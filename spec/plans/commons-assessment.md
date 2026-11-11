@@ -10,7 +10,7 @@ L38 point here.
 
 **Status 2026-10-16.** Assessed; no integration lane. Four borrowings recorded as `PLAN.md`
 rows (L35 to L38), one proposal attached to the G2 row (since built as `exec`, 0.2.22), and a
-list of smaller practices with no row. Nothing of the four built.
+list of smaller practices with no row (since filed together as L184). Of the four, L36 is built (0.2.32); L35 is partly built (the provenance block in `index.json`); L37 and L38 are open (2026-11-10).
 
 ## 1. What commons is
 

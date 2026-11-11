@@ -2,7 +2,7 @@
 
 **Status 2026-10-23.** Rows L110 to L112 of `PLAN.md`, items 3.15 to 3.21 of the Xenium
 method's `PLAN.md`. Built: `sc.fine_label_uncited@1` in plugin singlecell 0.8.5 (not tagged).
-The owner chose both designs for one fine label of three (section 4). The rest is filed. The owner's points of 2026-10-23, checked against the Xenium method at
+The owner chose both designs for one fine label of three (section 4). Since then (2026-11-10): the Xenium method's items 3.15 to 3.21 were built on 2026-10-27 and L112 is done; L110 and what remains of L111 are open. The owner's points of 2026-10-23, checked against the Xenium method at
 `v0.6.0-rc19` (`531af60`), the engine at `f6041d2` and plugin singlecell 0.8.4 (`e437488`). The
 measurements are on the annotation control's ROSC liver fixture; the Lyons data is not reachable
 from the machine this was written on, so gut cluster 9 is the owner's reading and has not been
