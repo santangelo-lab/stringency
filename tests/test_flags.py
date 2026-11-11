@@ -139,3 +139,35 @@ def test_flag_via_app_is_given_and_the_rest_are_detected(make_project: InitFn) -
     r = cli(p, "flag", "--reason", "x", "--via", "web")
     assert r.exit_code == 15 and "--via takes app" in r.output
     assert len(flags_for(p.store, run_id)) == 1
+
+
+def test_audit_finds_a_flag_removed_or_added_behind_the_trigger(make_project: InitFn) -> None:
+    """L148: `audit` did not read `flags`. A row deleted by direct SQL (the trigger dropped and
+    put back) leaves its `flagged` event; a row inserted by hand has none."""
+    from stringency.audit import audit
+
+    p, run_id, d = _delivered(make_project)
+    table = next(f["file"] for f in d.files if f["file"].endswith(".tsv"))
+    assert cli(p, "flag", "--object", table, "--reason", "wrong").exit_code == 0
+    assert cli(p, "flag", "--reason", "the whole run looks off").exit_code == 0
+    assert [f for f in audit(p.store) if f.table == "flags"] == []
+    first, second = (g["flag_id"] for g in flags_for(p.store, run_id))
+    trigger = p.store._conn.execute(
+        "SELECT sql FROM sqlite_master WHERE name = 'ao_flags_d'"
+    ).fetchone()[0]
+    p.store._conn.execute("DROP TRIGGER ao_flags_d")
+    p.store._conn.execute("DELETE FROM flags WHERE flag_id = ?", (first,))
+    p.store._conn.execute(trigger)
+    p.store._conn.execute(
+        "INSERT INTO flags (flag_id, run_id, flagged_by, host, via, reason_ref, ts) "
+        "VALUES ('BYHAND', ?, 'x', 'h', 'tty', 'r', '2026-01-01T00:00:00Z')",
+        (run_id,),
+    )
+    p.store._conn.commit()
+    found = {f.key: f.note for f in audit(p.store) if f.table == "flags"}
+    assert found == {
+        first: "a flag the run's events record has no row",
+        "BYHAND": "a flag row without its event",
+    }
+    assert second not in found
+    assert cli(p, "audit").exit_code != 0

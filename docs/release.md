@@ -10,6 +10,8 @@ install on a shared machine and a service restart, which it will ask you to run.
 From a clean `main` with the suite green:
 
     # version in pyproject.toml and src/stringency/__init__.py, the version line in tests/golden/methods_toy_engine.md
+    # and the operator skill's "This text is for engine X.Y.Z" line, when its text names a feature of this release
+    # (tests/test_operator_skill_line.py fails when the line is below a version the text names, or above the engine)
     uv lock && git commit -am "Engine vX.Y.Z: ..." && git tag -a vX.Y.Z -m "..."
     git push origin main --tags
 

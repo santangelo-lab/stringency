@@ -7,6 +7,8 @@ from __future__ import annotations
 import importlib.util
 import re
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -521,3 +523,67 @@ def test_description_over_the_registry_cap_is_a_problem():
     data["summary"] = "short"
     _, problems = rs.validate(data, EXAMPLE, None)
     assert not [p for p in problems if "description:" in p], problems
+
+
+def test_check_fails_a_committed_rendering_left_behind_its_source(tmp_path):
+    """L174: `--check` validated the source and never looked at the `SKILL.md` on disk, so a
+    rendered skill left behind its source passed CI and was published as it stood."""
+    repo = _toy_repo(tmp_path)
+    src = repo / "skills" / "toy-engine.analyze.yml"
+    src.write_text(yaml.safe_dump(_toy_analyze()))
+    ctx, problems = rs.validate(yaml.safe_load(src.read_text()), src, repo)
+    assert not problems, problems
+    ctx["harness"] = "claude-code"  # whatever harness is asked for, the committed form is checked
+    assert rs.rendering_is_stale(ctx, repo) is None  # nothing committed yet
+    assert rs.rendering_is_stale(ctx, None) is None  # a source outside a method repository
+    out = repo / "skills" / ctx["skill_name"] / "SKILL.md"
+    out.parent.mkdir(parents=True)
+    out.write_text(rs.render({**ctx, "harness": "claude-science"}))
+    assert rs.rendering_is_stale(ctx, repo) is None
+    # the source moves on and the rendering is not written again
+    data = _toy_analyze()
+    data["summary"] = "Compares the groups of a small table, differently worded"
+    src.write_text(yaml.safe_dump(data))
+    ctx2, problems = rs.validate(yaml.safe_load(src.read_text()), src, repo)
+    assert not problems, problems
+    said = rs.rendering_is_stale(ctx2, repo)
+    assert said is not None and str(out) in said and "--write" in said
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(CS / "render_skill.py"),
+            str(repo),
+            "--pipeline",
+            "toy-engine",
+            "--check",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 1 and "differs from a fresh rendering" in r.stderr
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(CS / "render_skill.py"),
+            str(repo),
+            "--pipeline",
+            "toy-engine",
+            "--write",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(CS / "render_skill.py"),
+            str(repo),
+            "--pipeline",
+            "toy-engine",
+            "--check",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr

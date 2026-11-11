@@ -670,8 +670,13 @@ def starting_params(rc: RunContext, step_id: str) -> dict[str, tuple[Any, str]] 
     Reads: runs, steps, actions."""
     from stringency.fork import inherited_for
 
+    # a control tests the module against planted truth with the control's own parameters
+    # (design 11): what the hosting project's objective declares for the step is that
+    # project's, and must not reach the control (2026-11-10: a project that declared a
+    # cell-type column failed its DE module's controls on a fixture that has no such column)
+    declared = {} if str(rc.run["kind"]) == "control" else rc.project.objective.params
     out: dict[str, tuple[Any, str]] = {
-        k: (v, "declared") for k, v in (rc.project.objective.params.get(step_id) or {}).items()
+        k: (v, "declared") for k, v in (declared.get(step_id) or {}).items()
     }
     out.update(inherited_for(rc, step_id) or {})
     return out or None

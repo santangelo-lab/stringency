@@ -1199,8 +1199,9 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
                 f"module {m.ref} belongs to domain {m.manifest.domain}, pipeline is {pipeline.domain}"
             )
 
-    # declared parameters (design 2.5): every step and parameter must exist; the value itself is
-    # gated when the step runs (param.out_of_range, param.locked_changed)
+    # declared parameters (design 2.5): every step and parameter must exist; the value is gated
+    # when the step runs (param.out_of_range, param.locked_changed, param.schema_invalid), and a
+    # value that gate would block is refused below, once the policy is read (L168)
     for sid, values in objective.params.items():
         if not pipeline.has_step(sid):
             raise ConfigError(f"objective params: no step {sid} in pipeline {pipeline.name}")
@@ -1226,6 +1227,21 @@ def _init_in(root: Path, req: InitRequest) -> tuple[Project, dict[str, ObjectSta
         problems = check_requires(method_policy.requires, __version__, installed_plugin_versions())
         if problems:
             raise ConfigError("the method's policy requires: " + "; ".join(problems))
+    if objective.params:
+        from stringency.declared import values_the_gate_would_block
+
+        refused = values_the_gate_would_block(
+            pipeline, modules, objective.params, method_policy, req.profile
+        )
+        if refused:
+            raise ConfigError(
+                "objective params: the step would block "
+                + ("this declared value" if len(refused) == 1 else "these declared values")
+                + " when it runs, so nothing was bound: "
+                + "; ".join(refused)
+                + ". Change the value, or the pipeline's declaration of the parameter in the "
+                "method repository."
+            )
 
     owner = req.owner or getpass.getuser()
     reviewer = req.reviewer or owner

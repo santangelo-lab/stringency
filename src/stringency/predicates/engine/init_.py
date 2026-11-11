@@ -65,13 +65,18 @@ def replication_unit_undeclared(ctx: GateContext) -> Verdict:
 
 
 @predicate(
-    id="init.column_missing", version=1, scope=SCOPE, phase="init", default=Disposition.BLOCK
+    id="init.column_missing", version=2, scope=SCOPE, phase="init", default=Disposition.BLOCK
 )
 def column_missing(ctx: GateContext) -> Verdict:
     """Every design column exists in every raw object input, per the extractor pass. An input
     bound through `derived_from` is a delivered artifact of an earlier run, not a raw input:
     its columns are whatever the upstream module produced, so it is skipped here. So is an input
-    declared with `role: reference`: it describes other studies' observations, not this design's."""
+    declared with `role: reference`: it describes other studies' observations, not this design's.
+
+    Version 2 (2026-11-10): the reason names each input, the columns it lacks and the columns
+    it has. Version 1 said only that some column was absent, and the refusal a drafter read at
+    `declare --check` gave nothing to mend the design by (a unit written as a sentence where
+    its column's name belongs, found when the first h5ad was checked)."""
     want = ctx.design.columns()
     derived = {
         i.name
@@ -79,6 +84,7 @@ def column_missing(ctx: GateContext) -> Verdict:
         if i.derived_from is not None or getattr(i, "role", "observation") == "reference"
     }
     missing: dict[str, list[str]] = {}
+    present: dict[str, list[str]] = {}
     for name, obj in ctx.state.objects.items():
         if name in derived:
             continue
@@ -89,8 +95,23 @@ def column_missing(ctx: GateContext) -> Verdict:
         gone = [c for c in want if c not in have]
         if gone:
             missing[name] = gone
+            present[name] = sorted(str(c) for c in have)
     if missing:
-        return Verdict(True, "design column(s) absent from the raw input", {"missing": missing})
+        said = "; ".join(
+            f"{name} lacks {', '.join(repr(c) for c in gone)} (it has "
+            + (", ".join(present[name][:20]) or "no columns")
+            + (f", and {len(present[name]) - 20} more" if len(present[name]) > 20 else "")
+            + ")"
+            for name, gone in missing.items()
+        )
+        return Verdict(
+            True,
+            "design column(s) absent from the raw input: "
+            + said
+            + ". Every unit other than the observation, every factor's `column` and every "
+            "batch variable names a column of the input",
+            {"missing": missing, "present": present},
+        )
     return Verdict(False)
 
 

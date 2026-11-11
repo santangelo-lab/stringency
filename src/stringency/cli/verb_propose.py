@@ -16,7 +16,7 @@ from stringency.operator_exec.tickets import job_spec, render_job_spec
 from stringency.project import Project
 from stringency.runloop import next_step
 from stringency.runs import open_or_resume
-from stringency.steps import execute_engine, starting_params
+from stringency.steps import execute_engine, resume_after_hold, starting_params
 from stringency.steps import propose as do_propose
 
 
@@ -78,15 +78,23 @@ def propose(
     from stringency.citations import parse_cite
 
     weighed = [coerce_value(v) for v in considered.split(",") if v.strip()] if considered else []
-    prop = do_propose(
-        rc,
-        step,
-        parse_sets(sets, schema_properties(rc, step)),
-        rationale=reason,
-        inherited=inherited or None,
-        cites=[parse_cite(c) for c in cites],
-        considered=weighed,
-    )
+    bare = not (sets or reason or cites or considered)
+    if bare and rc.step_status().get(step) == str(StepStatus.ADMISSIBLE):
+        # the proposal's hold was accepted and nothing has carried it out (L114): in an open
+        # project `run` is not a verb, a second `call` makes a second step, and the accepted
+        # step stayed admissible for good. `propose <step>` with nothing else is "carry out
+        # what was accepted": the recorded Action, unchanged, with its accepted verdict
+        prop = resume_after_hold(rc, step)
+    else:
+        prop = do_propose(
+            rc,
+            step,
+            parse_sets(sets, schema_properties(rc, step)),
+            rationale=reason,
+            inherited=inherited or None,
+            cites=[parse_cite(c) for c in cites],
+            considered=weighed,
+        )
     if prop.status == StepStatus.AWAITING_EXECUTION:
         spec = job_spec(prop, rc.env_digests.get(prop.plan.module.manifest.env), rc.executor)
         emit(
