@@ -3,8 +3,14 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-11-11)
+## Current state (2026-11-12)
 
+- (2026-11-12) Review documents in the delivery, and every session named in a run's trace (`notes/2026-11-12-1315-reviews-delivery-sessions.md`, branch
+  `reviews-in-delivery`): on the owner's ruling `deliver` writes `deliver/<run>/reviews/`
+  before it records the delivery, listed in `index.json` `reviews[]` under its hash; a
+  `session` run event when a session other than the last recorded changes a run, read by
+  `status --json` `sessions`; the operator skill says to set the reference in every session.
+  No version bump. Next: the beta bundle reading `session` events from a copied trace.
 - (2026-11-11) Wave 3's small correctness rows (`notes/2026-11-11-1935-wave3-correctness.md`, branch
   `wave3-correctness`): L106 (an Action's values read-only, its parameters checked against
   `params_hash` when written and before a job), L37 (`review --export`, the `stringency-revise`
@@ -477,6 +483,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-12-1315-reviews-delivery-sessions.md` — L37's delivery half on the owner's ruling (review documents in `deliver/<run>/reviews/`, before the delivery is recorded, under `index.json`'s hash) and the `session` run event that names every operator session that changes a run.
 - `2026-11-11-1935-wave3-correctness.md` — L106 (read-only Action values, the hash checked before write and job), L37 (`review --export` and the revise skill), K4 (newest change, `board --watch`), L80 (the institutional list, a known-good row per release); K3 left open.
 - `2026-11-11-1901-per-item-and-judge-tokens.md` — L172 (`per_item` requests numbered apart from the module's replicate, gathered before consensus, the per-item prompt rendered for its item) and L193 (`judgment[].tokens` and `judgment_tokens` in the coverage report, missing counts kept missing).
 - `2026-11-11-1650-wave-2-remainder.md` — the rest of wave 2: an accepted tool call carried out as the same step, a person's file in an open project, a fork reading its parent's outputs, a tool's sources; the qualifier line's eighth field.

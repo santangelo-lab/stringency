@@ -1,6 +1,6 @@
 """Deliver (design 12.1): harvest finals with sidecars, verify deliverables, write the
-coverage report, the methods paragraph, the plain summary, and index.json, and record the
-delivery. An open run's delivery is `report.py` (2026-10-19):
+coverage report, the methods paragraph, the plain summary, the resolved holds as review
+documents (`reviews/`, design 7.6), and index.json, and record the delivery. An open run's delivery is `report.py` (2026-10-19):
 every admissible answer is written into `deliver/<run>/` as it is filed, and `deliver` here
 only regenerates it (`--answer` is refused; findings are marked with `stringency finding`).
 
@@ -13,6 +13,8 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -23,13 +25,14 @@ from stringency.artifacts import read_sidecar, sidecar_path
 from stringency.clock import now_iso
 from stringency.config import deliverable_ref
 from stringency.coverage import coverage_data, render_coverage
-from stringency.exit_codes import ConfigError, HeldError, RefusedError
+from stringency.exit_codes import ConfigError, HeldError, RefusedError, StringencyError
 from stringency.gate import evaluate
 from stringency.ids import new_id
 from stringency.methods import methods_paragraph
 from stringency.predicates import registry
 from stringency.predicates.context import OutputBundle
 from stringency.provenance import block_for
+from stringency.review_export import Document, documents, write_into_delivery
 from stringency.runs import RunContext, captured_plugins
 from stringency.summary import render_summary
 
@@ -44,6 +47,35 @@ class Delivery:
     summary: str = ""  # the report text of an open run
     answers: list[dict[str, Any]] = field(default_factory=list)
     changed: bool = True  # open mode: whether this regeneration wrote a `deliveries` row
+    reviews: list[dict[str, Any]] = field(default_factory=list)  # `index.json` `reviews`
+
+
+@contextmanager
+def review_export_stops_delivery() -> Iterator[None]:
+    """An error rendering or writing the review documents stops the delivery before it is
+    recorded (2026-11-12): said as such, exit 1 for what is not already a stringency error."""
+    try:
+        yield
+    except StringencyError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise StringencyError(
+            f"deliver stopped: the review documents could not be exported "
+            f"({type(e).__name__}: {e}); no delivery was recorded"
+        ) from e
+
+
+def review_documents(rc: RunContext) -> list[Document]:
+    """The run's resolved holds as documents, rendered before anything is recorded. Reads:
+    what `review_export.documents` reads. Writes: nothing."""
+    with review_export_stops_delivery():
+        return documents(rc.project, run_id=rc.run_id)
+
+
+def write_review_documents(dest: Path, docs: list[Document]) -> list[dict[str, Any]]:
+    """Write them into `<dest>/reviews/`; returns the `index.json` entries. Writes: files."""
+    with review_export_stops_delivery():
+        return write_into_delivery(dest, docs)
 
 
 def answer_file_name(seq: int, question: str, nth: int = 1) -> str:
@@ -235,6 +267,9 @@ def deliver(
         raise RefusedError("--answer belongs to open mode; this run has a declared topology")
     if status != "completed":
         raise RefusedError(f"run {rc.run_id} is {status}; deliver needs a completed run")
+    # the review documents are rendered before the gate records anything, written before the
+    # finals are marked, and listed in index.json under its hash (the owner, 2026-11-12)
+    review_docs = review_documents(rc)
     finals = final_artifacts(rc, include or [])
     deliver_gate(rc, finals)
     produced_names = {a["name"] for a in finals} | {f"{a['step_id']}.{a['name']}" for a in finals}
@@ -247,6 +282,7 @@ def deliver(
     did = new_id()
     dest = project.root / "deliver" / rc.run_id
     dest.mkdir(parents=True, exist_ok=True)
+    reviews = write_review_documents(dest, review_docs)
     files: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     for a in finals:
@@ -293,6 +329,7 @@ def deliver(
         "plugins": captured_plugins(store, rc.run_id),
         "delivered": now_iso(),
         "files": files,
+        "reviews": reviews,
         "coverage": {"file": "coverage.md", "blake3": hashing.hash_text(coverage_text)},
         "methods": {"file": "methods.md", "blake3": hashing.hash_text(methods_text)},
         "summary": {"file": "summary.md", "blake3": hashing.hash_text(summary_text)},
@@ -326,9 +363,10 @@ def deliver(
             "delivery_id": did,
             "path": str(dest),
             "files": len(files),
+            "reviews": len(reviews),
         },
     )
-    return Delivery(did, dest, files, coverage_text, methods_text, summary_text)
+    return Delivery(did, dest, files, coverage_text, methods_text, summary_text, reviews=reviews)
 
 
 def _sidecar_ok(path: Path, digest: str) -> bool:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import typer
@@ -51,9 +52,10 @@ def override_rates(project: Project, module: str | None = None) -> list[dict[str
 def sessions(project: Project) -> list[dict[str, Any]]:
     """The harness sessions this project has seen (the beta-tester package, 2026-11-03: a
     bundle finds the matching transcripts by these): one entry per distinct
-    `operator_session_ref` over `runs`, `reviews` and `artifacts`, with the harness and version
-    the run recorded, when it was first and last seen, and the runs and reviews it touched.
-    Reads: runs, reviews, artifacts."""
+    `operator_session_ref` over `runs`, the `session` run events (a later session's first
+    change to a run, 2026-11-12), `reviews` and `artifacts`, with the harness and version
+    recorded, when it was first and last seen, and the runs and reviews it touched.
+    Reads: runs, run_events, reviews, artifacts."""
     seen: dict[str, dict[str, Any]] = {}
 
     def touch(ref: Any, ts: Any, **fields: Any) -> None:
@@ -92,6 +94,18 @@ def sessions(project: Project) -> list[dict[str, Any]]:
             r["started"],
             harness=r["operator_harness"],
             version=r["operator_version"],
+            run=r["run_id"],
+        )
+    for r in store.all(
+        "SELECT run_id, payload_json, ts FROM run_events WHERE event = 'session' "
+        "ORDER BY run_id, seq"
+    ):
+        ev = json.loads(r["payload_json"])
+        touch(
+            ev.get("session_ref"),
+            r["ts"],
+            harness=ev.get("harness"),
+            version=ev.get("version"),
             run=r["run_id"],
         )
     for r in store.all(

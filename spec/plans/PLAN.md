@@ -98,7 +98,8 @@ X. **The Xenium method's debt** (the owner, 2026-11-11; L196; section 10 of the 
    Xenium method's X7 can now move its citations into `cites:`.
 3. **Small correctness, and measurement.** Two halves.
    - *Correctness.* Done: L145, L148, L172 (`per_item` numbers replicates by the module);
-     L106, L37, K4 and L80 (2026-11-11). Left: K3, which waits on the owner: no column carries a
+     L106, L37, K4 and L80 (2026-11-11); L37's delivery half on the owner's ruling, and a
+     `session` run event for every session that changes a run (2026-11-12). Left: K3, which waits on the owner: no column carries a
      type for its warning to read.
    - *Measurement: the run record, and what a project costs in tokens* (the owner,
      2026-11-11; it belongs in the beta's bundle and eval store). Done: L194 (token
@@ -318,7 +319,7 @@ after waves 0 and 1 landed and the design texts of wave 1 were read and merged (
 | the annotation's remaining choices: the state programmes and their call; the `pct_diff` floor; the written reading of gut cluster 9 for the negative control | L111; method items 3.15, 3.16, 3.19 | `annotation-controls.md` | 2026-10-23 |
 | the rule for a delivered table whose path is part trusted, part not | L35 | this file | 2026-10-21 |
 | the known-good rows: none for 0.2.41 or 0.2.42; from now on the institutional runs on the workstation at each release's tags and a row (`docs/release.md`); and whether a release that touches nothing a method's run reads may record its row without the runs | L80 (closed) | `docs/release.md` | 2026-11-11 |
-| reviewer identities and whole review packets in a delivery: `review --export` writes them into the run directory only; the row and `commons-assessment.md` 4.4 also put them in `deliver/<run>/`, which people share. If yes, they go in before the delivery is recorded and are listed in `index.json` | L37 (closed) | `stringency-design.md` 7.6 | 2026-11-11 |
+| ANSWERED 2026-11-12, yes, and built (branch `reviews-in-delivery`): reviewer identities and whole review packets in a delivery. `deliver` writes them into `deliver/<run>/reviews/` before the delivery is recorded and lists them in `index.json` under its hash; the row can leave this table when that branch merges | L37 (closed) | `stringency-design.md` 7.6; `DECISIONS.md` 2026-11-12 | 2026-11-11 |
 | K3's column types: a column declaration on a module's outputs (module contract 3.2) or a typed key in the policy's `ranges` (design 6.4), or K3 closed as the method's alone | K3 | this file | 2026-11-11 |
 | what L157's rule left: the identifier rule and unspaced ranges; a name agreeing with the row its sentence's measurement came from; the story's rule | L177 | `notes/2026-11-10-1521-marked-names.md` | 2026-11-10 |
 | design 17's two met triggers: judgment tools on demand in open mode; the `reason_code` enum | L180 | `stringency-design.md` 17 | 2026-11-10 |

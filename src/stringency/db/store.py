@@ -103,6 +103,7 @@ class Store:
         self.path = path
         self._columns: dict[str, tuple[str, ...]] = {}
         self._readers: list[sqlite3.Connection] = []
+        self._sessions: dict[str, str] = {}  # run id -> the session reference last noted
 
     # -- lifecycle -----------------------------------------------------------------
 
@@ -185,6 +186,7 @@ class Store:
             yield
         except BaseException:
             self._conn.execute("ROLLBACK")
+            self._sessions.clear()  # a `session` event noted in it is gone with it
             raise
         else:
             self._conn.execute("COMMIT")
@@ -256,16 +258,54 @@ class Store:
             self.run_event(r["run_id"], "opened", {"status": r["status"]})
 
     def run_event(self, run_id: str, event: str, payload: Mapping[str, Any] | None = None) -> int:
-        """Writes: run_events with the next seq for the run. Returns the seq."""
+        """Writes: run_events with the next seq for the run, after a `session` event when this
+        is a new session's first change to the run (`note_session`). Returns the seq."""
         with self.transaction():
-            seq = self.scalar(
-                "SELECT COALESCE(MAX(seq), 0) + 1 FROM run_events WHERE run_id = ?", (run_id,)
+            self.note_session(run_id)
+            return self._append_run_event(run_id, event, payload)
+
+    def _append_run_event(
+        self, run_id: str, event: str, payload: Mapping[str, Any] | None = None
+    ) -> int:
+        seq = self.scalar(
+            "SELECT COALESCE(MAX(seq), 0) + 1 FROM run_events WHERE run_id = ?", (run_id,)
+        )
+        self._conn.execute(
+            "INSERT INTO run_events(run_id, seq, event, payload_json, ts) VALUES (?,?,?,?,?)",
+            (run_id, seq, event, _json(payload or {}), now_iso()),
+        )
+        return int(seq)
+
+    def note_session(self, run_id: str) -> None:
+        """Every operator session that changes a run is named in its trace (2026-11-12): when
+        the operator's session reference (`operator_env`: `STRINGENCY_SESSION_REF`, or the
+        harness's own) is set and is not the last one the run recorded, a `session` run event
+        records it (`session_ref`, `harness`, `version`) in the transaction of the change. The
+        last one recorded is the latest `session` event's, else `runs.operator_session_ref`
+        from the run's open. Nothing is recorded when no reference is set (a person at a
+        shell). Called by every run and step event, so every verb that changes a run passes
+        here. Reads: runs, run_events. Writes: run_events (`session`)."""
+        from stringency.operator_id import operator_env
+
+        env = operator_env()
+        ref = env["session_ref"]
+        if not ref or self._sessions.get(run_id) == ref:
+            return
+        run = self.one("SELECT operator_session_ref FROM runs WHERE run_id = ?", (run_id,))
+        if run is None:
+            return
+        last = self.scalar(
+            "SELECT json_extract(payload_json, '$.session_ref') FROM run_events "
+            "WHERE run_id = ? AND event = 'session' ORDER BY seq DESC LIMIT 1",
+            (run_id,),
+        )
+        if (last if last is not None else run["operator_session_ref"]) != ref:
+            self._append_run_event(
+                run_id,
+                "session",
+                {"session_ref": ref, "harness": env["harness"], "version": env["version"]},
             )
-            self._conn.execute(
-                "INSERT INTO run_events(run_id, seq, event, payload_json, ts) VALUES (?,?,?,?,?)",
-                (run_id, seq, event, _json(payload or {}), now_iso()),
-            )
-            return int(seq)
+        self._sessions[run_id] = ref
 
     def set_run_status(
         self,
@@ -313,8 +353,10 @@ class Store:
     def step_event(
         self, run_id: str, step_id: str, event: str, payload: Mapping[str, Any] | None = None
     ) -> int:
-        """Writes: step_events with the next seq for the step. Returns the seq."""
+        """Writes: step_events with the next seq for the step, after a `session` run event when
+        this is a new session's first change to the run (`note_session`). Returns the seq."""
         with self.transaction():
+            self.note_session(run_id)
             seq = self.scalar(
                 "SELECT COALESCE(MAX(seq), 0) + 1 FROM step_events "
                 "WHERE run_id = ? AND step_id = ?",

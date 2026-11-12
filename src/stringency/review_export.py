@@ -2,8 +2,10 @@
 
 One Markdown document per resolved hold of a run: YAML frontmatter with what the hold asked
 and how it was answered (hold, kind, predicate, step, item, module, reviewer, `via`, verdict,
-reason, the bound hashes), and below it the packet as the reviewer saw it, into the run
-directory (not the delivery: see `export_reviews`). A method author's
+reason, the bound hashes), and below it the packet as the reviewer saw it. `review --export`
+writes them into the run directory; `deliver` writes the same documents into
+`deliver/<run>/reviews/` before it records the delivery and lists each in `index.json` with
+its hash (the owner's ruling, 2026-11-12). A method author's
 agent reads these for a module version (the method template's `stringency-revise` skill),
 groups them by theme and proposes changes that cite the hold ids, as 7.6 asks of a prompt
 change. `status --overrides` gives the rate; this gives the cases behind it.
@@ -24,10 +26,12 @@ from typing import Any
 
 import yaml
 
+from stringency import hashing
 from stringency.exit_codes import ConfigError
 from stringency.project import Project
 
 SCHEMA = "stringency.review_export/1"
+DELIVERY_DIR = "reviews"  # `deliver/<run>/reviews/`
 
 
 @dataclass
@@ -134,27 +138,74 @@ def document(project: Project, h: Any) -> str:
     )
 
 
+@dataclass
+class Document:
+    hold_id: str
+    run_id: str
+    step_id: str | None
+    module: str | None
+    text: str
+
+    @property
+    def name(self) -> str:
+        return f"{self.hold_id}.md"
+
+
+def documents(
+    project: Project, *, run_id: str | None = None, module: str | None = None
+) -> list[Document]:
+    """Every resolved hold's document, rendered in memory, oldest hold first. Rendering is
+    where an export fails (the trace, the packet file), so a caller that must not record on
+    failure renders first. Reads: what `resolved_holds`, `frontmatter` and `packet_text` read.
+    Writes: nothing."""
+    return [
+        Document(h["hold_id"], h["run_id"], h["step_id"], _module_ref(h), document(project, h))
+        for h in resolved_holds(project, run_id)
+        if matches_module(h, module)
+    ]
+
+
 def export_reviews(
     project: Project, *, run_id: str | None = None, module: str | None = None
 ) -> list[Exported]:
     """Write one document per resolved hold into `runs/<run>/reviews/<hold>.md`, rewritten whole
-    on every export. Not into the delivery: a document names its reviewer and carries the whole
-    packet, and whether those belong in a directory meant to be shared is the owner's to rule
-    (PLAN waiting table, L37). A `run_id` the trace does not hold is refused (exit 15). Reads:
-    runs, holds, steps, reviews, consensus and what the review display reads. Writes: those
-    files only; nothing in the trace."""
+    on every export. A `run_id` the trace does not hold is refused (exit 15). Reads: runs,
+    holds, steps, reviews, consensus and what the review display reads. Writes: those files
+    only; nothing in the trace."""
     if (
         run_id is not None
         and project.store.one("SELECT run_id FROM runs WHERE run_id = ?", (run_id,)) is None
     ):
         raise ConfigError(f"no run {run_id} in this project")
     out: list[Exported] = []
-    for h in resolved_holds(project, run_id):
-        if not matches_module(h, module):
-            continue
-        d = project.run_dir(h["run_id"]) / "reviews"
+    for doc in documents(project, run_id=run_id, module=module):
+        d = project.run_dir(doc.run_id) / "reviews"
         d.mkdir(parents=True, exist_ok=True)
-        p = d / f"{h['hold_id']}.md"
-        p.write_text(document(project, h))
-        out.append(Exported(h["hold_id"], h["run_id"], _module_ref(h), [p]))
+        p = d / doc.name
+        p.write_text(doc.text)
+        out.append(Exported(doc.hold_id, doc.run_id, doc.module, [p]))
     return out
+
+
+def write_into_delivery(dest: Path, docs: list[Document]) -> list[dict[str, Any]]:
+    """Write the run's documents into `<dest>/reviews/<hold>.md` (the delivery directory) and
+    return their `index.json` entries: the file relative to the delivery, the hold, step and
+    module, and the blake3 of the text, so the index's hash covers them. The same trace gives
+    the same files and entries. Writes: those files only; nothing in the trace."""
+    entries: list[dict[str, Any]] = []
+    if not docs:
+        return entries
+    d = dest / DELIVERY_DIR
+    d.mkdir(parents=True, exist_ok=True)
+    for doc in docs:
+        (d / doc.name).write_text(doc.text)
+        entries.append(
+            {
+                "file": f"{DELIVERY_DIR}/{doc.name}",
+                "hold": doc.hold_id,
+                "step_id": doc.step_id,
+                "module": doc.module,
+                "blake3": hashing.hash_text(doc.text),
+            }
+        )
+    return entries

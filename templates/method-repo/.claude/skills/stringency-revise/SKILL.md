@@ -17,7 +17,8 @@ Ask which module and version, and which projects ran it. In each project directo
     stringency review --export --module <module>@<version> --json
 
 It writes one Markdown document per resolved hold into `runs/<run>/reviews/<hold>.md` and
-lists the paths. Each document has
+lists the paths. A delivered run carries the same documents in `deliver/<run>/reviews/`, so a
+delivery someone sent you is enough when the project itself is not at hand. Each document has
 YAML frontmatter (hold, kind, predicate, step, item, module, reviewer, `via`, verdict, reason,
 the label it settled on, the bound hashes) and below it the packet the reviewer read. Read
 every document whole before you group anything. `stringency status --overrides --module
