@@ -2,7 +2,7 @@ name: compat
 # The latest known-good combination (compat/known-good.yml) on a bare runner: install this
 # checkout and the plugin at its tag, lint the method at its tag (its `requires` is checked
 # against what is installed), check its analysis skills, and probe. Container runs are
-# institutional and are not attempted here.
+# institutional and are not attempted here; docs/release.md lists them.
 on:
   push:
     tags: ["v*"]

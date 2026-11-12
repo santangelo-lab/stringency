@@ -15,7 +15,9 @@ From a clean `main` with the suite green:
     uv lock && git commit -am "Engine vX.Y.Z: ..." && git tag -a vX.Y.Z -m "..."
     git push origin main --tags
 
-Then the install block. `probe` checks the operator skill's "This text is for engine" line.
+Then the install block (`probe` checks the operator skill's "This text is for engine" line),
+then the institutional runs and the known-good row below. A release is not finished until its
+row is in `compat/known-good.yml`.
 
 ## Release a plugin
 
@@ -56,11 +58,28 @@ Science session with the workstation as a compute host; the session publishes th
 from `<prefix>/current/skills/` and each method's analysis skill at its tag. After every engine
 release that touches a skill and every method tag with a new or changed analysis skill.
 
-## Record a known-good combination
+## The institutional runs
 
-When a combination of engine, plugin and method has delivered a real project or passed the
-synthetic runs, add a row to `compat/known-good.yml` (engine tag, plugin tags, method tags, date,
-host, what ran) and commit. The bootstrap installs the latest dated row; the compat workflow lints it.
+CI runs lint, the unit tests and the skill check on a bare runner (`.github/workflows/ci.yml`,
+and `compat.yml` on the latest known-good row). What needs the containers, the images and a
+method checkout runs on the workstation instead, by hand, with the engine and plugin installed
+at the release's tags and each method cloned at its tag. This is the list; each script says
+what it needs at its head (the images of the method's `envs/manifest.yml`, apptainer,
+`STRINGENCY_SESSION_REF`, the engine as `stringency` on the PATH or `STRINGENCY_BIN`):
+
+| method | run | what it shows |
+|---|---|---|
+| `stringency-xenium-method` | `controls/synthetic_run.sh <tag>` | `xenium-qc-tma` end to end on the synthetic region (mock judgment), delivered and presented, then the QC again through `xenium-qc-cells` |
+| `stringency-xenium-method` | `controls/synthetic_upstream.sh <tag>` | a two-slide synthetic study through `xenium-qc-tma` and `xenium-upstream`: the declared organ, the proposals approved, the sign-off and the annotation on the mock harness, delivered and presented |
+| `stringency-xenium-method` | `tests/run_outliers.sh` | the outlier judgment: evidence script, group bands, the engine run on the mock harness, both controls |
+| `stringency-scrnaseq-scanpy-method` | `tests/run.sh`, then `stringency controls run` in a project from the fixture's declarations | every module on the planted fixture inside the image; the method's controls |
+
+## Record a known-good combination (every release)
+
+After the install block and the institutional runs, add a row to `compat/known-good.yml` (engine
+tag, plugin tags, method tags, date, host, and under `evidence` which runs of the list above
+passed) and commit it on `main`. Also add a row when a combination
+delivers a real project. The bootstrap installs the latest dated row; the compat workflow lints it.
 The beta-tester package (`santangelo-lab/stringency-beta`, 2026-11-03) pins its own combination in
 its `channel.yml` from a dated row here; a beta release starts from one.
 
