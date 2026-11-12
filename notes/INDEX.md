@@ -5,6 +5,12 @@ it is the first thing a new session reads.
 
 ## Current state (2026-11-11)
 
+- (2026-11-11) Wave 3's small correctness rows (`notes/2026-11-11-1935-wave3-correctness.md`, branch
+  `wave3-correctness`): L106 (an Action's values read-only, its parameters checked against
+  `params_hash` when written and before a job), L37 (`review --export`, the `stringency-revise`
+  skill in the method template), K4 (the board's newest-change line, `board --watch`), L80 (the
+  institutional runs listed in `docs/release.md`, a known-good row with every release). K3 left
+  open: no column carries a type. Next: the owner's known-good rows; L172 is #34's.
 - (2026-11-11) A held proposal withdrawn, a step left `proposed` recovered (`notes/2026-11-11-1700-withdraw-and-recover.md`, branch
   `propose-withdraw-and-recovery`): L94 (`propose <step> --withdraw`, the status `withdrawn`,
   the owner's choice) and L107 (`run` or a bare `propose <step>` evaluates the recorded
@@ -461,6 +467,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-11-1935-wave3-correctness.md` — L106 (read-only Action values, the hash checked before write and job), L37 (`review --export` and the revise skill), K4 (newest change, `board --watch`), L80 (the institutional list, a known-good row per release); K3 left open.
 - `2026-11-11-1700-withdraw-and-recover.md` — L94 (`propose --withdraw`: a proposal held on its pre-gate flags becomes `withdrawn`, its holds withdrawn with no review) and L107 (a step left `proposed` by an interruption is recovered from its recorded Action); the new status in 7.1.
 - `2026-11-11-1500-rationale-names-and-choices.md` — L195 (`judg.numeric_claims_match@3`: a rationale read by the answer's classifier, tested on the Lyons outlier rationales) and L110 (a person's chosen replicate and whole correction in the consensus output); the version move and what it asks of the methods.
 - `2026-11-11-1120-usage-measurement-in-the-plan.md` — where token usage is measured and why (the beta's bundle and eval store), rows L190 to L194 in wave 3, and the work list brought up to date after waves 0 and 1.
