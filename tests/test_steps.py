@@ -707,7 +707,11 @@ def test_engine_step_sees_shared_code_beside_the_modules(
     from stringency.actions import build_action
 
     action = build_action(
-        run_id=rc.run_id, step=plan.step, module=plan.module, attempt=1, input_digests={}
+        run_id=rc.run_id,
+        step=plan.step,
+        module=plan.module,
+        attempt=1,
+        input_digests={k: v.digest for k, v in plan.inputs.items()},
     )
     job = job_for(action, plan, plan.module.entry_script)  # type: ignore[arg-type]
     assert [Path(x) for x in job.ro_bind_paths] == [p.method_root]

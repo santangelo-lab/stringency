@@ -17,14 +17,21 @@ from pathlib import Path
 from typing import Any
 
 from stringency import hashing
-from stringency.actions import Action, build_action, rationale_record, write_action
+from stringency.actions import (
+    Action,
+    build_action,
+    check_params_hash,
+    rationale_record,
+    write_action,
+)
 from stringency.active import executing
 from stringency.artifacts import record_output, step_outputs
 from stringency.clock import now_iso
 from stringency.executor.base import Executor, Job
 from stringency.executor.local import interpreter_for
-from stringency.exit_codes import BlockedError, ConfigError, RefusedError
+from stringency.exit_codes import BlockedError, ConfigError, RefusedError, StringencyError
 from stringency.extract import extract_object
+from stringency.frozen import thaw
 from stringency.gate import GateResult, evaluate
 from stringency.holds import HoldOutcome, HoldRequest, open_hold, open_holds
 from stringency.ids import new_id
@@ -1166,12 +1173,35 @@ def action_from_row(row: Any) -> Action:
 # -- engine runner -------------------------------------------------------------------------
 
 
+def check_inputs_admitted(action: Action, plan: StepPlan) -> None:
+    """Refuse a job whose inputs, as `plan_step` resolves them now, are not the inputs the
+    Action recorded when it was proposed (L106 review): the same names, each with the digest
+    the gate saw. A re-resolution that binds another artifact (a step re-run under the same
+    name, a declared input re-pointed) would otherwise run on data no gate admitted. Reads and
+    writes nothing."""
+    now = {
+        k: hashing.prefixed(hashing.strip_prefix(v.digest)) for k, v in sorted(plan.inputs.items())
+    }
+    admitted = dict(action.inputs)
+    if now != admitted:
+        changed = sorted(k for k in set(now) | set(admitted) if now.get(k) != admitted.get(k))
+        raise StringencyError(
+            f"action {action.action_id} for step {action.step_id}: the inputs resolved now differ "
+            f"from the inputs it was admitted with ({', '.join(changed)}); no job was built. "
+            "Propose the step again so the gate sees what it would run on."
+        )
+
+
 def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
     """The executor job of a step. Input directories are bound read-write for a declared step
     (as before) and read-only for an on-demand one (`plan.inputs_read_only`, design 10.3
     amended 2026-10-16); the method checkout is read-only always. The step's allocation
     (L130) is the stdin's `resources` and the Job's, from which the executor sets the
-    environment; the timeout enforced is still the plan's (an exec step's) only."""
+    environment; the timeout enforced is still the plan's (an exec step's) only. The
+    parameters are checked against the action's `params_hash` before anything is built (L106).
+    The stdin carries a plain copy of them."""
+    check_params_hash(action, "before its job was built")
+    check_inputs_admitted(action, plan)
     m = plan.module.manifest
     seed = action.parameters.get(m.seed_param) if m.stochastic and m.seed_param else None
     input_dirs = [p.parent for ri in plan.inputs.values() for p in ri.paths]
@@ -1191,7 +1221,7 @@ def job_for(action: Action, plan: StepPlan, script: Path) -> Job:
         network="none" if plan.network_isolation else None,
         stdin_json={
             "inputs": {k: v.job_value() for k, v in plan.inputs.items()},
-            "params": action.parameters,
+            "params": thaw(action.parameters),
             "outputs": {k: str(v) for k, v in plan.output_paths.items()},
             "output_dir": str(plan.step_dir),
             "seed": seed,

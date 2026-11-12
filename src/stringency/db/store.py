@@ -107,11 +107,19 @@ class Store:
     # -- lifecycle -----------------------------------------------------------------
 
     @classmethod
-    def open(cls, path: Path | str, *, create: bool = True) -> Store:
+    def open(cls, path: Path | str, *, create: bool = True, read_only: bool = False) -> Store:
+        """Open the trace. `read_only` (a reader that polls, `board --watch`): an existing
+        database opened `mode=ro`, with no migration and no pragma that writes; any write on it
+        fails."""
         p = Path(path)
         refuse_network_filesystem(p)
-        if not p.exists() and not create:
+        if not p.exists() and (not create or read_only):
             raise ConfigError(f"no trace database at {p}")
+        if read_only:
+            ro = sqlite3.connect(f"{p.resolve().as_uri()}?mode=ro", uri=True, isolation_level=None)
+            ro.row_factory = sqlite3.Row
+            ro.execute("PRAGMA busy_timeout=5000")
+            return cls(ro, p)
         p.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(p, isolation_level=None)
         conn.row_factory = sqlite3.Row

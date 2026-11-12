@@ -33,6 +33,30 @@ def parse_correction(text: str | None) -> dict[str, Any] | None:
     return doc
 
 
+def export_to(project: Project, run_id: str | None, module: str | None, as_json: bool) -> None:
+    """`review --export` (L37): the resolved holds as documents (`review_export`)."""
+    from stringency.review_export import SCHEMA, export_reviews
+
+    done = export_reviews(project, run_id=run_id, module=module)
+    rows = [
+        {
+            "hold_id": e.hold_id,
+            "run_id": e.run_id,
+            "module": e.module,
+            "paths": [str(p) for p in e.paths],
+        }
+        for e in done
+    ]
+    scope = f" of {module}" if module else ""
+    human = (
+        f"{len(done)} resolved hold(s){scope} written:\n"
+        + "\n".join(f"  {e.hold_id} ({e.module or 'no module'}): {e.paths[0]}" for e in done)
+        if done
+        else f"no resolved holds{scope} to export"
+    )
+    emit({"schema": SCHEMA, "exported": rows}, as_json, human)
+
+
 @handle_errors
 def review(
     run_id: str | None = typer.Option(None, "--run"),
@@ -72,6 +96,15 @@ def review(
         "this name, with --reason the rule that decided; needs STRINGENCY_SESSION_REF",
     ),
     as_json: bool = typer.Option(False, "--json"),
+    export: bool = typer.Option(
+        False,
+        "--export",
+        help="write one Markdown document per resolved hold (frontmatter, then the packet) "
+        "into runs/<run>/reviews/; every run, or --run",
+    ),
+    module: str | None = typer.Option(
+        None, "--module", help="--export: one module (<name>) or one version (<name>@<version>)"
+    ),
     serve: bool = typer.Option(
         False,
         "--serve",
@@ -107,6 +140,33 @@ def review(
         help="--serve: read the token from this file (created, mode 600, when missing) so the URL is stable across restarts",
     ),
 ) -> None:
+    if export:
+        # --export reads the trace and records nothing: refuse what would record or show
+        # something else, rather than silently ignore it
+        given = {
+            "--hold": hold is not None,
+            "--verdict": verdict is not None,
+            "--reason": reason is not None,
+            "--choose": choose_label is not None,
+            "--replicate": replicate is not None,
+            "--correction": correction is not None,
+            "--item": item is not None,
+            "--attest": attest,
+            "--policy": policy is not None,
+            "--show": show_only,
+            "--serve": serve,
+            "--holds": batch_holds is not None,
+        }
+        clash = [k for k, v in given.items() if v]
+        if clash:
+            raise ConfigError(
+                f"--export writes the resolved holds and records nothing; it takes --run and "
+                f"--module only, not {', '.join(clash)}"
+            )
+        export_to(Project.find(), run_id, module, as_json)
+        return
+    if module is not None:
+        raise ConfigError("--module goes with --export (the rate per module is status --overrides)")
     if batch_holds:
         from stringency.review_batch import batch_view, locate_holds, record_batch
 

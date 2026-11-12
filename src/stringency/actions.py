@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING, Any
 
 from stringency import hashing
 from stringency.clock import now_iso
-from stringency.exit_codes import BlockedError
+from stringency.exit_codes import BlockedError, StringencyError
+from stringency.frozen import freeze
 from stringency.ids import new_id
 
 if TYPE_CHECKING:
@@ -41,6 +42,19 @@ class Action:
     # pre-gate sees it (`{text, cited, considered}`, backlog L55), so predicates read the
     # resolved citations without I/O. `action_from_row` leaves it None.
     rationale: Mapping[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        # L106: the values are deep read-only copies, so neither the caller's proposal, a
+        # nested list, nor a predicate holding the Action in its context can change what runs
+        for name in ("parameters", "param_source", "inputs", "rationale"):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(self, name, freeze(value))
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> Action:
+        # read-only all the way down, so a deep copy is the Action itself; the default would
+        # skip `__post_init__` and hold the plain copies its values' `__deepcopy__` returns
+        return self
 
     def with_ticket(self, ticket: str) -> Action:
         return Action(**{**self.__dict__, "ticket": ticket})
@@ -153,6 +167,7 @@ def build_action(
     prefixed = {
         k: hashing.prefixed(hashing.strip_prefix(v)) for k, v in sorted(input_digests.items())
     }
+    frozen_params = freeze(params)
     return Action(
         action_id=new_id(),
         run_id=run_id,
@@ -160,11 +175,13 @@ def build_action(
         attempt=attempt,
         operation=module.manifest.operation,
         module=module.ref,
-        parameters=params,
+        parameters=frozen_params,
         param_source=source,
         inputs=prefixed,
         input_digest=hashing.prefixed(hashing.hash_json(prefixed)),
-        params_hash=hashing.prefixed(hashing.hash_json(params)),
+        # hashed as frozen, so the hash is of the values the Action holds (keys as JSON
+        # writes them) and `check_params_hash` agrees with it by construction
+        params_hash=hashing.prefixed(hashing.hash_json(frozen_params)),
         proposed_by=proposed_by,
         rationale_ref=rationale_ref,
     )
@@ -189,8 +206,23 @@ def rationale_record(text: str | None) -> dict[str, Any] | None:
     return {"text": text, "cited": [], "considered": []}
 
 
+def check_params_hash(action: Action, where: str) -> None:
+    """Refuse an Action whose canonical parameters no longer hash to its `params_hash` (L106):
+    what is written to the trace, and what a job is built from, must be what the gate admitted.
+    Reads and writes nothing."""
+    got = hashing.prefixed(hashing.hash_json(action.parameters))
+    if got != action.params_hash:
+        raise StringencyError(
+            f"action {action.action_id} for step {action.step_id}: its parameters hash to "
+            f"{got}, not the recorded {action.params_hash} ({where})"
+        )
+
+
 def write_action(store: Store, action: Action) -> None:
-    """Writes: actions. Called before the pre-gate so rejected proposals are kept."""
+    """Writes: actions. Called before the pre-gate so rejected proposals are kept. The
+    parameters are checked against `params_hash` first (L106), so the row never records a
+    hash its own values do not have."""
+    check_params_hash(action, "before the action was written")
     store.insert(
         "actions",
         {

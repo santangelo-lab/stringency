@@ -1,7 +1,9 @@
 # Combinations of engine, plugins and method that ran together (backlog L28; roadmap W3). The
 # install guide quotes this table and .github/workflows/compat.yml checks the latest row on a
-# bare runner (lint and the skill check; container runs stay institutional and are named under
-# `evidence`). Add a row when a combination delivers a real project or passes the synthetic runs.
+# bare runner (lint and the skill check). The container runs are institutional: the list is in
+# docs/release.md ("The institutional runs"), and a row's `evidence` names which of them passed.
+# Add a row with every engine release (docs/release.md, PLAN L80) and when a combination
+# delivers a real project.
 known_good: 1
 combinations:
   - engine: v0.2.16
