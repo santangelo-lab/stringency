@@ -331,6 +331,9 @@ The tools this method ships for questions, in the method's words:
 {% if t.not_for %}
   - not for {{ t.not_for }}.
 {% endif %}
+{% if t.cites %}
+  - Sources: {{ t.cites | join('; ') }}.
+{% endif %}
 {% for a in t.asks %}
   - Ask before calling it: {{ a.ask }} (`{{ a.param }}`; pass it with `--set {{ a.param }}=<value> --asked-by person --reason "<their words>"`).
 {% endfor %}
@@ -347,12 +350,15 @@ The paths the method suggests, each said in the pinned form:
 
 {% for p in open_paths %}
 - {{ p.answers }}: {% if p.tool %}{{ p.title }} (`{{ p.tool }}`), a tool, labelled trusted{% else %}no tool ships for this, so code, labelled untested{% endif %}{% if p.needs %}; needs {{ p.needs | join(', ') }} delivered{% endif %}{% if p.asks %}; needs from the person: {{ p.asks }}{% endif %}.
+{% if p.cites %}
+  - Sources: {{ p.cites | join('; ') }}.
+{% endif %}
 {% endfor %}
 
 {% endif %}
 The pinned sentences, said as written except the label sentences and the qualifier line, which
 are the engine's record, printed by `stringency answer` and said in plain words in your reply
-(the engine fills `{tools}`, `{data}`, `{tables}`, `{why}`, `{matched}`, `{total}` and the qualifier's seven
+(the engine fills `{tools}`, `{data}`, `{tables}`, `{why}`, `{matched}`, `{total}` and the qualifier's eight
 fields, each `none` when empty; `{numerals}` lists the numerals the engine did not check because
 they are not measurements: a design level, a row's key, a parameter value, a number from the
 question, a year, a count of animals, punches or replicates):
@@ -371,7 +377,7 @@ question, a year, a count of animals, punches or replicates):
 - label, untested: "Label: untested. Produced by code written for this question, run and recorded by the engine on {data}; no test or control has checked it. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, drawn: "Label: trusted data, drawn by session code. The numbers are {tables}, trusted; the drawing is code written in this session, which nothing has checked. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
 - label, untested tool: "Label: untested. Produced by {tools}, a tool shipped with the method, run by the engine on {data}; {why}. Numbers checked against the cited cells: {matched} of {total}. Everything else in this answer is the assistant's reading."
-- qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | upstream: {upstream} | controls: {controls} | untested inputs: {untested} | numerals not checked: {numerals}"
+- qualifier: "flags accepted on the path: {flags} | parameters outside range: {ranges} | person-set parameters: {person} | person-supplied inputs: {added} | upstream: {upstream} | controls: {controls} | untested inputs: {untested} | numerals not checked: {numerals}"
 - what trusted means, when first relevant or asked: "Trusted means the engine ran a tool the method ships, in a verified environment, with a passing control on record, on the delivered data; the words around the numbers are still mine."
 - what untested means, when first relevant or asked: "Untested means the engine ran code I wrote in this session and recorded it, but nothing has checked that the code computes what it claims; or it ran a tool the method ships that missed a condition of trusted, which the label names."
 - who labels, when asked: "The engine labels from what ran; I cannot change a label, and I am not allowed to write one."

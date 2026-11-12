@@ -438,6 +438,12 @@ HOLD_HTML = _ENV.from_string(
 {% endfor %}
 {% endif %}
 {{ view_sections }}
+{% if after_accept and not resolved %}
+<h2>After an accept</h2>
+<p class="note">An accept does not run this tool call by itself. The operator then carries out this same step (calling the tool again would start a new one), or closes it if it is not wanted:</p>
+<pre>{{ after_accept.command }}
+{{ after_accept.close }}</pre>
+{% endif %}
 <details class="packet">
 <summary>The packet, as the terminal prints it</summary>
 <pre>{{ text }}</pre>
@@ -1235,6 +1241,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 "ask": ask_of(h, ctx),
                 **view.to_json(),
                 "sections": hp["sections"] if hp else [],
+                "after_accept": hp.get("after_accept") if hp else None,
                 "replicates": _replicates_for(project, h) if h["item_id"] is not None else [],
             }
         if len(parts) == 2 and parts[0] == "run":
@@ -1616,6 +1623,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             project.pipeline.title(step) if step and project.pipeline.has_step(step) else step
         )
         view_sections = ""
+        after_accept: dict[str, Any] | None = None
         site = Site.load(project.root)
         try:
             skill, _note = load_skill(site)
@@ -1624,6 +1632,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
             # rows, L137; a flag's question and rule, L133)
             plain = {k: hp.get(k) for k in ("check", "found", "compared", "guidance")}
             packet = hp.get("packet")
+            # a tool call held in an open project: the one command after an accept (L114)
+            after_accept = hp.get("after_accept")
             if hp["sections"]:
                 # a project hold (confirm, egress) has no run: its sections are the echo-back
                 # and the report, rendered as a page; a run's hold maps figure paths to routes
@@ -1670,6 +1680,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
             project=project.root.name,
             text=view.text,
             view_sections=Markup(view_sections),  # noqa: S704 - autoescaped template output
+            after_accept=after_accept,
             verdicts=view.verdicts,
             replicates=replicates,
             choices=choices,

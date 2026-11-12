@@ -141,9 +141,26 @@ def runner_for(rc: RunContext, step: StepDecl, module: Module) -> str:
     return step.runner or module.manifest.runner or rc.project.config.execution
 
 
+def parent_output(rc: RunContext, step_id: str, output: str) -> Any | None:
+    """`$parent.<step>.<output>` (L11): the artifact row of that output in the run this run was
+    forked from, which for a step the parent inherited is the row the fork copied. None when
+    this run is not a fork, or when the parent's step is not `completed` (skipped, failed,
+    still held on what it produced, abandoned while held): an output nobody admitted is never
+    bound. Reads: runs, steps, artifacts."""
+    parent = rc.run["parent_run_id"]
+    if not parent:
+        return None
+    status = rc.store.scalar(
+        "SELECT status FROM steps WHERE run_id = ? AND step_id = ?", (str(parent), step_id)
+    )
+    if status != str(StepStatus.COMPLETED):
+        return None
+    return step_outputs(rc.store, str(parent), step_id).get(output)
+
+
 def resolve_inputs(rc: RunContext, step: StepDecl, module: Module) -> dict[str, ResolvedInput]:
     """`$inputs.<name>` from the manifest; `$steps.<id>.<out>` from that step's produced
-    artifacts. An `arity: many` input takes a list of references or a `$inputs.<glob>`, which
+    artifacts; `$parent.<id>.<out>` from the parent run's, in a fork only (L11). An `arity: many` input takes a list of references or a `$inputs.<glob>`, which
     expands to every manifest input whose name matches and whose type is the input's, in name
     order; it must resolve to at least one part unless the input is optional. A reference to a
     skipped step's output (L13) resolves to nothing, so an optional input is omitted and a
@@ -181,6 +198,13 @@ def resolve_inputs(rc: RunContext, step: StepDecl, module: Module) -> dict[str, 
                     paths.append(Path(item.path))
                     digests.append(item.blake3)
                     types.append(item.type)
+            elif ref.kind == "parent":
+                row = parent_output(rc, ref.name, ref.output or "")
+                if row is None:
+                    continue  # not a fork, or the parent has no such output (L11)
+                paths.append(Path(row["path"]))
+                digests.append(str(row["hash"]))
+                types.append(spec.type if spec else str(row["kind"]))
             else:
                 if step_status(rc.store, rc.run_id, ref.name) == StepStatus.SKIPPED:
                     continue  # a skipped step's outputs resolve to nothing (L13)
@@ -304,16 +328,19 @@ def bind_inputs(
             if row is None:
                 raise ConfigError(f"input {name}: no produced artifact {ref} in run {rc.run_id}")
             ref = f"$steps.{row['step_id']}.{row['name']}"
-        Ref.parse(ref)  # raises ConfigError on a malformed reference
+        if Ref.parse(ref).kind == "parent":  # raises ConfigError on a malformed reference
+            raise ConfigError(f"input {name}: $parent binds a pipeline step in a fork only")
         out[name] = ref
     for name, spec in module.manifest.inputs.items():
         if name in out:
             continue
-        # the upstream pipeline's own inputs bind only when named: a tool reads the delivery
+        # the upstream pipeline's own inputs, and a person's file added after init (L160),
+        # bind only when named: a tool reads the delivery
+        added = rc.project.added_inputs
         candidates: list[str] = [
             f"$inputs.{n}"
             for n, item in sorted(inputs_by_name.items())
-            if item.type == spec.type and item.upstream_input is None
+            if item.type == spec.type and item.upstream_input is None and n not in added
         ]
         produced = [
             f"$steps.{r['step_id']}.{r['name']}"
@@ -349,7 +376,7 @@ def bind_inputs(
             upstream = [
                 f"$inputs.{n}"
                 for n, item in sorted(inputs_by_name.items())
-                if item.type == spec.type and item.upstream_input is not None
+                if item.type == spec.type and (item.upstream_input is not None or n in added)
             ]
             forms = " or ".join(f"--in {name}={c}" for c in candidates + upstream)
             if len(candidates) > 1:
@@ -363,7 +390,7 @@ def bind_inputs(
                 f"input {name} ({spec.type}) of {module.manifest.name} is unbound: {why}; "
                 + (f"name one with {forms}" if forms else f"name it with --in {name}=<ref>")
                 + (
-                    " (an upstream input binds only by name)"
+                    " (an upstream input or a person's added file binds only by name)"
                     if upstream and len(candidates) <= 1
                     else ""
                 )

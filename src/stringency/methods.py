@@ -32,6 +32,12 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
             f"v{project.pipeline.version} (commit {run['git_sha'][:7]}) under the {project.config.profile} profile{at_limits} "
             f"and policy {run['policy_version']}."
         )
+    for name, added in project.added_inputs.items():
+        # a person's file brought into the open project after init (L160)
+        sentences.append(
+            f"Input {name} was supplied by a person after the project was opened "
+            f'("{added.get("source") or ""}"; blake3 {str(added.get("blake3") or "")[:12]}).'
+        )
     for item in project.inputs.items:
         if item.derived_from is not None:
             d = item.derived_from
@@ -111,6 +117,7 @@ def methods_paragraph(rc: RunContext, coverage: dict[str, Any]) -> str:
     if described:
         joined = "; ".join(described)
         sentences.append(joined[0].upper() + joined[1:] + ".")
+    sentences += _tool_sources(rc)
     for s in not_run:
         sentences.append(s[0].upper() + s[1:] + ".")
     g = coverage["gate"]
@@ -169,3 +176,32 @@ def number_word(n: int) -> str:
 _num = number_word
 
 __all__ = ["methods_paragraph", "number_word", "json"]
+
+
+def _tool_sources(rc: RunContext) -> list[str]:
+    """One sentence per tool that ran in an open run and whose method entry names its sources
+    (`cites`, L175), in the order the tools first ran. Reads: step_events (the on-demand steps),
+    steps, the method's skill files."""
+    if not rc.open_ended:
+        return []
+    from stringency.present import Site
+    from stringency.tools import tool_sources
+
+    ran: list[str] = []
+    for entry in rc.on_demand():
+        if entry.get("kind") != "tool":
+            continue
+        st = rc.store.scalar(
+            "SELECT status FROM steps WHERE run_id=? AND step_id=?", (rc.run_id, entry["step_id"])
+        )
+        ref = str((entry.get("decl") or {}).get("module") or "")
+        if st == "completed" and ref and ref not in ran:
+            ran.append(ref)
+    if not ran:
+        return []
+    cites = tool_sources(Site(rc.project.root, rc.project.config, rc.store, rc.pipeline))
+    return [
+        f"The method names the sources of {ref}: {'; '.join(cites[ref.split('@')[0]])}."
+        for ref in ran
+        if ref.split("@")[0] in cites
+    ]

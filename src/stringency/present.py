@@ -977,6 +977,19 @@ def proposal_check_sections(
     return sections
 
 
+def _is_on_demand(project: Site, h: Any) -> bool:
+    """Whether the hold's step is an on-demand step (a tool call or an exec of an open run):
+    its `created` event carries `on_demand`. Reads: step_events."""
+    row = project.store.one(
+        "SELECT payload_json FROM step_events WHERE run_id = ? AND step_id = ? AND "
+        "event = 'created' ORDER BY ts, rowid LIMIT 1",
+        (h["run_id"], h["step_id"]),
+    )
+    if row is None:
+        return False
+    return isinstance(json.loads(row["payload_json"] or "{}").get("on_demand"), dict)
+
+
 def present_hold(
     project: Site, hold_id: str | None, skills_dir: Path | None = None
 ) -> dict[str, Any]:
@@ -1038,6 +1051,13 @@ def present_hold(
         "files": [],
         "never_show": [],
     }
+    # a tool call held in an open project is carried out by name once accepted (L114): `run`
+    # is not a verb there, and calling the tool again would make a second step
+    if project.open_ended and h["step_id"] and _is_on_demand(project, h):
+        payload["after_accept"] = {
+            "command": f"stringency propose {h['step_id']}",
+            "close": f'stringency abandon --step {h["step_id"]} --reason "<why>"',
+        }
     if pred_id:
         from stringency.packets import flag_packet
         from stringency.review_render import verdicts_for
@@ -1661,7 +1681,30 @@ def render_chat(payload: dict[str, Any]) -> str:
     if chat["figures"] or payload.get("figures"):
         out.append("")
     out.append(payload["label_sentence"] or "")
+    out += source_lines(payload.get("sources") or [])
     return "\n".join(out) + "\n"
+
+
+def answer_sources(project: Site, tools: list[str]) -> list[dict[str, Any]]:
+    """The sources the method names for each tool on an answer's path (L175): `{tool, title,
+    cites}` per tool whose analyze-file entry has `cites`, in path order. Reads the method's
+    skill files only."""
+    from stringency.tools import tool_sources
+
+    if not tools:
+        return []
+    cites = tool_sources(project)
+    out: list[dict[str, Any]] = []
+    for ref in dict.fromkeys(tools):
+        name = ref.split("@")[0]
+        if name in cites:
+            out.append({"tool": ref, "cites": cites[name]})
+    return out
+
+
+def source_lines(sources: list[dict[str, Any]]) -> list[str]:
+    """`Sources the method names for <tool>: a; b.`, one line per tool."""
+    return [f"Sources the method names for {s['tool']}: {'; '.join(s['cites'])}." for s in sources]
 
 
 def present_answer(
@@ -1713,6 +1756,8 @@ def present_answer(
         "qualifier": prov.get("qualifier_line"),
         "route": prov.get("route"),
         "tools": tools,
+        # what the method says each tool on the path is taken from (L175)
+        "sources": answer_sources(project, tools),
         "text": text,
         # the question's wants beside the cited steps' gives (L139); None before 0.2.35
         "fit": prov.get("fit"),
@@ -2293,6 +2338,16 @@ def render_markdown(payload: dict[str, Any]) -> str:
         for v in payload["packet"]["verdicts"]:
             out.append(f"- {v['verdict']}: {v['effect']}")
             out.append(f"      {v['command']}")
+    if payload["kind"] == "hold" and payload.get("after_accept"):
+        after = payload["after_accept"]
+        out.append("")
+        out.append(
+            "An accept does not run the tool by itself. The operator then carries out this "
+            "same step (calling the tool again would start a new one), or closes it:"
+        )
+        out.append("")
+        out.append(f"    {after['command']}")
+        out.append(f"    {after['close']}")
     if payload["kind"] == "run" and not payload["sections"]:
         out.append("")
         out.append("Deliverables:")
@@ -2306,6 +2361,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
             out.append(str(f.get("label_line") or ""))
         out.append("")
         out.append(payload["label_sentence"] or "")
+        out += source_lines(payload.get("sources") or [])
         out += _settled_lines(payload["decisions"])
     if payload["kind"] == "answer" and payload["details"]:
         out.append("")
