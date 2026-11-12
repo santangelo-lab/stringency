@@ -1,5 +1,8 @@
 """`stringency board <root>`: a progress board over every project under one directory.
 
+The board opens with the newest change over every project (K4), and `--watch` reads it again
+every few seconds and shows it when something changed.
+
 Read-only over the traces and independent of any plugin: it reads `stringency.yml` and the trace
 database directly, never constructs a `Project`, and resolves nothing. Sentences a person reads:
 ids appear only where a command needs them (hold ids), never hashes or paths except the deliver
@@ -16,6 +19,8 @@ from __future__ import annotations
 
 import contextlib
 import json
+import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -113,6 +118,40 @@ def _open_activity(store: Store, run_id: str) -> dict[str, Any]:
     }
 
 
+def _words(event: str) -> str:
+    return event.replace("_", " ")
+
+
+def latest_change(store: Store, titles: dict[str, str]) -> dict[str, str] | None:
+    """The newest thing that happened in a project, in words (K4): the latest step event (a
+    status the step took, a hold resolved; a `rendered` mark is a reading, not a change), run
+    event or review. Reads: step_events, run_events, reviews, holds. None for a project with
+    none of these."""
+    found: list[tuple[str, int, str]] = []
+    s = store.one(
+        "SELECT step_id, event, ts FROM step_events WHERE event != 'rendered' "
+        "ORDER BY ts DESC, rowid DESC LIMIT 1"
+    )
+    if s is not None:
+        title = titles.get(s["step_id"], s["step_id"])
+        found.append((str(s["ts"]), 0, f"step '{title}': {_words(s['event'])}"))
+    r = store.one("SELECT event, ts FROM run_events ORDER BY ts DESC, rowid DESC LIMIT 1")
+    if r is not None:
+        found.append((str(r["ts"]), 1, f"the run: {_words(r['event'])}"))
+    v = store.one(
+        "SELECT r.verdict, r.ts, h.kind FROM reviews r JOIN holds h ON h.hold_id = r.hold_id "
+        "ORDER BY r.ts DESC, r.rowid DESC LIMIT 1"
+    )
+    if v is not None:
+        found.append((str(v["ts"]), 2, f"{v['verdict']} on a {v['kind']} hold"))
+    if not found:
+        return None
+    # the latest time; at the same second a review explains its step event, which explains
+    # the run's, so the review is the one said
+    ts, _, what = max(found)
+    return {"ts": ts, "what": what}
+
+
 def when_text(ts: str | None) -> str:
     """`2026-10-22T14:03:09Z` as `2026-10-22 14:03 UTC`."""
     if not ts:
@@ -188,6 +227,7 @@ def project_entry(root: Path) -> dict[str, Any]:
                     entry["run"]["state"] = "open"
         entry["holds"] = holds
         entry["delivered"] = _latest_delivery(store)
+        entry["latest_change"] = latest_change(store, titles)
     finally:
         store.close()
     return entry
@@ -305,6 +345,11 @@ def render(entries: list[dict[str, Any]], root: Path, when: str | None = None) -
         f"Written {when} by `stringency board`. Re-read rather than trust: it is rewritten by "
         "every verb that changes a project.",
         "",
+    ]
+    newest = newest_change(entries)
+    if newest is not None:
+        lines += [newest, ""]
+    lines += [
         "| project | pipeline | method | plan | latest run | current step | waiting on | delivered |",
         "|---|---|---|---|---|---|---|---|",
     ]
@@ -315,9 +360,53 @@ def render(entries: list[dict[str, Any]], root: Path, when: str | None = None) -
     return "\n".join(lines) + "\n"
 
 
+def newest_change(entries: list[dict[str, Any]]) -> str | None:
+    """The board's line for the newest change over every project (K4), or None."""
+    dated = [
+        (e["latest_change"]["ts"], e["name"], e["latest_change"]["what"])
+        for e in entries
+        if e.get("latest_change")
+    ]
+    if not dated:
+        return None
+    ts, name, what = max(dated)
+    return f"Newest change: {name}, {when_text(ts)}: {what}."
+
+
 def board(root: Path) -> tuple[list[dict[str, Any]], str]:
     entries = [project_entry(p) for p in scan_projects(root)]
     return entries, render(entries, root)
+
+
+def watch(
+    root: Path,
+    *,
+    interval: float,
+    write: bool,
+    show: Callable[[str], None],
+    cycles: int | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> int:
+    """`board --watch` (K4): read the board every `interval` seconds and show it again when a
+    project changed (the time line aside), rewriting `<root>/STATUS.md` then when `write`.
+    Runs until interrupted, or for `cycles` reads. Returns how many boards were shown. Reads
+    what `board` reads; writes `STATUS.md` only."""
+    last: str | None = None
+    shown = 0
+    done = 0
+    while cycles is None or done < cycles:
+        entries, text = board(root)
+        key = json.dumps(entries, sort_keys=True, default=str)
+        if key != last:
+            if write:
+                (Path(root) / BOARD_FILE).write_text(text)
+            show(text)
+            last = key
+            shown += 1
+        done += 1
+        if cycles is None or done < cycles:
+            sleep(interval)
+    return shown
 
 
 def write_board(root: Path) -> Path:
