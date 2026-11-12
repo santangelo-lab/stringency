@@ -69,11 +69,38 @@ def test_export_writes_one_document_per_resolved_hold(make_project: InitFn) -> N
     r = cli(p, "review", "--module", "label-groups")
     assert r.exit_code != 0 and "--export" in r.output
 
-    # the delivery carries the same documents
+    # the delivery does not carry them (the owner's ruling: reviewer names and packets in a
+    # shareable directory), and an export after delivery writes nothing there
     r = cli(p, "run", "--deliver", "--json", env=env)
     assert r.exit_code == 0, r.output
     dest = Path(json.loads(r.output)["delivery"]["path"])
-    delivered = dest / "reviews" / f"{h['hold_id']}.md"
-    assert delivered.read_text() == path.read_text()
-    index = json.loads((dest / "index.json").read_text())
-    assert not any("reviews" in f["file"] for f in index["files"])
+    assert not (dest / "reviews").exists()
+    r = cli(p, "review", "--export", "--json")
+    assert json.loads(r.output)["exported"][0]["paths"] == [str(path)]
+    assert not (dest / "reviews").exists()
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        ["--hold", "H"],
+        ["--verdict", "accept"],
+        ["--reason", "x"],
+        ["--choose", "uniform"],
+        ["--replicate", "1"],
+        ["--attest"],
+        ["--show"],
+        ["--holds", "H1,H2"],
+    ],
+)
+def test_export_refuses_what_it_would_ignore(make_project: InitFn, extra: list[str]) -> None:
+    p, _ = held_project(make_project)
+    r = cli(p, "review", "--export", *extra)
+    assert r.exit_code == 15 and extra[0] in r.output, r.output
+    assert p.store.scalar("SELECT COUNT(*) FROM reviews") == 1  # the confirm's only
+
+
+def test_export_refuses_an_unknown_run(make_project: InitFn) -> None:
+    p, _ = held_project(make_project)
+    r = cli(p, "review", "--export", "--run", "NO-SUCH-RUN")
+    assert r.exit_code == 15 and "no run NO-SUCH-RUN" in r.output, r.output

@@ -51,6 +51,11 @@ class Action:
             if value is not None:
                 object.__setattr__(self, name, freeze(value))
 
+    def __deepcopy__(self, memo: dict[int, Any]) -> Action:
+        # read-only all the way down, so a deep copy is the Action itself; the default would
+        # skip `__post_init__` and hold the plain copies its values' `__deepcopy__` returns
+        return self
+
     def with_ticket(self, ticket: str) -> Action:
         return Action(**{**self.__dict__, "ticket": ticket})
 
@@ -162,6 +167,7 @@ def build_action(
     prefixed = {
         k: hashing.prefixed(hashing.strip_prefix(v)) for k, v in sorted(input_digests.items())
     }
+    frozen_params = freeze(params)
     return Action(
         action_id=new_id(),
         run_id=run_id,
@@ -169,11 +175,13 @@ def build_action(
         attempt=attempt,
         operation=module.manifest.operation,
         module=module.ref,
-        parameters=params,
+        parameters=frozen_params,
         param_source=source,
         inputs=prefixed,
         input_digest=hashing.prefixed(hashing.hash_json(prefixed)),
-        params_hash=hashing.prefixed(hashing.hash_json(params)),
+        # hashed as frozen, so the hash is of the values the Action holds (keys as JSON
+        # writes them) and `check_params_hash` agrees with it by construction
+        params_hash=hashing.prefixed(hashing.hash_json(frozen_params)),
         proposed_by=proposed_by,
         rationale_ref=rationale_ref,
     )

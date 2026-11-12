@@ -159,13 +159,14 @@ def when_text(ts: str | None) -> str:
     return f"{ts[:10]} {ts[11:16]} UTC" if len(ts) >= 16 else ts
 
 
-def project_entry(root: Path) -> dict[str, Any]:
+def project_entry(root: Path, *, read_only: bool = False) -> dict[str, Any]:
     """One board row. Reads: stringency.yml, holds, reviews, runs, steps, deliveries, and
-    deliver/<run>/index.json. Loads no plugin and writes nothing."""
+    deliver/<run>/index.json. Loads no plugin and writes nothing; `read_only` opens the trace
+    `mode=ro` with no migration (`board --watch`, which reads every few seconds)."""
     entry: dict[str, Any] = {"name": root.name, "path": str(root), "archived": archived(root)}
     try:
         cfg = load_model(StringencyConfig, root / "stringency.yml")
-        store = Store.open(root / "prov" / "run.db", create=False)
+        store = Store.open(root / "prov" / "run.db", create=False, read_only=read_only)
     except Exception as e:  # noqa: BLE001 - a broken project is reported, not fatal
         entry["error"] = f"{type(e).__name__}: {e}"
         return entry
@@ -373,8 +374,8 @@ def newest_change(entries: list[dict[str, Any]]) -> str | None:
     return f"Newest change: {name}, {when_text(ts)}: {what}."
 
 
-def board(root: Path) -> tuple[list[dict[str, Any]], str]:
-    entries = [project_entry(p) for p in scan_projects(root)]
+def board(root: Path, *, read_only: bool = False) -> tuple[list[dict[str, Any]], str]:
+    entries = [project_entry(p, read_only=read_only) for p in scan_projects(root)]
     return entries, render(entries, root)
 
 
@@ -390,12 +391,12 @@ def watch(
     """`board --watch` (K4): read the board every `interval` seconds and show it again when a
     project changed (the time line aside), rewriting `<root>/STATUS.md` then when `write`.
     Runs until interrupted, or for `cycles` reads. Returns how many boards were shown. Reads
-    what `board` reads; writes `STATUS.md` only."""
+    what `board` reads, each trace opened read-only with no migration; writes `STATUS.md` only."""
     last: str | None = None
     shown = 0
     done = 0
     while cycles is None or done < cycles:
-        entries, text = board(root)
+        entries, text = board(root, read_only=True)
         key = json.dumps(entries, sort_keys=True, default=str)
         if key != last:
             if write:

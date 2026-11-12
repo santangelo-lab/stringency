@@ -100,8 +100,7 @@ def review(
         False,
         "--export",
         help="write one Markdown document per resolved hold (frontmatter, then the packet) "
-        "into runs/<run>/reviews/, and deliver/<run>/reviews/ when the run is delivered; "
-        "every run, or --run",
+        "into runs/<run>/reviews/; every run, or --run",
     ),
     module: str | None = typer.Option(
         None, "--module", help="--export: one module (<name>) or one version (<name>@<version>)"
@@ -141,6 +140,33 @@ def review(
         help="--serve: read the token from this file (created, mode 600, when missing) so the URL is stable across restarts",
     ),
 ) -> None:
+    if export:
+        # --export reads the trace and records nothing: refuse what would record or show
+        # something else, rather than silently ignore it
+        given = {
+            "--hold": hold is not None,
+            "--verdict": verdict is not None,
+            "--reason": reason is not None,
+            "--choose": choose_label is not None,
+            "--replicate": replicate is not None,
+            "--correction": correction is not None,
+            "--item": item is not None,
+            "--attest": attest,
+            "--policy": policy is not None,
+            "--show": show_only,
+            "--serve": serve,
+            "--holds": batch_holds is not None,
+        }
+        clash = [k for k, v in given.items() if v]
+        if clash:
+            raise ConfigError(
+                f"--export writes the resolved holds and records nothing; it takes --run and "
+                f"--module only, not {', '.join(clash)}"
+            )
+        export_to(Project.find(), run_id, module, as_json)
+        return
+    if module is not None:
+        raise ConfigError("--module goes with --export (the rate per module is status --overrides)")
     if batch_holds:
         from stringency.review_batch import batch_view, locate_holds, record_batch
 
@@ -176,11 +202,6 @@ def review(
         )
         return
     project = Project.find()
-    if export:
-        export_to(project, run_id, module, as_json)
-        return
-    if module is not None:
-        raise ConfigError("--module goes with --export (the rate per module is status --overrides)")
     if choose_label is not None:
         if verdict is not None or correction is not None or replicate is not None:
             raise ConfigError("--choose stands in for --verdict, --correction and --replicate")

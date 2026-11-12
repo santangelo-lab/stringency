@@ -18,8 +18,7 @@ The rows of wave 3's correctness half that were left after L145 and L148, other 
   `steps.job_for`; the job's stdin carries a plain copy. `tests/test_action_immutable.py`.
 - **L37.** `review --export [--run] [--module <name>[@<version>]]` (`review_export.py`): one
   document per hold a review resolved, frontmatter above the packet written when the hold
-  opened, into `runs/<run>/reviews/` and `deliver/<run>/reviews/`; `deliver` writes them in both
-  modes. The `stringency-revise` skill in `templates/method-repo/.claude/skills/`. Design 7.6
+  opened, into `runs/<run>/reviews/` (the delivery half waits on the owner, below). The `stringency-revise` skill in `templates/method-repo/.claude/skills/`. Design 7.6
   (a paragraph) and 14.1. `tests/test_review_export.py`.
 - **K4.** The board's "Newest change" line (`board.latest_change`, `newest_change`) and
   `board --watch [--interval]` (`board.watch`). Design 14.1 and 14.4. `tests/test_board_watch.py`.
@@ -27,6 +26,18 @@ The rows of wave 3's correctness half that were left after L145 and L148, other 
   combination (every release)"; `known-good.yml` and `compat.yml` point at it (comments only).
 - `DECISIONS.md` (three entries); the four rows archived; K3 rewritten; two rows in the waiting
   table; the order note's two tables.
+
+## After the review of #35
+
+- Keys frozen as JSON writes them and the parameters hashed frozen (a default keyed by YAML
+  booleans or null had been refused on every proposal); a frozen value built frozen all the way
+  down, `__init__` inert, `.copy()` deep, `thaw` documented in design 5, YAML dumps it,
+  `deepcopy(action)` is the Action.
+- `job_for` compares the inputs the plan resolves with the Action's recorded inputs (design 5).
+- `review --export` out of `deliver`; it refuses verdict flags and an unknown run. Reviewer
+  names and packets in a delivery: the owner's (waiting table).
+- `board --watch` opens each trace `mode=ro`, no migration (`Store.open(read_only=True)`).
+- The two L106 tests now test what their names say.
 
 ## Checked
 

@@ -2,7 +2,8 @@
 
 One Markdown document per resolved hold of a run: YAML frontmatter with what the hold asked
 and how it was answered (hold, kind, predicate, step, item, module, reviewer, `via`, verdict,
-reason, the bound hashes), and below it the packet as the reviewer saw it. A method author's
+reason, the bound hashes), and below it the packet as the reviewer saw it, into the run
+directory (not the delivery: see `export_reviews`). A method author's
 agent reads these for a module version (the method template's `stringency-revise` skill),
 groups them by theme and proposes changes that cite the hold ids, as 7.6 asks of a prompt
 change. `status --overrides` gives the rate; this gives the cases behind it.
@@ -23,6 +24,7 @@ from typing import Any
 
 import yaml
 
+from stringency.exit_codes import ConfigError
 from stringency.project import Project
 
 SCHEMA = "stringency.review_export/1"
@@ -135,24 +137,24 @@ def document(project: Project, h: Any) -> str:
 def export_reviews(
     project: Project, *, run_id: str | None = None, module: str | None = None
 ) -> list[Exported]:
-    """Write one document per resolved hold into `runs/<run>/reviews/<hold>.md`, and into
-    `deliver/<run>/reviews/` when the run has a delivery. A file is rewritten whole on every
-    export. Reads: holds, steps, reviews, consensus and what the review display reads.
-    Writes: those files only; nothing in the trace."""
+    """Write one document per resolved hold into `runs/<run>/reviews/<hold>.md`, rewritten whole
+    on every export. Not into the delivery: a document names its reviewer and carries the whole
+    packet, and whether those belong in a directory meant to be shared is the owner's to rule
+    (PLAN waiting table, L37). A `run_id` the trace does not hold is refused (exit 15). Reads:
+    runs, holds, steps, reviews, consensus and what the review display reads. Writes: those
+    files only; nothing in the trace."""
+    if (
+        run_id is not None
+        and project.store.one("SELECT run_id FROM runs WHERE run_id = ?", (run_id,)) is None
+    ):
+        raise ConfigError(f"no run {run_id} in this project")
     out: list[Exported] = []
     for h in resolved_holds(project, run_id):
         if not matches_module(h, module):
             continue
-        text = document(project, h)
-        targets = [project.run_dir(h["run_id"]) / "reviews"]
-        delivered = project.root / "deliver" / h["run_id"]
-        if delivered.is_dir():
-            targets.append(delivered / "reviews")
-        paths = []
-        for d in targets:
-            d.mkdir(parents=True, exist_ok=True)
-            p = d / f"{h['hold_id']}.md"
-            p.write_text(text)
-            paths.append(p)
-        out.append(Exported(h["hold_id"], h["run_id"], _module_ref(h), paths))
+        d = project.run_dir(h["run_id"]) / "reviews"
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / f"{h['hold_id']}.md"
+        p.write_text(document(project, h))
+        out.append(Exported(h["hold_id"], h["run_id"], _module_ref(h), [p]))
     return out

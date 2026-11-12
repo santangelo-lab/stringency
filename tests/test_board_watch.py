@@ -3,8 +3,10 @@ it again when a project changed."""
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from stringency.board import BOARD_FILE, board, project_entry, watch
@@ -55,3 +57,26 @@ def test_watch_refuses_json_and_a_short_interval(tmp_path: Path) -> None:
     assert r.exit_code == 15 and "--json" in r.output
     r = runner.invoke(app, ["board", str(tmp_path), "--watch", "--interval", "0.5"])
     assert r.exit_code == 15 and "--interval" in r.output
+
+
+def test_watch_opens_each_trace_read_only_and_migrates_nothing(
+    make_project: InitFn, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stringency.db.store import Store
+
+    p = make_project(pipeline="toy-engine", execution="engine")
+    accept_hold(p.store, p.confirm_hold()["hold_id"])
+
+    def no_migration(self: Store) -> None:
+        raise AssertionError("the watch loop migrated a trace")
+
+    monkeypatch.setattr(Store, "migrate", no_migration)
+    shown: list[str] = []
+    watch(tmp_path, interval=1, write=False, show=shown.append, cycles=1, sleep=lambda _: None)
+    assert "accept on a confirm hold" in shown[0] and "could not be read" not in shown[0]
+    ro = Store.open(p.root / "prov" / "run.db", create=False, read_only=True)
+    try:
+        with pytest.raises(sqlite3.OperationalError, match="readonly"):
+            ro._conn.execute("DELETE FROM runs")
+    finally:
+        ro.close()
