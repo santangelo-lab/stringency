@@ -48,6 +48,19 @@ Two rows of wave 3: the correctness row the Xenium method's two judgment modules
 - The token sums against a real subagent or API run: the mock's counts are characters over
   four, and its dispatch responses report no usage.
 
+## After the review of PR 34
+
+An independent review found readers that still assumed one request per replicate, and one bug
+older than this branch. All fixed in 13c2a62, each with a test that fails before
+(`tests/test_per_item_readers.py`): the judge shown beside a call is the invocation that
+answered the item shown (`repeat.answering_invocation`); the distinct orderings count per item;
+the check says responses and replicates apart; an answer about another item is invalid with
+both items named; a step's tokens are its latest attempt's, every attempt's beside them; and
+each attempt of a judgment step dispatches into its own directory (`dispatch/`, then
+`dispatch-<attempt>/`), since a second attempt collected the first's responses and failed
+every nonce (confirmed on `main`). Design 10.2 and 12.2, DECISIONS (the last two entries).
+Full suite after: 749 passed, 1 skipped.
+
 ## Learned
 
 - Before this, a `per_item` request also carried the whole table and every item under a
