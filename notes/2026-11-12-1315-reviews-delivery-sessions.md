@@ -74,7 +74,7 @@ Each fix has a test that failed before it.
 - `review --policy` writes note no session (`Store.sessions_unnoted`).
 - `present` notes no session: its `presented` and `rendered` marks carry the reference, and
   `status --json` `sessions` reads them.
-- Full suite after: SUITE_AFTER.
+- Full suite after: 809 passed, 1 skipped, exit 0.
 
 ## Learned
 
