@@ -1,6 +1,6 @@
 [project]
 name = "stringency"
-version = "0.2.42"
+version = "0.2.43"
 description = "Admissibility gates, provenance trace, and review for agent-assisted analysis pipelines"
 readme = "README.md"
 requires-python = ">=3.12"
