@@ -74,7 +74,7 @@ any other way and do not reimplement any of its behavior in Python.
 The container runtime is `apptainer` or `singularity`; the engine finds either, and `probe`
 reports which and whether every image the project's method names is present and readable.
 
-**Which text of this skill to follow.** This text is for engine 0.2.42. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.43. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -220,7 +220,7 @@ stop its background task by id if you must. A resolved hold shows how it was res
 review --hold <id> --json` carries `resolution` (verdict, reason, replicate, and the item's label).
 Then `stringency run --json` again.
 
-**A step left `proposed`** (an engine newer than 0.2.42). If the engine was stopped between
+**A step left `proposed`** (engine 0.2.43). If the engine was stopped between
 recording a proposal and finishing its checks (a crash, a closed session, a command limit), the
 step stays `proposed`. `stringency run --json` takes it up: it checks the recorded proposal
 again and goes on, opening any hold the checks call for (a hold already open is kept, not
@@ -398,7 +398,7 @@ Then `run` again. A name the person gives before the run (a column, a value, a n
 convention such as a gene-symbol prefix) belongs in `objective.yml` `params:` and is never
 proposed; under the strict profile that is the only way to give one.
 
-**Taking your own proposal back** (an engine newer than 0.2.42). When the step is held only on
+**Taking your own proposal back** (engine 0.2.43). When the step is held only on
 the engine's checks of your proposal (a number in your reason that no cited cell carries, a
 name it cannot find, a value you no longer stand behind), you may say it again instead of
 putting it to the person: `stringency propose <step> --withdraw --reason "<what was wrong>"`,
@@ -606,7 +606,7 @@ their words as the reason, and do not ask it again. Ask only what the question l
 one at a time, and when an ask offers options say what each is for and which fits this
 design. Never set a parameter nobody asked about.
 
-**A file the person brings** (an engine newer than 0.2.42), such as a collaborator's gene-set
+**A file the person brings** (engine 0.2.43), such as a collaborator's gene-set
 table for a tool's optional input. Never write it into the project yourself and never copy it
 in with `exec`. Bring it in once with `stringency inputs add <name> <path> --type <type>
 --source "<the person's words: what the file is and where it came from>" --json`; the engine
@@ -618,10 +618,10 @@ refused; there a new file means a new project.
 
 **A held call, after the verdict.** When a call holds and the person accepts, the tool has not
 run yet: carry out the same step with `stringency propose <step id>` (the held payload's
-`after_accept` names it; on an engine newer than 0.2.42, `call --step <step id>` does the
+`after_accept` names it; from engine 0.2.43, `call --step <step id>` does the
 same). Never `call` the tool again, which starts a second step and leaves the accepted one
 waiting. `next --json` lists any accepted call not yet run under `to_carry_out`. If the person
-no longer wants it, close that one step (an engine newer than 0.2.42) with `stringency abandon
+no longer wants it, close that one step (engine 0.2.43) with `stringency abandon
 --step <step id> --reason "<their words>"`; the run stays open. A call that has already run and
 is held on what it produced is the person's to resolve; the engine refuses to close it.
 
