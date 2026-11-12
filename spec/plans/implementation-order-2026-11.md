@@ -272,9 +272,9 @@ as it was made; this one is what happened to it. `PLAN.md` "Next, in order" is t
 |---|---|---|
 | 0 | all of it (#26; the Xenium, plugin and scRNA-seq shares in their own repositories) | |
 | 1 | L168, L161, L164, L169, L162, and with them L129 and L158; L163 (b), (c), (d) and L171 built (engine 0.2.42, plugin 0.10.4, method 0.1.12 and 0.1.13) | the method's tags and the slice run again close L163 and L171; L167 needs the owner's choice |
-| 2 | L95, L146, L147, L159, L174; the first half of L114; L110, L195, L94 and L107 (2026-11-11) | the rest of L114, L160, L11, L175 |
+| 2 | L95, L146, L147, L159, L174; L114; L110, L195, L94 and L107; L160 (with L48), L11, L175 (2026-11-11) | the owner's: 0.2.43 with the operator skill's engine line, the tag, the methods' skills rendered again |
 | 3, correctness | L145, L148 | L172, L106, L80, L37, K3, K4 |
-| 3, measurement | nothing | L194, L193, L190, L155 with L191, L154 with L192, L156; L76, L173 |
+| 3, measurement | L194 (`stringency-benchmarks` pull request 2) | L193, L190, L155 with L191, L154 with L192, L156; L76, L173 |
 | 4 | nothing | all of it |
 | 5 | nothing | L100, in a session with the owner |
 
@@ -330,7 +330,7 @@ a plugin's share is what follows the engine row beside it.
 |---|---|---|---|---|
 | 0 housekeeping | one work list | stale comment, pointers | plugin README, scRNA-seq backlog | done |
 | 1 names, the benchmark path | names, limits band, `via: policy`, exit 22 | | plugin 0.10.4; scRNA-seq 0.1.12, 0.1.13; benchmarks | built; the owner's tags and the rerun left |
-| 2 hold and proposal friction | the rest of L114, L160, L11, L175 (L110, L195, L94 and L107 built 2026-11-11) | follows in X4 | | half done |
+| 2 hold and proposal friction | all built 2026-11-11 (L110, L195, L94, L107, L114, L160, L11, L175) | follows in X4 | | built; the owner's tag left |
 | 3 correctness, measurement | L172, L106, L80, L37, K3, K4; L193 | | benchmarks L194; beta L190 to L192, L154 to L156 | two rows done |
 | X the Xenium method's debt | | X1 to X6 below | plugin: L186, the organs' vocabulary, the delivery step's types | not started |
 | 4 lineage assignment | L98, L99, L117, L119, L120, L176 | | plugin 0.10.5; scRNA-seq M1 to M12 | not started |
@@ -346,7 +346,7 @@ a plugin's share is what follows the engine row beside it.
 | X4 | The method's side of three engine rows: `apply-labels` reads a person's chosen replicate and whole correction (its 3.18, after L110); the outlier prompt's wording once a rationale may name a time point or a punch (1.10, after L195); the decision blocks sign off once under `run` and the bridge predicate leaves the gates (3.4, after L100) | L110, L195, L100 | S each |
 | X5 | Eleven organs (L197). The pre-stringency analysis ran brain, heart, kidney, lymph node, large intestine, skin and female reproductive tract beside the four the method knows: `analysis/upstream/tissue_configs.yaml` has each one's thresholds, dimensions and resolution, and each tissue's `run_annotation_<Tissue>.R` the labels a person settled on. Per organ: the option, the defaults, the labels mapped to ontology ids with markers on the panel, the guide's section | the owner's reading of each organ's list | L in all; an organ at a time |
 | X6 | The delivery step (L198), rebuilt from the pre-stringency seventh module: per-cell protein intensity from an aligned immunofluorescence image, a threshold from the design's control level per slide and tissue, two transcript probes at count thresholds; the delivered fraction per replicate, cell type and domain; protein against transcript. Under the gate: the image and alignment as declared inputs, the threshold's control recorded, the per-cell join guarded, controls with a planted positive population | nothing to start; the plugin's object types and operations with it | L |
-| X7 | The method's small debts: the stale `selected_by` and `MODULE` strings (kept for identical outputs), the confidence-flag hold's wording (8.4), a tool's sources as a `cites:` key once the template takes one (7.6, L175) | L175 for the last | S |
+| X7 | The method's small debts: the stale `selected_by` and `MODULE` strings (kept for identical outputs), the confidence-flag hold's wording (8.4), a tool's sources as a `cites:` key once the template takes one (7.6, L175) | nothing since L175 was built (2026-11-11) | S |
 
 **What X5 and X6 take from the earlier work, and what they do not.** The thresholds, the
 label lists, the three readouts and the threshold rule are a person's settled choices and are

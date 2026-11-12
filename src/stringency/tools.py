@@ -88,6 +88,21 @@ def _candidates(site: Site) -> list[dict[str, Any]]:
                 c["upstream_input"] = i.upstream_input.input
                 c["binds_by_name"] = True
             out.append(c)
+        # a person's files added after init (L160): bound only when named
+        from stringency.added_inputs import item_of, recorded
+
+        for payload in recorded(site.store).values():
+            item = item_of(site.root, payload)
+            out.append(
+                {
+                    "ref": f"$inputs.{item.name}",
+                    "name": item.name,
+                    "type": item.type,
+                    "path": item.path,
+                    "added_by_person": item.source,
+                    "binds_by_name": True,
+                }
+            )
         run = site.store.one(
             "SELECT run_id FROM runs WHERE kind='run' ORDER BY started DESC, rowid DESC LIMIT 1"
         )
@@ -225,6 +240,21 @@ def _words(
             paths = list(open_block.get("paths") or []) + list(ob.get("paths") or [])
             open_block = {**open_block, **ob, "paths": paths}
     return words, open_block, notes, followed
+
+
+def tool_sources(site: Site) -> dict[str, list[str]]:
+    """Each tool's `cites` from the method's analyze files (L175), by module name: the papers or
+    resources the tool's method is taken from, in the method's words. Tools that cite nothing
+    are absent. Reads the skill files only; malformed files give nothing."""
+    words, _, _, _ = _words(site)
+    out: dict[str, list[str]] = {}
+    for name, w in words.items():
+        cites = w.get("cites")
+        if isinstance(cites, list):
+            kept = [str(c).strip() for c in cites if isinstance(c, str) and c.strip()]
+            if kept:
+                out[name] = kept
+    return out
 
 
 def _tool_entry(
@@ -388,6 +418,8 @@ def render_tools(payload: dict[str, Any]) -> str:
             lines.append(f"  use when: {w['use_when']}")
         if w.get("not_for"):
             lines.append(f"  not for: {w['not_for']}")
+        if isinstance(w.get("cites"), list) and w["cites"]:
+            lines.append("  sources: " + "; ".join(str(c) for c in w["cites"]))
         for name, spec in t["inputs"].items():
             cands = ", ".join(
                 str(c.get("ref") or c.get("delivered"))
@@ -424,6 +456,11 @@ def render_tools(payload: dict[str, Any]) -> str:
                 lines.append(
                     f"  {p.get('answers')}: {by}"
                     + (f"; needs {p['needs']}" if p.get("needs") else "")
+                    + (
+                        "; sources: " + "; ".join(str(c) for c in p["cites"])
+                        if isinstance(p.get("cites"), list) and p["cites"]
+                        else ""
+                    )
                 )
     ctx = payload.get("context")
     if ctx:

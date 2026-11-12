@@ -14,22 +14,28 @@ from stringency.exit_codes import ConfigError
 from stringency.modules import parse_module_ref
 
 REF = re.compile(
-    r"^\$(?P<kind>inputs|steps)\.(?P<a>[A-Za-z0-9_.*-]+?)(?:\.(?P<b>[A-Za-z0-9_*-]+))?$"
+    r"^\$(?P<kind>inputs|steps|parent)\.(?P<a>[A-Za-z0-9_.*-]+?)(?:\.(?P<b>[A-Za-z0-9_*-]+))?$"
 )
 
 
 class Ref(BaseModel):
+    """`$inputs.<name>`, `$steps.<id>.<out>`, or `$parent.<id>.<out>` (L11, 2026-11-11): the
+    output of a step in the run a fork was opened from. A `$parent` reference is no edge of
+    the DAG; it resolves only in a forked run and to nothing in any other, so the input it
+    binds must be optional on its module (lint)."""
+
     model_config = ConfigDict(frozen=True)
-    kind: str  # inputs | steps
+    kind: str  # inputs | steps | parent
     name: str  # input name, or step id
-    output: str | None = None  # output name for steps
+    output: str | None = None  # output name for steps and parent
 
     @classmethod
     def parse(cls, text: str) -> Ref:
         m = REF.match(text)
         if not m:
             raise ConfigError(
-                f"bad reference {text!r}; expected $inputs.<name> or $steps.<id>.<out>"
+                f"bad reference {text!r}; expected $inputs.<name>, $steps.<id>.<out> or "
+                "$parent.<id>.<out>"
             )
         kind, a, b = m.group("kind"), m.group("a"), m.group("b")
         if kind == "inputs":
@@ -38,10 +44,10 @@ class Ref(BaseModel):
                 a = f"{a}.{b}"
             return cls(kind="inputs", name=a)
         if b is None:
-            raise ConfigError(f"bad reference {text!r}; $steps needs <id>.<output>")
+            raise ConfigError(f"bad reference {text!r}; ${kind} needs <id>.<output>")
         if "*" in a or "*" in b:
             raise ConfigError(f"bad reference {text!r}; a glob binds $inputs only")
-        return cls(kind="steps", name=a, output=b)
+        return cls(kind=kind, name=a, output=b)
 
     @property
     def pattern(self) -> bool:
@@ -385,6 +391,12 @@ class Pipeline(BaseModel):
             for pred in s.predecessors():
                 if pred not in known:
                     raise ValueError(f"step {s.id} references unknown step {pred}")
+            for rs in s.refs().values():
+                for r in rs:
+                    if r.kind == "parent" and r.name not in known:
+                        raise ValueError(
+                            f"step {s.id} references unknown step {r.name} of the parent run"
+                        )
         self._order()  # raises on cycles
         for s in self.steps:
             for pname, decl in s.params.items():

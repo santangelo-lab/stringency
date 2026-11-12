@@ -13,14 +13,14 @@ from stringency.board import refresh_if_present
 from stringency.cli.common import DETACH_HELP, detach_now, emit, handle_errors
 from stringency.cli.verb_propose import parse_sets
 from stringency.controls import ControlResult, ensure_current
-from stringency.exit_codes import ConfigError, Exit, StringencyError
+from stringency.exit_codes import ConfigError, Exit, RefusedError, StringencyError
 from stringency.machine import StepStatus
 from stringency.notify import notify_after
 from stringency.project import Project
 from stringency.questions import open_for_questions, question
 from stringency.resources import Override
 from stringency.runloop import next_step
-from stringency.steps import execute_engine, propose_tool
+from stringency.steps import execute_engine, propose_tool, resume_after_hold
 
 ASKED_BY = ("agent", "person")
 
@@ -37,7 +37,13 @@ def parse_ins(ins: list[str]) -> dict[str, str]:
 
 @handle_errors
 def call(
-    tool: str = typer.Argument(..., help="a module of the method that lists open"),
+    tool: str | None = typer.Argument(None, help="a module of the method that lists open"),
+    step: str | None = typer.Option(
+        None,
+        "--step",
+        help="carry out the step an earlier call held, once its hold is accepted: the same "
+        "tool, inputs and values, and no new step; takes no --in, --set or --reason",
+    ),
     question_id: str | None = typer.Option(None, "--question", help="the question this answers"),
     ins: list[str] = typer.Option(
         [], "--in", help="<input>=<$inputs.name | $steps.id.out | artifact id>; repeatable"
@@ -77,7 +83,37 @@ def call(
     project = Project.find()
     rc = open_for_questions(project)
     rc.resource_override = override
-    if question_id is not None:
+    if step is not None:
+        # the call that held is resumed by naming its step (L114): what was accepted is carried
+        # out, unchanged. A second `call` of the tool would propose a second step and leave
+        # this one admissible for good.
+        if ins or sets or reason or gives or question_id:
+            raise ConfigError(
+                "--step carries out the call that was accepted, unchanged; it takes no --in, "
+                "--set, --reason, --gives or --question"
+            )
+        entry = rc.on_demand_entry(step)
+        if entry is None or entry.get("kind") != "tool":
+            raise ConfigError(f"{step} is not a tool call of this run")
+        held_tool = str(entry["decl"].get("module") or "").split("@")[0]
+        if tool is not None and tool != held_tool:
+            raise ConfigError(f"step {step} is a call of {held_tool}, not of {tool}")
+        tool = held_tool
+        current = rc.step_status().get(step)
+        if current == str(StepStatus.HELD):
+            raise RefusedError(
+                f"step {step} is still held: a person resolves its hold first "
+                "(`stringency next` names it)"
+            )
+        if current != str(StepStatus.ADMISSIBLE):
+            raise RefusedError(
+                f"step {step} is {current}; only a call whose hold was accepted and that has "
+                "not run is carried out by --step"
+            )
+        question_id = entry.get("question_id")
+    elif tool is None:
+        raise ConfigError("call needs a tool, or --step <id> to carry out a call that was held")
+    elif question_id is not None:
         question(rc, question_id)  # must be a question of this run
     # a tool the method tested is checked before its first step here, so its answer can be
     # trusted (2026-10-19); a failing control is recorded and the step still runs, untested
@@ -89,19 +125,23 @@ def call(
             controls = ensure_current(project, module, rc.env_digests.get(module.manifest.env))
         except StringencyError as e:  # a control that cannot run leaves the tool untested
             control_error = str(e)
-    prop = propose_tool(
-        rc,
-        tool,
-        parse_ins(ins),
-        parse_sets(
-            sets,
-            (module.manifest.params_schema.get("properties") if module is not None else None),
+    prop = (
+        resume_after_hold(rc, step)
+        if step is not None
+        else propose_tool(
+            rc,
+            tool,
+            parse_ins(ins),
+            parse_sets(
+                sets,
+                (module.manifest.params_schema.get("properties") if module is not None else None),
+            )
+            or None,
+            reason,
+            source=asked_by,
+            question_id=question_id,
+            gives=gives,
         )
-        or None,
-        reason,
-        source=asked_by,
-        question_id=question_id,
-        gives=gives,
     )
     status = prop.status
     message = ""

@@ -462,10 +462,24 @@ def lint_pipeline(
     for step in pipeline.steps:
         for name, refs in step.refs().items():
             for ref in refs:
-                if ref.kind == "steps" and ref.output not in outputs.get(ref.name, set()):
+                if ref.kind in ("steps", "parent") and ref.output not in outputs.get(
+                    ref.name, set()
+                ):
                     report.error(
                         where, f"step {step.id} input {name} references {ref}, which does not exist"
                     )
+        # `$parent.<step>.<out>` (L11) resolves to nothing outside a fork: the input is optional
+        mod = modules.get(step.module)
+        for name, refs in step.refs().items():
+            if not any(r.kind == "parent" for r in refs) or mod is None:
+                continue
+            pspec = mod.manifest.inputs.get(name)
+            if pspec is not None and not pspec.optional:
+                report.error(
+                    where,
+                    f"step {step.id} input {name} binds the parent run's output; it resolves "
+                    f"only in a fork, so the input must be optional on {mod.ref}",
+                )
     _lint_when(pipeline, modules, report, where)
     _lint_decisions(pipeline, modules, report, where, policy)
 

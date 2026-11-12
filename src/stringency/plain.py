@@ -84,9 +84,18 @@ def stop_sentence(
         n_q = len(detail.get("questions") or [])
         n_a = len([a for a in (detail.get("answers") or []) if a.get("status") == "admissible"])
         n_f = len(detail.get("findings") or [])
+        waiting = detail.get("to_carry_out") or []
+        tail = ""
+        if waiting:
+            n_w = len(waiting)
+            tail = (
+                f" {number_word(n_w).capitalize()} approved tool "
+                f"{'call has' if n_w == 1 else 'calls have'} not been run yet."
+            )
         return (
             f"Open for questions: {number_word(n_q)} asked, {number_word(n_a)} answered, "
             f"{number_word(n_f)} marked as findings; nothing here changes the delivered files."
+            + tail
         )
     if kind == "runnable":
         skip = detail.get("skip")
