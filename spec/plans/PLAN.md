@@ -91,10 +91,9 @@ X. **The Xenium method's debt** (the owner, 2026-11-11; L196; section 10 of the 
    recovers), and on 2026-11-11 the rest: L114 (an accepted tool call is carried out as the
    same step, `call --step`; one nobody wants is closed, `abandon --step`), L160 with L48 (a
    person's file in an open project, `inputs add`), L11 (`$parent.<step>.<output>` in a
-   fork) and L175 (a tool's `cites:`). The version is 0.2.43 with the operator skill's
-   engine line (2026-11-12, its own pull request; it also carries wave 3's L172, L193, L106, L37,
-   K4). Left, the owner's: the tag, the install, and every method's skills rendered again (the
-   qualifier line gained a field). The
+   fork) and L175 (a tool's `cites:`). Released as 0.2.43 (2026-11-12, tagged and
+   installed; it also carries wave 3's L172, L193, L106, L37, K4). 0.2.44 (2026-11-12) adds #37:
+   hold reviews in the delivery and a `session` event whenever a new session works on a run. The
    Xenium method's X7 can now move its citations into `cites:`.
 3. **Small correctness, and measurement.** Two halves.
    - *Correctness.* Done: L145, L148, L172 (`per_item` numbers replicates by the module);

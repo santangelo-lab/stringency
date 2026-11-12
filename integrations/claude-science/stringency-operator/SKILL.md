@@ -74,7 +74,7 @@ any other way and do not reimplement any of its behavior in Python.
 The container runtime is `apptainer` or `singularity`; the engine finds either, and `probe`
 reports which and whether every image the project's method names is present and readable.
 
-**Which text of this skill to follow.** This text is for engine 0.2.43. The engine installs its own
+**Which text of this skill to follow.** This text is for engine 0.2.44. The engine installs its own
 copy of this skill beside itself, and a held `run --json` payload names it as `operator_skill`.
 The first time a payload names it, read that file once. If it is not this text, it is the version
 that matches the engine you are driving: follow it for the rest of the session, and tell the
@@ -97,8 +97,8 @@ whose `PRE` line carries it (the person renders
 the brief with `--app-version`, read from the app's own version display). If the brief carries
 none and nothing in your context states the version, write `unknown`. Never guess a value.
 The engine records these when it opens a run, on every relayed review, and the first time a
-session changes a run that an earlier session opened, so the trace names every session that
-worked on it; `review --attest` is refused (exit 16) when no session reference is known. In Claude Code, which exports its own
+session changes a run that an earlier session opened (engine 0.2.44), so the trace names every
+session that worked on it; `review --attest` is refused (exit 16) when no session reference is known. In Claude Code, which exports its own
 session id and version, set only `STRINGENCY_OPERATOR=claude-code` or nothing at all: from engine
 0.2.15 the engine reads the version and the session id itself. Never invent a session name.
 
