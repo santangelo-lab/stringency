@@ -234,13 +234,34 @@ def perturbed_values(
     return out
 
 
+def item_values(values: dict[str, Any], ev: Evidence, items_from: str, item: str) -> dict[str, Any]:
+    """The prompt values of one `per_item` request (backlog L172): `items` is the one item, and
+    the items table in `evidence_table` and `evidence_tables` keeps that item's row only, so the
+    request asks about its item alone, as the item schema it answers with expects. Other tables
+    and the vocabulary (in the replicate's ordering) are as the replicate reads them."""
+    out = dict(values)
+    if "items" in out:
+        out["items"] = [item]
+    main = ev.tables[items_from]
+    rows = [main.rows[item]] if item in main.rows else []
+    tsv = table_to_tsv(list(main.columns), rows)
+    if "evidence_table" in out:
+        out["evidence_table"] = tsv
+    if "evidence_tables" in out:
+        out["evidence_tables"] = {**out["evidence_tables"], items_from: tsv}
+    return out
+
+
 def assemble_requests(
     rc: RunContext, plan: StepPlan, ev: Evidence, action_id: str, template_rel: str
 ) -> tuple[list[Request], str, dict[str, Any]]:
     """Every request of a judgment step with its own rendered prompt (design 3.5 step 3; one
     ordering per replicate, L83): the requests, the canonical prompt's hash, and the schema.
-    Used by `execute_judgment` and by `check_responses` so the two cannot drift. Writes:
-    messages (each rendered prompt, content-addressed; the evidence texts)."""
+    Under `all_items` a replicate is one request numbered by the replicate; under `per_item` it
+    is one request per item, each carrying the module's replicate and its item apart and
+    numbered by its place in the step (L172), its prompt rendered for that item alone. Used by
+    `execute_judgment` and by `check_responses` so the two cannot drift. Writes: messages (each
+    rendered prompt, content-addressed; the evidence texts)."""
     m = plan.module.manifest
     assert m.judgment is not None and m.prompt is not None
     store = rc.store
@@ -256,38 +277,34 @@ def assemble_requests(
     evidence = {n: {r: dict(v) for r, v in t.rows.items()} for n, t in ev.tables.items()}
     for text in ev.texts.values():
         store.store_message(hashing.hash_text(text), text)  # exactly what the model saw
-    prompts: dict[int, str] = {}
-    perts: dict[int, dict[str, Any] | None] = {}
+
+    declared = m.prompt.vars
+
+    def rendered(values: dict[str, Any]) -> str:
+        prompt = render(template_text, declared, values) + suffix
+        store_prompt(store, prompt)
+        return prompt
+
+    reqs: list[Request] = []
     for rep in range(1, m.judgment.replicates + 1):
         pert = perturbation_for(action_id, rep, list(ev.items), vocab)
-        prompt = (
-            render(
-                template_text,
-                m.prompt.vars,
-                perturbed_values(base, ev, m.judgment.items_from, pert),
-            )
-            + suffix
-        )
-        store_prompt(store, prompt)
-        prompts[rep], perts[rep] = prompt, pert
-    reqs: list[Request] = []
-    n = 0
-    for rep in range(1, m.judgment.replicates + 1):
+        values = perturbed_values(base, ev, m.judgment.items_from, pert)
         if m.judgment.batching == "per_item":
-            for idx, _ in enumerate(ev.items):
-                n += 1
+            for idx, item in enumerate(ev.items):
+                n = len(reqs) + 1
                 reqs.append(
                     Request(
-                        n,
+                        rep,
                         f"{action_id}-{n}",
-                        prompts[rep],
+                        rendered(item_values(values, ev, m.judgment.items_from, item)),
                         schema,
                         tuple(ev.items),
                         plan.module.ref,
                         template_rel,
                         evidence,
                         idx,
-                        perturbation=perts[rep],
+                        perturbation=pert,
+                        request_no=n,
                     )
                 )
         else:
@@ -295,16 +312,16 @@ def assemble_requests(
                 Request(
                     rep,
                     f"{action_id}-{rep}",
-                    prompts[rep],
+                    rendered(values),
                     schema,
                     tuple(ev.items),
                     plan.module.ref,
                     template_rel,
                     evidence,
-                    perturbation=perts[rep],
+                    perturbation=pert,
                 )
             )
-    return reqs, hashing.hash_text(prompts[1]), schema
+    return reqs, hashing.hash_text(reqs[0].prompt) if reqs else "", schema
 
 
 def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
@@ -370,7 +387,7 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
         replicates = run_direct(harness, requests, schema, sampling)
         duration_ms: int | None = int((time.monotonic() - t0) * 1000)
     else:
-        if not request_path(dispatch_dir, requests[0].replicate).exists():
+        if not request_path(dispatch_dir, requests[0].number).exists():
             raise ConfigError(
                 f"step {action.step_id} is dispatching but {dispatch_dir} has no request files"
             )
@@ -418,11 +435,7 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
                     context={
                         "phase": "post",
                         "invalid_replicates": invalid,
-                        "errors": {
-                            str(r.index): (r.invocations[-1].error if r.invocations else None)
-                            for r in replicates
-                            if not r.valid
-                        },
+                        "errors": {str(r.index): r.error for r in replicates if not r.valid},
                     },
                 ),
             )
@@ -600,7 +613,7 @@ def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
 
     with tempfile.TemporaryDirectory() as td:
         for req, response in zip(requests, doc["responses"], strict=True):
-            response_path(Path(td), req.replicate).write_text(json.dumps(response))
+            response_path(Path(td), req.number).write_text(json.dumps(response))
         replicates = collect_dispatch(harness, requests, schema, Path(td))
     refuse_operator_replicates(rc, replicates)
     rule = rc.project.policy.agreement_rule(rc.project.config.profile)
@@ -662,7 +675,7 @@ def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
             {
                 "replicate": r.index,
                 "valid": r.valid,
-                "error": r.invocations[-1].error if r.invocations and not r.valid else None,
+                "error": r.error if not r.valid else None,
             }
             for r in replicates
         ],
@@ -818,8 +831,8 @@ def replicates_from_trace(
         if idx in invalid or not items:
             out.append(Replicate(idx, None, False, []))
             continue
-        structured = items[0] if m.judgment.batching == "per_item" else {"items": items}
-        out.append(Replicate(idx, structured, True, []))
+        # one shape under either batching: a per_item replicate is its items gathered (L172)
+        out.append(Replicate(idx, {"items": items}, True, []))
     return out
 
 

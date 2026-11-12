@@ -613,7 +613,9 @@ def dispatch_target(rc: RunContext, doc: Any) -> tuple[Path, list[Path]]:
     if not manifest_path.exists():
         raise ConfigError(f"{manifest_path} is missing")
     manifest = json.loads(manifest_path.read_text())
-    expected = int(manifest["replicates"])
+    # one response per request, which under `per_item` is one per replicate and item (L172);
+    # the manifest's `replicates` is the module's replicate count
+    expected = len(manifest["responses"])
     got = len(doc["responses"])
     if got != expected:
         raise RefusedError(

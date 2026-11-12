@@ -176,6 +176,53 @@ def fit_coverage(rc: RunContext) -> dict[str, Any]:
     }
 
 
+def judge_tokens(store: Any, run_id: str, step_id: str | None = None) -> dict[str, Any]:
+    """The judges' token counts over a run's invocations, or one step's (backlog L193): the
+    number of calls (retries included), the sums of `tokens_in` and `tokens_out` over the calls
+    that reported them, and how many calls reported none. A sum over no reported count is None,
+    never zero, so a harness that reports nothing (the subagent harness, usually) reads as
+    missing. The judges only: the operator's own session is outside the trace. Reads:
+    invocations."""
+    sql = (
+        "SELECT COUNT(*) AS calls, SUM(tokens_in) AS tin, SUM(tokens_out) AS tout, "
+        "COALESCE(SUM(tokens_in IS NULL), 0) AS no_in, COALESCE(SUM(tokens_out IS NULL), 0) AS no_out "
+        "FROM invocations WHERE run_id = ?"
+    )
+    params: tuple[str, ...] = (run_id,)
+    if step_id is not None:
+        sql += " AND step_id = ?"
+        params = (run_id, step_id)
+    row = store.one(sql, params)
+    return {
+        "calls": int(row["calls"] or 0),
+        "tokens_in": None if row["tin"] is None else int(row["tin"]),
+        "tokens_out": None if row["tout"] is None else int(row["tout"]),
+        "calls_without_tokens_in": int(row["no_in"]),
+        "calls_without_tokens_out": int(row["no_out"]),
+    }
+
+
+def tokens_text(t: dict[str, Any]) -> str:
+    """One clause for `judge_tokens`: the totals, and the calls that reported no count, so a
+    partial total is read as partial and a missing one as missing."""
+    calls = int(t["calls"])
+    noun = "call" if calls == 1 else "calls"
+    if t["tokens_in"] is None and t["tokens_out"] is None:
+        return f"tokens not reported by any of {calls} {noun}"
+    tin = "none reported" if t["tokens_in"] is None else str(t["tokens_in"])
+    tout = "none reported" if t["tokens_out"] is None else str(t["tokens_out"])
+    text = f"tokens {tin} in, {tout} out over {calls} {noun}"
+    no_in, no_out = int(t["calls_without_tokens_in"]), int(t["calls_without_tokens_out"])
+    if no_in == no_out and no_in:
+        text += f"; {no_in} of them reported no count, so the totals are partial"
+    elif no_in or no_out:
+        text += (
+            f"; {no_in} reported no input count and {no_out} no output count, "
+            "so the totals are partial"
+        )
+    return text
+
+
 def coverage_data(rc: RunContext) -> dict[str, Any]:
     store, run = rc.store, rc.run
     from stringency.audit import audit_lines
@@ -318,6 +365,8 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
                 "unresolved": sources.get("unresolved", 0),
                 "cumulative_overrides": cum_counts.get("override", 0),
                 "cumulative_items": cum_items,
+                # the judges' tokens on this step (L193); a missing count stays missing
+                "tokens": judge_tokens(store, rc.run_id, step.id),
             }
         )
 
@@ -415,6 +464,9 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "ungated_steps": ungated,
         },
         "judgment": judgment,
+        # the judges' tokens over every judgment call of the run (L193), steps not listed above
+        # (a judgment step with no consensus yet, an open-mode tool) included
+        "judgment_tokens": judge_tokens(store, rc.run_id),
         "controls": [
             {
                 "module": f"{c['module']}@{c['module_version']}",
@@ -555,8 +607,15 @@ def render_coverage(d: dict[str, Any]) -> str:
             lines.append(
                 f"    reviews: {j['accepted']} accepted, {j['override']} override, {j['unresolved']} unresolved; override rate this run {j['override']}/{j['items']}; cumulative for this module version {j['cumulative_overrides']}/{j['cumulative_items']}"
             )
+            if j.get("tokens"):
+                lines.append(f"    judges: {tokens_text(j['tokens'])}")
     else:
         lines.append("  none")
+    jt = d.get("judgment_tokens")
+    if jt and jt["calls"]:
+        lines.append(
+            f"  judges over the run: {tokens_text(jt)}; the operator's own session is not counted"
+        )
     lines.append("")
     for f in d.get("forks") or []:
         values = ", ".join(str(v) for v in f["values"])

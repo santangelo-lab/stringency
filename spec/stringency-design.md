@@ -355,7 +355,7 @@ Under either runner, a non-zero exit is a `failed` step, distinct from any gate 
 7. Post-gate predicates run on every replicate and on the consensus.
 8. If any hold exists the step is `held` and `run` exits with code 10.
 
-Batching: `all_items` puts every item in one prompt so the model can reason relatively across clusters, which is how a human annotator works. `per_item` gives cleaner independence at higher cost. The manifest chooses and the trace records which.
+Batching: `all_items` puts every item in one prompt so the model can reason relatively across clusters, which is how a human annotator works. `per_item` gives cleaner independence at higher cost. The manifest chooses and the trace records which. Under `per_item` (amended 2026-11-11, backlog L172) a replicate is one request per item: each request carries the module's replicate and its item apart, its prompt is rendered for that item alone (`items` is the one item and the items table keeps that item's row; other tables and the replicate's ordering of the vocabulary as under `all_items`), and the engine gathers a replicate's requests into one answer of the `all_items` shape before consensus and the post-gate, so the replicate count is the module's under either batching and the same answers decide alike. A replicate is valid only when every one of its requests is, as one invalid response makes an `all_items` replicate invalid. Each invocation row carries the module's replicate and its request's own nonce, and its sampling record names the item.
 
 ### 3.6 Report modules
 
@@ -975,7 +975,8 @@ Invocation:
 
 ```
 runs/<run_id>/<step_id>/dispatch/
-  manifest.json          {"step_id", "action_id", "replicates": 3, "schema": "schema.json", "nonce_prefix": "…"}
+  manifest.json          {"step_id", "action_id", "replicates": 3, "schema": "schema.json", "nonce_prefix": "…",
+                          "requests": […], "responses": […]}
   req_1.json             {"replicate": 1, "nonce": "01J9K…-1", "prompt": "<rendered prompt>", "schema": {…}}
   req_2.json
   req_3.json
@@ -984,6 +985,8 @@ runs/<run_id>/<step_id>/dispatch/
   resp_2.json
   resp_3.json
 ```
+
+Under `batching: per_item` the files are numbered by request, not by replicate (amended 2026-11-11, L172): three items at three replicates are `req_1.json` to `req_9.json`, replicate 1's items first, each carrying `"replicate"` (the module's, 1 to 3) and `"item"`; the manifest's `replicates` stays the module's count, and `run --responses` expects one response per request, as the manifest's `responses` lists them.
 
 The prompt text ends with a fixed instruction the engine appends: return only JSON matching the schema, include the nonce verbatim, and report in `reported` what model and tools you had. `run` writes the requests, marks the step `dispatching`, prints the directory and the replicate count, and exits 20. The skill wrapper then spawns one fresh subagent per request, with tools restricted to reading that request file and writing its response file where the operator harness supports tool restriction, and passes the request file path rather than the prompt text so the session agent never handles the prompt. On the next `run`, the engine reads every response, validates the schema, checks `nonce` equals the request's nonce, hashes the response into `messages`, and proceeds exactly as for a direct invocation. A missing or unparseable response after the operator reports completion marks that replicate `invalid`. Requests are never rewritten on resume; a step re-dispatched after an `invalid` replicate gets fresh nonces and a new attempt.
 
@@ -1134,6 +1137,8 @@ not checked: anything not listed above
 ```
 
 The last line is deliberate. A tool that checks nineteen things will otherwise be read as having validated the analysis, and manufactured confidence is worse than no tool.
+
+Added 2026-11-11 (L193): under each judgment module a line of the judges' tokens on that step, in and out, summed from `invocations` over the calls that reported a count, with the number of calls that reported none, and a line for every judgment call of the run; a count no call reported reads as not reported, never as zero. The operator's own session is outside the trace and is not counted; the coverage data carries the same figures (`judgment[].tokens`, `judgment_tokens`).
 
 Added 2026-10-21: the forks line (L59) names every value a forked parameter took across the project's runs, this run's value and whether this run was delivered, so a sweep is visible from any one delivery; the control line names the judge that answered the control and says when it is not this run's (L3); an open run's questions line counts asked, answered and unanswerable (L60).
 

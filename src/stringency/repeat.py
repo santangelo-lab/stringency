@@ -7,7 +7,7 @@ Writes: invocations, messages (response text), judgments.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from stringency import hashing
@@ -25,10 +25,16 @@ RETRY_NOTE = (
 
 @dataclass
 class Replicate:
+    """One of the module's replicates (1 to `judgment.replicates`). Under `all_items` it is one
+    request; under `per_item` it is one request per item, gathered by `gather` (backlog L172), and
+    `structured` is `{"items": [...]}` either way. `invocations` lists every call, retries
+    included; `requests` is parallel to it, naming the request each call answered."""
+
     index: int
     structured: dict[str, Any] | None
     valid: bool
     invocations: list[Invocation]
+    requests: list[Request] = field(default_factory=list)
 
     def items(self) -> list[dict[str, Any]]:
         if not self.valid or self.structured is None:
@@ -38,11 +44,55 @@ class Replicate:
             return [dict(i) for i in items]
         return [dict(self.structured)]
 
+    @property
+    def error(self) -> str | None:
+        """Why the replicate is invalid: its last call's error, or under `per_item` the error of
+        each item whose request failed, named by the item. None when valid or unknown."""
+        if not self.invocations:
+            return None
+        if not self.requests or self.requests[-1].item is None:
+            return self.invocations[-1].error
+        last: dict[int, tuple[Request, Invocation]] = {}
+        for req, inv in zip(self.requests, self.invocations, strict=True):
+            last[req.number] = (req, inv)
+        errors = [
+            f"item {req.item}: {inv.error or 'invalid'}"
+            for req, inv in last.values()
+            if not inv.schema_valid
+        ]
+        if errors:
+            return "; ".join(errors)
+        return self.invocations[-1].error
+
 
 def validate_response(inv: Invocation, schema: dict[str, Any]) -> list[str]:
     if inv.structured is None:
         return [inv.error or "no structured response"]
     return validate(inv.structured, schema)
+
+
+def gather(per_request: list[Replicate]) -> list[Replicate]:
+    """The module's replicates from one result per request (backlog L172). Under `all_items`
+    each request is a replicate and nothing changes. Under `per_item` the requests of one
+    replicate are joined: its `structured` is `{"items": [...]}` in the requests' order (the
+    shape an `all_items` response has, so consensus and the `judg.*` gates read both alike),
+    and it is valid only when every one of its requests is, as one invalid response makes an
+    `all_items` replicate invalid. Writes nothing."""
+    if not any(r.requests and r.requests[0].item is not None for r in per_request):
+        return per_request
+    by_rep: dict[int, Replicate] = {}
+    for r in per_request:
+        rep = by_rep.setdefault(r.index, Replicate(r.index, {"items": []}, True, []))
+        rep.invocations.extend(r.invocations)
+        rep.requests.extend(r.requests)
+        if r.valid and r.structured is not None and rep.structured is not None:
+            rep.structured["items"].append(dict(r.structured))
+        else:
+            rep.valid = False
+    for rep in by_rep.values():
+        if not rep.valid:
+            rep.structured = None
+    return [by_rep[k] for k in sorted(by_rep)]
 
 
 def run_direct(
@@ -68,9 +118,10 @@ def run_direct(
                 final.structured if final.schema_valid else None,
                 final.schema_valid,
                 invs,
+                [req] * len(invs),
             )
         )
-    return out
+    return gather(out)
 
 
 def collect_dispatch(
@@ -84,10 +135,14 @@ def collect_dispatch(
             inv.error = "; ".join(errors[:5])
         out.append(
             Replicate(
-                req.replicate, inv.structured if inv.schema_valid else None, inv.schema_valid, [inv]
+                req.replicate,
+                inv.structured if inv.schema_valid else None,
+                inv.schema_valid,
+                [inv],
+                [req],
             )
         )
-    return out
+    return gather(out)
 
 
 def record_invocations(
@@ -104,11 +159,13 @@ def record_invocations(
     sampling: Sampling,
     attempt: int,
 ) -> None:
-    """Writes: invocations (one row per call, retries included), messages, judgments."""
+    """Writes: invocations (one row per call, retries included), messages, judgments. Each
+    invocation row carries the module's replicate and its request's own nonce and prompt; under
+    `per_item` its `sampling_json` names the item the request asked about (L172)."""
     by_rep = {r.replicate: r for r in requests}
     for rep in replicates:
-        req = by_rep[rep.index]
-        for inv in rep.invocations:
+        reqs = rep.requests or [by_rep[rep.index]] * len(rep.invocations)
+        for req, inv in zip(reqs, rep.invocations, strict=True):
             resp_hash = hashing.hash_text(inv.raw_text) if inv.raw_text else None
             if resp_hash:
                 store.store_message(resp_hash, inv.raw_text)
@@ -138,6 +195,7 @@ def record_invocations(
                     "sampling_json": {
                         **sampling.to_json(),
                         **({"perturbation": dict(req.perturbation)} if req.perturbation else {}),
+                        **({"item": req.item} if req.item is not None else {}),
                     },
                     "response_hash": resp_hash,
                     "schema_valid": inv.schema_valid,
@@ -204,7 +262,7 @@ def record_invocations(
                     "contradicting_json": [],
                     "rationale_ref": None,
                     "schema_valid": False,
-                    "extra_json": {"error": rep.invocations[-1].error},
+                    "extra_json": {"error": rep.error},
                     "attempt": attempt,
                 },
             )
