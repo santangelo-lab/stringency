@@ -10,7 +10,7 @@ its outputs are figures and one `figure_drawn` table, and every numeric cell of
 `figure_drawn` matches a cell of one of its tabular inputs (`drawing_check`). Anything else,
 any other exec included, is `untested`. One fixed-structure qualifier line beside the label
 names what the words would hide: flags accepted on the path, parameters outside their range,
-parameters the person set, the upstream delivery's environment status, the state of the
+parameters the person set, the files a person added after init (L160), the upstream delivery's environment status, the state of the
 tools' controls, the untested inputs (a drawing exec named with its script), and the numerals
 not checked.
 
@@ -123,7 +123,8 @@ FINDINGS_SENTENCE = (
 )
 QUALIFIER_LINE = (
     "flags accepted on the path: {flags} | parameters outside range: {ranges} | "
-    "person-set parameters: {person} | upstream: {upstream} | controls: {controls} | "
+    "person-set parameters: {person} | person-supplied inputs: {added} | "
+    "upstream: {upstream} | controls: {controls} | "
     "untested inputs: {untested} | numerals not checked: {numerals}"
 )
 SWITCH = OPEN_SWITCH
@@ -149,6 +150,7 @@ class StepFact:
     derived_from: dict[str, Any] | None = None
     upstream_input: dict[str, Any] | None = None  # kind input: an input of the upstream pipeline
     drawn: dict[str, Any] | None = None  # kind exec: `drawing_check` (L140)
+    added: dict[str, Any] | None = None  # kind input: a person's file added after init (L160)
 
     def to_json(self) -> dict[str, Any]:
         return {k: v for k, v in self.__dict__.items() if v not in (None, [], {})}
@@ -223,18 +225,47 @@ def _step_fact(rc: RunContext, step_id: str) -> StepFact:
     return fact
 
 
+def bound_input_item(rc: RunContext, step_id: str, name: str, digest: str) -> Any | None:
+    """The project input a step bound as its input `name`, whose digest is `digest` (bare
+    hex): found through the step's own reference (`$inputs.<name>`, or a glob) first, so that
+    two inputs with the same bytes (a person's added file identical to a delivered one, L160)
+    are told apart by which one was bound. None when the step's reference is a step output, or
+    when no input has the digest. A step with no readable declaration falls back to the digest
+    alone, a declared input before an added one. Reads the run's topology (step_events)."""
+    import fnmatch
+
+    items = list(rc.project.inputs.items)
+    try:
+        refs = rc.decl(step_id).refs().get(name, [])
+    except ConfigError:
+        refs = []
+    if refs:
+        named = [
+            i
+            for r in refs
+            if r.kind == "inputs"
+            for i in items
+            if (fnmatch.fnmatchcase(i.name, r.name) if r.pattern else i.name == r.name)
+        ]
+        hit = next((i for i in named if i.blake3 == digest), None)
+        if hit is not None or not named:
+            return hit
+    added = rc.project.added_inputs
+    ordered = [i for i in items if i.name not in added] + [i for i in items if i.name in added]
+    return next((i for i in ordered if i.blake3 == digest), None)
+
+
 def lineage(rc: RunContext, artifact_id: str) -> list[StepFact]:
     """Every step between the declared inputs and `artifact_id`, nearest first, then the
     inputs it rests on as `input` facts. An artifact's step's latest action names its inputs
-    by digest; a digest that is a declared input is a root, one that is a produced artifact of
-    this run is walked. An exec fact carries `drawing_check` as `drawn` (L140). Reads:
+    by digest; an input the step's reference names with that digest is a root
+    (`bound_input_item`), one that is a produced artifact of this run is walked. An exec fact carries `drawing_check` as `drawn` (L140). Reads:
     artifacts, steps, actions, executions, holds, reviews, predicate_results, controls_runs,
     and what `drawing_check` reads."""
     store = rc.store
     art = _artifact(store, rc.run_id, artifact_id)
     if art is None:
         raise ConfigError(f"no artifact {artifact_id} in run {rc.run_id}")
-    inputs_by_digest = {i.blake3: i for i in rc.project.inputs.items}
     facts: list[StepFact] = []
     seen_steps: set[str] = set()
     seen_inputs: set[str] = set()
@@ -254,9 +285,9 @@ def lineage(rc: RunContext, artifact_id: str) -> list[StepFact]:
         )
         if action is None:
             continue
-        for digest in json.loads(action["inputs_json"] or "{}").values():
+        for in_name, digest in json.loads(action["inputs_json"] or "{}").items():
             bare = str(digest).removeprefix("blake3:")
-            item = inputs_by_digest.get(bare)
+            item = bound_input_item(rc, sid, str(in_name), bare)
             if item is not None:
                 if item.name not in seen_inputs:
                     seen_inputs.add(item.name)
@@ -271,6 +302,7 @@ def lineage(rc: RunContext, artifact_id: str) -> list[StepFact]:
                             upstream_input=item.upstream_input.model_dump()
                             if item.upstream_input
                             else None,
+                            added=_added_fact(rc, item.name),
                         )
                     )
                 continue
@@ -368,11 +400,10 @@ def _bound_inputs(rc: RunContext, step_id: str) -> list[dict[str, Any]] | None:
     )
     if action is None:
         return None
-    by_digest = {i.blake3: i for i in rc.project.inputs.items}
     out: list[dict[str, Any]] = []
     for name, digest in json.loads(action["inputs_json"] or "{}").items():
         bare = str(digest).removeprefix("blake3:")
-        item = by_digest.get(bare)
+        item = bound_input_item(rc, step_id, str(name), bare)
         if item is not None:
             p = Path(item.path)
             out.append(
@@ -563,9 +594,18 @@ def _read_upstream(project: Path, run_id: str) -> str:
     return ",".join(sorted({r["step_id"] for r in rows if r["env_status"] != "verified"}))
 
 
+def _added_fact(rc: RunContext, name: str) -> dict[str, Any] | None:
+    """A person-supplied input's name, words and hash (L160), or None for a declared input."""
+    p = rc.project.added_inputs.get(name)
+    if p is None:
+        return None
+    return {"name": name, "source": p.get("source"), "blake3": p.get("blake3")}
+
+
 def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
-    """The six path fields of the qualifier line, each `none` when empty; an answer adds the
-    seventh, `numerals` (L142)."""
+    """The seven path fields of the qualifier line, each `none` when empty; an answer adds the
+    eighth, `numerals` (L142). `added` names each person-supplied input on the path with the
+    person's words (L160)."""
     flags = [
         f"{f.step_id}:{(h.get('predicate') or h.get('kind') or '').split('@')[0]}"
         for f in facts
@@ -595,10 +635,16 @@ def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
         for f in facts
         if f.kind == "exec"
     ]
+    added = [
+        f'{f.added["name"]} ("{f.added.get("source") or ""}")'
+        for f in facts
+        if f.kind == "input" and f.added
+    ]
     return {
         "flags": ", ".join(flags) or "none",
         "ranges": ", ".join(ranges) or "none",
         "person": ", ".join(person) or "none",
+        "added": ", ".join(added) or "none",
         "upstream": upstream_status(rc, facts),
         "controls": controls,
         "untested": ", ".join(untested) or "none",
@@ -608,7 +654,7 @@ def qualifier(rc: RunContext, facts: list[StepFact]) -> dict[str, str]:
 def render_qualifier(fields: dict[str, str]) -> str:
     """The qualifier line of an answer; `numerals` (L142) is the numerals the check left
     unchecked as not measurements, `none` when the fields carry none."""
-    return QUALIFIER_LINE.format(**{"numerals": "none", **fields})
+    return QUALIFIER_LINE.format(**{"numerals": "none", "added": "none", **fields})
 
 
 def drawn_tables(facts: list[StepFact]) -> str:

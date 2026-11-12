@@ -80,6 +80,16 @@ def operator_skill_path() -> Path | None:
     return p if p.is_file() else None
 
 
+def carry_out_command(rc: RunContext, step_id: str) -> str | None:
+    """The one command that carries out an on-demand step once its hold is accepted (L114): in
+    an open project `run` is not a verb and a second `call` makes a second step, so the
+    accepted step is carried out by naming it. None for a pipeline's step, which `run` takes
+    up. Reads: step_events (the run's on-demand steps)."""
+    if not rc.open_ended or rc.on_demand_entry(step_id) is None:
+        return None
+    return f"stringency propose {step_id}"
+
+
 def while_held(hold_id: str) -> dict[str, Any]:
     """What an operator needs while a person answers a hold elsewhere (backlog L14): the `wait`
     command that returns when the hold is resolved, the console's page for the hold when
@@ -248,7 +258,16 @@ def next_step(rc: RunContext) -> Next:
         return Next(
             "held",
             holds[0]["step_id"],
-            {"holds": [dict(h) for h in holds], **while_held(holds[0]["hold_id"])},
+            {
+                # an on-demand step is carried out by name once its hold is accepted (L114):
+                # each hold names its own step's command, the top level the first hold's
+                "holds": [
+                    {**dict(h), "after_accept": carry_out_command(rc, str(h["step_id"]))}
+                    for h in holds
+                ],
+                **while_held(holds[0]["hold_id"]),
+                "after_accept": carry_out_command(rc, str(holds[0]["step_id"])),
+            },
             int(Exit.HELD),
             hold_message(rc, holds),
         )
@@ -279,7 +298,11 @@ def next_step(rc: RunContext) -> Next:
                 f"awaiting execution: ticket {action.ticket} for {sid}\n" + render_job_spec(spec),
             )
         if st == StepStatus.DISPATCHING:
-            ddir = rc.project.step_dir(rc.run_id, sid) / "dispatch"
+            from stringency.harness.subagent import dispatch_dir_for, latest_attempt
+
+            ddir = dispatch_dir_for(
+                rc.project.step_dir(rc.run_id, sid), latest_attempt(rc.store, rc.run_id, sid)
+            )
             n = len(list(ddir.glob("req_*.json")))
             return Next(
                 "dispatching",
@@ -442,10 +465,28 @@ def open_next(rc: RunContext) -> Next:
     )
     if open_q:
         message += f"; unanswered: {', '.join(q['question_id'] for q in open_q)}"
+    # a tool call whose hold was accepted and that nothing has carried out (L114): named with
+    # the one command, so it is not left admissible for good
+    to_carry_out = [
+        {
+            "step_id": s["step_id"],
+            "module": s["module"],
+            "question_id": s["question_id"],
+            "command": carry_out_command(rc, s["step_id"]),
+            "close": f'stringency abandon --step {s["step_id"]} --reason "<why it is not wanted>"',
+        }
+        for s in steps
+        if s["status"] == str(StepStatus.ADMISSIBLE)
+    ]
+    if to_carry_out:
+        message += "; accepted and not yet run: " + ", ".join(
+            f"{s['step_id']} ({s['command']})" for s in to_carry_out
+        )
     return Next(
         "open",
         None,
         {
+            "to_carry_out": to_carry_out,
             "questions": questions,
             "answers": answers,
             "steps": steps,
@@ -484,7 +525,7 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
         ):
             # a step dispatched by an earlier `run`: collect if the responses are there
             collected.add(nx.step_id or "")
-            ddir = rc.project.step_dir(rc.run_id, nx.step_id or "") / "dispatch"
+            ddir = Path(str(nx.detail["dispatch_dir"]))
             if any(ddir.glob("resp_*.json")) or _mock_dispatch(rc):
                 res = resume_dispatching(rc, nx.step_id or "")
                 if res.status == StepStatus.COMPLETED:
@@ -613,7 +654,9 @@ def dispatch_target(rc: RunContext, doc: Any) -> tuple[Path, list[Path]]:
     if not manifest_path.exists():
         raise ConfigError(f"{manifest_path} is missing")
     manifest = json.loads(manifest_path.read_text())
-    expected = int(manifest["replicates"])
+    # one response per request, which under `per_item` is one per replicate and item (L172);
+    # the manifest's `replicates` is the module's replicate count
+    expected = len(manifest["responses"])
     got = len(doc["responses"])
     if got != expected:
         raise RefusedError(

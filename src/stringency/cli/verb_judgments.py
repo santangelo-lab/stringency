@@ -12,7 +12,7 @@ import typer
 
 from stringency.cli.common import OUT_HELP, emit, handle_errors
 from stringency.exit_codes import ConfigError, RefusedError
-from stringency.harness.subagent import read_requests
+from stringency.harness.subagent import dispatch_dir_for, latest_attempt, read_requests
 from stringency.present import Site, step_dir
 
 
@@ -47,7 +47,10 @@ def judgments(
         raise RefusedError(f"no step of run {run_id} is dispatching")
     sid = str(step["step_id"])
     base = step_dir(site, run_id, sid)
-    ddir = (base if base is not None else site.root / "runs" / run_id / sid) / "dispatch"
+    ddir = dispatch_dir_for(
+        base if base is not None else site.root / "runs" / run_id / sid,
+        latest_attempt(site.store, run_id, sid),
+    )
     requests = read_requests(ddir)
     manifest = ddir / "manifest.json"
     payload = {

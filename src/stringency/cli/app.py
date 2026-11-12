@@ -21,6 +21,7 @@ from stringency.cli import (
     verb_flag,
     verb_fork,
     verb_init,
+    verb_inputs,
     verb_judgments,
     verb_lint,
     verb_next,
@@ -72,6 +73,7 @@ app.command("audit")(verb_audit.audit_verb)
 app.command("probe")(verb_probe.probe)
 app.add_typer(verb_controls.app, name="controls")
 app.add_typer(verb_tools.app, name="tools")
+app.add_typer(verb_inputs.app, name="inputs")
 app.add_typer(verb_policy.app, name="policy")
 app.add_typer(verb_plugins.app, name="plugins")
 

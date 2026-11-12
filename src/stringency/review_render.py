@@ -238,12 +238,12 @@ def _item_judgments(project: Project, h: Any, attempt: int | None) -> dict[tuple
 
 
 def _replicate_view(project: Project, r: Any, tables: dict[str, EvidenceTable]) -> ReplicateView:
-    """Reads: messages (the rationale) and invocations (the replicate's latest call on the
-    step, for who answered; backlog L70)."""
-    inv = project.store.one(
-        "SELECT model_resolved, via, isolation, harness_kind FROM invocations WHERE run_id=? AND "
-        "step_id=? AND replicate=? ORDER BY rowid DESC LIMIT 1",
-        (r["run_id"], r["step_id"], r["replicate"]),
+    """Reads: messages (the rationale) and invocations (the call that answered this item for
+    this replicate, for who answered; backlog L70, and under `per_item` L172)."""
+    from stringency.repeat import answering_invocation
+
+    inv = answering_invocation(
+        project.store, r["run_id"], r["step_id"], int(r["replicate"]), str(r["item_id"])
     )
     return ReplicateView(
         replicate=r["replicate"],

@@ -7,7 +7,8 @@ Fixture:
     model: mock-model-1
     rules:
       - item: A                    # or "*"
-        replicate: "*"             # or an int, or a list of ints
+        replicate: "*"             # or an int, or a list of ints: the module's replicate,
+                                   # under per_item as under all_items
         template: "*"              # module name, template hash, or "*"
         when: {table: summary, column: mean_value, min: 60}     # optional; a list means all must hold
         judgment:
@@ -219,7 +220,7 @@ class MockHarness:
         """Write the response files a subagent would have written, then read them back."""
         out: list[Invocation] = []
         for r in requests:
-            rp = response_path(dispatch_dir, r.replicate)
+            rp = response_path(dispatch_dir, r.number)
             if not rp.exists():
                 self.calls += 1
                 structured, raw = self.answer(r)

@@ -96,8 +96,8 @@ def test_answer_blocked_on_a_wrong_numeral_then_trusted_when_the_tool_is_control
     )
     assert out["qualifier"] == (
         "flags accepted on the path: none | parameters outside range: none | person-set "
-        "parameters: none | upstream: verified | controls: current | untested inputs: none | "
-        "numerals not checked: none"
+        "parameters: none | person-supplied inputs: none | upstream: verified | controls: "
+        "current | untested inputs: none | numerals not checked: none"
     )
     assert [f["kind"] for f in out["provenance"]["lineage"]] == ["tool", "input"]
     assert out["provenance"]["lineage"][1]["derived_from"]["step_id"] == "01_filter"
@@ -345,7 +345,7 @@ def test_pinned_sentences_are_the_engines() -> None:
         assert "{matched} of {total}" in s and s.endswith(
             "Everything else in this answer is the assistant's reading."
         )
-    assert provenance.QUALIFIER_LINE.count(" | ") == 6
+    assert provenance.QUALIFIER_LINE.count(" | ") == 7
 
 
 def test_answer_cannot_records_an_unanswerable_question(questions: Project, tmp_path: Path) -> None:

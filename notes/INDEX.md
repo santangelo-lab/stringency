@@ -11,6 +11,16 @@ it is the first thing a new session reads.
   skill in the method template), K4 (the board's newest-change line, `board --watch`), L80 (the
   institutional runs listed in `docs/release.md`, a known-good row with every release). K3 left
   open: no column carries a type. Next: the owner's known-good rows; L172 is #34's.
+- (2026-11-11) `per_item` numbered by the module's replicate, and the judges' tokens (`notes/2026-11-11-1901-per-item-and-judge-tokens.md`, branch
+  `wave3-l172-l193`): L172 (a request carries its replicate and its item apart; a replicate's
+  item requests are gathered into one answer; `per_item` and `all_items` decide alike) and
+  L193 (the coverage report sums the judges' tokens per step and for the run, a missing count
+  shown as missing). Design 3.5, 10.2, 12.2; no version bump. Next: L106, L80; L190.
+- (2026-11-11) Wave 2's remainder (`notes/2026-11-11-1650-wave-2-remainder.md`, branch
+  `wave2-remainder`): L114 (`call --step`, `abandon --step`), L160 with L48 (`inputs add`),
+  L11 (`$parent.<step>.<output>`), L175 (`cites:`); the operator skill's words for these and
+  for #32. No version bump. Next: the owner's 0.2.43 bump and tag, the methods' skills rendered
+  again; wave 3.
 - (2026-11-11) A held proposal withdrawn, a step left `proposed` recovered (`notes/2026-11-11-1700-withdraw-and-recover.md`, branch
   `propose-withdraw-and-recovery`): L94 (`propose <step> --withdraw`, the status `withdrawn`,
   the owner's choice) and L107 (`run` or a bare `propose <step>` evaluates the recorded
@@ -468,6 +478,8 @@ it is the first thing a new session reads.
 ## Notes
 
 - `2026-11-11-1935-wave3-correctness.md` — L106 (read-only Action values, the hash checked before write and job), L37 (`review --export` and the revise skill), K4 (newest change, `board --watch`), L80 (the institutional list, a known-good row per release); K3 left open.
+- `2026-11-11-1901-per-item-and-judge-tokens.md` — L172 (`per_item` requests numbered apart from the module's replicate, gathered before consensus, the per-item prompt rendered for its item) and L193 (`judgment[].tokens` and `judgment_tokens` in the coverage report, missing counts kept missing).
+- `2026-11-11-1650-wave-2-remainder.md` — the rest of wave 2: an accepted tool call carried out as the same step, a person's file in an open project, a fork reading its parent's outputs, a tool's sources; the qualifier line's eighth field.
 - `2026-11-11-1700-withdraw-and-recover.md` — L94 (`propose --withdraw`: a proposal held on its pre-gate flags becomes `withdrawn`, its holds withdrawn with no review) and L107 (a step left `proposed` by an interruption is recovered from its recorded Action); the new status in 7.1.
 - `2026-11-11-1500-rationale-names-and-choices.md` — L195 (`judg.numeric_claims_match@3`: a rationale read by the answer's classifier, tested on the Lyons outlier rationales) and L110 (a person's chosen replicate and whole correction in the consensus output); the version move and what it asks of the methods.
 - `2026-11-11-1120-usage-measurement-in-the-plan.md` — where token usage is measured and why (the beta's bundle and eval store), rows L190 to L194 in wave 3, and the work list brought up to date after waves 0 and 1.

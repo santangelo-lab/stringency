@@ -22,6 +22,11 @@ class Sampling:
 
 @dataclass(frozen=True)
 class Request:
+    """One call to a judge. `replicate` is the module's replicate (1 to `judgment.replicates`)
+    whatever the batching; under `per_item` one replicate is several requests, one per item
+    (`item_index`), told apart by `request_no`, the request's place in the step's dispatch
+    (its file names and its nonce; backlog L172)."""
+
     replicate: int
     nonce: str
     prompt: str
@@ -36,6 +41,19 @@ class Request:
     # canonical order (replicate 1), else {seed, items, vocabulary}; recorded in the
     # invocation's sampling_json
     perturbation: Mapping[str, Any] | None = None
+    # the request's place among the step's requests (1-based); None means the replicate's
+    # number, as under `all_items`, where a replicate is one request
+    request_no: int | None = None
+
+    @property
+    def number(self) -> int:
+        """The request's number: `req_<number>.json`, `resp_<number>.json`."""
+        return self.request_no if self.request_no is not None else self.replicate
+
+    @property
+    def item(self) -> str | None:
+        """The one item a `per_item` request asks about; None under `all_items`."""
+        return None if self.item_index is None else self.items[self.item_index]
 
 
 @dataclass
