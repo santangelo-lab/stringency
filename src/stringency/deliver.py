@@ -48,6 +48,8 @@ class Delivery:
     answers: list[dict[str, Any]] = field(default_factory=list)
     changed: bool = True  # open mode: whether this regeneration wrote a `deliveries` row
     reviews: list[dict[str, Any]] = field(default_factory=list)  # `index.json` `reviews`
+    # an open report regenerated after an answer or a mark: the review documents left out
+    review_errors: list[dict[str, str]] = field(default_factory=list)
 
 
 @contextmanager
@@ -65,17 +67,36 @@ def review_export_stops_delivery() -> Iterator[None]:
         ) from e
 
 
-def review_documents(rc: RunContext) -> list[Document]:
-    """The run's resolved holds as documents, rendered before anything is recorded. Reads:
-    what `review_export.documents` reads. Writes: nothing."""
+def review_documents(rc: RunContext, errors: list[dict[str, str]] | None = None) -> list[Document]:
+    """The run's resolved holds as documents, rendered before anything is recorded. Without
+    `errors` a failure stops the delivery; with it the document is left out and named there
+    (an open report regenerated after its answer was already recorded). Reads: what
+    `review_export.documents` reads. Writes: nothing."""
+    if errors is not None:
+        return documents(rc.project, run_id=rc.run_id, errors=errors)
     with review_export_stops_delivery():
         return documents(rc.project, run_id=rc.run_id)
 
 
-def write_review_documents(dest: Path, docs: list[Document]) -> list[dict[str, Any]]:
-    """Write them into `<dest>/reviews/`; returns the `index.json` entries. Writes: files."""
+def write_review_documents(
+    dest: Path, docs: list[Document], errors: list[dict[str, str]] | None = None
+) -> list[dict[str, Any]]:
+    """Write them into `<dest>/reviews/`; returns the `index.json` entries. `errors` as for
+    `review_documents`. Writes: files only."""
+    if errors is not None:
+        return write_into_delivery(dest, docs, errors)
     with review_export_stops_delivery():
         return write_into_delivery(dest, docs)
+
+
+def reviews_left_out_line(errors: list[dict[str, str]]) -> str:
+    """What an answer or a mark says when its report was written without some review
+    documents: the answer is recorded; `deliver` stops until they can be written."""
+    holds = ", ".join(f"{e['hold']} ({e['error']})" for e in errors)
+    return (
+        f"the review document(s) for hold(s) {holds} could not be written and are not in the "
+        "report; everything else was recorded and written, and `deliver` stops until they can be"
+    )
 
 
 def answer_file_name(seq: int, question: str, nth: int = 1) -> str:
@@ -267,9 +288,13 @@ def deliver(
         raise RefusedError("--answer belongs to open mode; this run has a declared topology")
     if status != "completed":
         raise RefusedError(f"run {rc.run_id} is {status}; deliver needs a completed run")
-    # the review documents are rendered before the gate records anything, written before the
-    # finals are marked, and listed in index.json under its hash (the owner, 2026-11-12)
+    # the review documents are rendered and written before the gate records anything and
+    # listed in index.json under its hash (the owner, 2026-11-12); a refused gate leaves them
+    # in reviews/ with no index, and the next delivery writes the same files
     review_docs = review_documents(rc)
+    dest = project.root / "deliver" / rc.run_id
+    dest.mkdir(parents=True, exist_ok=True)
+    reviews = write_review_documents(dest, review_docs)
     finals = final_artifacts(rc, include or [])
     deliver_gate(rc, finals)
     produced_names = {a["name"] for a in finals} | {f"{a['step_id']}.{a['name']}" for a in finals}
@@ -280,9 +305,6 @@ def deliver(
         )
 
     did = new_id()
-    dest = project.root / "deliver" / rc.run_id
-    dest.mkdir(parents=True, exist_ok=True)
-    reviews = write_review_documents(dest, review_docs)
     files: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     for a in finals:
@@ -329,7 +351,7 @@ def deliver(
         "plugins": captured_plugins(store, rc.run_id),
         "delivered": now_iso(),
         "files": files,
-        "reviews": reviews,
+        **({"reviews": reviews} if reviews else {}),  # absent when none, as before 2026-11-12
         "coverage": {"file": "coverage.md", "blake3": hashing.hash_text(coverage_text)},
         "methods": {"file": "methods.md", "blake3": hashing.hash_text(methods_text)},
         "summary": {"file": "summary.md", "blake3": hashing.hash_text(summary_text)},

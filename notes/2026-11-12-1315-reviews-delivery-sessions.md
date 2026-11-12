@@ -59,6 +59,23 @@ one, and make a later session that works on an existing run leave its reference.
   beta repository's.
 - No Claude Science session was driven with the new skill text.
 
+## After the review of #37
+
+Each fix has a test that failed before it.
+- The session last recorded is read from the trace on every write, not cached per store: a
+  second process's `session` event is seen (`test_another_process_s_session_...`).
+- `answer` and `finding` regenerate the open report leniently (`strict=False`): a review
+  document that fails is left out and named, the answer is recorded once and the verb exits as
+  before; `deliver` still stops with nothing recorded.
+- `reviews` is absent from `index.json` when there are none, so an open report regenerated
+  after the upgrade writes no new row (this replaces the Altered line below).
+- The review documents are rendered and written before the deliver gate records its verdicts;
+  a write failure now leaves nothing in the trace (the test compares all three counts).
+- `review --policy` writes note no session (`Store.sessions_unnoted`).
+- `present` notes no session: its `presented` and `rendered` marks carry the reference, and
+  `status --json` `sessions` reads them.
+- Full suite after: SUITE_AFTER.
+
 ## Learned
 
 - A closed delivery's `index.json` carries `delivered`, the time, so two deliveries of the same
@@ -69,8 +86,8 @@ one, and make a later session that works on an existing run leave its reference.
 
 ## Altered
 
-- An open delivery written before this has no `reviews` key, so its next regeneration differs
-  once and writes one `deliveries` row.
+- (Superseded after the review: `reviews` is absent when empty, so an open delivery written
+  before this regenerates unchanged.)
 - No contract changed: no trace column, no exit code, no predicate; `session` is a new run
   event name, and `index.json` gains a key.
 

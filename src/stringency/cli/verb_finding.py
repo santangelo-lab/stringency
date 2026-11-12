@@ -12,6 +12,7 @@ import typer
 
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
+from stringency.deliver import reviews_left_out_line
 from stringency.exit_codes import ConfigError
 from stringency.findings import mark, place
 from stringency.project import Project
@@ -42,7 +43,7 @@ def finding(
     rc = open_for_questions(project)
     results = mark(rc, list(answer_ids), reason=reason, remove=remove)
     placed = place(rc, list(answer_ids), order=order, heading=under)
-    d = write_open_delivery(rc)
+    d = write_open_delivery(rc, strict=False)  # the marks are recorded already
     payload = {
         "schema": "stringency.finding/1",
         "run_id": rc.run_id,
@@ -70,5 +71,8 @@ def finding(
         f"report rewritten: {d.path / 'report.md'} ({len(payload['findings'])} finding(s) of "
         f"{len(d.answers)} answer(s))"
     )
+    if d.review_errors:
+        payload["review_errors"] = d.review_errors
+        lines.append(reviews_left_out_line(d.review_errors))
     refresh_if_present(project.root)
     emit(payload, as_json, "\n".join(lines))

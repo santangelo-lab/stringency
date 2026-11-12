@@ -152,17 +152,30 @@ class Document:
 
 
 def documents(
-    project: Project, *, run_id: str | None = None, module: str | None = None
+    project: Project,
+    *,
+    run_id: str | None = None,
+    module: str | None = None,
+    errors: list[dict[str, str]] | None = None,
 ) -> list[Document]:
     """Every resolved hold's document, rendered in memory, oldest hold first. Rendering is
     where an export fails (the trace, the packet file), so a caller that must not record on
-    failure renders first. Reads: what `resolved_holds`, `frontmatter` and `packet_text` read.
-    Writes: nothing."""
-    return [
-        Document(h["hold_id"], h["run_id"], h["step_id"], _module_ref(h), document(project, h))
-        for h in resolved_holds(project, run_id)
-        if matches_module(h, module)
-    ]
+    failure renders first. With `errors`, a document that fails is left out and named there
+    (`hold`, `error`) instead of raising. Reads: what `resolved_holds`, `frontmatter` and
+    `packet_text` read. Writes: nothing."""
+    out: list[Document] = []
+    for h in resolved_holds(project, run_id):
+        if not matches_module(h, module):
+            continue
+        try:
+            text = document(project, h)
+        except Exception as e:
+            if errors is None:
+                raise
+            errors.append({"hold": str(h["hold_id"]), "error": f"{type(e).__name__}: {e}"})
+            continue
+        out.append(Document(h["hold_id"], h["run_id"], h["step_id"], _module_ref(h), text))
+    return out
 
 
 def export_reviews(
@@ -187,18 +200,26 @@ def export_reviews(
     return out
 
 
-def write_into_delivery(dest: Path, docs: list[Document]) -> list[dict[str, Any]]:
+def write_into_delivery(
+    dest: Path, docs: list[Document], errors: list[dict[str, str]] | None = None
+) -> list[dict[str, Any]]:
     """Write the run's documents into `<dest>/reviews/<hold>.md` (the delivery directory) and
     return their `index.json` entries: the file relative to the delivery, the hold, step and
     module, and the blake3 of the text, so the index's hash covers them. The same trace gives
-    the same files and entries. Writes: those files only; nothing in the trace."""
+    the same files and entries. With `errors`, a file that cannot be written is left out of the
+    entries and named there instead of raising. Writes: those files only; nothing in the
+    trace."""
     entries: list[dict[str, Any]] = []
-    if not docs:
-        return entries
     d = dest / DELIVERY_DIR
-    d.mkdir(parents=True, exist_ok=True)
     for doc in docs:
-        (d / doc.name).write_text(doc.text)
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            (d / doc.name).write_text(doc.text)
+        except OSError as e:
+            if errors is None:
+                raise
+            errors.append({"hold": doc.hold_id, "error": f"{type(e).__name__}: {e}"})
+            continue
         entries.append(
             {
                 "file": f"{DELIVERY_DIR}/{doc.name}",

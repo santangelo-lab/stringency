@@ -180,18 +180,21 @@ def test_a_review_file_that_cannot_be_written_stops_deliver_before_it_is_recorde
     r = cli(p, "deliver", "--json")
     assert r.exit_code == 1, r.output
     assert "no delivery was recorded" in r.output
-    assert _recorded(p)[:2] == before[:2]
+    assert _recorded(p) == before  # the deliver gate's verdicts included
     assert p.store.scalar("SELECT COUNT(*) FROM artifacts WHERE is_final = 1") == 0
     assert not (dest / "index.json").exists()
 
 
-def test_a_run_without_resolved_holds_delivers_an_empty_list(make_project: InitFn) -> None:
+def test_a_run_without_resolved_holds_lists_no_reviews(make_project: InitFn) -> None:
     p = make_project(pipeline="toy-engine", execution="engine")
     accept_hold(p.store, p.confirm_hold()["hold_id"])
     r = cli(p, "run", "--deliver", "--json", env=MOCK)
     assert r.exit_code == 0, r.output
     dest = Path(json.loads(r.output)["delivery"]["path"])
-    assert json.loads((dest / "index.json").read_text())["reviews"] == []
+    # no key, so an index without reviews hashes as it did before (an open project's report
+    # regenerated after the upgrade is unchanged)
+    assert "reviews" not in json.loads((dest / "index.json").read_text())
+    assert json.loads(r.output)["delivery"]["reviews"] == []
     assert not (dest / "reviews").exists()
 
 
@@ -262,3 +265,73 @@ def test_an_open_delivery_carries_the_review_documents_and_regenerates_unchanged
     assert json.loads(second.output)["changed"] is False
     assert q.store.scalar("SELECT COUNT(*) FROM deliveries") == rows
     assert (dest / "index.json").read_text() == index_text
+
+
+def _open_with_a_review(q: Project) -> Any:
+    asked = json.loads(cli(q, "ask", "Is group A above B?", "--json").output)
+    r = cli(
+        q,
+        "call",
+        "compare-groups",
+        "--question",
+        asked["question_id"],
+        "--set",
+        "correction=bonferroni",
+        "--reason",
+        "the stricter one",
+        "--json",
+    )
+    assert r.exit_code == 10, r.output
+    [h] = queue(q)
+    record_review(q, h["hold_id"], "accept", reason="fine")
+    assert cli(q, "propose", h["step_id"], "--json").exit_code == 0
+    return h
+
+
+def test_an_open_report_without_reviews_has_no_reviews_key(
+    questions: Project,  # noqa: F811
+) -> None:
+    q = questions
+    asked = json.loads(cli(q, "ask", "Anything?", "--json").output)
+    r = cli(q, "answer", "--question", asked["question_id"], "--cannot", "--reason", "no data")
+    assert r.exit_code == 0, r.output
+    r = cli(q, "deliver", "--json")
+    assert r.exit_code == 0, r.output
+    assert "reviews" not in json.loads(
+        (Path(json.loads(r.output)["path"]) / "index.json").read_text()
+    )
+
+
+def test_an_answer_is_filed_once_and_reported_when_a_review_document_fails(
+    questions: Project,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An answer and a finding are recorded before the report is regenerated, so a review
+    document that cannot be rendered must neither claim nothing was recorded nor block the
+    report: the report is written without that document, the output names the hold, and
+    `deliver` itself still stops before recording anything."""
+    q = questions
+    monkeypatch.setattr("stringency.review.current_user", lambda: q.config.roles.owner)
+    h = _open_with_a_review(q)
+    answers = q.store.scalar("SELECT COUNT(*) FROM answers")
+
+    def broken(*_a: object, **_k: object) -> str:
+        raise OSError("the packet could not be read")
+
+    monkeypatch.setattr("stringency.review_export.document", broken)
+    asked = json.loads(cli(q, "ask", "Another?", "--json").output)
+    r = cli(q, "answer", "--question", asked["question_id"], "--cannot", "--reason", "no data")
+    assert r.exit_code == 0, r.output
+    assert q.store.scalar("SELECT COUNT(*) FROM answers") == answers + 1
+    assert h["hold_id"] in r.output and "not in the report" in r.output
+    assert "no delivery was recorded" not in r.output
+    run_id = str(
+        q.store.scalar("SELECT run_id FROM runs WHERE kind = 'run' ORDER BY rowid DESC LIMIT 1")
+    )
+    dest = q.root / "deliver" / run_id
+    assert (dest / "report.md").is_file()
+    assert "reviews" not in json.loads((dest / "index.json").read_text())
+    rows = q.store.scalar("SELECT COUNT(*) FROM deliveries")
+    r = cli(q, "deliver", "--json")
+    assert r.exit_code == 1 and "no delivery was recorded" in r.output, r.output
+    assert q.store.scalar("SELECT COUNT(*) FROM deliveries") == rows

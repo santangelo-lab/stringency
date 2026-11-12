@@ -216,11 +216,14 @@ def _answer_file_text(ans: dict[str, Any], entry: dict[str, Any], cited_files: l
     return "\n".join(lines) + "\n"
 
 
-def write_open_delivery(rc: RunContext) -> Delivery:
+def write_open_delivery(rc: RunContext, *, strict: bool = True) -> Delivery:
     """Regenerate `deliver/<run>/` from the trace. Refused on an abandoned run; held (exit 10)
     while the run has open holds. Returns the Delivery with `changed` set when a `deliveries`
-    row was written (the content differs from the last regeneration). Writes: see the module
-    docstring."""
+    row was written (the content differs from the last regeneration). The review documents
+    are rendered and written before anything is recorded; `strict` (`deliver`) stops on one
+    that fails, and without it (after `answer` or `finding`, whose record is already made) the
+    report is written without it and the Delivery's `review_errors` names it. Writes: see the
+    module docstring."""
     store, project = rc.store, rc.project
     if rc.status() == "held":
         raise HeldError(
@@ -232,12 +235,14 @@ def write_open_delivery(rc: RunContext) -> Delivery:
     marks = current_findings(store, rc.run_id)
     places = placements(store, rc.run_id)
     finals = answer_artifacts(rc, answers)
-    review_docs = review_documents(rc)  # before anything is recorded (2026-11-12)
-    deliver_gate(rc, finals)
+    # before anything is recorded, the gate's verdicts included (2026-11-12)
+    review_errors: list[dict[str, str]] | None = None if strict else []
+    review_docs = review_documents(rc, review_errors)
     dest = project.root / "deliver" / rc.run_id
     dest.mkdir(parents=True, exist_ok=True)
     previous = _previous_names(dest)
-    reviews = write_review_documents(dest, review_docs)
+    reviews = write_review_documents(dest, review_docs, review_errors)
+    deliver_gate(rc, finals)
 
     files: list[dict[str, Any]] = []
     by_artifact: dict[str, str] = {}
@@ -361,7 +366,7 @@ def write_open_delivery(rc: RunContext) -> Delivery:
             "plugins": captured_plugins(store, rc.run_id),
             "written": written,
             "files": files,
-            "reviews": reviews,
+            **({"reviews": reviews} if reviews else {}),  # absent when none: unchanged hash
             "coverage": {"file": "coverage.md", "blake3": hashing.hash_text(coverage_text)},
             "methods": {"file": "methods.md", "blake3": hashing.hash_text(methods_text)},
             "report": {"file": REPORT_FILE, "blake3": hashing.hash_text(report_text)},
@@ -431,6 +436,7 @@ def write_open_delivery(rc: RunContext) -> Delivery:
         entries,
         changed=changed,
         reviews=reviews,
+        review_errors=review_errors or [],
     )
 
 
