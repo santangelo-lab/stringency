@@ -83,17 +83,22 @@ republished (`integrations/claude-science/publish-skills.md` in the engine repos
 
 ## 2. Identify yourself to the trace
 
-In every command that calls stringency (in mode B, prefixed inside the command string), export:
+At the start of every session, including one that resumes a project an earlier session began,
+and in every command that calls stringency (in mode B, prefixed inside the command string),
+export:
 
     export STRINGENCY_OPERATOR=claude-science
     export STRINGENCY_OPERATOR_VERSION=<app version>
     export STRINGENCY_SESSION_REF=<your frame id>
 
-The app version comes from the session brief, whose `PRE` line carries it (the person renders
+The session reference is this session's own frame id, never one carried over from an earlier
+session, a brief, the trace or a project's files. The app version comes from the session brief,
+whose `PRE` line carries it (the person renders
 the brief with `--app-version`, read from the app's own version display). If the brief carries
 none and nothing in your context states the version, write `unknown`. Never guess a value.
-The engine records these when it opens a run and on every relayed review; `review --attest` is
-refused (exit 16) when no session reference is known. In Claude Code, which exports its own
+The engine records these when it opens a run, on every relayed review, and the first time a
+session changes a run that an earlier session opened, so the trace names every session that
+worked on it; `review --attest` is refused (exit 16) when no session reference is known. In Claude Code, which exports its own
 session id and version, set only `STRINGENCY_OPERATOR=claude-code` or nothing at all: from engine
 0.2.15 the engine reads the version and the session id itself. Never invent a session name.
 

@@ -95,6 +95,11 @@ def _encode(v: Any) -> Any:
     return v
 
 
+# a reading verb's marks, whose payload names the session itself (`present`'s `presented`
+# run event and `rendered` step event): no `session` event for them
+SELF_NAMING_EVENTS = frozenset({"presented", "rendered"})
+
+
 class Store:
     """A connection to one project's trace database."""
 
@@ -103,6 +108,7 @@ class Store:
         self.path = path
         self._columns: dict[str, tuple[str, ...]] = {}
         self._readers: list[sqlite3.Connection] = []
+        self._sessions_quiet = 0  # inside `sessions_unnoted()`: a policy reviewer's writes
 
     # -- lifecycle -----------------------------------------------------------------
 
@@ -256,16 +262,70 @@ class Store:
             self.run_event(r["run_id"], "opened", {"status": r["status"]})
 
     def run_event(self, run_id: str, event: str, payload: Mapping[str, Any] | None = None) -> int:
-        """Writes: run_events with the next seq for the run. Returns the seq."""
+        """Writes: run_events with the next seq for the run, after a `session` event when this
+        is a new session's first change to the run (`note_session`). Returns the seq."""
         with self.transaction():
-            seq = self.scalar(
-                "SELECT COALESCE(MAX(seq), 0) + 1 FROM run_events WHERE run_id = ?", (run_id,)
+            self.note_session(run_id, event)
+            return self._append_run_event(run_id, event, payload)
+
+    def _append_run_event(
+        self, run_id: str, event: str, payload: Mapping[str, Any] | None = None
+    ) -> int:
+        seq = self.scalar(
+            "SELECT COALESCE(MAX(seq), 0) + 1 FROM run_events WHERE run_id = ?", (run_id,)
+        )
+        self._conn.execute(
+            "INSERT INTO run_events(run_id, seq, event, payload_json, ts) VALUES (?,?,?,?,?)",
+            (run_id, seq, event, _json(payload or {}), now_iso()),
+        )
+        return int(seq)
+
+    @contextmanager
+    def sessions_unnoted(self) -> Iterator[None]:
+        """Writes inside it note no session: a fixed policy's review (`review --policy`) runs
+        under the policy process's own reference, which its `reviews` row records; noted as a
+        session it would alternate with the operator's on every hold."""
+        self._sessions_quiet += 1
+        try:
+            yield
+        finally:
+            self._sessions_quiet -= 1
+
+    def note_session(self, run_id: str, event: str = "") -> None:
+        """Every operator session that changes a run is named in its trace (2026-11-12): when
+        the operator's session reference (`operator_env`: `STRINGENCY_SESSION_REF`, or the
+        harness's own) is set and is not the last one the run recorded, a `session` run event
+        records it (`session_ref`, `harness`, `version`) in the transaction of the change. The
+        last one recorded is read from the trace on every call (another process may have
+        written one since): the latest `session` event's, else `runs.operator_session_ref`
+        from the run's open. Nothing is noted when no reference is set (a person at a shell),
+        for a reading verb's own marks (`presented`, `rendered`, which carry the session in
+        their payload), or inside `sessions_unnoted`. Called by every run and step event, so
+        every verb that changes a run passes here. Reads: runs, run_events. Writes:
+        run_events (`session`)."""
+        if self._sessions_quiet or event in SELF_NAMING_EVENTS:
+            return
+        from stringency.operator_id import operator_env
+
+        env = operator_env()
+        ref = env["session_ref"]
+        if not ref:
+            return
+        run = self.one("SELECT operator_session_ref FROM runs WHERE run_id = ?", (run_id,))
+        if run is None:
+            return
+        # the run's events walked newest first on its primary key (run_id, seq)
+        last = self.scalar(
+            "SELECT json_extract(payload_json, '$.session_ref') FROM run_events "
+            "WHERE run_id = ? AND event = 'session' ORDER BY seq DESC LIMIT 1",
+            (run_id,),
+        )
+        if (last if last is not None else run["operator_session_ref"]) != ref:
+            self._append_run_event(
+                run_id,
+                "session",
+                {"session_ref": ref, "harness": env["harness"], "version": env["version"]},
             )
-            self._conn.execute(
-                "INSERT INTO run_events(run_id, seq, event, payload_json, ts) VALUES (?,?,?,?,?)",
-                (run_id, seq, event, _json(payload or {}), now_iso()),
-            )
-            return int(seq)
 
     def set_run_status(
         self,
@@ -313,8 +373,10 @@ class Store:
     def step_event(
         self, run_id: str, step_id: str, event: str, payload: Mapping[str, Any] | None = None
     ) -> int:
-        """Writes: step_events with the next seq for the step. Returns the seq."""
+        """Writes: step_events with the next seq for the step, after a `session` run event when
+        this is a new session's first change to the run (`note_session`). Returns the seq."""
         with self.transaction():
+            self.note_session(run_id, event)
             seq = self.scalar(
                 "SELECT COALESCE(MAX(seq), 0) + 1 FROM step_events "
                 "WHERE run_id = ? AND step_id = ?",

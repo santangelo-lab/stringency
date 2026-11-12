@@ -13,6 +13,7 @@ import typer
 from stringency.answers import file_answer, file_unanswerable, parse_cite
 from stringency.board import refresh_if_present
 from stringency.cli.common import emit, handle_errors
+from stringency.deliver import reviews_left_out_line
 from stringency.exit_codes import ConfigError, Exit
 from stringency.project import Project
 from stringency.questions import open_for_questions
@@ -53,13 +54,13 @@ def answer(
         project = Project.find()
         rc = open_for_questions(project)
         out = file_unanswerable(rc, question_id, reason or "")
-        write_open_delivery(rc)
+        d = write_open_delivery(rc, strict=False)  # the answer is recorded already
         refresh_if_present(project.root)
-        emit(
-            {**out, "run_id": rc.run_id},
-            as_json,
-            f"answer {out['answer_id']} recorded (unanswerable): {out['reason']}",
-        )
+        human = f"answer {out['answer_id']} recorded (unanswerable): {out['reason']}"
+        if d.review_errors:
+            out = {**out, "review_errors": d.review_errors}
+            human += "\n" + reviews_left_out_line(d.review_errors)
+        emit({**out, "run_id": rc.run_id}, as_json, human)
         return
     if text is None:
         raise ConfigError("answer needs --text <file|-> (or --cannot --reason)")
@@ -76,7 +77,7 @@ def answer(
     payload = {**res.to_json(), "run_id": rc.run_id}
     if res.status == "admissible":
         # every admissible answer is in deliver/<run>/ the moment it exists (2026-10-19)
-        d = write_open_delivery(rc)
+        d = write_open_delivery(rc, strict=False)  # the answer is recorded already
         mine = next((e for e in d.answers if e["answer_id"] == res.answer_id), None)
         payload["report"] = {
             "path": str(d.path / "report.md"),
@@ -89,6 +90,9 @@ def answer(
             f"answer {res.answer_id} recorded ({res.status})\n{res.sentence}\n{res.qualifier}\n"
             f"{figs}in the report as {mine['file'] if mine else '?'} ({d.path / 'report.md'})"
         )
+        if d.review_errors:
+            payload["review_errors"] = d.review_errors
+            human += "\n" + reviews_left_out_line(d.review_errors)
     else:
         human = (
             f"answer {res.answer_id} blocked: "

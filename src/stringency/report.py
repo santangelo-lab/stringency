@@ -3,7 +3,8 @@ report; 2026-10-19, after the owner's second test drive).
 
 Every admissible answer of the run is in the directory the moment it exists: its own file
 (`q<NN>-<words>.md`), the files it cites with their sidecars, `coverage.md`, `methods.md`,
-`index.json`, and `report.md`, the one file a person reads. The report leads with the
+`index.json`, the resolved holds as review documents (`reviews/`, design 7.6), and
+`report.md`, the one file a person reads. The report leads with the
 findings, the answers the person marked (`stringency finding`), in full, in the person's order
 and under their headings when they gave any (L144), each with the figures attached to it and
 their labels (L143); the other questions follow, each a short paragraph; the record closes it.
@@ -35,6 +36,8 @@ from stringency.deliver import (
     answer_rerun_line,
     deliver_gate,
     rerun_counts,
+    review_documents,
+    write_review_documents,
 )
 from stringency.exit_codes import HeldError, RefusedError
 from stringency.findings import current as current_findings
@@ -137,6 +140,8 @@ def _previous_names(dest: Path) -> set[str]:
             names.add(str(f["sidecar"]))
     for a in data.get("answers") or []:
         names.add(str(a.get("file")))
+    for r in data.get("reviews") or []:
+        names.add(str(r.get("file")))
     return names
 
 
@@ -211,11 +216,14 @@ def _answer_file_text(ans: dict[str, Any], entry: dict[str, Any], cited_files: l
     return "\n".join(lines) + "\n"
 
 
-def write_open_delivery(rc: RunContext) -> Delivery:
+def write_open_delivery(rc: RunContext, *, strict: bool = True) -> Delivery:
     """Regenerate `deliver/<run>/` from the trace. Refused on an abandoned run; held (exit 10)
     while the run has open holds. Returns the Delivery with `changed` set when a `deliveries`
-    row was written (the content differs from the last regeneration). Writes: see the module
-    docstring."""
+    row was written (the content differs from the last regeneration). The review documents
+    are rendered and written before anything is recorded; `strict` (`deliver`) stops on one
+    that fails, and without it (after `answer` or `finding`, whose record is already made) the
+    report is written without it and the Delivery's `review_errors` names it. Writes: see the
+    module docstring."""
     store, project = rc.store, rc.project
     if rc.status() == "held":
         raise HeldError(
@@ -227,10 +235,14 @@ def write_open_delivery(rc: RunContext) -> Delivery:
     marks = current_findings(store, rc.run_id)
     places = placements(store, rc.run_id)
     finals = answer_artifacts(rc, answers)
-    deliver_gate(rc, finals)
+    # before anything is recorded, the gate's verdicts included (2026-11-12)
+    review_errors: list[dict[str, str]] | None = None if strict else []
+    review_docs = review_documents(rc, review_errors)
     dest = project.root / "deliver" / rc.run_id
     dest.mkdir(parents=True, exist_ok=True)
     previous = _previous_names(dest)
+    reviews = write_review_documents(dest, review_docs, review_errors)
+    deliver_gate(rc, finals)
 
     files: list[dict[str, Any]] = []
     by_artifact: dict[str, str] = {}
@@ -354,6 +366,7 @@ def write_open_delivery(rc: RunContext) -> Delivery:
             "plugins": captured_plugins(store, rc.run_id),
             "written": written,
             "files": files,
+            **({"reviews": reviews} if reviews else {}),  # absent when none: unchanged hash
             "coverage": {"file": "coverage.md", "blake3": hashing.hash_text(coverage_text)},
             "methods": {"file": "methods.md", "blake3": hashing.hash_text(methods_text)},
             "report": {"file": REPORT_FILE, "blake3": hashing.hash_text(report_text)},
@@ -374,6 +387,7 @@ def write_open_delivery(rc: RunContext) -> Delivery:
     for f in files:
         written_names.add(f["file"])
         written_names.add(f["sidecar"])
+    written_names.update(r["file"] for r in reviews)
     (dest / "coverage.md").write_text(coverage_text)
     (dest / "methods.md").write_text(methods_text)
     (dest / "coverage.json").write_text(
@@ -407,12 +421,22 @@ def write_open_delivery(rc: RunContext) -> Delivery:
                 "delivery_id": did,
                 "path": str(dest),
                 "files": len(files),
+                "reviews": len(reviews),
                 "answers": [e["answer_id"] for e in entries],
                 "findings": [e["answer_id"] for e in entries if e["finding"]],
             },
         )
     return Delivery(
-        did, dest, files, coverage_text, methods_text, report_text, entries, changed=changed
+        did,
+        dest,
+        files,
+        coverage_text,
+        methods_text,
+        report_text,
+        entries,
+        changed=changed,
+        reviews=reviews,
+        review_errors=review_errors or [],
     )
 
 

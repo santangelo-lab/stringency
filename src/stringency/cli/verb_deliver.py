@@ -72,6 +72,7 @@ def deliver(
         "path": str(d.path),
         "files": d.files,
         "answers": d.answers,
+        "reviews": d.reviews,
     }
     refresh_if_present(project.root)
     if rc.open_ended:
@@ -94,7 +95,8 @@ def deliver(
     emit(
         payload,
         as_json,
-        f"delivered run {run_id} to {d.path}\n{len(d.files)} file(s)\n\n{d.coverage}\n{d.methods}",
+        f"delivered run {run_id} to {d.path}\n{len(d.files)} file(s); "
+        f"{len(d.reviews)} review document(s) in reviews/\n\n{d.coverage}\n{d.methods}",
         out=out,
         summary=f"delivered run {run_id} to {d.path}: {len(d.files)} file(s)",
     )

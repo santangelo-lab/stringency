@@ -125,7 +125,12 @@ def run(
                 **nx.to_json(),
                 "run_id": done.run_id,
                 "run_status": "completed",
-                "delivery": {"delivery_id": d.delivery_id, "path": str(d.path), "files": d.files},
+                "delivery": {
+                    "delivery_id": d.delivery_id,
+                    "path": str(d.path),
+                    "files": d.files,
+                    "reviews": d.reviews,
+                },
             }
             refresh_if_present(project.root)
             notify_after(project, run_id=done.run_id, nx=nx, delivery=payload["delivery"])
@@ -162,6 +167,7 @@ def run(
             "delivery_id": d.delivery_id,
             "path": str(d.path),
             "files": d.files,
+            "reviews": d.reviews,
         }
         human += f"\ndelivered run {rc.run_id} to {d.path}\n{len(d.files)} file(s)"
     refresh_if_present(project.root)

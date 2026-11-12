@@ -13,7 +13,9 @@ import os
 import re
 import socket
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import wraps
 from typing import Any
 
 from stringency.artifacts import step_outputs
@@ -152,6 +154,23 @@ class ReviewResult:
         return {"schema": "stringency.review/1", **self.__dict__}
 
 
+def _policy_writes_note_no_session[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
+    """A fixed policy's review (`policy=`) writes inside `Store.sessions_unnoted`: the policy
+    process's reference is on its `reviews` row, and noted as a session too it would alternate
+    with the operator's on every hold (the review of #37)."""
+
+    @wraps(fn)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        project = args[0] if args else kwargs["project"]
+        if kwargs.get("policy") is None:
+            return fn(*args, **kwargs)
+        with project.store.sessions_unnoted():  # type: ignore[attr-defined]
+            return fn(*args, **kwargs)
+
+    return wrapper
+
+
+@_policy_writes_note_no_session
 def record_review(
     project: Project,
     hold_id: str,
