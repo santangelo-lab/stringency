@@ -20,31 +20,57 @@ from stringency.harness.base import Family, Invocation, Request, Sampling
 from stringency.prompting import DISPATCH_SUFFIX
 
 
-def request_path(dispatch_dir: Path, replicate: int) -> Path:
-    return dispatch_dir / f"req_{replicate}.json"
+def dispatch_dir_for(step_dir: Path, attempt: int) -> Path:
+    """Where an attempt's requests and responses live (found in the review of PR 34): `dispatch/` for the first attempt,
+    `dispatch-<attempt>/` for each later one, so a new attempt is answered on its own requests
+    and the earlier attempt's files stay where its invocation rows say they are. A resumed
+    dispatch of the same attempt finds its own directory again."""
+    return step_dir / ("dispatch" if attempt <= 1 else f"dispatch-{attempt}")
 
 
-def response_path(dispatch_dir: Path, replicate: int) -> Path:
-    return dispatch_dir / f"resp_{replicate}.json"
+def latest_attempt(store: Any, run_id: str, step_id: str) -> int:
+    """The step's latest attempt, from `actions`; 1 when none is recorded. Reads: actions."""
+    return int(
+        store.scalar(
+            "SELECT MAX(attempt) FROM actions WHERE run_id = ? AND step_id = ?", (run_id, step_id)
+        )
+        or 1
+    )
+
+
+def request_path(dispatch_dir: Path, number: int) -> Path:
+    """The file of request `number` (`Request.number`: the replicate under `all_items`, the
+    request's place in the dispatch under `per_item`)."""
+    return dispatch_dir / f"req_{number}.json"
+
+
+def response_path(dispatch_dir: Path, number: int) -> Path:
+    return dispatch_dir / f"resp_{number}.json"
 
 
 def write_requests(
     requests: list[Request], dispatch_dir: Path, *, step_id: str, action_id: str, schema_name: str
 ) -> None:
-    """Write manifest.json and one req_N.json per replicate. Never rewrites an existing set."""
+    """Write manifest.json and one req_N.json per request: one per replicate under `all_items`,
+    one per replicate and item under `per_item`, each naming its replicate and, under
+    `per_item`, its item (L172). The manifest's `replicates` is the module's replicate count;
+    its `requests` and `responses` list one file per request. Never rewrites an existing set."""
     dispatch_dir.mkdir(parents=True, exist_ok=True)
     manifest = dispatch_dir / "manifest.json"
     if manifest.exists():
         return
     for r in requests:
-        request_path(dispatch_dir, r.replicate).write_text(
+        body: dict[str, Any] = {"replicate": r.replicate}
+        if r.item is not None:
+            body["item"] = r.item
+        request_path(dispatch_dir, r.number).write_text(
             json.dumps(
                 {
-                    "replicate": r.replicate,
+                    **body,
                     "nonce": r.nonce,
                     "prompt": r.prompt + DISPATCH_SUFFIX.format(nonce=r.nonce),
                     "schema": r.schema,
-                    "response_file": str(response_path(dispatch_dir, r.replicate)),
+                    "response_file": str(response_path(dispatch_dir, r.number)),
                 },
                 indent=2,
             )
@@ -54,11 +80,11 @@ def write_requests(
             {
                 "step_id": step_id,
                 "action_id": action_id,
-                "replicates": len(requests),
+                "replicates": len({r.replicate for r in requests}),
                 "schema": schema_name,
                 "nonce_prefix": action_id,
-                "requests": [str(request_path(dispatch_dir, r.replicate)) for r in requests],
-                "responses": [str(response_path(dispatch_dir, r.replicate)) for r in requests],
+                "requests": [str(request_path(dispatch_dir, r.number)) for r in requests],
+                "responses": [str(response_path(dispatch_dir, r.number)) for r in requests],
             },
             indent=2,
         )
@@ -120,14 +146,14 @@ def read_response(req: Request, dispatch_dir: Path, operator: str | None = None)
     """Parse one response file. Missing, unparseable, or nonce-mismatched responses are invalid.
     A response whose `reported.agent` is the operator itself (`operator_answered`) is recorded
     with `via: operator` and `isolation: none`; the caller decides what the profile makes of it."""
-    rp = response_path(dispatch_dir, req.replicate)
+    rp = response_path(dispatch_dir, req.number)
     base: dict[str, Any] = {
         "model_requested": None,
         "harness_kind": "subagent",
         "harness_version": __version__,
         "via": "subagent",
         "isolation": "as_reported",
-        "request_path": str(request_path(dispatch_dir, req.replicate)),
+        "request_path": str(request_path(dispatch_dir, req.number)),
         "response_path": str(rp),
     }
     if not rp.exists():
