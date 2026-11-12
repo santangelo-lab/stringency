@@ -48,7 +48,7 @@ one, and make a later session that works on an existing run leave its reference.
   `test_operator_skill_line`, `test_render_skill`, `test_harness_adapters`, `test_wait`,
   `test_board_*`, `test_store`, `test_audit`, `test_propose_recovery`; ruff, ruff format,
   mypy, `check_no_biology.sh`.
-- The full suite: see the pull request (run once at the end).
+- The full suite (`uv run pytest -q`): 804 passed, 1 skipped, exit 0.
 
 ## Not checked
 
