@@ -20,6 +20,24 @@ from stringency.harness.base import Family, Invocation, Request, Sampling
 from stringency.prompting import DISPATCH_SUFFIX
 
 
+def dispatch_dir_for(step_dir: Path, attempt: int) -> Path:
+    """Where an attempt's requests and responses live (found in the review of PR 34): `dispatch/` for the first attempt,
+    `dispatch-<attempt>/` for each later one, so a new attempt is answered on its own requests
+    and the earlier attempt's files stay where its invocation rows say they are. A resumed
+    dispatch of the same attempt finds its own directory again."""
+    return step_dir / ("dispatch" if attempt <= 1 else f"dispatch-{attempt}")
+
+
+def latest_attempt(store: Any, run_id: str, step_id: str) -> int:
+    """The step's latest attempt, from `actions`; 1 when none is recorded. Reads: actions."""
+    return int(
+        store.scalar(
+            "SELECT MAX(attempt) FROM actions WHERE run_id = ? AND step_id = ?", (run_id, step_id)
+        )
+        or 1
+    )
+
+
 def request_path(dispatch_dir: Path, number: int) -> Path:
     """The file of request `number` (`Request.number`: the replicate under `all_items`, the
     request's place in the dispatch under `per_item`)."""

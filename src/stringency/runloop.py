@@ -279,7 +279,11 @@ def next_step(rc: RunContext) -> Next:
                 f"awaiting execution: ticket {action.ticket} for {sid}\n" + render_job_spec(spec),
             )
         if st == StepStatus.DISPATCHING:
-            ddir = rc.project.step_dir(rc.run_id, sid) / "dispatch"
+            from stringency.harness.subagent import dispatch_dir_for, latest_attempt
+
+            ddir = dispatch_dir_for(
+                rc.project.step_dir(rc.run_id, sid), latest_attempt(rc.store, rc.run_id, sid)
+            )
             n = len(list(ddir.glob("req_*.json")))
             return Next(
                 "dispatching",
@@ -484,7 +488,7 @@ def run_loop(rc: RunContext, *, until: str | None = None) -> Next:
         ):
             # a step dispatched by an earlier `run`: collect if the responses are there
             collected.add(nx.step_id or "")
-            ddir = rc.project.step_dir(rc.run_id, nx.step_id or "") / "dispatch"
+            ddir = Path(str(nx.detail["dispatch_dir"]))
             if any(ddir.glob("resp_*.json")) or _mock_dispatch(rc):
                 res = resume_dispatching(rc, nx.step_id or "")
                 if res.status == StepStatus.COMPLETED:

@@ -15,6 +15,7 @@ from stringency import __version__
 from stringency.egress import CLASS_NAMES
 from stringency.gate import in_scope_specs
 from stringency.predicates import registry
+from stringency.repeat import asked_item
 from stringency.review import policy_of
 from stringency.runs import RunContext, captured_egress, captured_plugins, captured_upstream_lineage
 from stringency.when import skip_reason
@@ -176,22 +177,28 @@ def fit_coverage(rc: RunContext) -> dict[str, Any]:
     }
 
 
-def judge_tokens(store: Any, run_id: str, step_id: str | None = None) -> dict[str, Any]:
+def judge_tokens(
+    store: Any, run_id: str, step_id: str | None = None, *, attempt: int | None = None
+) -> dict[str, Any]:
     """The judges' token counts over a run's invocations, or one step's (backlog L193): the
     number of calls (retries included), the sums of `tokens_in` and `tokens_out` over the calls
     that reported them, and how many calls reported none. A sum over no reported count is None,
     never zero, so a harness that reports nothing (the subagent harness, usually) reads as
-    missing. The judges only: the operator's own session is outside the trace. Reads:
-    invocations."""
+    missing. With `attempt`, that attempt's calls only (through `actions`). The judges only: the
+    operator's own session is outside the trace. Reads: invocations, actions."""
     sql = (
         "SELECT COUNT(*) AS calls, SUM(tokens_in) AS tin, SUM(tokens_out) AS tout, "
         "COALESCE(SUM(tokens_in IS NULL), 0) AS no_in, COALESCE(SUM(tokens_out IS NULL), 0) AS no_out "
         "FROM invocations WHERE run_id = ?"
     )
-    params: tuple[str, ...] = (run_id,)
+    params: tuple[Any, ...] = (run_id,)
     if step_id is not None:
         sql += " AND step_id = ?"
         params = (run_id, step_id)
+    if attempt is not None:
+        sql += " AND action_id IN (SELECT action_id FROM actions WHERE run_id = ? AND attempt = ?"
+        sql += " AND step_id = ?)" if step_id is not None else ")"
+        params = (*params, run_id, attempt, *((step_id,) if step_id is not None else ()))
     row = store.one(sql, params)
     return {
         "calls": int(row["calls"] or 0),
@@ -333,13 +340,24 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
             "ORDER BY model_resolved, via, isolation",
             (rc.run_id, step.id),
         )
-        prompt_variants = (
+        attempts = (
             store.scalar(
-                "SELECT COUNT(DISTINCT prompt_hash) FROM invocations WHERE run_id=? AND step_id=?",
+                "SELECT MAX(attempt) FROM actions WHERE run_id=? AND step_id=?",
                 (rc.run_id, step.id),
             )
-            or 0
+            or 1
         )
+        # distinct orderings on the attempt shown (L83): the distinct prompts each item was
+        # asked in, the most over the items, so that under `per_item`, where every item's
+        # prompt differs, the figure means what it means under `all_items` (L172)
+        asked: dict[str | None, set[str]] = {}
+        for i in store.all(
+            "SELECT i.prompt_hash, i.sampling_json FROM invocations i JOIN actions a "
+            "ON a.action_id = i.action_id WHERE i.run_id=? AND i.step_id=? AND a.attempt=?",
+            (rc.run_id, step.id, attempts),
+        ):
+            asked.setdefault(asked_item(i["sampling_json"]), set()).add(str(i["prompt_hash"]))
+        prompt_variants = max((len(v) for v in asked.values()), default=0)
         judgment.append(
             {
                 "module": m.ref,
@@ -365,8 +383,13 @@ def coverage_data(rc: RunContext) -> dict[str, Any]:
                 "unresolved": sources.get("unresolved", 0),
                 "cumulative_overrides": cum_counts.get("override", 0),
                 "cumulative_items": cum_items,
-                # the judges' tokens on this step (L193); a missing count stays missing
-                "tokens": judge_tokens(store, rc.run_id, step.id),
+                # the judges' tokens on this step (L193); a missing count stays missing. The
+                # figures above describe the latest attempt, so `tokens` is that attempt's and
+                # `tokens_all_attempts` every attempt's (the review of PR 34)
+                "attempt": attempts,
+                "attempts": attempts,
+                "tokens": judge_tokens(store, rc.run_id, step.id, attempt=attempts),
+                "tokens_all_attempts": judge_tokens(store, rc.run_id, step.id),
             }
         )
 
@@ -608,13 +631,20 @@ def render_coverage(d: dict[str, Any]) -> str:
                 f"    reviews: {j['accepted']} accepted, {j['override']} override, {j['unresolved']} unresolved; override rate this run {j['override']}/{j['items']}; cumulative for this module version {j['cumulative_overrides']}/{j['cumulative_items']}"
             )
             if j.get("tokens"):
-                lines.append(f"    judges: {tokens_text(j['tokens'])}")
+                if int(j.get("attempts") or 1) > 1:
+                    lines.append(
+                        f"    judges, attempt {j['attempt']}: {tokens_text(j['tokens'])}; "
+                        f"all {j['attempts']} attempts: {tokens_text(j['tokens_all_attempts'])}"
+                    )
+                else:
+                    lines.append(f"    judges: {tokens_text(j['tokens'])}")
     else:
         lines.append("  none")
     jt = d.get("judgment_tokens")
     if jt and jt["calls"]:
         lines.append(
-            f"  judges over the run: {tokens_text(jt)}; the operator's own session is not counted"
+            f"  judges over the run, every attempt: {tokens_text(jt)}; "
+            "the operator's own session is not counted"
         )
     lines.append("")
     for f in d.get("forks") or []:

@@ -29,7 +29,12 @@ from stringency.gate import evaluate
 from stringency.harness.api import ApiHarness
 from stringency.harness.base import Harness, Request, Sampling
 from stringency.harness.mock import MockHarness, fixture_path
-from stringency.harness.subagent import SubagentHarness, request_path, write_requests
+from stringency.harness.subagent import (
+    SubagentHarness,
+    dispatch_dir_for,
+    request_path,
+    write_requests,
+)
 from stringency.machine import StepStatus, step_status, transition
 from stringency.predicates import registry
 from stringency.predicates.context import EvidenceTable, OutputBundle, OutputInfo
@@ -347,7 +352,9 @@ def execute_judgment(rc: RunContext, proposal: Proposal) -> StepOutcome:
     requests, prompt_hash, schema = assemble_requests(rc, plan, ev, action.action_id, template_rel)
     harness = harness_for(rc, m.model)
     sampling = Sampling(model=m.model)
-    dispatch_dir = plan.step_dir / "dispatch"
+    dispatch_dir = dispatch_dir_for(
+        plan.step_dir, action.attempt
+    )  # one per attempt (the review of PR 34)
 
     if status == StepStatus.ADMISSIBLE:
         if harness.family == "dispatch":
@@ -671,6 +678,8 @@ def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
     return {
         "step_id": step_id,
         "ok": ok,
+        # one response per request: under `per_item` several per replicate (L172)
+        "responses": len(requests),
         "replicates": [
             {
                 "replicate": r.index,
@@ -688,8 +697,10 @@ def check_responses(rc: RunContext, doc: Any) -> dict[str, Any]:
 
 def check_text(res: dict[str, Any]) -> str:
     """The check's result in sentences, for the terminal."""
+    n = int(res.get("responses") or len(res["replicates"]))
     lines = [
-        f"checked {len(res['replicates'])} response(s) for {res['step_id']}; nothing was filed",
+        f"checked {n} response(s) from {len(res['replicates'])} replicate(s) for "
+        f"{res['step_id']}; nothing was filed",
     ]
     for r in res["replicates"]:
         state = "valid" if r["valid"] else f"invalid: {r['error']}"

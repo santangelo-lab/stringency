@@ -65,10 +65,23 @@ class Replicate:
         return self.invocations[-1].error
 
 
-def validate_response(inv: Invocation, schema: dict[str, Any]) -> list[str]:
+def validate_response(
+    inv: Invocation, schema: dict[str, Any], req: Request | None = None
+) -> list[str]:
+    """The schema's errors; and for a `per_item` request, an answer whose `item_id` is not the
+    item it asked about (the review of PR 34: such an answer was gathered under the wrong item
+    and `judg.items_incomplete` blocked with no word of why). The message names both items, so
+    the direct family's retry is told and an invalid replicate's error says it."""
     if inv.structured is None:
         return [inv.error or "no structured response"]
-    return validate(inv.structured, schema)
+    errors = validate(inv.structured, schema)
+    if req is not None and req.item is not None:
+        got = inv.structured.get("item_id")
+        if got is not None and str(got) != req.item:
+            errors.append(
+                f"this request asks about item {req.item}; the response answers item {got}"
+            )
+    return errors
 
 
 def gather(per_request: list[Replicate]) -> list[Replicate]:
@@ -101,17 +114,19 @@ def run_direct(
     out: list[Replicate] = []
     for req in requests:
         inv = harness.invoke(req.prompt, schema, sampling=sampling, request=req)
-        errors = validate_response(inv, schema)
+        errors = validate_response(inv, schema, req)
         inv.schema_valid = not errors
         invs = [inv]
         if errors:
             retry_prompt = req.prompt + RETRY_NOTE.format(errors="\n".join(errors[:10]))
             req2 = Request(**{**req.__dict__, "prompt": retry_prompt})
             inv2 = harness.invoke(retry_prompt, schema, sampling=sampling, request=req2)
-            errors = validate_response(inv2, schema)
+            errors = validate_response(inv2, schema, req)
             inv2.schema_valid = not errors
             invs.append(inv2)
         final = invs[-1]
+        if errors and final.error is None:
+            final.error = "; ".join(errors[:5])  # why the call is invalid, as collection says it
         out.append(
             Replicate(
                 req.replicate,
@@ -129,7 +144,7 @@ def collect_dispatch(
 ) -> list[Replicate]:
     out: list[Replicate] = []
     for req, inv in zip(requests, harness.collect(requests, dispatch_dir), strict=True):
-        errors = validate_response(inv, schema)
+        errors = validate_response(inv, schema, req)
         inv.schema_valid = not errors and bool(inv.nonce_ok)
         if not inv.schema_valid and inv.error is None:
             inv.error = "; ".join(errors[:5])
@@ -266,6 +281,42 @@ def record_invocations(
                     "attempt": attempt,
                 },
             )
+
+
+def asked_item(sampling_json: Any) -> str | None:
+    """The item a `per_item` invocation asked about, from its `sampling_json`; None under
+    `all_items` (L172)."""
+    try:
+        doc = json.loads(sampling_json) if isinstance(sampling_json, str) else sampling_json
+    except json.JSONDecodeError:
+        return None
+    item = doc.get("item") if isinstance(doc, dict) else None
+    return None if item is None else str(item)
+
+
+def answering_invocation(
+    store: Store, run_id: str, step_id: str, replicate: int, item_id: str | None
+) -> Any:
+    """The invocation that answered `item_id` for `replicate` on a step, latest first (for who
+    answered, backlog L70): under `per_item` the call that asked about that item, not the
+    replicate's last call, which asked about another (the review of PR 34); under `all_items`
+    the replicate's latest call. For a replicate recorded invalid as a whole (`item_id` `*`)
+    the replicate's latest call. None when no call matches. Reads: invocations."""
+    rows = store.all(
+        "SELECT * FROM invocations WHERE run_id = ? AND step_id = ? AND replicate = ? "
+        "ORDER BY rowid DESC",
+        (run_id, step_id, replicate),
+    )
+    if not rows:
+        return None
+    asked = [(asked_item(r["sampling_json"]), r) for r in rows]
+    for item, r in asked:
+        if item is not None and item == item_id:
+            return r
+    for item, r in asked:
+        if item is None:
+            return r
+    return rows[0] if item_id == "*" else None
 
 
 def wrap_schema(item_schema: dict[str, Any], batching: str) -> dict[str, Any]:

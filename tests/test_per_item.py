@@ -136,6 +136,7 @@ def test_per_item_and_all_items_give_the_same_consensus(
     cov_per = next(j for j in coverage_data(rc_per)["judgment"] if j["step"] == "03_label")
     assert cov_per["replicates"] == cov_all["replicates"] == 3
     assert cov_per["items"] == cov_all["items"] == 3
+    assert cov_per["prompt_variants"] == cov_all["prompt_variants"] == 3
 
 
 def test_per_item_dispatch_files_carry_replicate_and_item(
