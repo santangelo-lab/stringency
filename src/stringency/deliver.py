@@ -30,6 +30,7 @@ from stringency.methods import methods_paragraph
 from stringency.predicates import registry
 from stringency.predicates.context import OutputBundle
 from stringency.provenance import block_for
+from stringency.review_export import export_reviews
 from stringency.runs import RunContext, captured_plugins
 from stringency.summary import render_summary
 
@@ -230,7 +231,9 @@ def deliver(
                 "open mode writes every answer into deliver/<run>/ as it is filed; mark the "
                 "findings the report leads with using `stringency finding <answer id>`"
             )
-        return write_open_delivery(rc)
+        delivery = write_open_delivery(rc)
+        export_reviews(project, run_id=rc.run_id)  # L37: the run's resolved holds as cases
+        return delivery
     if answer_ids:
         raise RefusedError("--answer belongs to open mode; this run has a declared topology")
     if status != "completed":
@@ -328,6 +331,9 @@ def deliver(
             "files": len(files),
         },
     )
+    # L37: one document per resolved hold beside the delivery (`deliver/<run>/reviews/`),
+    # outside `index.json`: a reading of the trace, not a delivered artifact
+    export_reviews(project, run_id=rc.run_id)
     return Delivery(did, dest, files, coverage_text, methods_text, summary_text)
 
 

@@ -21,6 +21,8 @@ skills/<pipeline>.analyze.yml  source of the analysis skill, rendered to skills/
 skills/open.yml             what a person sees of an answer in open mode (answer_view per tool; engine 0.2.22)
 skills/<pipeline>.questions.yml  the routing test set for open mode: questions and the route each should take
 notes/YYYY-MM-DD-hhmm-<slug>.md   one small file per session (Commandment 2)
+.claude/skills/stringency-revise/  for the method author's agent: reads `stringency review --export`
+                            for a module version and proposes changes citing the hold ids
 ```
 
 `policy.yml` `requires:` names the engine and plugin versions the method needs; `lint`, `init` and
