@@ -3,8 +3,15 @@
 The map of session notes. One line per note, newest first. Keep the current-state block accurate;
 it is the first thing a new session reads.
 
-## Current state (2026-11-12)
+## Current state (2026-11-16)
 
+- (2026-11-16) An added input the engine cannot read (`notes/2026-11-16-1301-added-input-unreadable.md`, branch
+  `open-mode-added-input-defect`, docs only): six gzipped CSVs added with `inputs add --type table`
+  broke every `exec` of the ROSC Xenium open project (engine 0.2.44). Reproduced on the toy; filed
+  as `spec/plans/added-input-unreadable.md`, rows L199 to L204 (the add reads nothing; `exec` binds
+  every added input against design 2.3; plain-text table readers, gzip read as gzip proposed; no
+  withdrawal, L202 waits on the owner; a failed exec left `produced`; the traceback kept). Next:
+  the owner places the rows in the order.
 - (2026-11-12) Review documents in the delivery, and every session named in a run's trace (`notes/2026-11-12-1315-reviews-delivery-sessions.md`, branch
   `reviews-in-delivery`): on the owner's ruling `deliver` writes `deliver/<run>/reviews/`
   before it records the delivery, listed in `index.json` `reviews[]` under its hash; a
@@ -483,6 +490,7 @@ it is the first thing a new session reads.
 
 ## Notes
 
+- `2026-11-16-1301-added-input-unreadable.md` — a defect report, no code: a gzipped table added to an open project breaks every `exec` (ROSC, 0.2.44); reproduced on the toy with the traceback; the owner's findings checked (the crash is in `evidence_tables_for`, and `exec` binds added inputs against design 2.3); `spec/plans/added-input-unreadable.md`, L199 to L204.
 - `2026-11-12-1315-reviews-delivery-sessions.md` — L37's delivery half on the owner's ruling (review documents in `deliver/<run>/reviews/`, before the delivery is recorded, under `index.json`'s hash) and the `session` run event that names every operator session that changes a run.
 - `2026-11-11-1935-wave3-correctness.md` — L106 (read-only Action values, the hash checked before write and job), L37 (`review --export` and the revise skill), K4 (newest change, `board --watch`), L80 (the institutional list, a known-good row per release); K3 left open.
 - `2026-11-11-1901-per-item-and-judge-tokens.md` — L172 (`per_item` requests numbered apart from the module's replicate, gathered before consensus, the per-item prompt rendered for its item) and L193 (`judgment[].tokens` and `judgment_tokens` in the coverage report, missing counts kept missing).
